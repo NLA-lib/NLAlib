@@ -109,6 +109,6 @@ def estimate (stream : ℕ) : Stmt Op Tst := ops% [n, k, ell] (data) → (out) {
 }
 
 /-- A fixed three-dimension program with declared operator-data and output buffers. -/
-def program (stream : ℕ) : Program Op Tst 3 2 := ⟨(estimate stream)⟩
+def estimateProgram (stream : ℕ) : Program Op Tst 3 2 := ⟨(estimate stream)⟩
 
 end NLAlib.HutchPlusPlus

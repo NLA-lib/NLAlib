@@ -119,7 +119,7 @@ theorem dotRoutine_meets (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
   have hl' : (Mem.mk store m.pos).Live [x, y, (m.store.length, 0), out] := by
     simp only [Mem.live_cons, Mem.live_nil]
     exact ⟨by omega, by omega, by omega, by omega, trivial⟩
-  refine ((writes_dotWithScratch hS hStar xs ys hl' (by kept) (by kept)
+  refine ((dotWithScratch_writes hS hStar xs ys hl' (by kept) (by kept)
     (Fp.disj_sup_left.mpr ⟨Fp.disj_inBlock_of_ne (Ne.symm (Nat.ne_of_lt hxL)), hOX⟩)
     (Fp.disj_sup_left.mpr ⟨Fp.disj_inBlock_of_ne (Ne.symm (Nat.ne_of_lt hyL)), hOY⟩)
     (Fp.disj_inBlock_of_ne (Ne.symm (Nat.ne_of_lt hoL)))
@@ -201,7 +201,7 @@ theorem copyRoutine_meets (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) 
   have hd : Fp.Disj (Store.inBlock z.1 z.2 n) (Store.inBlock x.1 x.2 n) := by
     have h : Fp.Disj (Fp.blocks [z] [n]) (Fp.blocks [x] [n]) := hsep.2.1
     simpa using h
-  refine (writes_copy hS xs hxs (.inl hd.symm) hroom).mono le_sup_left fun μ' _ h => ?_
+  refine (copy_writes hS xs hxs (.inl hd.symm) hroom).mono le_sup_left fun μ' _ h => ?_
   exact ⟨h.1, [xs], Mem.readBlocks_cons_eq_some.mpr ⟨_, [], h.2, rfl, rfl⟩, rfl⟩
 
 omit [Has StarOp Op] in
@@ -210,7 +210,7 @@ theorem copyInPlaceRoutine_meets (hS : IsScalar (RCLikeBlas.machine : Machine �
     (copyInPlaceRoutine (Op := Op) (Tst := Tst)).Meets I
       (Routine.Spec.ofRel (RCLikeBlas.functions (𝕜 := 𝕜) .copy).rel fun _ => True) := by
   routine_intro [n] (x) reads (xs)
-  refine (writes_copy hS xs hxs (.inr rfl) hroom).mono le_sup_left fun μ' _ h => ?_
+  refine (copy_writes hS xs hxs (.inr rfl) hroom).mono le_sup_left fun μ' _ h => ?_
   exact ⟨h.1, [xs], Mem.readBlocks_cons_eq_some.mpr ⟨_, [], h.2, rfl, rfl⟩, rfl⟩
 
 omit [Has StarOp Op] in
@@ -264,7 +264,7 @@ theorem scal_blocks (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) {n : �
   obtain ⟨alpha, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock ha)
   have ha' : μ.store.get a.1 a.2 = some alpha := by
     simpa using Store.get_of_readBlock ha Nat.zero_lt_one alpha
-  refine (writes_scal hS xs alpha hl hx ha' hxz haz hz).mono le_sup_left fun μ' _ h => ?_
+  refine (scal_writes hS xs alpha hl hx ha' hxz haz hz).mono le_sup_left fun μ' _ h => ?_
   exact ⟨h.1, [List.ofFn fun i : Fin n => xs.getD i 0 / alpha],
     Mem.readBlocks_cons_eq_some.mpr ⟨_, [], h.2, rfl, rfl⟩, rfl⟩
 
@@ -370,7 +370,7 @@ theorem axpy_blocks (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) {n : �
   obtain ⟨alpha, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock ha)
   have ha' : μ.store.get a.1 a.2 = some alpha := by
     simpa using Store.get_of_readBlock ha Nat.zero_lt_one alpha
-  refine (writes_axpy hS xs ys alpha hl ha' hx hy hxz hyz haz hz).mono le_sup_left
+  refine (axpy_writes hS xs ys alpha hl ha' hx hy hxz hyz haz hz).mono le_sup_left
     fun μ' _ h => ?_
   exact ⟨h.1, [List.ofFn fun i : Fin n => ys.getD i 0 + alpha * xs.getD i 0],
     Mem.readBlocks_cons_eq_some.mpr ⟨_, [], h.2, rfl, rfl⟩, rfl⟩

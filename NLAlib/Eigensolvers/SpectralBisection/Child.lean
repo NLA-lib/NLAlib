@@ -20,7 +20,7 @@ next-level matrix may share an arena buffer when their actual occupied intervals
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_child`: exact shifted matrix and metadata on actual words.
+* `NLAlib.SpectralBisection.child_writes`: exact shifted matrix and metadata on actual words.
 -/
 
 @[expose] public section
@@ -33,7 +33,7 @@ open Ops
 without a successful-run or numerical-accuracy assumption. The literal values are the actual
 machine words; exact natural decoding is a separate numerical-model obligation.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_child {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
+theorem child_writes {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
     {M : Machine K} (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     (unif : K → Su → K) (normal : Sg → K × K) {I : Interp Op Tst K}
     (hS : IsScalar M I) (hL : IsIndexLit M I) {τ : Tape K} {μ : Mem K}
@@ -68,7 +68,7 @@ theorem writes_child {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Ha
   simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right,
     Fp.disj_bot_right, and_true] at hap
   obtain ⟨⟨hYZ, hYW⟩, hZW⟩ := hap
-  refine (writes_frame rfl rfl (by room) (Hermitian.writes_shift_packed
+  refine (writes_frame rfl rfl (by room) (Hermitian.shift_writes_packed
     (dec := dec) (mm := mm) (qr := qr) (unif := unif) (normal := normal)
     hS A s (x := (ma.1, ma.2 + 2 * (n * n) * d + 2 * n * lo))
     hxy hsy hA hs hy (by room))).seq_readBlock ?_ ?_

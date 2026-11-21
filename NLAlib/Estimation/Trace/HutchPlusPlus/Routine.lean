@@ -99,7 +99,7 @@ theorem estimateRoutine_meets (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜)
     have hLive : (Mem.mk store m.pos).Live [data, (m.store.length, 0), out] := by
       simp only [Mem.live_cons, Mem.live_nil]
       exact ⟨by omega, by omega, by omega, trivial⟩
-    have hPrep := writes_prepare (m := ⟨store, m.pos⟩) (τ := τ)
+    have hPrep := prepare_writes (m := ⟨store, m.pos⟩) (τ := τ)
       (n := n) (k := k) (ell := ell) (data := data) (b := (m.store.length, 0))
       hS hB hC hI hSample stream as
       (by simp only [Mem.live_cons, Mem.live_nil]; exact ⟨by omega, by omega, trivial⟩)
@@ -116,7 +116,7 @@ theorem estimateRoutine_meets (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜)
       simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right,
         Fp.disj_bot_right, and_true]
       exact ⟨⟨Fp.disj_inBlock_of_ne (by omega), hDO⟩, Fp.disj_inBlock_of_ne (by omega)⟩
-    have hRun := writes_finish (m := ν) (τ := τ) hS hB hLit hI as
+    have hRun := finish_writes (m := ν) (τ := τ) hS hB hLit hI as
       ((EntryCodec.scalar 𝕜).matrix n k (τ.window stream m.pos (n * k)))
       ((EntryCodec.scalar 𝕜).matrix n ell (τ.window stream (m.pos + n * k) (n * ell)))
       (hLive.congr hfr.length_eq) hAP hA' hp.2

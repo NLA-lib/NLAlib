@@ -48,7 +48,7 @@ def negate : Stmt Op Tst :=
 
 /-- Negation writes the machine-negated words of the complete interleaved matrix.
 The operands are live and either in distinct buffers or exactly coincident; output has room. -/
-theorem wp_negate {K : Type} [Inhabited K] {M : Machine K} {I : Interp Op Tst K}
+theorem negate_wp {K : Type} [Inhabited K] {M : Machine K} {I : Interp Op Tst K}
     (hI : IsScalar M I) {md : Mode} {τ : Tape K} {rows cols : ℕ} {x y : ℕ × ℕ}
     {m : Mem K} {xs : List K} (hxy : x.1 ≠ y.1 ∨ x = y)
     (hx : m.store.readBlock x.1 x.2 (2 * (rows * cols)) = some xs)
@@ -56,7 +56,7 @@ theorem wp_negate {K : Type} [Inhabited K] {M : Machine K} {I : Interp Op Tst K}
     {Q : Mem K → Prop} (hQ : Q (m.updBlock y (xs.map M.neg))) :
     Wp md I τ (negate (Op := Op) (Tst := Tst))
       (Env.frame [rows, cols] [x, y]) Q m :=
-  wp_frame rfl rfl hl (wp_unaryMap (hI .neg) hxy hx hy hQ)
+  wp_frame rfl rfl hl (unaryMap_wp (hI .neg) hxy hx hy hQ)
 
 /-- Copy the strict upper triangle of an interleaved square matrix into another buffer. -/
 def copyTriangle : Stmt Op Tst :=

@@ -19,12 +19,12 @@ the same total execution, including empty inputs and early breakdown.
 
 ## Main results
 
-* `NLAlib.Krylov.Lanczos.Stored.algorithm`: the ordinary stored canonical certificate.
+* `NLAlib.Krylov.Lanczos.Stored.Certification.algorithm`: the ordinary stored canonical certificate.
 -/
 
 @[expose] public section
 
-namespace NLAlib.Krylov.Lanczos.Stored
+namespace NLAlib.Krylov.Lanczos.Stored.Certification
 
 open Ops
 
@@ -87,4 +87,4 @@ noncomputable def algorithm (cost : Standard.Costing) :
     rw [initialBytes_problem]
     exact le_rfl
 
-end NLAlib.Krylov.Lanczos.Stored
+end NLAlib.Krylov.Lanczos.Stored.Certification

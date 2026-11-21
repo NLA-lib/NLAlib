@@ -40,7 +40,7 @@ The matrix norm comparison handles absolute entries without assuming cancellatio
 
 ## Canonical statements
 
-In each namespace `Lanczos.Stored.Rounded` and `Lanczos.Stored.Reorth.Rounded`, the public
+In each namespace `Lanczos.Rounded.Stored` and `Lanczos.Reorth.Rounded.Stored`, the public
 endpoint has the following shape:
 
 ```lean
@@ -78,7 +78,7 @@ fallback affects the lowered tree.
 * `Ops/Profiles/ContextLinearRounded.lean`: exhaustive local rounded source contracts,
   fallback realization and guarded matrix-context transfer.
 * `Ops/Profiles/RoundedBlas.lean`: jointly realized rounded scalar/vector model.
-* `Krylov/Lanczos/Rounded/StoredSolve.lean`, `Krylov/Lanczos/Reorth/Rounded/StoredSolve.lean`:
+* `Krylov/Lanczos/Rounded/StoredRoutine.lean`, `Krylov/Lanczos/Reorth/Rounded/StoredRoutine.lean`:
   the ordinary and reorthogonalized stored routines, consuming the shared local dense/context
   contracts.
 * `Krylov/Lanczos/Rounded/StoredCertification.lean`: ordinary canonical endpoints.

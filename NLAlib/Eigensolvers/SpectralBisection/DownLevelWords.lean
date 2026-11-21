@@ -19,7 +19,7 @@ Shared read footprints retain its mathematical inputs through preparation.
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_downLevelBody`: total caller-owned downward level.
+* `NLAlib.SpectralBisection.downLevelBody_writes`: total caller-owned downward level.
 -/
 
 @[expose] public section
@@ -31,7 +31,7 @@ open Ops
 /-- The complete level performs both sampling batches before its actual active-slot scan.
 It returns all rounded step outcomes and the next parameter pair, with an exact write frame.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_downLevelBody {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
+theorem downLevelBody_writes {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
     [Has SampleOp Op] [Has MatrixOp Op] [Has CmpTst Tst] [Has IdxTst Tst]
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp dec I)
@@ -77,7 +77,7 @@ theorem writes_downLevelBody {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [
   have hLive0 := hl
   simp only [Mem.live_cons, Mem.live_nil, and_true] at hLive0
   rcases hLive0 with ⟨hlpar, hllv, hlsu, hlsg, hlma, hlua, hlqa, hlea, hlsz, hlkd, hlkp, hlc, hlt⟩
-  have hLP := writes_downPrepare (τ := τ) (L := L) hS hL hSample
+  have hLP := downPrepare_writes (τ := τ) (L := L) hS hL hSample
     (M.lit 1) (M.lit 2) (M.div (M.lit 1) (M.lit 2)) R eps
     (by room) hPrepareAP
     (by simpa using (Store.readBlock_sub hc (o := 0) (n := 3) (by omega))) hlv hv hu hg (by omega)
@@ -88,7 +88,7 @@ theorem writes_downLevelBody {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [
     hslot hsizes hmat hpar hlv hc hPrepareRead hfr hPrep.2.2.1 hPrep.2.2.2
   have hLive : ν.Live [par, lv, su, sg, ma, ua, qa, ea, sz, kd, kp, c, t] := by
     simpa only [Mem.Live, hfr.length_eq] using hl
-  have hScan := writes_downNodes M dec mm qr (τ := τ) (L := L) (fuel := fuel) hS hL hC hMM hQR hQ
+  have hScan := downNodes_writes M dec mm qr (τ := τ) (L := L) (fuel := fuel) hS hL hC hMM hQR hQ
     ks A R0 beta R eps (fun lo => vec (τ.window Stream.unif μ.pos n) lo)
     (fun i j => (EntryCodec.pair K).entry
       (τ.window Stream.gauss (μ.pos + n) (4 * (n * n))) (j * n + i))

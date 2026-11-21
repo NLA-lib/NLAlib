@@ -305,7 +305,7 @@ omit [Has ScalarOp Op] in
 actual prefix frame, while unchanged entries are retained by that same frame.
 A step in the proof of `rotateRowsWithScratch_writes_word`,
 `rotateColumnsWithScratch_writes_word`. -/
-private theorem writes_rotationLoop {I : Interp Op Tst ℝ} {τ : Tape ℝ} {m : Mem ℝ}
+private theorem rotationLoop_writes {I : Interp Op Tst ℝ} {τ : Tape ℝ} {m : Mem ℝ}
     {ρ : Env} {bound : IExp} {body : Stmt Op Tst} {n : ℕ} {a : ℕ × ℕ}
     {H G : Matrix (Fin n) (Fin n) ℂ} (p q : Fin n → Fin n × Fin n)
     (scratch : Fp) (hH : HoldsMatrix a H m.store)
@@ -453,7 +453,7 @@ theorem rotateRowsWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst �
   let r' : Fin n := ⟨k + 1, hk⟩
   have hrr : r ≠ r' := by intro h; have := congrArg Fin.val h; dsimp [r, r'] at this; omega
   change Writes .total I τ (.loop _ _) _ _ _ m
-  refine writes_rotationLoop (fun j => (r, j)) (fun j => (r', j))
+  refine rotationLoop_writes (fun j => (r, j)) (fun j => (r', j))
     (Store.inBlock t.1 t.2 10) hH rfl (rotationRows_disjoint r r')
     (Fp.disj_inBlock_of_ne hta) ?_ ?_
   · intro i j hne
@@ -464,7 +464,7 @@ theorem rotateRowsWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst �
     obtain ⟨hc', hs', hx, hy, ht', hxl, hyl⟩ := rotationLoop_inputs hH hc hs hca hsa
       hta htc hts ht (fun i hi => rotationRows_disjoint r r' j i (by
         intro he; have := congrArg Fin.val he; omega)) hfr
-    have hw := writes_rotateLeftWithScratch_word (τ := τ) (m := m')
+    have hw := rotateLeftWithScratch_writes_word (τ := τ) (m := m')
       (x := rotationEntry a n (r, j)) (y := rotationEntry a n (r', j))
       hS htc hts hta hta
       (rotationEntry_disj (fun h => hrr (congrArg Prod.fst h)))
@@ -533,7 +533,7 @@ theorem rotateColumnsWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Ts
   let r' : Fin n := ⟨k + 1, hk⟩
   have hrr : r ≠ r' := by intro h; have := congrArg Fin.val h; dsimp [r, r'] at this; omega
   change Writes .total I τ (.loop _ _) _ _ _ m
-  refine writes_rotationLoop (fun j => (j, r)) (fun j => (j, r'))
+  refine rotationLoop_writes (fun j => (j, r)) (fun j => (j, r'))
     (Store.inBlock t.1 t.2 10) hH rfl (rotationColumns_disjoint r r')
     (Fp.disj_inBlock_of_ne hta) ?_ ?_
   · intro i j hne
@@ -544,7 +544,7 @@ theorem rotateColumnsWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Ts
     obtain ⟨hc', hs', hx, hy, ht', hxl, hyl⟩ := rotationLoop_inputs hH hc hs hca hsa
       hta htc hts ht (fun i hi => rotationColumns_disjoint r r' j i (by
         intro he; have := congrArg Fin.val he; omega)) hfr
-    have hw := writes_rotateRightWithScratch_word (τ := τ) (m := m')
+    have hw := rotateRightWithScratch_writes_word (τ := τ) (m := m')
       (x := rotationEntry a n (j, r)) (y := rotationEntry a n (j, r'))
       hS htc hts hta hta
       (rotationEntry_disj (fun h => hrr (congrArg Prod.snd h)))

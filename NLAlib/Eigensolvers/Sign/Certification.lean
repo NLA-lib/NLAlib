@@ -19,8 +19,8 @@ Numerical accuracy is a separate theorem about the returned mathematical quantit
 ## Main results
 
 * `NLAlib.Sign.wordSpecification` states the actual stored matrix and full resources.
-* `NLAlib.Sign.certifiedAlgorithm` certifies the fixed program under functional primitives.
-* `NLAlib.Sign.certifies_fixedProgram` exposes the certificate for that exact program.
+* `NLAlib.Sign.signAlgorithm` certifies the fixed program under functional primitives.
+* `NLAlib.Sign.certifies_signProgram` exposes the certificate for that exact program.
 -/
 
 @[expose] public section
@@ -40,11 +40,11 @@ noncomputable def wordSpecification (M : Machine K) (dec : K → ℝ)
     (matrixWork matrixWorkspace : MatrixOp → List ℕ → ℕ) :
     Specification DenseOp (CmpTst ⊕ IdxTst) (problem (K := K) domain admitted) where
   budget := staticBudget
-  scratch := staticPeak (Dense.resources matrixWork matrixWorkspace) fixedProgram
+  scratch := staticPeak (Dense.resources matrixWork matrixWorkspace) signProgram
   work d := (Dense.resources matrixWork matrixWorkspace).work (staticBudget d)
   span d := (Dense.resources matrixWork matrixWorkspace).span (staticBudget d)
   memory d := 4 * (d 0 * d 0) + 2 +
-    staticPeak (Dense.resources matrixWork matrixWorkspace) fixedProgram d
+    staticPeak (Dense.resources matrixWork matrixWorkspace) signProgram d
   good d x _ _ m :=
     m.store.readBlock 2 0 (2 * (d 0 * d 0)) =
       some ((EntryCodec.pair K).packFinMatrix
@@ -56,7 +56,7 @@ noncomputable def wordSpecification (M : Machine K) (dec : K → ℝ)
 at every admitted raw input and cap. The distinct decoded zero and one premise makes the
 matrix stopping predicate agree with its mathematical definition. No success or numerical
 accuracy assumption is needed for this exact word-result certificate. -/
-noncomputable def certifiedAlgorithm (M : Machine K) (dec : K → ℝ)
+noncomputable def signAlgorithm (M : Machine K) (dec : K → ℝ)
     (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     (unif : K → Su → K) (normal : Sg → K × K)
     (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d)
@@ -69,7 +69,7 @@ noncomputable def certifiedAlgorithm (M : Machine K) (dec : K → ℝ)
   refine Routine.algorithm (r := 2) (b := 3) (signRoutine (Has.inj MatrixOp.mul))
     (fun _ _ => signSpec M dec mm qr unif normal)
     (fun d x => [(EntryCodec.pair K).packFinMatrix (inputMatrix d x),
-      [vec x.val.1.2 0, vec x.val.1.2 1]]) (ht := wellTyped_fixedProgram matrixWork matrixWorkspace)
+      [vec x.val.1.2 0, vec x.val.1.2 1]]) (ht := wellTyped_signProgram matrixWork matrixWorkspace)
     ?_ ?_ ?_ (hmemory := ?_)
   · intro d hd x I hI
     rcases Dense.laws_functionalModel M dec (EntryCodec.pair K) mm qr
@@ -101,17 +101,17 @@ noncomputable def certifiedAlgorithm (M : Machine K) (dec : K → ℝ)
     exact le_rfl
 
 /-- The canonical sign certificate concerns precisely the declared fixed tree. -/
-theorem certifies_fixedProgram (M : Machine K) (dec : K → ℝ)
+theorem certifies_signProgram (M : Machine K) (dec : K → ℝ)
     (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     (unif : K → Su → K) (normal : Sg → K × K)
     (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d)
     (matrixWork matrixWorkspace : MatrixOp → List ℕ → ℕ)
     (h01 : dec (M.lit 0) ≠ dec (M.lit 1)) :
-    fixedProgram.Certifies
+    signProgram.Certifies
       (Dense.functionalModel (problem (K := K) domain admitted) M dec (EntryCodec.pair K) mm qr
         (Dense.resources matrixWork matrixWorkspace))
       (wordSpecification M dec mm qr unif normal domain admitted matrixWork matrixWorkspace) :=
-  (certifiedAlgorithm M dec mm qr unif normal domain admitted matrixWork matrixWorkspace
+  (signAlgorithm M dec mm qr unif normal domain admitted matrixWork matrixWorkspace
     h01).correct
 
 end NLAlib.Sign

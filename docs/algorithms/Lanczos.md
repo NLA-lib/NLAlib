@@ -371,15 +371,15 @@ implementation's constants. Stronger numerical conclusions use their proved hypo
 ## Canonical certificates
 
 The exact stored endpoints are `Lanczos.Stored.algorithm` and
-`Lanczos.Stored.Reorth.algorithm`. Their specifications identify the actual packed outputs
+`Lanczos.Reorth.Stored.algorithm`. Their specifications identify the actual packed outputs
 with the existing exact `Output` relations, preserve tape position, and assert cleanup back
 to four buffers. Their complete count, work, sequential-span and scratch budgets are computed
 from the actual transformed syntax. Resident bounds include matrix data, RHS, every basis
 slot and every coefficient slot. These full manifests are conservative size-only accounting;
 they are not a sharp adaptive-work bound.
 
-The rounded stored endpoints are `Lanczos.Stored.Rounded.scalarAlgorithm` and
-`Lanczos.Stored.Reorth.Rounded.scalarAlgorithm`. Both target a signature containing only scalar
+The rounded stored endpoints are `Lanczos.Rounded.Stored.scalarAlgorithm` and
+`Lanczos.Reorth.Rounded.Stored.scalarAlgorithm`. Both target a signature containing only scalar
 operations. Matrix words remain explicit inputs; every matvec and sequential BLAS operation
 executes its scalar implementation. The matvec allowance follows from the actual streamed
 multiply/add recurrence and the scalar roundoff, rather than a separate accuracy callback.
@@ -412,7 +412,7 @@ checks the fully lowered tree and recomputes its full instruction/workspace mani
 The [actual sequential scalar certificate](../../NLAlib/Krylov/Lanczos/LinkedCertification.lean)
 checks the precise tree produced by the sequential implementation table. Its reduction error
 budgets come from the scalar unit roundoff, independently of the high-level BLAS scheme. Its
-Ritz postcondition is strengthened by `SequentialCertification.ritzAlgorithm`, preserving that
+Ritz postcondition is strengthened by `Linked.Certification.ritzAlgorithm`, preserving that
 lowered tree's own full resource specification. Pairwise profile transfer retains its explicit
 applicability and conditional budgets; this sequential certificate does not certify a different
 pairwise scalar tree.

@@ -152,7 +152,7 @@ omit [Has StarOp Op] in
 implements `copy` for two operand layouts, out of place and in place, which are two routines
 (`copyRoutine`, `copyInPlaceRoutine`); this lemma, stated for both layouts, is their common
 proof. -/
-theorem writes_copy (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+theorem copy_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     {n : ℕ} {x y : ℕ × ℕ} (xs : List 𝕜)
     (hX : m.store.readBlock x.1 x.2 n = some xs)
     (hXY : Fp.Disj (Store.inBlock x.1 x.2 n) (Store.inBlock y.1 y.2 n) ∨ x = y)
@@ -160,13 +160,13 @@ theorem writes_copy (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     Writes .total I tape copy (Env.frame [n] [x, y]) (Store.inBlock y.1 y.2 n)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock y.1 y.2 n = some xs) m := by
   simpa [copy, Machine.fn] using
-    writes_unaryMap_of_disj_or_eq (hS .copy) hXY hX hy
+    unaryMap_writes_of_disj_or_eq (hS .copy) hXY hX hy
 
 omit [Has StarOp Op] in
 /-- The shared broadcast lowering computes vector division with the exact scalar machine. The
 tree implements `scal` out of place and in place, two routines (`scalRoutine`,
 `scalInPlaceRoutine`); this lemma, stated for both layouts, is their common proof. -/
-theorem writes_scal (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+theorem scal_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     {n : ℕ} {a x y : ℕ × ℕ} (xs : List 𝕜) (alpha : 𝕜) (hl : m.Live [a, x, y])
     (hX : m.store.readBlock x.1 x.2 n = some xs) (hA : m.store.get a.1 a.2 = some alpha)
     (hXY : Fp.Disj (Store.inBlock x.1 x.2 n) (Store.inBlock y.1 y.2 n) ∨ x = y)
@@ -178,14 +178,14 @@ theorem writes_scal (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
   have hl' : m.Live [x, a, y] := by
     simp only [Mem.live_cons, Mem.live_nil]
     exact ⟨hl x (by simp), hl a (by simp), hl y (by simp), trivial⟩
-  refine ((writes_scalarBroadcast_readBlock (hS .div) hX hA hy hXY hAY).in_frame
+  refine ((scalarBroadcast_writes_readBlock (hS .div) hX hA hy hXY hAY).in_frame
     rfl rfl hl').mono le_rfl ?_
   intro m' _ ⟨hp, hv⟩
   exact ⟨hp, hv.trans (congrArg some (map_eq_ofFn xs (fun v => v / alpha)
     (Store.length_of_readBlock hX)))⟩
 
 /-- One explicit conjugate product step preserves its accumulator through temporary writes. -/
-theorem writes_starProductStep (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+theorem starProductStep_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hStar : RCLikeStar.IsExact I) {x y t out : ℕ × ℕ} (a b acc : 𝕜)
     (hl : m.Live [x, y, t, out])
     (hX : m.store.readBlock x.1 x.2 1 = some [a])
@@ -228,7 +228,7 @@ theorem writes_starProductStep (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜
 
 /-- The explicit conjugate-product loop computes the Hermitian dot product with one
 caller-owned temporary. Both input blocks remain outside its two written scalar cells. -/
-theorem writes_dotWithScratch (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+theorem dotWithScratch_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hStar : RCLikeStar.IsExact I) {n : ℕ} {x y t out : ℕ × ℕ} (xs ys : List 𝕜)
     (hl : m.Live [x, y, t, out])
     (hX : m.store.readBlock x.1 x.2 n = some xs)
@@ -266,7 +266,7 @@ theorem writes_dotWithScratch (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜)
       simp [Store.readBlock, Store.get_of_readBlock hY' hi (0 : 𝕜)]
     have hl' : m'.Live [(x.1, x.2 + i), (y.1, y.2 + i), t, out] := by
       simpa only [Mem.live_cons, Mem.live_nil] using hl.congr hWhole.length_eq
-    refine ((writes_starProductStep hS hStar _ _ _ hl' hx hy hacc
+    refine ((starProductStep_writes hS hStar _ _ _ hl' hx hy hacc
       ((hDY.mono le_sup_left le_rfl).mono le_rfl
         (Fp.inBlock_le_inBlock (by omega) (by omega))) hTO
       (by simpa only [hWhole.len_eq] using ht)
@@ -280,7 +280,7 @@ theorem writes_dotWithScratch (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜)
 omit [Has StarOp Op] in
 /-- The pointwise scalar axpy follows the original input words through the output prefix.
 Each vector may alias the output exactly; the broadcast scalar remains separate. -/
-theorem writes_axpyWithScratch (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+theorem axpyWithScratch_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     {n : ℕ} {a x y t out : ℕ × ℕ} (xs ys : List 𝕜) (alpha : 𝕜)
     (hA : m.store.get a.1 a.2 = some alpha)
     (hX : m.store.readBlock x.1 x.2 n = some xs)
@@ -352,7 +352,7 @@ The broadcast scalar remains outside the output; scratch is removed before retur
 implements `axpy` for four operand layouts, four routines (`axpyRoutine`, `axpyInPlaceRoutine`,
 `axpyOnXRoutine`, `axpySelfRoutine`); this lemma, stated for every layout, is their common
 proof. -/
-theorem writes_axpy (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+theorem axpy_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     {n : ℕ} {a x y out : ℕ × ℕ} (xs ys : List 𝕜) (alpha : 𝕜)
     (hl : m.Live [a, x, y, out]) (hA : m.store.get a.1 a.2 = some alpha)
     (hX : m.store.readBlock x.1 x.2 n = some xs)
@@ -376,7 +376,7 @@ theorem writes_axpy (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
   have hl' : (Mem.mk store m.pos).Live [a, x, y, (m.store.length, 0), out] := by
     simp only [Mem.live_cons, Mem.live_nil]
     exact ⟨by omega, by omega, by omega, by omega, by omega, trivial⟩
-  refine ((writes_axpyWithScratch hS xs ys alpha (by kept) (by kept) (by kept)
+  refine ((axpyWithScratch_writes hS xs ys alpha (by kept) (by kept) (by kept)
     hXO hYO hAO
     (Fp.disj_inBlock_of_ne (Ne.symm (Nat.ne_of_lt hxL)))
     (Fp.disj_inBlock_of_ne (Ne.symm (Nat.ne_of_lt hyL)))

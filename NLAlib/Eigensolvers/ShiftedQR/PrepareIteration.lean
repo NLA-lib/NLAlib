@@ -197,7 +197,7 @@ theorem prepareIteration_writes {M : Machine ℝ} {I : Interp O Q ℝ}
   subst k
   have hwl := hl w (by simp)
   have hssl := hl ss (by simp)
-  have hRitz := writes_ritz (τ := tape) (μ := μ)
+  have hRitz := ritz_writes (τ := tape) (μ := μ)
     (ρ := Env.frame [n + 1, m, 2 ^ m] [w, p, c, ss, r]) hK
     (ds := [.var 0, .var 2]) (ins := [⟨0, .var 3⟩]) (outs := [⟨3, .var 6⟩])
     rfl rfl rfl (by simp [Mem.Live]; omega) hH hSS

@@ -17,7 +17,7 @@ of a successful call.
 
 ## Main results
 
-* One mode-generic run lemma (`NLAlib.Ops.Examples.wp_scale`) gives both statements about
+* One mode-generic run lemma (`NLAlib.Ops.Examples.scale_wp`) gives both statements about
   dividing a block by a cell. Liberal (`NLAlib.Ops.Examples.runsL_scale`): **if the run
   succeeds**, every entry is a rounded quotient and, if the block is not empty, the divisor is
   not zero; nothing is assumed of the divisor. Success (`NLAlib.Ops.Examples.runs_scale`): on a
@@ -239,7 +239,7 @@ def ScalePost (dec : K → ℝ) (ε : ℝ) (n : ℕ) (v s : ℕ × ℕ) (m m' : 
 /-- **The run of `scale`, in both modes**, for every interpretation satisfying the contract of `div`
 in the mode: its conclusion holds. Readability of the block and a nonzero divisor are needed
 only for success. -/
-theorem wp_scale {md : Mode} {dec : K → ℝ} {ε : ℝ} {J : Interp DOp Empty K}
+theorem scale_wp {md : Mode} {dec : K → ℝ} {ε : ℝ} {J : Interp DOp Empty K}
     (hJ : J.Satisfies md .div (divSpec dec ε)) {τ : Tape K} {n : ℕ} {v s : ℕ × ℕ} {m : Mem K}
     (hvs : v.1 ≠ s.1)
     (hpre : md.Needs (∃ xs b, m.store.readBlock v.1 v.2 n = some xs ∧
@@ -284,7 +284,7 @@ theorem runsL_scale {dec : K → ℝ} {ε : ℝ} {J : Interp DOp Empty K}
     (hJ : J.Satisfies .liberal .div (divSpec dec ε)) {τ : Tape K} {n : ℕ} {v s : ℕ × ℕ} {m : Mem K}
     (hvs : v.1 ≠ s.1) :
     ConditionalRunsL J τ scale ⟨[n, v.2, s.2], [v.1, s.1]⟩ m (ScalePost dec ε n v s m) :=
-  wp_liberal_iff.mp (wp_scale hJ hvs fun h => nomatch h)
+  wp_liberal_iff.mp (scale_wp hJ hvs fun h => nomatch h)
 
 /-- **The success companion**: for every interpretation satisfying the total contract of `div`, on
 a readable block and a divisor that is not zero, `scale` runs with `n` calls of `div` within the
@@ -296,7 +296,7 @@ theorem runs_scale {dec : K → ℝ} {ε : ℝ} {J : Interp DOp Empty K}
     (hb : dec b ≠ 0) :
     ConditionalRuns J W τ scale ⟨[n, v.2, s.2], [v.1, s.1]⟩ m (n • Count.one .div []) (W .div [])
       (ScalePost dec ε n v s m) := by
-  obtain ⟨m', hrun, hQ⟩ := wp_scale hJ (τ := τ) hvs fun _ => ⟨xs, b, hv, hs, hb⟩
+  obtain ⟨m', hrun, hQ⟩ := scale_wp hJ (τ := τ) hvs fun _ => ⟨xs, b, hv, hs, hb⟩
   exact (ConditionalRuns.of_run hrun hQ W).mono (by simp [scale, stmtCost, useCost])
     (by simp [scale, stmtPeak]) fun _ h => h
 

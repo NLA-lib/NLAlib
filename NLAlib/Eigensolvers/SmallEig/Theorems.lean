@@ -532,7 +532,7 @@ theorem smallEigProg_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (by simp [hFo]) (fun _ h => h) (le_of_eq (by ring))
   · -- zero the output
     refine PWrites.of_writes le_rfl fun μ τ h => ?_
-    exact ((writes_fillMap_readBlock (hS (.lit 0)) (τ := τ) (m := μ) (y := o)
+    exact ((fillMap_writes_readBlock (hS (.lit 0)) (τ := τ) (m := μ) (y := o)
       h.2.2.2.2.2.2.2.1).in_frame rfl rfl (h.live _ (by simp))).mono le_sup_left
       fun μ' hfr _ => h.of_eqOff hfr le_sup_left hwo hqo
   · -- copy the threshold word

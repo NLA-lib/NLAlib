@@ -16,7 +16,7 @@ public import NLAlib.Ops.Catalog.Scalar
   products,
   as a function `NLAlib.Ops.Examples.dotF` of a machine, has the error `(1 + u) ^ (2 n) - 1`
   relative to the sum of the absolute values of the products. No program.
-* Program logic (`NLAlib.Ops.Examples.wp_dotLoop`): the accumulation loop
+* Program logic (`NLAlib.Ops.Examples.dotLoop_wp`): the accumulation loop
   `NLAlib.Ops.Examples.dotLoop` computes `dotF` in the cell `z`, with a scratch cell on top of the
   store. It is stated for arbitrary operands whose offsets may depend on the loop variable, so
   that the matrix product reuses it.
@@ -109,7 +109,7 @@ def dotLoop (n : IExp) (x y z t : Operand) : Stmt ScalarOp Empty :=
 
 /-- **The accumulation loop computes `dotF`** in the cell `z`, for a store with one scratch cell
 on top (the operand `t`), input cells in other buffers than `z`. -/
-theorem wp_dotLoop {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {md : Mode}
+theorem dotLoop_wp {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {md : Mode}
     {τ : Tape K}
     {ρ : Env} {n : IExp} {x y z t : Operand} {N bx by' bz oz : ℕ} {fx fy : ℕ → ℕ} {s : Store K}
     {tb : Buf K} {p : ℕ} {a b : ℕ → K} (hn : n.eval ρ.idx = some N)
@@ -221,7 +221,7 @@ theorem dot_satisfies {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArit
       eval I τ dotImpl.body (Env.frame d (ins ++ outs)) m = some m' := by
   obtain ⟨n, x, y, z, xs, ys, rfl, rfl, rfl, hx, hy, hz, rfl⟩ := dotFn_apply h
   refine ⟨⟨rfl, rfl, rfl⟩, run_of_wp (wp_alloc rfl ?_)⟩
-  exact wp_dotLoop hI (s := m.store) (tb := List.replicate 1 none) (fx := fun k => x.2 + k)
+  exact dotLoop_wp hI (s := m.store) (tb := List.replicate 1 none) (fx := fun k => x.2 + k)
     (fy := fun k => y.2 + k) rfl rfl (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl)
     rfl (hadm x (by simp) z (by simp)) (hadm y (by simp) z (by simp)) hz
     (fun k hk => Store.get_of_readBlock hx hk default)

@@ -11,7 +11,8 @@ public import NLAlib.Ops.OperationCount
 /-!
 # The operation count of scalar Lanczos
 
-The scalar-only stored Lanczos program (`NLAlib.Krylov.Lanczos.Stored.Rounded.scalarProgram`)
+The scalar-only stored Lanczos program
+(`NLAlib.Krylov.Lanczos.Rounded.Stored.Certification.scalarProgram`)
 executes, on a
 matrix of order `n` with iteration cap `k`, at most
 
@@ -25,15 +26,17 @@ branch counts both sides.
 
 ## Main results
 
-* `NLAlib.Krylov.Lanczos.Stored.Rounded.countPoly_scalarProgram`: the polynomial of the program.
-* `NLAlib.Krylov.Lanczos.Stored.Rounded.scalarCountedAlgorithm`: the certificate with this
+* `NLAlib.Krylov.Lanczos.Rounded.Stored.Certification.countPoly_scalarProgram`: the polynomial of
+  the program.
+* `NLAlib.Krylov.Lanczos.Rounded.Stored.Certification.scalarCountedAlgorithm`: the certificate with
+  this
   explicit work
   and span.
 -/
 
 @[expose] public section
 
-namespace NLAlib.Krylov.Lanczos.Stored.Rounded
+namespace NLAlib.Krylov.Lanczos.Rounded.Stored.Certification
 
 open Ops
 
@@ -74,4 +77,4 @@ noncomputable def scalarCountedAlgorithm (M : Machine ℝ) (u : ℝ) (hM : StdMo
   (scalarAlgorithm M u hM hu E hprec).withCountPoly (fun _ _ => le_rfl) (fun _ _ => le_rfl)
     (fun _ _ => le_rfl) operationCount (fun d _ => (eval_countPoly_scalarProgram d).le)
 
-end NLAlib.Krylov.Lanczos.Stored.Rounded
+end NLAlib.Krylov.Lanczos.Rounded.Stored.Certification

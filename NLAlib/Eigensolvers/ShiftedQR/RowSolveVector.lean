@@ -135,7 +135,7 @@ theorem vectorRotation_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
   have hcl := Store.lt_length_of_get hc0
   have hvl := Store.lt_length_of_get (HoldsVector.get_re hV i)
   have htl := Store.lt_length_of_lt_len (show t.2 < m.store.len t.1 by omega)
-  have hrot := writes_rotateRowWithScratch (τ := τ) (m := m)
+  have hrot := rotateRowWithScratch_writes (τ := τ) (m := m)
     (c := (cf.1, cf.2 + 4 * k)) (s := (cf.1, cf.2 + 4 * k + 2))
     (x := (v.1, v.2 + 2 * k)) (y := (v.1, v.2 + 2 * (k + 1))) (t := t)
     (cv := (stepCoefs D k).1) (sv := (stepCoefs D k).2) (xv := w i) (yv := w j)

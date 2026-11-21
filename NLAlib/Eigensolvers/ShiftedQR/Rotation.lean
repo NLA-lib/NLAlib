@@ -20,8 +20,8 @@ real scalar call. Input/output aliasing is exactly the in-place pair update.
 
 * `NLAlib.ShiftedQR.decode_linearWords`: exact real arithmetic gives complex linear algebra.
 * `NLAlib.ShiftedQR.linearComplex`: the computed complex linear combination on any machine.
-* `NLAlib.ShiftedQR.writes_rotateLeftWithScratch_word`,
-  `NLAlib.ShiftedQR.writes_rotateRightWithScratch_word`: the pair updates on any machine; the
+* `NLAlib.ShiftedQR.rotateLeftWithScratch_writes_word`,
+  `NLAlib.ShiftedQR.rotateRightWithScratch_writes_word`: the pair updates on any machine; the
   exact theorems are their corollaries.
 * `NLAlib.ShiftedQR.rotateLeftWithScratch`: the left Givens pair update.
 * `NLAlib.ShiftedQR.rotateRightWithScratch`: the right adjoint Givens pair update.
@@ -210,7 +210,7 @@ Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergRe
 `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
 `NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
 `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
-theorem writes_rotateLeftWithScratch_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
+theorem rotateLeftWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hI : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {c s x y t : ℕ × ℕ} {cv sv xv yv : ℂ}
     (htc : t.1 ≠ c.1) (hts : t.1 ≠ s.1) (htx : t.1 ≠ x.1) (hty : t.1 ≠ y.1)
@@ -268,7 +268,7 @@ Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergRe
 `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
 `NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
 `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
-theorem writes_rotateLeftWithScratch {M : Machine ℝ} {I : Interp Op Tst ℝ}
+theorem rotateLeftWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hI : IsScalar M I) (hM : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {c s x y t : ℕ × ℕ} {cv sv xv yv : ℂ}
     (htc : t.1 ≠ c.1) (hts : t.1 ≠ s.1) (htx : t.1 ≠ x.1) (hty : t.1 ≠ y.1)
@@ -288,7 +288,7 @@ theorem writes_rotateLeftWithScratch {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (fun μ => μ.pos = m.pos ∧ μ.readBlocks [x, y] [2, 2] =
         some [[(cv*xv+sv*yv).re, (cv*xv+sv*yv).im],
           [(-star sv*xv+star cv*yv).re, (-star sv*xv+star cv*yv).im]]) m := by
-  refine (writes_rotateLeftWithScratch_word hI htc hts htx hty hxy hc0 hc1 hs0 hs1 hx0 hx1
+  refine (rotateLeftWithScratch_writes_word hI htc hts htx hty hxy hc0 hc1 hs0 hs1 hx0 hx1
     hy0 hy1 ht hx hy).mono le_rfl ?_
   rintro μ _ ⟨hp, hr⟩
   have hneg (r : ℝ) : M.neg r = -r := hM.neg r
@@ -306,7 +306,7 @@ of the words. Input/output views are exactly aliased. [GolubVanLoan2013, §5.1.8
 Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
 `NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrRoutine`,
 `NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
-theorem writes_rotateRightWithScratch_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
+theorem rotateRightWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hI : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {c s x y t : ℕ × ℕ} {cv sv xv yv : ℂ}
     (htc : t.1 ≠ c.1) (hts : t.1 ≠ s.1) (htx : t.1 ≠ x.1) (hty : t.1 ≠ y.1)
@@ -367,7 +367,7 @@ stores the two mathematical Givens outputs. Input/output views are exactly alias
 Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
 `NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrRoutine`,
 `NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
-theorem writes_rotateRightWithScratch {M : Machine ℝ} {I : Interp Op Tst ℝ}
+theorem rotateRightWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hI : IsScalar M I) (hM : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {c s x y t : ℕ × ℕ} {cv sv xv yv : ℂ}
     (htc : t.1 ≠ c.1) (hts : t.1 ≠ s.1) (htx : t.1 ≠ x.1) (hty : t.1 ≠ y.1)
@@ -387,7 +387,7 @@ theorem writes_rotateRightWithScratch {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (fun μ => μ.pos = m.pos ∧ μ.readBlocks [x, y] [2, 2] =
         some [[(xv*star cv+yv*star sv).re, (xv*star cv+yv*star sv).im],
           [(-xv*sv+yv*cv).re, (-xv*sv+yv*cv).im]]) m := by
-  refine (writes_rotateRightWithScratch_word hI htc hts htx hty hxy hc0 hc1 hs0 hs1 hx0 hx1
+  refine (rotateRightWithScratch_writes_word hI htc hts htx hty hxy hc0 hc1 hs0 hs1 hx0 hx1
     hy0 hy1 ht hx hy).mono le_rfl ?_
   rintro μ _ ⟨hp, hr⟩
   have hneg (r : ℝ) : M.neg r = -r := hM.neg r

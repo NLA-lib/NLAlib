@@ -19,7 +19,7 @@ the bottom writes by the common read-footprint rule.
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_reconstructResult`: exact total root reconstruction.
+* `NLAlib.SpectralBisection.reconstructResult_writes`: exact total root reconstruction.
 -/
 
 @[expose] public section
@@ -70,7 +70,7 @@ theorem stored_upwardInputs_of_bottom_frame {ν : Mem K}
 
 /-- Complete root reconstruction from actual stored levels and node outcomes.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_reconstructResult {I : Interp Op Tst K} (hS : IsScalar M I)
+theorem reconstructResult_writes {I : Interp Op Tst K} (hS : IsScalar M I)
     (hQ : IsToNat dec I) (hMM : IsMatrixMul (EntryCodec.pair K) mm I)
     (hLit : IsExactNatLit dec M (max n 4))
     (hl : μ.Live (arenaOperands c ma ua qa ea sz kd kp lv su sg ++ [u, dv]))
@@ -91,7 +91,7 @@ theorem writes_reconstructResult {I : Interp Op Tst K} (hS : IsScalar M I)
   simp only [arenaOperands, List.cons_append, List.nil_append, Mem.live_cons,
     Mem.live_nil, and_true] at hl
   rcases hl with ⟨hc, hma, hua, hqa, hea, hsz, hkd, hkp, hlv, hsu, hsg, hu, hdv⟩
-  have hBottom := writes_bottomLevel_stored M dec mm qr R0 eps beta A hS hQ hLit
+  have hBottom := bottomLevel_writes_stored M dec mm qr R0 eps beta A hS hQ hLit
     (D := L + 1) (by omega) (by room) (hLevels _ le_rfl) hAP hRoom
   refine hBottom.frame_seq_le rfl rfl (by room)
     ((resultLevelSpan_le_resultArenaFp (L := L) le_rfl ua ea).trans le_sup_left) ?_
@@ -99,14 +99,14 @@ theorem writes_reconstructResult {I : Interp Op Tst K} (hS : IsScalar M I)
   intro μ₁ hfr₁ ⟨hp₁, hBottom⟩
   obtain ⟨hLevels₁, hRecords₁, hTwo₁⟩ := stored_upwardInputs_of_bottom_frame
     M dec mm qr R0 eps beta A hAP hLevels hRecords hTwo hfr₁ hp₁
-  have hUp := writes_upwardPass_of_arenas M dec mm qr n base fuel L R0 eps beta L A τ
+  have hUp := upwardPass_writes_of_arenas M dec mm qr n base fuel L R0 eps beta L A τ
     c ma ua qa ea sz kd kp lv su sg M.mul (fun z : K × K => M.normalWords z.1 z.2)
     hS hQ hMM (hlArena.congr hfr₁.length_eq) (hRoom.congr hfr₁.len_eq) hAP
     hLevels₁ hRecords₁ hBottom hTwo₁ hLit
   refine hUp.frame_seq_le rfl rfl (by room) le_sup_left ?_
   clear hUp
   intro μ₂ hfr₂ ⟨hp₂, hRoot⟩
-  have hCopy := writes_rootResultCopy (μ := μ₂) (τ := τ) hS RES (by room)
+  have hCopy := rootResultCopy_writes (μ := μ₂) (τ := τ) hS RES (by room)
     (apart_rootCopy_of_arenas hAP hOutput hProtect) hRoot
     (hOutRoom.congr fun buf => (hfr₂.len_eq buf).trans (hfr₁.len_eq buf))
   refine (hCopy.mono le_sup_right ?_).in_frame rfl rfl (by room)

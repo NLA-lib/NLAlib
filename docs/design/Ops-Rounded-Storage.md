@@ -7,7 +7,7 @@ The numerical bridge derives its error from `StdModel`; no successful-run assump
 ## Interfaces and consumers
 
 `StoredDense.rowWord M m n raw xs i` is the `ScalarProducts.sumWord` recurrence on the
-column-major row. `writes_apply_word` and `writes_impl_word` return the actual row words with
+column-major row. `apply_writes_word` and `impl_writes_word` return the actual row words with
 the existing footprint, tape position and one-cell workspace. Existing exact theorems are
 specializations, so the storage proof has one implementation.
 

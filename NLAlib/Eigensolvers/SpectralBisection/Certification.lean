@@ -19,8 +19,8 @@ capacity. Primitive contracts and independent dimension-only resource bounds are
 
 * `NLAlib.SpectralBisection.initial_parameter_words`: the three supplied scalar words.
 * `NLAlib.SpectralBisection.initial_problem_geometry`: actual initial capacities and separation.
-* `NLAlib.SpectralBisection.certifiedAlgorithm`: independent output and resource claims.
-* `NLAlib.SpectralBisection.manifestAlgorithm`: full syntactic manifest certification.
+* `NLAlib.SpectralBisection.boundedBisectionAlgorithm`: independent output and resource claims.
+* `NLAlib.SpectralBisection.bisectionAlgorithm`: full syntactic manifest certification.
 -/
 
 @[expose] public section
@@ -81,7 +81,7 @@ noncomputable def manifestSpecification (M : Machine K) (dec : K → ℝ)
     (matrixWork matrixWorkspace : MatrixOp → List ℕ → ℕ) :
     Specification DenseOp (CmpTst ⊕ IdxTst) (problem (K := K) domain admitted) :=
   let R := Dense.resources matrixWork matrixWorkspace
-  let p := program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)
+  let p := bisectionProgram (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)
   wordSpecification M dec mm qr domain admitted staticBudget
     (staticPeak R p) (fun d => R.work (staticBudget d)) (fun d => R.span (staticBudget d))
     (fun d => 4 * (d 0 * d 0) + d 0 + 3 + staticPeak R p d)
@@ -89,7 +89,7 @@ noncomputable def manifestSpecification (M : Machine K) (dec : K → ℝ)
 /-- Canonical total certification for the fixed dense program. Bounded natural literals are
 exact on every admitted dimension. The five independent resource claims refer to the same
 fixed tree and supplied resource profile; no execution or whole-program hypothesis is assumed. -/
-noncomputable def certifiedAlgorithm (M : Machine K) (dec : K → ℝ)
+noncomputable def boundedBisectionAlgorithm (M : Machine K) (dec : K → ℝ)
     (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     (domain : (Fin 3 → ℕ) → Prop) (admitted : ∃ d, domain d)
     (matrixWork matrixWorkspace : MatrixOp → List ℕ → ℕ)
@@ -98,7 +98,7 @@ noncomputable def certifiedAlgorithm (M : Machine K) (dec : K → ℝ)
     (hLit : ∀ d, domain d → IsExactNatLit dec M (max (d 0) 4))
     (hCost : ∀ d, domain d → staticBudget d ≤ budget d)
     (hScratch : ∀ d, domain d → staticPeak (Dense.resources matrixWork matrixWorkspace)
-      (program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) d ≤ scratch d)
+      (bisectionProgram (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) d ≤ scratch d)
     (hWork : ∀ d, domain d → (Dense.resources matrixWork matrixWorkspace).work (budget d) ≤ work d)
     (hSpan : ∀ d, domain d → (Dense.resources matrixWork matrixWorkspace).span (budget d) ≤ span d)
     (hMemory : ∀ d, domain d → 4 * (d 0 * d 0) + d 0 + 3 + scratch d ≤ memory d) :
@@ -112,7 +112,7 @@ noncomputable def certifiedAlgorithm (M : Machine K) (dec : K → ℝ)
       (inputMatrix d x))
     (fun d x => [(EntryCodec.pair K).packFinMatrix (inputMatrix d x),
       [vec x.val.1.2 0, vec x.val.1.2 1, vec x.val.1.2 2]])
-    (ht := wellTyped_program matrixWork matrixWorkspace) ?_ ?_ ?_ hCost hScratch hWork
+    (ht := wellTyped_bisectionProgram matrixWork matrixWorkspace) ?_ ?_ ?_ hCost hScratch hWork
     hSpan ?_
   · intro d hd x I hI
     rcases Dense.laws_functionalModel M dec (EntryCodec.pair K) mm qr
@@ -139,7 +139,7 @@ noncomputable def certifiedAlgorithm (M : Machine K) (dec : K → ℝ)
 
 /-- The transparent syntactic manifest, with work/span and memory evaluated on that same
 manifest and profile, has a canonical certificate for every admitted raw input and tape. -/
-noncomputable def manifestAlgorithm (M : Machine K) (dec : K → ℝ)
+noncomputable def bisectionAlgorithm (M : Machine K) (dec : K → ℝ)
     (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     (domain : (Fin 3 → ℕ) → Prop) (admitted : ∃ d, domain d)
     (matrixWork matrixWorkspace : MatrixOp → List ℕ → ℕ)
@@ -148,7 +148,7 @@ noncomputable def manifestAlgorithm (M : Machine K) (dec : K → ℝ)
       (Dense.functionalModel (problem (K := K) domain admitted) M dec (EntryCodec.pair K) mm qr
         (Dense.resources matrixWork matrixWorkspace))
       (manifestSpecification M dec mm qr domain admitted matrixWork matrixWorkspace) := by
-  apply certifiedAlgorithm M dec mm qr domain admitted matrixWork matrixWorkspace
+  apply boundedBisectionAlgorithm M dec mm qr domain admitted matrixWork matrixWorkspace
     staticBudget _ _ _ _ hLit
   all_goals intros; exact le_rfl
 
@@ -159,10 +159,10 @@ theorem certifies_manifest (M : Machine K) (dec : K → ℝ)
     (domain : (Fin 3 → ℕ) → Prop) (admitted : ∃ d, domain d)
     (matrixWork matrixWorkspace : MatrixOp → List ℕ → ℕ)
     (hLit : ∀ d, domain d → IsExactNatLit dec M (max (d 0) 4)) :
-    (program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).Certifies
+    (bisectionProgram (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).Certifies
       (Dense.functionalModel (problem (K := K) domain admitted) M dec (EntryCodec.pair K) mm qr
         (Dense.resources matrixWork matrixWorkspace))
       (manifestSpecification M dec mm qr domain admitted matrixWork matrixWorkspace) :=
-  (manifestAlgorithm M dec mm qr domain admitted matrixWork matrixWorkspace hLit).correct
+  (bisectionAlgorithm M dec mm qr domain admitted matrixWork matrixWorkspace hLit).correct
 
 end NLAlib.SpectralBisection

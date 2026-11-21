@@ -113,7 +113,7 @@ theorem downNodes_kernelWeight_sum_le_of_exec {K : Type} [Inhabited K]
       have h := hG.pending lo hlo
       rw [if_pos hp] at h
       exact h.mono le_rfl le_sup_right
-    have hw := writes_downSlot M dec mm qr (τ := τ) (μ := ν)
+    have hw := downSlot_writes M dec mm qr (τ := τ) (μ := ν)
       (n := n) (L := L) (fuel := fuel) (d := d) (lo := lo)
       hS hL hC hMM hQR hQ (A lo) R0 beta R eps (U lo) S (hslot lo hlo) hexact
       hg.live hg.scratch_room (hsize lo hlo ν hfr)

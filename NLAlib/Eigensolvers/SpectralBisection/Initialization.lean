@@ -21,7 +21,7 @@ record or an assumed successful execution.
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_initializeArenas`: the four actual initialized output blocks.
+* `NLAlib.SpectralBisection.initializeArenas_writes`: the four actual initialized output blocks.
 -/
 
 @[expose] public section
@@ -34,7 +34,7 @@ open Ops
 parameter pair, in execution order. It writes no cells outside these regions and preserves the
 random tape position. The input matrix is copied as stored, with no numerical assumptions.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_initializeArenas {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
+theorem initializeArenas_writes {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     [Has IndexOp Op] {M : Machine K} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hIndex : IsIndexLit M I) {τ : Tape K} {n L : ℕ}
     {a par c ma sz lv : ℕ × ℕ} {m : Mem K} (xs : List K) (R eps : K)
@@ -65,16 +65,16 @@ theorem writes_initializeArenas {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op
   obtain ⟨⟨hca, hsa, hma', -⟩, hcp, hsp, hmp, hlp⟩ := hIn
   have hSource := (Store.readsOnly_readBlock a.1 a.2 (2 * (n * n)) xs).and
     (Store.readsOnly_readBlock par.1 par.2 2 [R, eps])
-  have hC := writes_initialConstants (τ := τ) hS hIndex hc
+  have hC := initialConstants_writes (τ := τ) hS hIndex hc
   refine (writes_frame rfl rfl (by room) hC).seq_readBlock hOut.1 fun μ hfr0 _ _ => ?_
-  have hSz := writes_initialSizes (τ := τ) (m := μ) (b := sz.1) (off := sz.2)
+  have hSz := initialSizes_writes (τ := τ) (m := μ) (b := sz.1) (off := sz.2)
     (n := n) (L := L) hIndex
     (by rw [hfr0.len_eq]; exact hsz)
   refine (writes_frame rfl rfl (by room) hSz).seq_readBlock hOut.2.1 fun ν hfr1 _ _ => ?_
   have hfr01 := hfr0.trans' hfr1
   have hInputs := hfr01.keep hSource (Fp.disj_sup_left.mpr
     ⟨Fp.disj_sup_right.mpr ⟨hca, hcp⟩, Fp.disj_sup_right.mpr ⟨hsa, hsp⟩⟩) ⟨hA, hPar⟩
-  have hMa := PairMatrix.writes_copy (md := .total) (τ := τ) (x := a) (y := ma)
+  have hMa := PairMatrix.copy_writes (md := .total) (τ := τ) (x := a) (y := ma)
     (rows := n) (cols := n) hS
     (by room) (Or.inl hma'.symm) hInputs.1
     (by rw [hfr01.len_eq]; exact hma)
@@ -83,7 +83,7 @@ theorem writes_initializeArenas {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op
   have hfr012 := hfr01.trans' hfr2
   have hPar' := hfr012.keep (Store.readsOnly_readBlock par.1 par.2 2 [R, eps])
     (Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨hcp, hsp⟩, hmp⟩) hPar
-  have hLv := writes_initialParameters (τ := τ) (lb := lv.1) (lo := lv.2)
+  have hLv := initialParameters_writes (τ := τ) (lb := lv.1) (lo := lv.2)
     hS R eps hPar' hlp.symm
     (by rw [hfr012.len_eq]; exact hlv)
   exact (writes_frame rfl rfl (by room) hLv).readBlocks_singleton

@@ -19,7 +19,7 @@ bounded scalar addresses follows from the operand regions, including shared-buff
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_levelParameters` computes the next stored level parameters.
+* `NLAlib.SpectralBisection.levelParameters_writes` computes the next stored level parameters.
 -/
 
 @[expose] public section
@@ -148,7 +148,7 @@ private theorem eval_levelIns {L d : ℕ} {c lv t : ℕ × ℕ} {m : Mem K}
 
 
 omit [Has IndexOp Op] in
-private theorem writes_levelTail {I : Interp Op Tst K} (hS : IsScalar M I) {τ : Tape K}
+private theorem levelTail_writes {I : Interp Op Tst K} (hS : IsScalar M I) {τ : Tape K}
     {L d : ℕ} {c lv t : ℕ × ℕ} {m : Mem K} (one two half R eps den : K)
     (hAP : Fp.Apart [c, (lv.1, lv.2 + 2 * d), (lv.1, lv.2 + 2 * (d + 1)), t]
       [3, 2, 2, 4])
@@ -217,7 +217,7 @@ constants, current parameters and dimension literal. Separation is spatial; the 
 parameter pairs occupy disjoint regions of the same level arena. No nonzero-denominator or
 successful-execution hypothesis is needed for the functional word computation.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_levelParameters {I : Interp Op Tst K} (hS : IsScalar M I)
+theorem levelParameters_writes {I : Interp Op Tst K} (hS : IsScalar M I)
     (hIndex : IsIndexLit M I) {τ : Tape K} {L d : ℕ} {c lv t : ℕ × ℕ} {m : Mem K}
     (one two half R eps : K)
     (hAP : Fp.Apart [c, (lv.1, lv.2 + 2 * d), (lv.1, lv.2 + 2 * (d + 1)), t]
@@ -245,7 +245,7 @@ theorem writes_levelParameters {I : Interp Op Tst K} (hS : IsScalar M I)
       (Fp.inBlock_le_inBlock (by simp) (by simp)) le_rfl
   have hc' := hfr.keep (Store.readsOnly_readBlock c.1 c.2 3 _) hct hc
   have hLv' := hfr.keep (Store.readsOnly_readBlock lv.1 (lv.2 + 2 * d) 2 _) hrt hLv
-  exact (writes_levelTail (τ := τ) hS one two half R eps _ hAP hc' hLv' hden.2
+  exact (levelTail_writes (τ := τ) hS one two half R eps _ hAP hc' hLv' hden.2
     (by rw [hfr.len_eq]; exact hroom) (by rw [hfr.len_eq]; exact ht)).mono le_rfl
     fun _ _ h => ⟨h.1.trans hden.1, h.2⟩
 

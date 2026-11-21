@@ -100,7 +100,7 @@ theorem signRoutine_meets {M : Machine K} (dec : K → ℝ) (mm : MatMulMap (K �
       simpa using hlens 1 (by simp)
     have hv : store.len (m.store.length + 2) = 2 * (n * n) := by
       simpa using hlens 2 (by simp)
-    refine (writes_frame rfl rfl ?_ (writes_initialized (dec := dec) (mm := mm) (qr := qr)
+    refine (writes_frame rfl rfl ?_ (initialized_writes (dec := dec) (mm := mm) (qr := qr)
       (unif := unif) (normal := normal) hS hC hMM hIndex A (vec pw 0) (vec pw 1) h01
       (by room) (by disjoint) ?_ (by kept) (by kept) (by room) (by room) (by room)
       (by room))).mono (by fp_sub) (fun _ _ h => h)

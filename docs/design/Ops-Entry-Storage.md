@@ -41,8 +41,8 @@ Column-major upper triangles and transposed lower triangles use the same theorem
 footprints are unions of the word blocks actually written. Existing `Store.EqOff.keep`
 preserves region facts across disjoint writes.
 
-In `Blas/HermitianMirror.lean`, `writes_mirror_lower` applies the region fill rule to the
-scalar conjugation entry kernel; `writes_mirror` joins the computed lower
+In `Blas/HermitianMirror.lean`, `mirror_writes_lower` applies the region fill rule to the
+scalar conjugation entry kernel; `mirror_writes` joins the computed lower
 triangle with the unchanged stored upper triangle. Its assumptions are readable upper words,
 actual square output capacity and a live buffer handle. It does not require initialized lower
 words, a pre-existing successful execution, or any floating-point numerical accuracy hypothesis.
@@ -81,7 +81,7 @@ Mathlib submatrix. `HoldsEntries.readBlock_packFinMatrix` connects component sto
 to matrix primitive operands, using `Matrix.of` explicitly for stable rewriting. These
 bridges introduce neither padding entry requirements nor hidden matrix transformations.
 
-The actual `SpectralBisection.writes_deflate` theorem composes sample scaling, multiplication,
+The actual `SpectralBisection.deflate_writes` theorem composes sample scaling, multiplication,
 QR and copy from these rules. Its output is exactly the packed first requested columns of
 the QR factor of the supplied multiplication routine on the stored projector and actual
 scaled sample matrix. Bounds on side, slot and requested rank justify every memory access.
@@ -109,7 +109,7 @@ monotone superadditive node cost over a level from the same mathematical slot pa
 
 The final traversal level is also an executable theorem. `BottomOutput` states the ordinary
 stored identity and zero eigenvalue vector, and exposes both packed output blocks.
-`writes_bottomLevel` initializes that result for every bounded decoded size word, including
+`bottomLevel_writes` initializes that result for every bounded decoded size word, including
 empty slots, and preserves the tape position. The shared `writes_loop_disjoint` rule retains
 all completed outputs from their local read footprints and pairwise spatial separation. The
 bottom proof requires only scalar arithmetic and the bounded natural-index query it executes.
@@ -118,12 +118,12 @@ Upward reconstruction uses an ordinary mathematical output pair. `EighStep.assem
 the exact matrix-column concatenation and eigenvalue shifts of the existing recursive
 algorithm, with a checked equality to `eighAux`. `StoresResult` represents that pair by two
 packed reads. The actual kind and split-size queries select checked copy/shift or
-multiply/shift implementations, and `writes_upNode` returns exactly the mathematical
-assembly from the occupied child results. `writes_upNodes` proves the entire slot loop.
+multiply/shift implementations, and `upNode_writes` returns exactly the mathematical
+assembly from the occupied child results. `upNodes_writes` proves the entire slot loop.
 Its shared prefix-sensitive loop rule preserves the original outputs of future leaves;
 keeping an already-computed leaf introduces no arithmetic calls or initializations.
 
-`writes_upLevel` includes the actual scalar half-radius and negation calls, the complete
+`upLevel_writes` includes the actual scalar half-radius and negation calls, the complete
 upward slot iteration, and removal of its two-word workspace. Agreement below the original
 handle boundary transports the input representations across scratch initialization and the
 output representations across cleanup. Thus the level theorem returns the pure mathematical
@@ -142,7 +142,7 @@ from ordinary field-block inclusions. The pass requires actual capacity, arena s
 and exact bounded size decoding, and asserts no numerical quality or successful-execution
 premise.
 
-`writes_upwardPass_of_arenas` packages these conditions for the solver's actual eleven arena
+`upwardPass_writes_of_arenas` packages these conditions for the solver's actual eleven arena
 allocations. Their complete capacities and spatial apartness imply the local node workspace,
 result slots, metadata protection and cross-depth child protection. The theorem starts from
 the original represented levels and outcomes and returns the exact root `eighAux` output;
@@ -237,7 +237,7 @@ is the matrix term above plus the zero-matrix-work profile applied to `staticBud
 Nonmatrix overhead remains a conservative static estimate. The result does not assert an
 optimal total complexity with fast matrix multiplication.
 
-`workCertifiedAlgorithm` and `certifies_work` guarantee total execution of the fixed program,
+`matrixWorkBisectionAlgorithm` and `certifies_work` guarantee total execution of the fixed program,
 the exact mathematical word output, tape advance, cleanup and all declared resource bounds
 on one outcome. Their domain has n ≥ 2. The matrix-cost majorant T is monotone and
 superadditive and must dominate the model's matrix work globally over dimension lists.

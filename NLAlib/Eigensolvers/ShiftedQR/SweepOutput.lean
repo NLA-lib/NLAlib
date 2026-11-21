@@ -60,7 +60,7 @@ theorem copyLastDiagonal_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     intro c j hj
     exact ⟨hj.1, by have := hj.2.1; omega, by have := hj.2.2; omega⟩
   have hr := hW.read_entry (Fin.last n) (Fin.last n)
-  have hw := writes_unaryMap_of_disj_or_eq (md := .total) (τ := τ)
+  have hw := unaryMap_writes_of_disj_or_eq (md := .total) (τ := τ)
     (x := (w.1, w.2 + 2 * (n * (n + 1) + n))) (y := d) (f := id) (hS .copy)
     (Or.inl (hwd.mono hsub le_rfl)) hr hd
   unfold copyLastDiagonal

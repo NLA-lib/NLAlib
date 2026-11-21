@@ -16,7 +16,7 @@ survive cleanup because they depend only on the caller-owned arena handles.
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_downLevel`: total allocated level with stored outcomes.
+* `NLAlib.SpectralBisection.downLevel_writes`: total allocated level with stored outcomes.
 -/
 
 @[expose] public section
@@ -49,7 +49,7 @@ local notation "scanRegion" => (Fp.loopPrefix
 /-- A complete allocated level returns its records and successor inputs, then frees scratch.
 The geometry premise describes arbitrary fresh storage, independently of all numeric words.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_downLevel (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp dec I)
+theorem downLevel_writes (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp dec I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) (hQR : IsMatrixQR (EntryCodec.pair K) qr I)
     (hQ : IsToNat dec I) (hSample : IsSample I)
     (hexact : IsExactNatLit dec M (max n 4))
@@ -81,7 +81,7 @@ theorem writes_downLevel (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp d
   · intro s hlength hlens hBelow
     have ht : s.len μ.store.length = 5 := by simpa using hlens 0 (by simp)
     have hGeo := hGeometry s (by simpa using hlength) ht hBelow
-    have hW := writes_downLevel_stored M dec mm qr R0 eps0 beta A
+    have hW := downLevel_writes_stored M dec mm qr R0 eps0 beta A
       (τ := τ) (n := n) (L := L) (fuel := fuel) (d := d) (base := base)
       (μ := ⟨s, μ.pos⟩) (t := (μ.store.length, 0)) hS hL hC hMM hQR hQ hSample
       hexact hPos (hLevel.of_below hBelow hlma hlsz hllv)

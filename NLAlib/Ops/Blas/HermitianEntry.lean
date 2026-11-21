@@ -19,7 +19,7 @@ and the divisor as operands.
 ## Main results
 
 * `NLAlib.Ops.Hermitian.averagePair` exposes the four scalar instructions.
-* `NLAlib.Ops.Hermitian.wp_averagePair` computes their stored word pair under the scalar contract.
+* `NLAlib.Ops.Hermitian.averagePair_wp` computes their stored word pair under the scalar contract.
 -/
 
 @[expose] public section
@@ -32,7 +32,7 @@ omit [Has ScalarOp Op] in
 /-- An exact pair-update execution theorem supplies the component reads and the frame needed
 by entry-fill rules. No scalar-call, memory-update or component preservation proof is repeated
 by its matrix-level consumers. -/
-theorem writes_pair_of_wp {md : Mode} {I : Interp Op Tst K} {τ : Tape K}
+theorem pair_writes_of_wp {md : Mode} {I : Interp Op Tst K} {τ : Tape K}
     {body : Stmt Op Tst} {ρ : Env} {m : Mem K} {z : ℕ × ℕ} {v : K × K}
     (h : Wp md I τ body ρ (fun m' => m' = m.updBlock z [v.1, v.2]) m)
     (hz : z.2 + 2 ≤ m.store.len z.1) :
@@ -59,7 +59,7 @@ def averagePair : Stmt Op Tst := ops% [] (x, y, c) → (z) {
 The output pair is disjoint from both input pairs and the scalar cell; each input
 word is readable and both output cells fit. This is a functional execution theorem, so it
 requires no numerical accuracy claim about a zero divisor. -/
-theorem wp_averagePair {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+theorem averagePair_wp {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {x y c z : ℕ × ℕ} {ar ai br bi a : K}
     (hxz : Fp.Disj (Store.inBlock x.1 x.2 2) (Store.inBlock z.1 z.2 2))
     (hyz : Fp.Disj (Store.inBlock y.1 y.2 2) (Store.inBlock z.1 z.2 2))
@@ -112,7 +112,7 @@ def copyPair : Stmt Op Tst := ops% [] (x) → (z) {
 
 /-- The pair copy writes both input words into a disjoint word block, including another
 region of the same buffer. -/
-theorem wp_copyPair_of_disj {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+theorem copyPair_wp_of_disj {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {x z : ℕ × ℕ} {ar ai : K}
     (hxz : Fp.Disj (Store.inBlock x.1 x.2 2) (Store.inBlock z.1 z.2 2))
     (hxr : m.store.get x.1 x.2 = some ar)
@@ -130,13 +130,13 @@ theorem wp_copyPair_of_disj {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar
   simpa [Mem.updBlock, Store.updBlock, Mem.upd] using hQ
 
 /-- A pair copy between different buffers specializes the disjoint-block rule. -/
-theorem wp_copyPair {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+theorem copyPair_wp {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {x z : ℕ × ℕ} {ar ai : K}
     (hxz : x.1 ≠ z.1) (hxr : m.store.get x.1 x.2 = some ar)
     (hxi : m.store.get x.1 (x.2 + 1) = some ai) (hz : z.2 + 2 ≤ m.store.len z.1)
     {Q : Mem K → Prop} (hQ : Q (m.updBlock z [ar, ai])) :
     Wp md I τ (copyPair (Op := Op) (Tst := Tst)) (Env.frame [] [x, z]) Q m :=
-  wp_copyPair_of_disj hI (Fp.disj_inBlock_of_ne hxz) hxr hxi hz hQ
+  copyPair_wp_of_disj hI (Fp.disj_inBlock_of_ne hxz) hxr hxi hz hQ
 
 /-- Divide both component words by a stored scalar. -/
 def scalePair : Stmt Op Tst := ops% [] (x, c) → (z) {
@@ -145,7 +145,7 @@ def scalePair : Stmt Op Tst := ops% [] (x, c) → (z) {
 }
 
 /-- The pair scaling kernel computes both rounded quotients in a disjoint output word block. -/
-theorem wp_scalePair {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+theorem scalePair_wp {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {x c z : ℕ × ℕ} {ar ai a : K}
     (hxz : Fp.Disj (Store.inBlock x.1 x.2 2) (Store.inBlock z.1 z.2 2))
     (hcz : Fp.Disj (Store.inBlock c.1 c.2 1) (Store.inBlock z.1 z.2 2))
@@ -175,7 +175,7 @@ def conjugatePair : Stmt Op Tst := ops% [] (x) → (z) {
 }
 
 /-- Conjugation computes the word pair with exactly one machine negation. -/
-theorem wp_conjugatePair {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+theorem conjugatePair_wp {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {x z : ℕ × ℕ} {ar ai : K}
     (hxr : m.store.get x.1 x.2 = some ar)
     (hxi : m.store.get x.1 (x.2 + 1) = some ai)
@@ -198,7 +198,7 @@ def shiftDiagonal : Stmt Op Tst := ops% [] (x, c) → (z) {
 }
 
 /-- Diagonal shifting returns the actual rounded difference and literal zero. -/
-theorem wp_shiftDiagonal {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+theorem shiftDiagonal_wp {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {x c z : ℕ × ℕ} {ar a : K}
     (hxr : m.store.get x.1 x.2 = some ar) (hc : m.store.get c.1 c.2 = some a)
     (hz : z.2 + 2 ≤ m.store.len z.1) {Q : Mem K → Prop}
@@ -219,7 +219,7 @@ def scaleDiagonal : Stmt Op Tst := ops% [] (x, c) → (z) {
 }
 
 /-- Diagonal scaling returns the actual rounded quotient and literal zero. -/
-theorem wp_scaleDiagonal {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+theorem scaleDiagonal_wp {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {x c z : ℕ × ℕ} {ar a : K}
     (hxr : m.store.get x.1 x.2 = some ar) (hc : m.store.get c.1 c.2 = some a)
     (hz : z.2 + 2 ≤ m.store.len z.1) {Q : Mem K → Prop}
@@ -240,7 +240,7 @@ def averageDiagonal : Stmt Op Tst := ops% [] (x, c) → (z) {
 }
 
 /-- Diagonal averaging returns the actual two rounded scalar operations and literal zero. -/
-theorem wp_averageDiagonal {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+theorem averageDiagonal_wp {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {x c z : ℕ × ℕ} {ar a : K}
     (hcz : Fp.Disj (Store.inBlock c.1 c.2 1) (Store.inBlock z.1 z.2 2))
     (hxr : m.store.get x.1 x.2 = some ar)

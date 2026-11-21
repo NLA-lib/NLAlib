@@ -21,12 +21,13 @@ span and memory refer to the actual transformed tree.
 
 ## Main results
 
-* `NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.algorithm`: the total stored dense certificate.
+* `NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.algorithm`: the total stored dense
+  certificate.
 -/
 
 @[expose] public section
 
-namespace NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored
+namespace NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification
 
 open Ops
 open scoped Matrix
@@ -49,7 +50,7 @@ abbrev problem : Problem ℝ 2 6 :=
     (accepts lower upper) supply
 
 /-- The fixed tree initializes the iterate and forwards the matrix to each scalar matvec. -/
-def program : Program RCLikeBlas.Operation CmpTst 2 6 := storedRoutine.close 2 6
+def program : Program RCLikeBlas.Operation CmpTst 2 6 := zeroStartRoutine.close 2 6
 
 /-- Resident memory counts the matrix words, RHS and all supplied output capacity. -/
 theorem initialBytes_problem (d : Fin 2 → ℕ)
@@ -86,13 +87,13 @@ noncomputable def algorithm (M : Machine ℝ) (u : ℝ) (hM : StdModel u id M) (
     Algorithm (RoundedBlas.model (problem lower upper domain admitted supply) M u hM hu cost)
       (specification lower upper domain admitted supply cost E) := by
   refine Routine.algorithm (r := 2) (b := 6)
-    (P := problem lower upper domain admitted supply) storedRoutine
-    (fun d _ => storedSpec (d 0) (E d) (lower d) (upper d))
+    (P := problem lower upper domain admitted supply) zeroStartRoutine
+    (fun d _ => zeroStartSpec (d 0) (E d) (lower d) (upper d))
     (fun _ x => [x.val.1.1 0, x.val.1.2])  ?_ ?_ ?_
     (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) ?_
   · intro d hd x I hI
     obtain ⟨hS, hB, hC⟩ := RoundedBlas.laws hI
-    exact storedRoutine_meets hS hM hu hB hC (hMatvec d hd) (hAccuracy d hd) (ha d hd)
+    exact zeroStartRoutine_meets hS hM hu hB hC (hMatvec d hd) (hAccuracy d hd) (ha d hd)
       (hprec d hd)
   · intro d hd x
     let μ := (problem lower upper domain admitted supply).initial d x
@@ -154,4 +155,4 @@ noncomputable def scalarAlgorithm (M : Machine ℝ) (u : ℝ)
     rw [initialBytes_problem]
     exact le_rfl
 
-end NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored
+end NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification

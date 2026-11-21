@@ -14,30 +14,30 @@ public import NLAlib.Ops.Profiles.RoundedScalarBlas
 /-!
 # Rounded preconditioned conjugate gradient on stored matrices, in scalar operations
 
-`NLAlib.Krylov.CG.HSPCG.Rounded.Stored.storedRoutine` reads a system matrix and an inverse
+`NLAlib.Krylov.CG.HSPCG.Rounded.Stored.zeroStartRoutine` reads a system matrix and an inverse
 preconditioner, each stored as `n * n` words, and a right-hand side, and writes the iterate, the
 residual, the preconditioned residual and the direction of rounded preconditioned conjugate
 gradient from the zero iterate. Its tree uses scalar operations only: the rounded zero-start
-routine on stored data (`NLAlib.Krylov.CG.HSPCG.Rounded.Stored.blasRoutine`, both matrices
+routine on stored data (`NLAlib.Krylov.CG.HSPCG.Rounded.Stored.solveRoutine`, both matrices
 isolated operands forwarded to their products), then every vector operation expanded to scalar
 loops (`NLAlib.Ops.RoundedScalarBlas.table`).
 
 ## Main definitions
 
-* `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.blasRoutine`,
-  `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.blasSpec`: the routine at the vector level and its
+* `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.solveRoutine`,
+  `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.solveSpec`: the routine at the vector level and its
   specification.
-* `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.storedRoutine`,
-  `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.storedSpec`: the routine in scalar operations and its
+* `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.zeroStartRoutine`,
+  `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.zeroStartSpec`: the routine in scalar operations and its
   specification.
 * `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.PrefixOutput`: the output claim on a memory, as the
   certificates state it.
 
 ## Main results
 
-* `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.blasRoutine_meets`: the vector-level routine meets its
+* `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.solveRoutine_meets`: the vector-level routine meets its
   specification.
-* `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.storedRoutine_meets`: the routine meets its
+* `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.zeroStartRoutine_meets`: the routine meets its
   specification.
 -/
 
@@ -54,13 +54,13 @@ variable {M : Machine ℝ} {u E a₀ a₁ p₀ p₁ : ℝ}
 /-- The vector-level routine: the rounded zero-start routine with the words of the system matrix
 and of the inverse preconditioner, `n * n` each, new isolated leading operands forwarded to their
 products. -/
-def blasRoutine : Routine RCLikeBlas.Operation CmpTst :=
-  (zeroStartRoutine (Op := Signature) (Tst := CmpTst)).withData
+def solveRoutine : Routine RCLikeBlas.Operation CmpTst :=
+  (Rounded.zeroStartRoutine (Op := Signature) (Tst := CmpTst)).withData
     [fun d => d.headD 0 * d.headD 0, fun d => d.headD 0 * d.headD 0]
     (StoredContext.table 2 0 1)
 
 /-- The vector-level tree. -/
-abbrev blasBody : Stmt RCLikeBlas.Operation CmpTst := blasRoutine.body
+abbrev blasBody : Stmt RCLikeBlas.Operation CmpTst := solveRoutine.body
 
 /-- The scalar tree: the vector-level tree framed on its eight operands, with every vector
 operation expanded to scalar loops. Index variables: `n`, `cap`, then the offsets of `A`, `P`,
@@ -93,7 +93,7 @@ theorem PrefixOutput.of_values {hM : StdModel u id M} {hu : 0 ≤ u} {n : ℕ}
 /-- The specification of the vector-level routine at order `n`: for symmetric stored matrices
 with spectra in the positive windows `[a₀, a₁]` and `[p₀, p₁]`, that of the rounded zero-start
 routine at the decoded matrices and the word-kernel preconditioner action. -/
-noncomputable def blasSpec (hM : StdModel u id M) (hu : 0 ≤ u) (n : ℕ) (E a₀ a₁ p₀ p₁ : ℝ) :
+noncomputable def solveSpec (hM : StdModel u id M) (hu : 0 ≤ u) (n : ℕ) (E a₀ a₁ p₀ p₁ : ℝ) :
     Routine.Spec ℝ :=
   .onData 2
     (fun d raws => d.headD 0 = n ∧
@@ -103,7 +103,7 @@ noncomputable def blasSpec (hM : StdModel u id M) (hu : 0 ≤ u) (n : ℕ) (E a�
         StoredOperator.denseMatrix n n (raws.getD 1 []) ∧
       spectrum ℝ (StoredOperator.denseMatrix n n (raws.getD 0 [])) ⊆ Set.Icc a₀ a₁ ∧
       spectrum ℝ (StoredOperator.denseMatrix n n (raws.getD 1 [])) ⊆ Set.Icc p₀ p₁)
-    (fun _ raws => zeroStartSpec (StoredOperator.denseMatrix n n (raws.getD 0 []))
+    (fun _ raws => Rounded.zeroStartSpec (StoredOperator.denseMatrix n n (raws.getD 0 []))
       (StoredOperator.denseMatrix n n (raws.getD 1 []))
       (StoredContext.oracle hM hu n (raws.getD 1 [])) E a₀ a₁ p₀ p₁)
 
@@ -111,14 +111,14 @@ noncomputable def blasSpec (hM : StdModel u id M) (hu : 0 ≤ u) (n : ℕ) (E a�
 stored data, and under the interpretation in which each product reads the stored words of its
 matrix that routine meets its own specification at the decoded matrices
 (`NLAlib.Ops.Routine.Meets.withData`). -/
-theorem blasRoutine_meets {J : Interp RCLikeBlas.Operation CmpTst ℝ}
+theorem solveRoutine_meets {J : Interp RCLikeBlas.Operation CmpTst ℝ}
     (hS : IsScalar M J) (hM : StdModel u id M) (hu : 0 ≤ u)
     (hB : IsBlas1 id (Blas.seq.err u) (fun _ => True) J)
     (hDot : J.IsFn .total (Has.inj Blas1Op.dot) (dotSeqFn M) (OutApart (fun _ => True)))
     (hCmp : IsCmp id J) {n : ℕ}
     (hAccuracy : Standard.Accuracy (StoredContext.relativeError u n) u E (Blas.seq.err u) n)
     (ha₀ : 0 < a₀) (hp₀ : 0 < p₀) (hAp : 6 * E * a₁ ≤ a₀) (hPp : 6 * E * p₁ ≤ p₀) :
-    blasRoutine.Meets J (blasSpec hM hu n E a₀ a₁ p₀ p₁) := by
+    solveRoutine.Meets J (solveSpec hM hu n E a₀ a₁ p₀ p₁) := by
   obtain ⟨_, hd, haa, _⟩ := Standard.Scheme.sequential.errors_nonneg hu n
   have hue : u ≤ E := by linarith [hAccuracy.scalar, hAccuracy.nonneg]
   have hde : (Blas.seq.err u).dot n ≤ E := by linarith [hAccuracy.dot, hAccuracy.nonneg]
@@ -152,7 +152,7 @@ theorem blasRoutine_meets {J : Interp RCLikeBlas.Operation CmpTst ℝ}
       ⟨0, by simp⟩ ⟨1, by simp⟩ m.store rawA rawP (fun z hz => List.mem_map_of_mem hz) hA hPm
     have hdot := StoredContext.guarded_dot (e := Blas.seq.err u) (u := u) hDot
       [a, pm] ⟨0, by simp⟩ ⟨1, by simp⟩ (· ∈ [a, pm].map Prod.fst) m.store n rawA rawP
-    exact zeroStartRoutine_meets hs hM hb' trivial ha' hp' hdot hc hP.2.1 hP.2.2.1 ha₀ hp₀
+    exact Rounded.zeroStartRoutine_meets hs hM hb' trivial ha' hp' hdot hc hP.2.1 hP.2.2.1 ha₀ hp₀
       hP.2.2.2.1 hP.2.2.2.2 hu hd haa hAccuracy.matvec hue hde hAccuracy.axpy hAccuracy.small
       hAccuracy.matvec hAp hPp
 
@@ -161,14 +161,14 @@ theorem blasRoutine_meets {J : Interp RCLikeBlas.Operation CmpTst ℝ}
 /-- Rounded preconditioned conjugate gradient on stored matrices, in scalar operations: the words
 of the two matrices are isolated, the right-hand side is read, and the iterate, the residual, the
 preconditioned residual and the direction are written. -/
-def storedRoutine : Routine ScalarOp CmpTst :=
+def zeroStartRoutine : Routine ScalarOp CmpTst :=
   routine% [n, k] (isolated A : n * n, isolated P : n * n, b : n) →
       (x : n, r : n, z : n, p : n) := scalarBody
 
 /-- For symmetric stored matrices with spectra in the positive windows `[a₀, a₁]` and
 `[p₀, p₁]`, and a cap within the precision window, the four written blocks are a prefix of the
 rounded preconditioned run for the right-hand side read. -/
-noncomputable def storedSpec (hM : StdModel u id M) (hu : 0 ≤ u) (n : ℕ) (E a₀ a₁ p₀ p₁ : ℝ) :
+noncomputable def zeroStartSpec (hM : StdModel u id M) (hu : 0 ≤ u) (n : ℕ) (E a₀ a₁ p₀ p₁ : ℝ) :
     Routine.Spec ℝ :=
   spec% [m, cap] (rawA, rawP, bs) → (xs, rs, zs, ps)
     requires m = n ∧
@@ -183,13 +183,13 @@ noncomputable def storedSpec (hM : StdModel u id M) (hu : 0 ≤ u) (n : ℕ) (E 
 
 /-- Rounded preconditioned conjugate gradient on stored matrices meets its specification under
 the standard model of scalar arithmetic and exact comparisons: the judgment of the vector-level
-routine, `blasRoutine_meets`, transferred through the linking of its vector operations to scalar
+routine, `solveRoutine_meets`, transferred through the linking of its vector operations to scalar
 loops. -/
-theorem storedRoutine_meets {I : Interp ScalarOp CmpTst ℝ}
+theorem zeroStartRoutine_meets {I : Interp ScalarOp CmpTst ℝ}
     (hS : IsScalar M I) (hCmp : IsCmp id I) (hM : StdModel u id M) (hu : 0 ≤ u) {n : ℕ}
     (hAccuracy : Standard.Accuracy (StoredContext.relativeError u n) u E (Blas.seq.err u) n)
     (ha₀ : 0 < a₀) (hp₀ : 0 < p₀) (hAp : 6 * E * a₁ ≤ a₀) (hPp : 6 * E * p₁ ≤ p₀) :
-    storedRoutine.Meets I (storedSpec hM hu n E a₀ a₁ p₀ p₁) := by
+    zeroStartRoutine.Meets I (zeroStartSpec hM hu n E a₀ a₁ p₀ p₁) := by
   routine_intro [n', cap] (a, pm, b, x, r, z, p) reads (rawA, rawP, bs)
   obtain ⟨hn, hAT, hPT, hsA, hsP, hwindow⟩ := hpre
   obtain rfl : n = n' := hn.symm
@@ -199,7 +199,7 @@ theorem storedRoutine_meets {I : Interp ScalarOp CmpTst ℝ}
     simp only [Mem.live_cons, Mem.live_nil, and_true] at hlive ⊢
     exact ⟨hlive.1, hlive.2.1, hlive.2.2.1, hlive.2.2.2.1, hlive.2.2.2.1, hlive.2.2.2.2.1,
       hlive.2.2.2.2.2.1, hlive.2.2.2.2.2.2⟩
-  have h := (blasRoutine_meets hS' hM hu hB hD hCmp hAccuracy ha₀ hp₀ hAp hPp)
+  have h := (solveRoutine_meets hS' hM hu hB hD hCmp hAccuracy ha₀ hp₀ hAp hPp)
     [n, cap] [a, pm, b, x, r, z, p] τ m [rawA, rawP, bs] rfl rfl hlive (by routine_sep)
     (by reads) ⟨⟨rfl, hAT, hPT, hsA, hsP⟩, rfl, hwindow⟩ hrooms
   have h2 := writes_frame (ρ := Env.frame [n, cap] [a, pm, b, x, r, z, p])

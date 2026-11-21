@@ -20,7 +20,7 @@ or successful-execution hypothesis.
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_leaf_packed`: actual identity, eigenvalues and leaf metadata.
+* `NLAlib.SpectralBisection.leaf_writes_packed`: actual identity, eigenvalues and leaf metadata.
 -/
 
 @[expose] public section
@@ -31,7 +31,7 @@ open Ops
 
 /-- Actual leaf outputs as the finite mathematical identity and diagonal or zero vector.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_leaf_packed {K Op Tst Su Sg : Type} [Inhabited K] [Has ScalarOp Op]
+theorem leaf_writes_packed {K Op Tst Su Sg : Type} [Inhabited K] [Has ScalarOp Op]
     [Has IndexOp Op] {M : Machine K} {dec : K → ℝ} {mm : MatMulMap (K × K)}
     {qr : QRMap (K × K)} {unif : K → Su → K} {normal : Sg → K × K}
     {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndexLit M I)
@@ -49,7 +49,7 @@ theorem writes_leaf_packed {K Op Tst Su Sg : Type} [Inhabited K] [Has ScalarOp O
         some [(EntryCodec.pair K).packFinMatrix
           ((M.toFloatMachine dec mm qr unif normal).identityMat k),
           List.ofFn (fun i => if diagonal then (A i i).1 else M.lit 0), [M.lit 1]]) m := by
-  refine (writes_leaf hS hL diagonal hl (Store.holdsVec_of_readBlock hA) hu he hk hAP).mono
+  refine (leaf_writes hS hL diagonal hl (Store.holdsVec_of_readBlock hA) hu he hk hAP).mono
     (by fp_sub) ?_
   rintro μ _ ⟨hU, hE, hKind, hpos⟩
   have hUread := (PairMatrix.holdsEntries_of_holdsVec hU).readBlock_packFinMatrix rfl

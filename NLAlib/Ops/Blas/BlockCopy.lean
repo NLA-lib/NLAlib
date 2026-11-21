@@ -19,7 +19,7 @@ words are written, so the frame retains padding and other submatrices in the sam
 ## Main results
 
 * `NLAlib.Ops.copyStrided` is a computable scalar implementation.
-* `NLAlib.Ops.writes_copyStrided` proves total word-level copying between separate views.
+* `NLAlib.Ops.copyStrided_writes` proves total word-level copying between separate views.
 -/
 
 @[expose] public section
@@ -39,7 +39,7 @@ def copyStrided : Stmt Op Tst := ops% [rows, cols, srcLd, dstLd] (X) → (Y) {
 /-- Scalar copies fill exactly the actual pair-codec destination entries. The input is
 readable, the destination has capacity, and their actual entry regions are disjoint;
 source and destination may belong to the same underlying buffer. -/
-theorem writes_copyStrided {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
+theorem copyStrided_writes {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
     {τ : Tape K} {m : Mem K} {rows cols srcLd dstLd : ℕ} {x y : ℕ × ℕ}
     (A : ℕ → ℕ → K × K) (hl : m.Live [x, y])
     (hX : m.store.HoldsEntries (EntryCodec.pair K) ⟨x.1, x.2, rows, cols, srcLd⟩ A)
@@ -94,7 +94,7 @@ theorem writes_copyStrided {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar 
     have hroom : y.2 + 2 * (j * dstLd + i) + 2 ≤ m'.store.len y.1 := by
       rw [hfr'.len_eq]
       exact hy j hj i hi
-    have hw := writes_unaryMap_of_disj_or_eq (md := .total) (τ := τ) (f := id) (m := m')
+    have hw := unaryMap_writes_of_disj_or_eq (md := .total) (τ := τ) (f := id) (m := m')
       (x := (x.1, x.2 + 2 * (j * srcLd + i)))
       (y := (y.1, y.2 + 2 * (j * dstLd + i))) (n := 2) (hS .copy)
       (Or.inl hsep) hr hroom

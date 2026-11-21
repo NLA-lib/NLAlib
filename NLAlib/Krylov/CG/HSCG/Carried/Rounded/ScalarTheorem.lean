@@ -10,20 +10,21 @@ public import NLAlib.Krylov.CG.HSCG.Carried.Rounded.OperationCount
 /-!
 # Scalar conjugate gradient in rounded arithmetic: one statement
 
-The certificate `NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.scalarCountedAlgorithm` is unfolded
+The certificate `NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.scalarCountedAlgorithm`
+is unfolded
 here into one theorem about a run: it succeeds, it executes at most an explicit number of
 instructions of the scalar model, and the iterate it leaves in memory satisfies an explicit
 bound on its energy-norm error. Nothing is proved here beyond that unfolding.
 
 ## Main results
 
-* `NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.exec_scalarProgram_work_le_and_quadForm_le`:
-  the statement.
+* `exec_scalarProgram_work_le_and_quadForm_le`, in the namespace
+  `NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification`: the statement.
 -/
 
 @[expose] public section
 
-namespace NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored
+namespace NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification
 
 open Ops
 open scoped Matrix
@@ -135,4 +136,4 @@ theorem exec_scalarProgram_work_le_and_quadForm_le (M : Machine ℝ) (u : ℝ)
     rw [hA, hb, hε, cgBackwardFactor_def, cgEnergyFactor_def] at h
     exact h
 
-end NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored
+end NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification

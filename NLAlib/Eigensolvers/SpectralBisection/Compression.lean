@@ -22,7 +22,7 @@ is separate from this exact functional statement on actual machine words.
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_compress`: the stored compression is the existing
+* `NLAlib.SpectralBisection.compress_writes`: the stored compression is the existing
   mathematical machine's nested product, Hermitian average and shift.
 -/
 
@@ -37,7 +37,7 @@ output capacity disjoint from the shift cell. Source matrices may overlap the ou
 all source reads finish before the final write. No numerical model or successful-run premise
 is assumed; the four scratch allocations are discharged together.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_compress {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has MatrixOp Op]
+theorem compress_writes {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has MatrixOp Op]
     {M : Machine K} (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     (unif : K → Su → K) (normal : Sg → K × K) {I : Interp Op Tst K}
     (hS : IsScalar M I) (hmm : IsMatrixMul (EntryCodec.pair K) mm I)
@@ -75,7 +75,7 @@ theorem writes_compress {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op] 
   have hlen1 : store.len (μ.store.length + 1) = 2 * (r * k) := by simpa using hlens 1 (by simp)
   have hlen2 : store.len (μ.store.length + 2) = 2 * (r * r) := by simpa using hlens 2 (by simp)
   have hlen3 : store.len (μ.store.length + 3) = 2 * (r * r) := by simpa using hlens 3 (by simp)
-  refine (writes_frame rfl rfl ?_ (PairMatrix.writes_conjTranspose_packed
+  refine (writes_frame rfl rfl ?_ (PairMatrix.conjTranspose_writes_packed
     (dec := dec) (mm := mm) (qr := qr) (unif := unif) (normal := normal) hS Q
     (by disjoint) (by kept) (by room) (by room))).seq_le (by fp_sub) ?_
   · room
@@ -98,14 +98,14 @@ theorem writes_compress {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op] 
       some ((EntryCodec.pair K).packFinMatrix
         (mm (mm ((M.toFloatMachine dec mm qr unif normal).conjTransposeMat Q) A) Q)) := by
     simpa only [Nat.mul_comm, List.length_cons, List.length_nil] using hC₂
-  refine (writes_frame rfl rfl ?_ (Hermitian.writes_average_packed
+  refine (writes_frame rfl rfl ?_ (Hermitian.average_writes_packed
     (dec := dec) (mm := mm) (qr := qr) (unif := unif) (normal := normal) hS
     (mm (mm ((M.toFloatMachine dec mm qr unif normal).conjTransposeMat Q) A) Q) t
     (by disjoint) (by disjoint) (by kept) (by kept) (by room) (by room))).seq_le
     (by fp_sub) ?_
   · room
   intro μ₄ hfr₄ ⟨hp₄, hC₃⟩
-  refine (writes_frame rfl rfl ?_ (Hermitian.writes_shift_packed
+  refine (writes_frame rfl rfl ?_ (Hermitian.shift_writes_packed
     (dec := dec) (mm := mm) (qr := qr) (unif := unif) (normal := normal) hS
     ((M.toFloatMachine dec mm qr unif normal).hermAvg
       (mm (mm ((M.toFloatMachine dec mm qr unif normal).conjTransposeMat Q) A) Q) t) s

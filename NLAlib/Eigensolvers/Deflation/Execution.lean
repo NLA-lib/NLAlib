@@ -21,7 +21,7 @@ count is bounded by the matrix dimension.
 ## Main results
 
 * `NLAlib.Deflation.sampleMatrix` decodes precisely the consumed sample words.
-* `NLAlib.Deflation.writes_apply` computes deflation in the routine's scratch buffers.
+* `NLAlib.Deflation.apply_writes` computes deflation in the routine's scratch buffers.
 -/
 
 @[expose] public section
@@ -42,7 +42,7 @@ def sampleMatrix (n pos : ℕ) (tape : Tape K) : Matrix (Fin n) (Fin n) (K × K)
 `NLAlib.Deflation.deflateRoutine`, run on the four square scratch buffers that the routine
 allocates. Every input is read before its output is written. Scratch and output geometry is
 explicit; the Gaussian distribution is unnecessary for this total word-level computation. -/
-theorem writes_apply (hS : IsScalar M I) (hSample : IsSample I)
+theorem apply_writes (hS : IsScalar M I) (hSample : IsSample I)
     {mm : MatMulMap (K × K)} {qr : QRMap (K × K)}
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) (hQR : IsMatrixQR (EntryCodec.pair K) qr I)
     {tape : Tape K} {m : Mem K} {n rank : ℕ} {p g y q r z : ℕ × ℕ}
@@ -73,7 +73,7 @@ theorem writes_apply (hS : IsScalar M I) (hSample : IsSample I)
       y.1 < m.store.length ∧ q.1 < m.store.length ∧ r.1 < m.store.length ∧
       z.1 < m.store.length := by simpa [Mem.Live] using hl
   refine (writes_frame rfl rfl (by simp [Mem.Live]; omega)
-    (writes_sampleVector hSample Stream.gauss hG)).seq ?_
+    (sampleVector_writes hSample Stream.gauss hG)).seq ?_
   intro m₁ hf₁ ⟨hDraw, hpos₁⟩
   have hlen : (tape.window Stream.gauss m.pos (2 * (n * n))).length = n * n * C.width := by
     simp [C, Tape.window, Nat.mul_comm]
@@ -109,7 +109,7 @@ theorem writes_apply (hS : IsScalar M I) (hSample : IsSample I)
       Store.readBlock_packFinMatrix_columns C hQ₃ hrank
   refine (writes_frame rfl rfl (by
     simp [Mem.Live, hf₃.length_eq, hf₂.length_eq, hf₁.length_eq]; omega)
-    (PairMatrix.writes_copy hS (by
+    (PairMatrix.copy_writes hS (by
       simp [Mem.Live, hf₃.length_eq, hf₂.length_eq, hf₁.length_eq]; omega)
       (Or.inl (Fp.disj_inBlock_of_ne hqz)) hread
       (by rw [hf₃.len_eq, hf₂.len_eq, hf₁.len_eq]; exact hZ))).mono le_rfl ?_

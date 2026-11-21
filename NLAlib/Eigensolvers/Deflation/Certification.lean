@@ -19,9 +19,9 @@ all four scratch matrices. Its complete resource claims describe that same execu
 ## Main results
 
 * `NLAlib.Deflation.problem` supplies only raw input and output capacity.
-* `NLAlib.Deflation.fixedProgram` fixes the implementation before sizes or data.
+* `NLAlib.Deflation.deflateProgram` fixes the implementation before sizes or data.
 * `NLAlib.Deflation.wordSpecification` specifies its stored sample-dependent output.
-* `NLAlib.Deflation.certifiedAlgorithm` proves total output and resource correctness.
+* `NLAlib.Deflation.deflateAlgorithm` proves total output and resource correctness.
 -/
 
 @[expose] public section
@@ -47,7 +47,7 @@ def problem (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d) : P
       List.replicate (2 * (d 0 * d 1)) none], rfl, List.length_replicate ..⟩
 
 /-- The entire sampled projection and QR implementation is one fixed dense program. -/
-def fixedProgram : Program DenseOp (CmpTst ⊕ IdxTst) 2 2 :=
+def deflateProgram : Program DenseOp (CmpTst ⊕ IdxTst) 2 2 :=
   (deflateRoutine (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).close 2 2
 
 variable {domain : (Fin 2 → ℕ) → Prop} {admitted : ∃ d, domain d}
@@ -93,7 +93,7 @@ theorem initialBytes_problem (d : Fin 2 → ℕ)
 
 /-- The full static manifest includes all sampling, copying, kernels and core instructions. -/
 noncomputable def staticBudget (d : Fin 2 → ℕ) :
-    Count (DenseOp ⊕ Bookkeeping) (CmpTst ⊕ IdxTst) := staticCost fixedProgram d
+    Count (DenseOp ⊕ Bookkeeping) (CmpTst ⊕ IdxTst) := staticCost deflateProgram d
 
 /-- The actual sampled QR columns, exact sample advance and cleanup, with transparent
 dimension-only full resource bounds. Column selection is admitted only when rank ≤ size. -/
@@ -102,11 +102,11 @@ noncomputable def wordSpecification (mm : MatMulMap (K × K)) (qr : QRMap (K × 
     (matrixWork matrixWorkspace : MatrixOp → List ℕ → ℕ) :
     Specification DenseOp (CmpTst ⊕ IdxTst) (problem (K := K) domain admitted) where
   budget := staticBudget
-  scratch := staticPeak (Dense.resources matrixWork matrixWorkspace) fixedProgram
+  scratch := staticPeak (Dense.resources matrixWork matrixWorkspace) deflateProgram
   work d := (Dense.resources matrixWork matrixWorkspace).work (staticBudget d)
   span d := (Dense.resources matrixWork matrixWorkspace).span (staticBudget d)
   memory d := 2 * (d 0 * d 0) + 2 * (d 0 * d 1) +
-    staticPeak (Dense.resources matrixWork matrixWorkspace) fixedProgram d
+    staticPeak (Dense.resources matrixWork matrixWorkspace) deflateProgram d
   good d x tape _ m := ∃ hrank : d 1 ≤ d 0,
     m.store.readBlock 1 0 (2 * (d 0 * d 1)) =
       some ((EntryCodec.pair K).packFinMatrix
@@ -116,7 +116,7 @@ noncomputable def wordSpecification (mm : MatMulMap (K × K)) (qr : QRMap (K × 
 /-- Primitive functional contracts and the requested-rank bound imply total canonical
 deflation with the exact sample-dependent stored result and every resource bound. Numerical
 accuracy and a tape distribution are separate mathematical assumptions about that result. -/
-noncomputable def certifiedAlgorithm (M : Machine K) (dec : K → ℝ)
+noncomputable def deflateAlgorithm (M : Machine K) (dec : K → ℝ)
     (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d)
     (matrixWork matrixWorkspace : MatrixOp → List ℕ → ℕ)

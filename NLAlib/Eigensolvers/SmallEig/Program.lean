@@ -179,7 +179,7 @@ theorem smallEigProg_terminates_of_two_le {M : Machine ℝ} {I : Interp O Q ℝ}
   have hup : ∀ {b o' k : ℕ}, L ≤ b → ∀ b' i, Store.inBlock b o' k b' i → L ≤ b' :=
     fun hb _ _ hi => hi.1 ▸ hb
   have hq₀ := hBelow.readBlock_of hql hq
-  refine (writes_fillMap_readBlock (hS (.lit 0)) (τ := tape) (m := ⟨s₁, μ.pos⟩) (y := o)
+  refine (fillMap_writes_readBlock (hS (.lit 0)) (τ := tape) (m := ⟨s₁, μ.pos⟩) (y := o)
     (by rw [(hBelow o.1 hol).1]; exact hroom)).frame_seq_le rfl rfl
     (by simp [Mem.Live, hlen₁]; omega) le_sup_left ?_
   intro μ₁ hfr₁ hO₁

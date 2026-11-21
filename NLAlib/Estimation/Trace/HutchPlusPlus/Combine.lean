@@ -17,7 +17,7 @@ estimator's numerical theorem remains separate from local field-operation execut
 
 ## Main results
 
-* `NLAlib.HutchPlusPlus.writes_combineTrace` returns the low-rank sum plus the residual mean.
+* `NLAlib.HutchPlusPlus.combineTrace_writes` returns the low-rank sum plus the residual mean.
 -/
 
 @[expose] public section
@@ -33,7 +33,7 @@ variable {𝕜 Op Tst : Type} [RCLike 𝕜] [Has ScalarOp Op] [Has IndexOp Op]
 The scalar machine is exact; no successful-execution premise is required.
 A fragment of `NLAlib.HutchPlusPlus.estimateRoutine`: run only inside its tree, on its
 operands and the buffers it allocates. -/
-theorem writes_combineTrace (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+theorem combineTrace_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hLit : IsIndexLit (RCLikeBlas.machine : Machine 𝕜) I)
     {ell : ℕ} {t out : ℕ × ℕ} (lo hi : 𝕜) (hl : m.Live [t, out])
     (hLo : m.store.readBlock out.1 out.2 1 = some [lo])

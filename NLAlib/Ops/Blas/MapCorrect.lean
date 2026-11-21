@@ -15,7 +15,7 @@ map's total weakest-precondition rule, including disjoint views in the same buff
 
 ## Main results
 
-* `NLAlib.Ops.writes_unaryMap_of_disj_or_eq`: complete stored output of a scalar map.
+* `NLAlib.Ops.unaryMap_writes_of_disj_or_eq`: complete stored output of a scalar map.
 -/
 
 @[expose] public section
@@ -23,7 +23,7 @@ map's total weakest-precondition rule, including disjoint views in the same buff
 namespace NLAlib.Ops
 
 /-- A unary map stores the mapped word vector and preserves the tape position. -/
-theorem writes_unaryMap_of_disj_or_eq {K Op Tst : Type} [Inhabited K] {o : Op} {f : K → K}
+theorem unaryMap_writes_of_disj_or_eq {K Op Tst : Type} [Inhabited K] {o : Op} {f : K → K}
     {I : Interp Op Tst K}
     (hI : I.IsFn .total o (.un fun x => some (f x)) AnyOperands) {md : Mode}
     {τ : Tape K} {n : ℕ} {x y : ℕ × ℕ} {m : Mem K} {xs : List K}
@@ -33,7 +33,7 @@ theorem writes_unaryMap_of_disj_or_eq {K Op Tst : Type} [Inhabited K] {o : Op} {
     Writes md I τ (unaryMap o) (Env.frame [n] [x, y]) (Store.inBlock y.1 y.2 n)
       (fun m' => m'.pos = m.pos ∧
         m'.store.readBlock y.1 y.2 n = some (xs.map f)) m := by
-  have hw := Writes.of_wp_eq_updBlock (wp_unaryMap_of_disj_or_eq (md := md) (τ := τ) hI hxy hx hy
+  have hw := Writes.of_wp_eq_updBlock (unaryMap_wp_of_disj_or_eq (md := md) (τ := τ) hI hxy hx hy
     (Q := fun m' => m' = m.updBlock y (xs.map f)) rfl)
   have hlen := Store.length_of_readBlock hx
   rw [List.length_map, hlen] at hw

@@ -16,7 +16,8 @@ public import NLAlib.Ops.Workspace
 /-!
 # Canonical exact certificate of the block Golub–Kahan program
 
-The program `NLAlib.Krylov.GolubKahan.Band.program` is certified against a closed operation model
+The program `NLAlib.Krylov.GolubKahan.Band.solveProgram` is certified against a closed operation
+model
 whose operations are the two products with a matrix $\mathbf{A}$, the extension of a stored basis
 by a block and scalar draws. The matrix is the semantic datum of the problem and is reached only
 through the two products (the matrix-free form of the Lanczos certificates); the five supplied
@@ -87,13 +88,13 @@ Design: `docs/design/LowRank-BlockLanczos.md` §4.1.
 * `NLAlib.Krylov.GolubKahan.Band.Certification.initial_len`,
   `NLAlib.Krylov.GolubKahan.Band.Certification.initial_room`,
   `NLAlib.Krylov.GolubKahan.Band.Certification.initialBytes_problem`: the initial memory.
-* `NLAlib.Krylov.GolubKahan.Band.Certification.wellTyped_program`,
+* `NLAlib.Krylov.GolubKahan.Band.Certification.wellTyped_solveProgram`,
   `NLAlib.Krylov.GolubKahan.Band.Certification.original_staticBudget`,
-  `NLAlib.Krylov.GolubKahan.Band.Certification.staticPeak_program_le`,
-  `NLAlib.Krylov.GolubKahan.Band.Certification.staticPeak_program_le_solvePeak`: formats, counts,
-  scratch.
+  `NLAlib.Krylov.GolubKahan.Band.Certification.staticPeak_solveProgram_le`,
+  `NLAlib.Krylov.GolubKahan.Band.Certification.staticPeak_solveProgram_le_solvePeak`: formats,
+  counts, scratch.
 * `NLAlib.Krylov.GolubKahan.Band.Certification.Good.storedProduct_eq_rsvd`: the stored factors.
-* `NLAlib.Krylov.GolubKahan.Band.Certification.wp_program`,
+* `NLAlib.Krylov.GolubKahan.Band.Certification.solveProgram_wp`,
   `NLAlib.Krylov.GolubKahan.Band.Certification.certifies`: total execution and certification.
 -/
 
@@ -511,11 +512,11 @@ theorem Good.storedProduct_eq_rsvd {stream : ℕ} {d : Fin 4 → ℕ}
 /-- The full static count of the fixed program, with index expressions, addressing, allocation
 and control. -/
 noncomputable def staticBudget (stream : ℕ) (d : Fin 4 → ℕ) :
-    Count (Operation ⊕ Bookkeeping) CmpTst := staticCost (program stream) d
+    Count (Operation ⊕ Bookkeeping) CmpTst := staticCost (solveProgram stream) d
 
 /-- The fixed program is well typed for the scalar-cell resources of the model. -/
-theorem wellTyped_program (work workspace : Operation → List ℕ → ℕ) (stream : ℕ) :
-    (program (Op := Operation) (Tst := CmpTst) stream).wellTyped (resources work workspace)
+theorem wellTyped_solveProgram (work workspace : Operation → List ℕ → ℕ) (stream : ℕ) :
+    (solveProgram (Op := Operation) (Tst := CmpTst) stream).wellTyped (resources work workspace)
       (fun _ => .cell) = true := by
   rfl
 
@@ -533,9 +534,9 @@ theorem original_staticBudget (stream : ℕ) (d : Fin 4 → ℕ) :
 /-- The scratch of the fixed program at the sizes $(m, n, b, q)$ is at most the block of
 $\max(m, n)\,b$ words that holds the drawn block and the products, plus a common bound `w` of the
 workspace of every primitive and the reservation of the queries. -/
-theorem staticPeak_program_le (R : ResourceModel Operation CmpTst) (w : ℕ)
+theorem staticPeak_solveProgram_le (R : ResourceModel Operation CmpTst) (w : ℕ)
     (hW : ∀ o ds, R.workspace o ds ≤ w) (stream : ℕ) (d : Fin 4 → ℕ) :
-    staticPeak R (program stream) d ≤
+    staticPeak R (solveProgram stream) d ≤
       (d 0 + (d 1 - d 0)) * d 2 + w + R.queryReserve (staticBudget stream d) := by
   rw [staticPeak_eq]
   change stmtPeak R.workspace (solve stream) [d 0, d 1, d 2, d 3, 0, 0, 0, 0, 0] + _ ≤ _
@@ -545,9 +546,9 @@ theorem staticPeak_program_le (R : ResourceModel Operation CmpTst) (w : ℕ)
 /-- The scratch of the fixed program at the sizes $(m, n, b, q)$ is at most the closed form
 `NLAlib.Krylov.GolubKahan.Band.solvePeak` at the workspace of the resource model `R`, plus the
 reservation of the queries; no common bound of the workspace of the primitives is assumed. -/
-theorem staticPeak_program_le_solvePeak (R : ResourceModel Operation CmpTst) (stream : ℕ)
+theorem staticPeak_solveProgram_le_solvePeak (R : ResourceModel Operation CmpTst) (stream : ℕ)
     (d : Fin 4 → ℕ) :
-    staticPeak R (program stream) d ≤
+    staticPeak R (solveProgram stream) d ≤
       solvePeak R.workspace stream (d 0) (d 1) (d 2) (d 3) +
         R.queryReserve (staticBudget stream d) := by
   rw [staticPeak_eq]
@@ -585,13 +586,13 @@ linking an orthogonalization scheme. This is the judgment of
 `NLAlib.Krylov.GolubKahan.Band.solveRoutine` read at the initial memory of the problem; it is
 stated apart from the certificate because it holds for every signature, and the certificate
 fixes one. -/
-theorem wp_program {Op Tst : Type} [Has OrthOp Op] [Has OperatorPairOp Op] [Has SampleOp Op]
+theorem solveProgram_wp {Op Tst : Type} [Has OrthOp Op] [Has OperatorPairOp Op] [Has SampleOp Op]
     {d : Fin 4 → ℕ} {x : problem.Input d} {I : Interp Op Tst ℝ}
     (hA : IsExactMatvecPair id x.val.1 I)
     (hO : I.Satisfies .total (Has.inj OrthOp.extend)
       ((exactExtendRel (𝕜 := ℝ) id).spec ExtendOperands))
     (hSample : IsSample I) (stream : ℕ) (τ : Tape ℝ) :
-    Wp .total I τ (program stream).body (Program.environment (b := 5) d)
+    Wp .total I τ (solveProgram stream).body (Program.environment (b := 5) d)
       (Good stream d x.val.1 τ) (problem.initial d x) := by
   have hl : (problem.initial d x).Live outputs := by
     simp [outputs, Mem.Live, Problem.initial]
@@ -614,8 +615,8 @@ noncomputable def algorithm (work workspace : Operation → List ℕ → ℕ) (s
     Algorithm (model work workspace) (specification work workspace stream) := by
   refine Routine.algorithm (r := 4) (b := 5) (solveRoutine stream)
     (fun _ x => solveSpec stream id x.val.1) (fun _ _ => [])
-    (ht := wellTyped_program work workspace stream) ?_ ?_ ?_ (fun _ _ => le_rfl)
-    (fun d _ => staticPeak_program_le_solvePeak _ stream d)
+    (ht := wellTyped_solveProgram work workspace stream) ?_ ?_ ?_ (fun _ _ => le_rfl)
+    (fun d _ => staticPeak_solveProgram_le_solvePeak _ stream d)
     (fun _ _ => le_rfl) (fun _ _ => le_rfl) ?_
   · intro d _ x I hI
     obtain ⟨hA, hO, hSample⟩ := laws hI
@@ -639,7 +640,7 @@ words of the tape, releases its scratch and leaves five output blocks that decod
 run for $\mathbf{A}$ from the start block decoded from the tape. There is no rank, nonbreakdown
 or success hypothesis. -/
 theorem certifies (work workspace : Operation → List ℕ → ℕ) (stream : ℕ) :
-    (program stream).Certifies (model work workspace) (specification work workspace stream) :=
+    (solveProgram stream).Certifies (model work workspace) (specification work workspace stream) :=
   (algorithm work workspace stream).correct
 
 end Certification

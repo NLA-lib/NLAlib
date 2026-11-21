@@ -205,7 +205,7 @@ theorem sum_quadForm_window [Inhabited K] (dec : K → ℝ) {n : ℕ} (A : Matri
 /-- **The run of `hutch`**, for every interpretation satisfying the contracts and every tape: the
 cell `est` receives a word that decodes to its old value plus the sum of the quadratic forms of
 the `N` probes, the position advances by `N n`, nothing else is written. -/
-theorem wp_hutch {dec : K → ℝ} {n : ℕ} {A : Matrix (Fin n) (Fin n) ℝ} {J : Interp ROp Tst K}
+theorem hutch_wp {dec : K → ℝ} {n : ℕ} {A : Matrix (Fin n) (Fin n) ℝ} {J : Interp ROp Tst K}
     (hJ : IsRandLin dec A J) {τ : Tape K} {N : ℕ} {e : ℕ × ℕ} {m : Mem K} {z₀ : K}
     (he : m.store.get e.1 e.2 = some z₀) :
     Wp .total J τ hutch (Env.frame [N, n] [e, e]) (fun m' => ∃ v,
@@ -284,7 +284,7 @@ theorem hutchRoutine_meets {dec : K → ℝ} {n : ℕ} {A : Matrix (Fin n) (Fin 
   obtain ⟨z₀, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock hx)
   have he : m.store.get e.1 e.2 = some z₀ := by
     simpa using Store.get_of_readBlock hx Nat.zero_lt_one z₀
-  refine (wp_hutch hJ (τ := τ) (N := N) he).mono ?_
+  refine (hutch_wp hJ (τ := τ) (N := N) he).mono ?_
   rintro m' ⟨v, rfl, hv⟩
   exact ⟨[[v]], rfl, ⟨z₀, v, rfl, rfl, by
     rw [hv]

@@ -278,7 +278,7 @@ theorem replicatePair_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScal
     have hsμ := hfr.keep (Store.readsOnly_readBlock _ _ _ _) hd.symm hs
     have hsub : Store.inBlock sr.1 (sr.2 + 2 * l) 2 ≤ Store.inBlock sr.1 sr.2 (2 * k) :=
       Fp.inBlock_le_inBlock (by omega) (by omega)
-    have hc := writes_unaryMap_of_disj_or_eq (md := .total) (τ := τ) (f := id) (x := sp)
+    have hc := unaryMap_writes_of_disj_or_eq (md := .total) (τ := τ) (f := id) (x := sp)
       (y := (sr.1, sr.2 + 2 * l)) (hS .copy) (Or.inl (hd.mono le_rfl hsub)) hsμ
       (by rw [hfr.len_eq]; dsimp only; omega)
     refine (hc.in_frame rfl rfl ?_).mono hsub ?_

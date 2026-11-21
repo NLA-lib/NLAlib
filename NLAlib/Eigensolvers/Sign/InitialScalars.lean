@@ -17,7 +17,7 @@ function. Numerical nonzero and accuracy hypotheses belong to the numerical theo
 
 ## Main results
 
-* `NLAlib.Sign.writes_initialScalars` computes the threshold and its signed bounds.
+* `NLAlib.Sign.initialScalars_writes` computes the threshold and its signed bounds.
 -/
 
 @[expose] public section
@@ -30,7 +30,7 @@ variable {K Op Tst : Type} [Has ScalarOp Op] {M : Ops.Machine K}
 
 /-- The executed scalar block stores the computed threshold, its negative and literal one.
 No initial contents of the output region are needed. A fragment of `NLAlib.Sign.signRoutine`. -/
-theorem writes_initialScalars {I : Interp Op Tst K} (hS : IsScalar M I) {τ : Tape K}
+theorem initialScalars_writes {I : Interp Op Tst K} (hS : IsScalar M I) {τ : Tape K}
     {eps den : K} {e d t : ℕ × ℕ} {m : Mem K}
     (he : m.store.get e.1 e.2 = some eps) (hd : m.store.get d.1 d.2 = some den)
     (ht : t.2 + 5 ≤ m.store.len t.1) :

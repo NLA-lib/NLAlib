@@ -18,7 +18,7 @@ test at the cap.
 
 ## Main results
 
-* `NLAlib.Sign.writes_loop`: the loop returns the actual capped mathematical iterate and cache.
+* `NLAlib.Sign.loop_writes`: the loop returns the actual capped mathematical iterate and cache.
 -/
 
 @[expose] public section
@@ -37,7 +37,7 @@ with the existing mathematical capped Newton–Schulz result. It requires only f
 scalar/multiplication contracts, exact comparison queries, distinct zero/one decodings and
 workspace capacities. No numerical convergence or successful-execution premise is assumed.
 A fragment of `NLAlib.Sign.signRoutine`. -/
-theorem writes_loop {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I)
+theorem loop_writes {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) {τ : Tape K} {n cap : ℕ}
     (A : Matrix (Fin n) (Fin n) (K × K)) (η : K) {x w v t : ℕ × ℕ} {m : Mem K}
     (hState : LoopState (M.toFloatMachine dec mm qr unif normal) x w t η A m.store)
@@ -71,7 +71,7 @@ theorem writes_loop {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I)
     have hw' : w.2 + 2 * (n * n) ≤ μ.store.len w.1 := by rw [hfr.len_eq]; exact hw
     have hv' : v.2 + 2 * (n * n) ≤ μ.store.len v.1 := by rw [hfr.len_eq]; exact hv
     have ht' : t.2 + 5 ≤ μ.store.len t.1 := by rw [hfr.len_eq]; exact ht
-    have hr := writes_round (dec := dec) (mm := mm) (qr := qr)
+    have hr := round_writes (dec := dec) (mm := mm) (qr := qr)
       (unif := unif) (normal := normal) (τ := τ) hS hC hMM _ η hStored.1 hl' hAP hx' hw' hv' ht'
     have hlFrame : μ.Live [x, w, v, t, x, w, v, t] :=
       (Mem.live_append μ _ _).mpr ⟨hl', hl'⟩

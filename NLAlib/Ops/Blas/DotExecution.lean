@@ -16,7 +16,7 @@ is the sequential sum of the actual rounded products, independently of any error
 
 ## Main results
 
-* `NLAlib.Ops.wp_dotSum_seq`: the scalar-lowered kernel writes its exact word result.
+* `NLAlib.Ops.dotSum_wp_seq`: the scalar-lowered kernel writes its exact word result.
 -/
 
 @[expose] public section
@@ -43,7 +43,7 @@ variable [Has ScalarOp Op] [Has Blas1Op Op] [Apart Blas1Op ScalarOp Op]
 
 /-- The linked dot tree executes using only scalar contracts. Products and accumulations
 are the actual machine operations; the only caller-visible update is the destination cell. -/
-theorem wp_dotSum_seq {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+theorem dotSum_wp_seq {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {τ : Tape K} {n : ℕ} {x y z : ℕ × ℕ} {m : Mem K} {xs ys : List K}
     (hl : m.Live [x, y, z])
     (hx : m.store.readBlock x.1 x.2 n = some xs)
@@ -62,7 +62,7 @@ theorem wp_dotSum_seq {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     simp [dotSum, Stmt.alloc, Stmt.link, prodLoop, Blas.sumSeqTable, Apart.proj_inj,
       Has.proj_inj, Impl.Fits, sumSeqRoutine, routineNF]
   rw [hshape]
-  refine wp_alloc rfl (wp_seq (wp_prodLoop hI (a := vec xs) (b := vec ys) rfl
+  refine wp_alloc rfl (wp_seq (prodLoop_wp hI (a := vec xs) (b := vec ys) rfl
     (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) hlx.ne hly.ne (by simp) ?_ ?_
     fun s' hfr hr => ?_))
   · exact fun k hk => by store_simp [Store.get_of_readBlock hx hk default]

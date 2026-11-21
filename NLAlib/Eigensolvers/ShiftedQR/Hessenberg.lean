@@ -65,7 +65,7 @@ theorem clearComplexEntry_writes_lit {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (fun m' => (∀ u : Fin 2, m'.store.get z.1 (z.2 + u) =
         some ((EntryCodec.pair ℝ).words (M.lit 0, M.lit 0) u)) ∧
         m'.pos = m.pos) m := by
-  apply Hermitian.writes_pair_of_wp (v := (M.lit 0, M.lit 0)) ?_ hz
+  apply Hermitian.pair_writes_of_wp (v := (M.lit 0, M.lit 0)) ?_ hz
   refine wp_seq (wp_call_const (hS (.lit 0)) rfl rfl rfl trivial
     (by simpa using (show z.2 < m.store.len z.1 by omega)) ?_)
   refine wp_call_const (hS (.lit 0)) rfl rfl rfl trivial ?_ ?_

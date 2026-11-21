@@ -20,7 +20,7 @@ that the true residual of the computed iterate vanishes. [Higham2002, §2.2 and 
 
 ## Main results
 
-* `NLAlib.Krylov.CG.wp_residualCache`: total actual execution and its mixed-error certificate.
+* `NLAlib.Krylov.CG.residualCache_wp`: total actual execution and its mixed-error certificate.
 -/
 
 @[expose] public section
@@ -76,7 +76,7 @@ theorem residualCache_error {M : Machine K} {dec : K → ℝ} {u eta B : ℝ}
 /-- The actual scalar-lowered CG cache kernel is total under ordinary storage conditions.
 Only input values enter the range condition. The result includes the exact update, its
 mixed error and the small-residual consequence of a computed zero; no successful run is assumed. -/
-theorem wp_residualCache [Inhabited K] {Op Tst : Type} [Has ScalarOp Op] [Has Blas1Op Op]
+theorem residualCache_wp [Inhabited K] {Op Tst : Type} [Has ScalarOp Op] [Has Blas1Op Op]
     [Apart Blas1Op ScalarOp Op] {M : Machine K} {dec : K → ℝ} {u eta B : ℝ}
     {safe : ℝ → Prop} {I : Interp Op Tst K} (hI : IsScalar M I)
     (hM : MixedModel u eta dec M safe) (hzero : dec (M.lit 0) = 0)
@@ -96,7 +96,7 @@ theorem wp_residualCache [Inhabited K] {Op Tst : Type} [Has ScalarOp Op] [Has Bl
               (2 - (1 + u) ^ (2 * n)))) m := by
   have he := residualCache_error hM hzero n (vec rs) hSafe hRange
   have hLive : m.Live [r, r, z] := by simpa [Mem.Live] using hl
-  have hWord := wp_dotSum_seq (I := I) (M := M) (τ := τ) (n := n)
+  have hWord := dotSum_wp_seq (I := I) (M := M) (τ := τ) (n := n)
     (x := r) (y := r) (z := z) (m := m) (xs := rs) (ys := rs) hI hLive hr hr hz
   apply Wp.mono hWord
   intro out hout

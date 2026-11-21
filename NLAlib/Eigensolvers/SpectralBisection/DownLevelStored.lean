@@ -16,7 +16,7 @@ identify the indexed tape machine, and exact output frames retain every unoccupi
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_downLevel_stored`: next inputs and current step records.
+* `NLAlib.SpectralBisection.downLevel_writes_stored`: next inputs and current step records.
 -/
 
 @[expose] public section
@@ -52,7 +52,7 @@ local notation "scratchRegion" => (downPrepareFp n d lv su sg t ⊔
 /-- One complete actual level stores its mathematical outcomes and the next level inputs.
 All execution assumptions concern primitive contracts, actual input words and bounded storage.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_downLevel_stored (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp dec I)
+theorem downLevel_writes_stored (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp dec I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) (hQR : IsMatrixQR (EntryCodec.pair K) qr I)
     (hQ : IsToNat dec I) (hSample : IsSample I)
     (hexact : IsExactNatLit dec M (max n 4))
@@ -75,7 +75,7 @@ theorem writes_downLevel_stored (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : 
     have hk := nodeAtSlot_k_le F n fuel R0 eps0 beta L A d lo
     change (nodes lo).k ≤ n - lo at hk
     omega
-  have hW := writes_downLevelBody M dec mm qr (τ := τ) (L := L) (fuel := fuel)
+  have hW := downLevelBody_writes M dec mm qr (τ := τ) (L := L) (fuel := fuel)
     hS hL hC hMM hQR hQ hSample
     (fun lo => (nodes lo).k) (fun lo => (nodes lo).A) R0 eps0 beta params.1 params.2
     hslot (fun i _ j _ hij => disjoint_nodeAtSlot_intervals F n fuel R0 eps0 beta L A d i j hij)

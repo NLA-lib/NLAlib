@@ -67,7 +67,7 @@ def traceReF {K : Type} (M : Machine K) (n : ℕ) (v : ℕ → K) : ℕ → K
 
 /-- The real trace executes its actual left-to-right rounded recurrence on the stored matrix.
 Readable input and a disjoint writable accumulator suffice; no accuracy hypothesis is used. -/
-theorem writes_traceRe {K : Type} {M : Machine K} {I : Interp Op Tst K}
+theorem traceRe_writes {K : Type} {M : Machine K} {I : Interp Op Tst K}
     (hI : IsScalar M I) {τ : Tape K} {m : Mem K} {n : ℕ} {x y : ℕ × ℕ} {v : ℕ → K}
     (hx : m.store.HoldsVec x.1 x.2 (2 * (n * n)) v) (hy : y.2 < m.store.len y.1)
     (hdisj : Fp.Disj (Store.inBlock y.1 y.2 1) (Store.inBlock x.1 x.2 (2 * (n * n)))) :
@@ -100,7 +100,7 @@ def diagonalReal : Stmt Op Tst := ops% [n] (X) → (Y) {
 
 /-- Real-diagonal extraction succeeds on a readable source and disjoint output capacity,
 returning the actual stored diagonal words and preserving the tape position. -/
-theorem writes_diagonalReal {K : Type} {M : Machine K} {I : Interp Op Tst K}
+theorem diagonalReal_writes {K : Type} {M : Machine K} {I : Interp Op Tst K}
     (hI : IsScalar M I) {τ : Tape K} {m : Mem K} {n : ℕ} {x y : ℕ × ℕ} {v : ℕ → K}
     (hx : m.store.HoldsVec x.1 x.2 (2 * (n * n)) v)
     (hy : y.2 + n ≤ m.store.len y.1)
@@ -128,7 +128,7 @@ def identity : Stmt Op Tst := ops% [n] () → (Y) {
 /-- Identity initialization succeeds from output capacity alone and writes every word. Real
 diagonal positions contain the machine literal one; every other position contains literal zero.
 The statement concerns the actual machine words and does not assume exact arithmetic. -/
-theorem writes_identity {K : Type} {M : Machine K} {I : Interp Op Tst K}
+theorem identity_writes {K : Type} {M : Machine K} {I : Interp Op Tst K}
     (hI : IsScalar M I) {τ : Tape K} {m : Mem K} {n b off : ℕ}
     (hroom : off + 2 * (n * n) ≤ m.store.len b) :
     Writes .total I τ (identity (Op := Op) (Tst := Tst)) (Env.frame [n] [(b, off)])

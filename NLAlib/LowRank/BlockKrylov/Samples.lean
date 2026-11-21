@@ -11,7 +11,7 @@ public import NLAlib.LowRank.BlockKrylov.Factored
 /-!
 # The sample window of the block Golub–Kahan program
 
-The program `NLAlib.Krylov.GolubKahan.Band.program` draws its $n \times b$ start block
+The program `NLAlib.Krylov.GolubKahan.Band.solveProgram` draws its $n \times b$ start block
 $\mathbf{\Omega}$ from one window of $nb$ words of a stream, column by column. This file names
 the block decoded from that window, places a given matrix on the tape, and shows that the two
 are inverse: on the tape of $\mathbf{X}$ the start block is $\mathbf{X}$, and the stored factors

@@ -17,7 +17,7 @@ then overwritten by its actual dimension literal. No uninitialized metadata is r
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_initialSizes`: the root size and every empty slot are stored.
+* `NLAlib.SpectralBisection.initialSizes_writes`: the root size and every empty slot are stored.
 -/
 
 @[expose] public section
@@ -31,7 +31,7 @@ variable {K Op Tst : Type} [Has IndexOp Op] {M : Machine K}
 /-- The root dimension and zero literals are the actual stored words. Numerical exactness
 of decoding them is not needed to execute initialization.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_initialSizes {I : Interp Op Tst K} (hIndex : IsIndexLit M I)
+theorem initialSizes_writes {I : Interp Op Tst K} (hIndex : IsIndexLit M I)
     {τ : Tape K} {n L b off : ℕ} {m : Mem K}
     (hroom : off + (n * (L + 2) + 1) ≤ m.store.len b) :
     Writes .total I τ initialSizes (Env.frame [n, L] [(b, off)])

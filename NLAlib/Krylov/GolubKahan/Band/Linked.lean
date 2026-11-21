@@ -32,13 +32,14 @@ and the forward bound for a rounded run. Design: `docs/design/LowRank-BlockLancz
 ## Main definitions
 
 * `NLAlib.Krylov.GolubKahan.Band.linkTable`, `NLAlib.Krylov.GolubKahan.Band.linkedSolve`,
-  `NLAlib.Krylov.GolubKahan.Band.linkedProgram`: the table and the linked trees.
+  `NLAlib.Krylov.GolubKahan.Band.linkedSolveProgram`: the table and the linked trees.
 * `NLAlib.Krylov.GolubKahan.Band.linkCost`, `NLAlib.Krylov.GolubKahan.Band.linkedSolveCount`:
   the counts after linking.
 * `NLAlib.Krylov.GolubKahan.Band.Rounded.StoredBounds`: orthogonality and forward bound of the
   stored factors.
-* `NLAlib.Krylov.GolubKahan.Band.linkedSpecification`,
-  `NLAlib.Krylov.GolubKahan.Band.linkedAlgorithm`: the canonical exact certificate after linking.
+* `NLAlib.Krylov.GolubKahan.Band.linkedSolveSpecification`,
+  `NLAlib.Krylov.GolubKahan.Band.linkedSolveAlgorithm`: the canonical exact certificate after
+  linking.
 
 ## Main results
 
@@ -47,8 +48,8 @@ and the forward bound for a rounded run. Design: `docs/design/LowRank-BlockLancz
   `NLAlib.Krylov.GolubKahan.Band.isSample_link`,
   `NLAlib.Krylov.GolubKahan.Band.satisfies_extend_link`: the contracts of the induced
   interpretation.
-* `NLAlib.Krylov.GolubKahan.Band.linkedRoutine_meets_exact`,
-  `NLAlib.Krylov.GolubKahan.Band.Rounded.linkedRoutine_meets`: the linked routine meets the
+* `NLAlib.Krylov.GolubKahan.Band.linkedSolveRoutine_meets_exact`,
+  `NLAlib.Krylov.GolubKahan.Band.Rounded.linkedSolveRoutine_meets`: the linked routine meets the
   exact, resp. rounded, specification of the driver.
 * `NLAlib.Krylov.GolubKahan.Band.accounts_linkTable`,
   `NLAlib.Krylov.GolubKahan.Band.push_solveCount`: accounting of the table.
@@ -85,8 +86,8 @@ def linkedSolve (E : Stmt Lo Tst) (stream : ℕ) : Stmt Lo Tst :=
   (solve (Op := Operation) (Tst := Tst) stream).link (linkTable E)
 
 /-- The fixed program linked with the scheme `E`. -/
-def linkedProgram (E : Stmt Lo Tst) (stream : ℕ) : Program Lo Tst 4 5 :=
-  (program (Op := Operation) (Tst := Tst) stream).link (linkTable E)
+def linkedSolveProgram (E : Stmt Lo Tst) (stream : ℕ) : Program Lo Tst 4 5 :=
+  (solveProgram (Op := Operation) (Tst := Tst) stream).link (linkTable E)
 
 /-! ### The induced interpretation -/
 
@@ -127,7 +128,7 @@ theorem satisfies_extend_link {𝕜 : Type} {dec : K → 𝕜} {ok : ℕ → ℕ
 
 /-- The driver linked with the scheme `E`: the interface of
 `NLAlib.Krylov.GolubKahan.Band.solveRoutine` and the linked tree. -/
-def linkedRoutine (E : Stmt Lo Tst) (stream : ℕ) : Routine Lo Tst :=
+def linkedSolveRoutine (E : Stmt Lo Tst) (stream : ℕ) : Routine Lo Tst :=
   (solveRoutine (Op := Operation) (Tst := Tst) stream).link (linkTable E)
 
 /-- The linked routine meets the exact specification of the driver. If the lower interpretation
@@ -135,9 +136,9 @@ has the exact products with $\mathbf{A}$ and $\mathbf{A}^{\mathsf{H}}$ and draws
 words of the tape, and the scheme `E` is certified in total mode against the exact contract of a
 basis extension, then on five output blocks in distinct buffers the linked program terminates
 and writes blocks that decode to an exact run for $\mathbf{A}$ from the drawn start block. -/
-theorem linkedRoutine_meets_exact (hA : IsExactMatvecPair dec A I) (hSample : IsSample I)
+theorem linkedSolveRoutine_meets_exact (hA : IsExactMatvecPair dec A I) (hSample : IsSample I)
     (hE : (extendRoutine E).Meets I (exactExtendSpec dec)) (stream : ℕ) :
-    (linkedRoutine E stream).Meets I (solveSpec stream dec A) :=
+    (linkedSolveRoutine E stream).Meets I (solveSpec stream dec A) :=
   Routine.Meets.of_link (solveRoutine_meets (isExactMatvecPair_link (E := E) hA)
     (satisfies_extend_link hE) (isSample_link hSample) stream)
 
@@ -149,10 +150,10 @@ $(\eta_0, \mu, \varepsilon)$ at the dimensions admitted by `ok`, then at every b
 count at which `ok` admits each extension of the run, on five output blocks in distinct buffers
 the linked program terminates and writes blocks that decode to a rounded run for $\mathbf{A}$,
 the executed history. There is no orthogonality, rank or nonbreakdown hypothesis. -/
-theorem Rounded.linkedRoutine_meets {δ δ' η₀ μ ε : ℝ} {ok : ℕ → ℕ → ℕ → Prop}
+theorem Rounded.linkedSolveRoutine_meets {δ δ' η₀ μ ε : ℝ} {ok : ℕ → ℕ → ℕ → Prop}
     (hA : IsMatvecPair dec A δ δ' I) (hSample : IsSample I)
     (hE : (extendRoutine E).Meets I (extendSpec dec η₀ μ ε ok)) (stream : ℕ) :
-    (linkedRoutine E stream).Meets I (Rounded.solveSpec stream dec A δ δ' η₀ μ ε ok) :=
+    (linkedSolveRoutine E stream).Meets I (Rounded.solveSpec stream dec A δ δ' η₀ μ ε ok) :=
   Routine.Meets.of_link (Rounded.solveRoutine_meets (isMatvecPair_link (E := E) hA)
     (satisfies_extend_link hE) (isSample_link hSample) stream)
 
@@ -412,33 +413,33 @@ the linked tree as budget, its static peak as scratch, work and span of the budg
 memory of the five output blocks plus the scratch, and the postcondition of the abstract
 certificate: the five output blocks decode to an exact run for the supplied matrix from the
 start block of the tape. -/
-noncomputable def linkedSpecification (R : ResourceModel Lo CmpTst) (E : Stmt Lo CmpTst)
+noncomputable def linkedSolveSpecification (R : ResourceModel Lo CmpTst) (E : Stmt Lo CmpTst)
     (stream : ℕ) : Specification Lo CmpTst problem where
-  budget := staticCost (linkedProgram E stream)
-  scratch d := staticPeak R (linkedProgram E stream) d
-  work d := R.work (staticCost (linkedProgram E stream) d)
-  span d := R.span (staticCost (linkedProgram E stream) d)
-  memory d := (outLens (d 0) (d 1) (d 2) (d 3)).sum + staticPeak R (linkedProgram E stream) d
+  budget := staticCost (linkedSolveProgram E stream)
+  scratch d := staticPeak R (linkedSolveProgram E stream) d
+  work d := R.work (staticCost (linkedSolveProgram E stream) d)
+  span d := R.span (staticCost (linkedSolveProgram E stream) d)
+  memory d := (outLens (d 0) (d 1) (d 2) (d 3)).sum + staticPeak R (linkedSolveProgram E stream) d
   good d x τ _ μ := Good stream d x.val.1 τ μ
 
 /-- The program of the linked routine is the linked program. -/
-theorem close_linkedRoutine (E : Stmt Lo CmpTst) (stream : ℕ) :
-    (linkedRoutine E stream).close 4 5 = linkedProgram E stream := rfl
+theorem close_linkedSolveRoutine (E : Stmt Lo CmpTst) (stream : ℕ) :
+    (linkedSolveRoutine E stream).close 4 5 = linkedSolveProgram E stream := rfl
 
 /-- The canonical exact certificate of the driver linked with a scheme `E`, over a lower model
 whose interpretations have the exact products with the supplied matrix, draws from the tape, and
 certify `E` against the exact contract of a basis extension. -/
-noncomputable def linkedAlgorithm (L : AccessModel Lo CmpTst problem) (E : Stmt Lo CmpTst)
+noncomputable def linkedSolveAlgorithm (L : AccessModel Lo CmpTst problem) (E : Stmt Lo CmpTst)
     (stream : ℕ)
-    (ht : (linkedProgram E stream).wellTyped L.resources problem.formats = true)
+    (ht : (linkedSolveProgram E stream).wellTyped L.resources problem.formats = true)
     (hA : ∀ d (x : problem.Input d) (I : Interp Lo CmpTst ℝ), L.contracts d x I →
       IsExactMatvecPair id x.val.1 I)
     (hSample : ∀ d (x : problem.Input d) (I : Interp Lo CmpTst ℝ), L.contracts d x I →
       IsSample I)
     (hE : ∀ d (x : problem.Input d) (I : Interp Lo CmpTst ℝ), L.contracts d x I →
       (extendRoutine E).Meets I (exactExtendSpec (𝕜 := ℝ) id)) :
-    Algorithm L (linkedSpecification L.resources E stream) := by
-  refine Routine.algorithm (r := 4) (b := 5) (linkedRoutine E stream)
+    Algorithm L (linkedSolveSpecification L.resources E stream) := by
+  refine Routine.algorithm (r := 4) (b := 5) (linkedSolveRoutine E stream)
     (fun _ x => solveSpec stream id x.val.1) (fun _ _ => []) (ht := ht) ?_ ?_ ?_
     (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) ?_
   · intro d _ x I hI
@@ -464,15 +465,15 @@ scratch and leaves five output blocks that decode to an exact run. The only hypo
 linked tree is that it is well typed for the lower resources, a decidable property of the
 scheme. -/
 theorem linked_certifies (L : AccessModel Lo CmpTst problem) (E : Stmt Lo CmpTst) (stream : ℕ)
-    (ht : (linkedProgram E stream).wellTyped L.resources problem.formats = true)
+    (ht : (linkedSolveProgram E stream).wellTyped L.resources problem.formats = true)
     (hA : ∀ d (x : problem.Input d) (I : Interp Lo CmpTst ℝ), L.contracts d x I →
       IsExactMatvecPair id x.val.1 I)
     (hSample : ∀ d (x : problem.Input d) (I : Interp Lo CmpTst ℝ), L.contracts d x I →
       IsSample I)
     (hE : ∀ d (x : problem.Input d) (I : Interp Lo CmpTst ℝ), L.contracts d x I →
       (extendRoutine E).Meets I (exactExtendSpec (𝕜 := ℝ) id)) :
-    (linkedProgram E stream).Certifies L (linkedSpecification L.resources E stream) :=
-  (linkedAlgorithm L E stream ht hA hSample hE).correct
+    (linkedSolveProgram E stream).Certifies L (linkedSolveSpecification L.resources E stream) :=
+  (linkedSolveAlgorithm L E stream ht hA hSample hE).correct
 
 end Certificate
 

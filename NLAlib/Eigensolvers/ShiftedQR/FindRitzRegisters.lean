@@ -43,7 +43,7 @@ variable {Op Tst : Type} [Has IndexOp Op]
 
 /-- An actual dimension-literal operation stores the natural as an exact real word.
 The rule for one call of the operation. -/
-theorem writes_indexNat {M : Machine ℝ} {I : Interp Op Tst ℝ}
+theorem indexNat_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hL : IsIndexLit M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ} {ρ : Env}
     {e : IExp} {out : Operand} {n : ℕ} {z : ℕ × ℕ}
     (he : e.eval ρ.idx = some n) (ho : out.eval ρ = some z)
@@ -66,16 +66,16 @@ theorem findRitzInitialize_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (Store.inBlock r.1 r.2 3)
       (fun m' => m'.pos = m.pos ∧ SearchWords r 0 (k / 2) 1 m'.store) m := by
   change Writes .total I τ (.seq _ _) _ _ _ m
-  refine Writes.seq_le (writes_indexNat hL hE rfl rfl (by change r.2 < m.store.len r.1; omega))
+  refine Writes.seq_le (indexNat_writes hL hE rfl rfl (by change r.2 < m.store.len r.1; omega))
     (by fp_sub) fun m' hfr ⟨hp, hzero⟩ => ?_
-  refine Writes.seq_le (writes_indexNat hL hE rfl rfl (by
+  refine Writes.seq_le (indexNat_writes hL hE rfl rfl (by
     change r.2 + 1 < m'.store.len r.1
     rw [hfr.len_eq]
     omega))
     (by fp_sub) fun m'' hfr' ⟨hp', hhalf⟩ => ?_
   have hzero' := hfr'.keep (Store.readsOnly_get _ _ _)
     (Fp.disj_inBlock_of_le (by omega)).symm hzero
-  refine (writes_indexNat hL hE rfl rfl (by
+  refine (indexNat_writes hL hE rfl rfl (by
     change r.2 + 2 < m''.store.len r.1
     rw [hfr'.len_eq, hfr.len_eq]
     omega)).mono

@@ -19,12 +19,13 @@ the same total execution, including empty inputs and early breakdown.
 
 ## Main results
 
-* `NLAlib.Krylov.Lanczos.Stored.Reorth.algorithm`: the stored reorthogonalized certificate.
+* `NLAlib.Krylov.Lanczos.Reorth.Stored.Certification.algorithm`: the stored reorthogonalized
+  certificate.
 -/
 
 @[expose] public section
 
-namespace NLAlib.Krylov.Lanczos.Stored.Reorth
+namespace NLAlib.Krylov.Lanczos.Reorth.Stored.Certification
 
 open Ops
 
@@ -87,4 +88,4 @@ noncomputable def algorithm (cost : Standard.Costing) :
     rw [initialBytes_problem]
     exact le_rfl
 
-end NLAlib.Krylov.Lanczos.Stored.Reorth
+end NLAlib.Krylov.Lanczos.Reorth.Stored.Certification

@@ -133,7 +133,7 @@ theorem upwardPass_weight_le_of_levels (unif : K → Su → K) (normal : Sg → 
     have hLive : m'.Live [lv, ua, qa, ea, sz, kd, kp, c] := by
       intro z hz
       exact hl' z (List.mem_append_left [ma] hz)
-    have hw := writes_upLevel_eighAux (M := M) (dec := dec) (mm := mm) (qr := qr)
+    have hw := upLevel_writes_eighAux (M := M) (dec := dec) (mm := mm) (qr := qr)
       (n := n) (base := base) (fuel := fuel) (R0 := R0) (eps := eps) (beta := beta)
       (ell := ell) (A := A) (d := L - r) (budget := r) (τ := τ) (m := m')
       unif normal hS hQ hMM hL hRec' hResults hl' hC hLit

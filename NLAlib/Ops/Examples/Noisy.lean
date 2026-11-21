@@ -140,7 +140,7 @@ def NpowPost (dec : K → ℝ) (n k : ℕ) (x : ℕ × ℕ) (m : Mem K) (v : Fin
 
 /-- **The run of `npow`**, for every interpretation satisfying the contract of `nmv` and every
 tape: the block `x` decodes to the noisy power iteration of the tape entries from the position. -/
-theorem wp_npow {dec : K → ℝ} {N : (Fin n → ℝ) → (Fin n → K) → Fin n → ℝ}
+theorem npow_wp {dec : K → ℝ} {N : (Fin n → ℝ) → (Fin n → K) → Fin n → ℝ}
     {J : Interp NOp Tst K} (hJ : IsNoisy dec N J) {τ : Tape K} {k : ℕ} {x : ℕ × ℕ}
     {m : Mem K} {xs₀ : List K} (hx : m.store.readBlock x.1 x.2 n = some xs₀)
     (hxl : x.2 + n ≤ m.store.len x.1) (hlx : x.1 < m.store.length) :
@@ -197,7 +197,7 @@ theorem npowRoutine_meets {dec : K → ℝ} {N : (Fin n → ℝ) → (Fin n → 
   change m.Room [x] [n'] at hz
   obtain ⟨x', xs₀, he, hx, rfl⟩ := Mem.readBlocks_one hr
   obtain rfl : x = x' := by simpa using he
-  refine (wp_npow hJ (τ := τ) (k := k) hx hz.1 (by simpa using hl)).mono ?_
+  refine (npow_wp hJ (τ := τ) (k := k) hx hz.1 (by simpa using hl)).mono ?_
   rintro m' ⟨xs, rfl, hlen', hv⟩
   exact ⟨[xs], by simp [hlen'], ⟨xs₀, xs, τ, m.pos, rfl, rfl, rfl, hv⟩, rfl⟩
 

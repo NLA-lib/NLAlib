@@ -39,10 +39,10 @@ open Ops
 
 /-- The allocated solver on its four operands: the body of
 `NLAlib.SpectralBisection.bisectionRoutine_meets`, separate only to keep each proof short. It
-allocates the eleven arenas, runs the traversal of `NLAlib.SpectralBisection.writes_solveBody`
+allocates the eleven arenas, runs the traversal of `NLAlib.SpectralBisection.solveBody_writes`
 in them, copies the root result and releases them. Outputs may overlap source regions because
 their final copies follow every traversal read. -/
-private theorem writes_allocatedSolve {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
+private theorem allocatedSolve_writes {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     [Has IndexOp Op] [Has SampleOp Op] [Has MatrixOp Op] [Has CmpTst Tst] [Has IdxTst Tst]
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     (R0 eps beta : K) {n : ℕ} (A : Matrix (Fin n) (Fin n) (K × K))
@@ -105,7 +105,7 @@ private theorem writes_allocatedSolve {K Op Tst : Type} [Inhabited K] [Has Scala
   have hsProtect : Fp.Disj (Fp.blocks arenas (arenaLengths n L))
       (Fp.blocks [a, par, u, dv] [2 * (n * n), 3, 2 * (n * n), n]) :=
     (Fp.blocks_disj_above hl).symm.mono hsAbove le_rfl
-  have hbody := writes_solveBody (μ := ⟨store, μ.pos⟩) (τ := τ)
+  have hbody := solveBody_writes (μ := ⟨store, μ.pos⟩) (τ := τ)
     (n := n) (L := L) (fuel := fuel) (base := μ.pos) (a := a) (par := par) (u := u) (dv := dv)
     (c := z 0) (ma := z 1) (ua := z 2) (qa := z 3) (ea := z 4) (sz := z 5)
     (kd := z 6) (kp := z 7) (lv := z 8) (su := z 9) (sg := z 10)
@@ -166,7 +166,7 @@ theorem bisectionRoutine_meets (M : Machine K) (dec : K → ℝ) (mm : MatMulMap
   routine_intro [n', L, fuel] (a, par, u, dv) reads (ws, ps)
   obtain ⟨hn, hLit, rfl, rfl⟩ := hpre
   obtain rfl : n' = n := hn
-  have hRun := writes_allocatedSolve (Op := Op) (Tst := Tst) M dec mm qr R0 eps beta A (τ := τ)
+  have hRun := allocatedSolve_writes (Op := Op) (Tst := Tst) M dec mm qr R0 eps beta A (τ := τ)
     (L := L) (fuel := fuel) hS hL hC hMM hQR hQ hSample hLit
     hlive hws hps
     hrooms

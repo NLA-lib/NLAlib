@@ -23,8 +23,8 @@ the stored-operator model, rather than an assumption that an execution succeeds.
 
 * `NLAlib.Ops.StoredDense.apply` performs the row loops with caller-owned temporary.
 * `NLAlib.Ops.StoredDense.impl` allocates its one temporary cell.
-* `NLAlib.Ops.StoredDense.writes_apply_word` returns the supplied machine's actual row words.
-* `NLAlib.Ops.StoredDense.writes_apply` specializes this to the exact matrix-vector product.
+* `NLAlib.Ops.StoredDense.apply_writes_word` returns the supplied machine's actual row words.
+* `NLAlib.Ops.StoredDense.apply_writes` specializes this to the exact matrix-vector product.
 -/
 
 @[expose] public section
@@ -71,7 +71,7 @@ variable {I : Interp Op Tst 𝕜} {tape : Tape 𝕜} {mem : Mem 𝕜}
 
 /-- The streamed dense body returns all rows with one caller-owned temporary. The input
 matrix and vector may overlap each other; both remain separate from output and temporary. -/
-theorem writes_apply_word {M : Machine 𝕜} (hS : IsScalar M I)
+theorem apply_writes_word {M : Machine 𝕜} (hS : IsScalar M I)
     {m n : ℕ} {data x t y : ℕ × ℕ} (ds xs : List 𝕜)
     (hl : mem.Live [data, x, t, y])
     (hD : mem.store.readBlock data.1 data.2 (m * n) = some ds)
@@ -114,7 +114,7 @@ theorem writes_apply_word {M : Machine 𝕜} (hS : IsScalar M I)
       Fp.inBlock_le_inBlock (by omega) (by omega)
     have hl' : mem'.Live [(data.1, data.2 + i), x, t, (y.1, y.2 + i)] := by
       simpa only [Mem.live_cons, Mem.live_nil] using hl.congr hWhole.length_eq
-    refine ((ScalarProducts.writes_sum_word hS (n := n) (sx := m) (sy := 1)
+    refine ((ScalarProducts.sum_writes_word hS (n := n) (sx := m) (sy := 1)
       (x := (data.1, data.2 + i)) (y := x) (t := t) (out := (y.1, y.2 + i))
       (fun j => ds.getD (j * m + i) 0) (fun j => xs.getD j 0) hl' ?_ ?_ ?_ ?_
       (hTY.mono le_rfl hRow) (by simpa only [hWhole.len_eq] using ht)
@@ -140,7 +140,7 @@ theorem writes_apply_word {M : Machine 𝕜} (hS : IsScalar M I)
 
 /-- The streamed dense body returns all rows with one caller-owned temporary. The input
 matrix and vector may overlap each other; both remain separate from output and temporary. -/
-theorem writes_apply (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+theorem apply_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     {m n : ℕ} {data x t y : ℕ × ℕ} (ds xs : List 𝕜)
     (hl : mem.Live [data, x, t, y])
     (hD : mem.store.readBlock data.1 data.2 (m * n) = some ds)
@@ -158,7 +158,7 @@ theorem writes_apply (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
   have hr : rowWord RCLikeBlas.machine m n ds xs = row m n ds xs :=
     funext (rowWord_exact m n ds xs)
   simpa only [hr] using
-    (writes_apply_word (tape := tape) (M := RCLikeBlas.machine) hS ds xs hl hD hX
+    (apply_writes_word (tape := tape) (M := RCLikeBlas.machine) hS ds xs hl hD hX
       hYD hYX hTD hTX hTY ht hy)
 
 /-- The allocated dense implementation returns the actual word matrix-vector
@@ -166,7 +166,7 @@ product and frees its single scalar temporary. The tree is the body of two table
 routine `implRoutine`, whose judgment is the exact specialisation, and the context-forwarded
 `ContextDense.impl`, which runs the same tree with the matrix as forwarded context; this lemma,
 for any machine, is their common proof. -/
-theorem writes_impl_word {M : Machine 𝕜} (hS : IsScalar M I)
+theorem impl_writes_word {M : Machine 𝕜} (hS : IsScalar M I)
     {m n : ℕ} {data x y : ℕ × ℕ} (ds xs : List 𝕜)
     (hl : mem.Live [data, x, y])
     (hD : mem.store.readBlock data.1 data.2 (m * n) = some ds)
@@ -188,7 +188,7 @@ theorem writes_impl_word {M : Machine 𝕜} (hS : IsScalar M I)
   have hX₀ := (hBelow.readBlock hxL x.2 n).trans hX
   have hy₀ : y.2 + m ≤ s.len y.1 := by rw [(hBelow y.1 hyL).1]; exact hy
   refine (writes_frame rfl rfl (by simp [Mem.Live, hs]; omega)
-    (writes_apply_word hS (data := data) (x := x) (t := (mem.store.length, 0)) (y := y)
+    (apply_writes_word hS (data := data) (x := x) (t := (mem.store.length, 0)) (y := y)
       ds xs (by simp [Mem.Live, hs]; omega) hD₀ hX₀ hYD hYX
       (Fp.disj_inBlock_of_ne (by dsimp only; omega))
       (Fp.disj_inBlock_of_ne (by dsimp only; omega))
@@ -220,7 +220,7 @@ theorem implRoutine_meets (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) 
   obtain ⟨hYD, hYX⟩ := StoredOperator.matvecRoutine_disj hsep
   have hr : rowWord RCLikeBlas.machine m n ds xs = row m n ds xs :=
     funext (rowWord_exact m n ds xs)
-  refine (writes_impl_word (tape := τ) (M := RCLikeBlas.machine) hS ds xs hlive hds hxs hYD hYX
+  refine (impl_writes_word (tape := τ) (M := RCLikeBlas.machine) hS ds xs hlive hds hxs hYD hYX
     hroom).mono le_sup_left fun μ' _ h => ⟨h.1, [(List.range m).map (row m n ds xs)], ?_, ?_⟩
   · rw [← hr]
     exact Mem.readBlocks_cons_eq_some.mpr ⟨_, [], h.2, rfl, rfl⟩

@@ -27,7 +27,7 @@ that may stop early.
 
 ## Main results
 
-* `NLAlib.Ops.writes_fillMap`, `NLAlib.Ops.writes_fillMap_readBlock`: the run, which writes the
+* `NLAlib.Ops.fillMap_writes`, `NLAlib.Ops.fillMap_writes_readBlock`: the run, which writes the
   value of the operation to every entry and keeps the tape position.
 * `NLAlib.Ops.fillRoutine_meets`: the routine meets its specification.
 -/
@@ -57,8 +57,8 @@ theorem stmtPeak_fillMap_le (o : Op) (W : Op → List ℕ → ℕ) (n y : ℕ) :
 /-- The fill writes the value of its operation to every entry: for an operation with the
 constant value `v`, from room for the $n$ entries at `y`, on every tape, the fill writes only
 those entries, stores `v` in each and keeps the tape position. The entries are stated as a
-stored vector, the form `NLAlib.Ops.writes_fillMap_readBlock` reads back as a block. -/
-theorem writes_fillMap {o : Op} {v : K} {I : Interp Op Tst K}
+stored vector, the form `NLAlib.Ops.fillMap_writes_readBlock` reads back as a block. -/
+theorem fillMap_writes {o : Op} {v : K} {I : Interp Op Tst K}
     (hI : I.IsFn .total o (.const v) AnyOperands) {τ : Tape K} {m : Mem K} {n : ℕ}
     {y : ℕ × ℕ} (hy : y.2 + n ≤ m.store.len y.1) :
     Writes .total I τ (fillMap (Tst := Tst) o) (Env.frame [n] [y])
@@ -69,17 +69,17 @@ theorem writes_fillMap {o : Op} {v : K} {I : Interp Op Tst K}
   refine wp_call_const hI rfl rfl rfl trivial hz ?_
   exact ⟨(Store.EqOff.refl _ _).upd ⟨rfl, le_rfl, by omega⟩ _, Store.get_upd_self hz _, hpos⟩
 
-/-- The fill of `NLAlib.Ops.writes_fillMap` read back as a block: the $n$ entries at `y` are
+/-- The fill of `NLAlib.Ops.fillMap_writes` read back as a block: the $n$ entries at `y` are
 $n$ copies of `v`. This is the proof of `NLAlib.Ops.fillRoutine_meets`; the small-eigenvalue
 program, which runs the fill as a tree inside its own scratch, also uses it directly. -/
-theorem writes_fillMap_readBlock {o : Op} {v : K} {I : Interp Op Tst K}
+theorem fillMap_writes_readBlock {o : Op} {v : K} {I : Interp Op Tst K}
     (hI : I.IsFn .total o (.const v) AnyOperands) {τ : Tape K} {m : Mem K} {n : ℕ}
     {y : ℕ × ℕ} (hy : y.2 + n ≤ m.store.len y.1) :
     Writes .total I τ (fillMap (Tst := Tst) o) (Env.frame [n] [y])
       (Store.inBlock y.1 y.2 n)
       (fun m' => m'.store.readBlock y.1 y.2 n = some (List.replicate n v) ∧ m'.pos = m.pos)
       m := by
-  refine (writes_fillMap hI hy).mono le_rfl fun m' _ h => ⟨?_, h.2⟩
+  refine (fillMap_writes hI hy).mono le_rfl fun m' _ h => ⟨?_, h.2⟩
   rw [Store.holdsVec_iff_readBlock.mp h.1]
   simp
 
@@ -97,7 +97,7 @@ theorem fillRoutine_meets {o : Op} {v : K} {I : Interp Op Tst K}
     (hI : I.IsFn .total o (.const v) AnyOperands) :
     (fillRoutine (Tst := Tst) o).Meets I (fillSpec v) := by
   routine_intro [n] (y) reads ()
-  refine (writes_fillMap_readBlock hI hroom).mono (by fp_sub) ?_
+  refine (fillMap_writes_readBlock hI hroom).mono (by fp_sub) ?_
   rintro m' - ⟨hread, hpos⟩
   exact ⟨hpos.trans (Nat.add_zero _).symm, [List.replicate n v],
     Mem.readBlocks_of_cons hread rfl, rfl⟩

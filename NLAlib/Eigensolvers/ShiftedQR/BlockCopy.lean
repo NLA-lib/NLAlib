@@ -99,7 +99,7 @@ theorem copyToWork_writes {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsScal
   let B := subBlock H (lo, d)
   have hdst := (EntryCodec.pair ℝ).regionFp_le_inBlock w.1 w.2 d (d * d)
     (fun i j => j * d + i) (fun _ => d) (fun _ hj _ hi => Idx.add_lt_mul hj hi)
-  have hc := writes_copyStrided (τ := τ) hS (entryPairs B)
+  have hc := copyStrided_writes (τ := τ) hS (entryPairs B)
     (x := (a.1, a.2 + 2 * (lo * (n + 1) + lo))) (y := w)
     (by simpa [Mem.Live] using hl) (hH.block_entries hr) le_rfl
     (fun j hj i hi => by have hb := Idx.add_lt_mul hj hi; omega)
@@ -197,7 +197,7 @@ theorem copyToGlobal_writes {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsSc
     fin_cases z
     · simpa [entryPairs, hi', hj'] using hB.get_re ⟨i, hi'⟩ ⟨j, hj'⟩
     · simpa [entryPairs, hi', hj', Nat.add_assoc] using hB.get_im ⟨i, hi'⟩ ⟨j, hj'⟩
-  have hc := writes_copyStrided (τ := τ) hS (entryPairs B)
+  have hc := copyStrided_writes (τ := τ) hS (entryPairs B)
     (x := w) (y := (a.1, a.2 + 2 * (lo * (n + 1) + lo)))
     (by simpa [Mem.Live] using hl) hentries (by omega)
     (fun j hj i hi => by

@@ -23,7 +23,7 @@ The vector primitives are Hermitian products, axpy and division by a scalar.
   probe projection of Hutch++.
 * `NLAlib.MGS.factor`, `NLAlib.MGS.factorRoutine`: the full in-place rank-revealing
   factorization.
-* `NLAlib.MGS.program`: the factorization on the one matrix buffer of a problem.
+* `NLAlib.MGS.factorProgram`: the factorization on the one matrix buffer of a problem.
 
 The other trees (`reduce`, `normalizeGuard`, `normalize`, `factorColumn`, `factorWithScratch`)
 are fragments: pieces of the sweep or of the factorization, run only inside them.
@@ -106,6 +106,6 @@ def factorRoutine : Routine Op Tst := routine% [n, k] (Y : k * n) → (Y) := fac
 
 /-- The full factorization as one fixed two-dimension, one-buffer program: the routine on the
 matrix buffer of a problem. -/
-def program : Program Op Tst 2 1 := factorRoutine.close 2 1
+def factorProgram : Program Op Tst 2 1 := factorRoutine.close 2 1
 
 end NLAlib.MGS

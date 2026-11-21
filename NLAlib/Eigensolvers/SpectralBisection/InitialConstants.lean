@@ -17,7 +17,7 @@ root then compute the remaining words using the same scalar machine.
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_initialConstants`: the five actual stored constant words.
+* `NLAlib.SpectralBisection.initialConstants_writes`: the five actual stored constant words.
 -/
 
 @[expose] public section
@@ -35,7 +35,7 @@ private def constantTail : Stmt Op Tst := ops% [] () → (c) {
 }
 
 omit [Has IndexOp Op] in
-private theorem writes_constantTail {I : Interp Op Tst K} (hS : IsScalar M I) {τ : Tape K}
+private theorem constantTail_writes {I : Interp Op Tst K} (hS : IsScalar M I) {τ : Tape K}
     {b off : ℕ} {m : Mem K} (h0 : m.store.get b off = some (M.lit 1))
     (h1 : m.store.get b (off + 1) = some (M.lit 2)) (hroom : off + 5 ≤ m.store.len b) :
     Writes .total I τ constantTail (Env.frame [] [(b, off)])
@@ -95,7 +95,7 @@ private theorem writes_constantTail {I : Interp Op Tst K} (hS : IsScalar M I) {�
 /-- Capacity alone suffices to compute the actual constants; exactness of their decoding is a
 separate numerical hypothesis. The operations consume no random words.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_initialConstants {I : Interp Op Tst K} (hS : IsScalar M I)
+theorem initialConstants_writes {I : Interp Op Tst K} (hS : IsScalar M I)
     (hIndex : IsIndexLit M I) {τ : Tape K} {b off : ℕ} {m : Mem K}
     (hroom : off + 5 ≤ m.store.len b) :
     Writes .total I τ initialConstants (Env.frame [] [(b, off)]) (Store.inBlock b off 5)
@@ -111,7 +111,7 @@ theorem writes_initialConstants {I : Interp Op Tst K} (hS : IsScalar M I)
     (by rw [hfr0.len_eq]; dsimp; omega)
   refine htwo.seq_le (Fp.inBlock_le_inBlock (by omega) (by omega)) fun ν hfr1 h1 => ?_
   have h0' := hfr1.keep (Store.readsOnly_get b off (M.lit 1)) (by disjoint) h0.2
-  exact (writes_constantTail (τ := τ) hS h0' h1.2
+  exact (constantTail_writes (τ := τ) hS h0' h1.2
     (by rw [hfr1.len_eq, hfr0.len_eq]; exact hroom)).mono le_rfl
     fun _ _ h => ⟨h.1.trans (h1.1.trans h0.1), h.2⟩
 

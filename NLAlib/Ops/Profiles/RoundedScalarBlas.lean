@@ -105,7 +105,7 @@ def nrm2 {Op : Type} [Has ScalarOp Op] : Routine Op Tst :=
 /-- The actual scalar-lowered sequential norm computes the exact nonnegative Euclidean norm
 of its supplied real words. Only scalar contracts, exact arithmetic, input reads and output
 capacity are assumed; no vector operation remains primitive. -/
-theorem writes_nrm2_exact {Op : Type} [Has ScalarOp Op] {M : Machine ℝ}
+theorem nrm2_writes_exact {Op : Type} [Has ScalarOp Op] {M : Machine ℝ}
     {I : Interp Op Tst ℝ} (hS : IsScalar M I) (hE : ExactModel id M)
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {x z : ℕ × ℕ} {xs : List ℝ}
     (hl : m.Live [x, z]) (hx : m.store.readBlock x.1 x.2 n = some xs)
@@ -142,7 +142,7 @@ theorem nrm2_meets {Op : Type} [Has ScalarOp Op] {M : Machine ℝ} {I : Interp O
       (spec% [n] (xs) → ([v]) ensures v = Real.sqrt (∑ i ∈ Finset.range n, (vec xs i) ^ 2)) := by
   routine_intro [n] (x, z) reads (xs)
   have hz : z.2 < m.store.len z.1 := by omega
-  refine (writes_nrm2_exact hS hE (by simp [Mem.Live, hl.1, hl.2]) hxs hz hxz).mono (by fp_sub) ?_
+  refine (nrm2_writes_exact hS hE (by simp [Mem.Live, hl.1, hl.2]) hxs hz hxz).mono (by fp_sub) ?_
   rintro μ - ⟨hpos, hget⟩
   exact ⟨by simpa using hpos, [[_]],
     Mem.readBlocks_of_cons (Store.readBlock_one_of_get hget) rfl, rfl⟩

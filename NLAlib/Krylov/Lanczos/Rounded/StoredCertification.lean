@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Krylov.Lanczos.Rounded.StoredSolve
+public import NLAlib.Krylov.Lanczos.Rounded.StoredRoutine
 public import NLAlib.Krylov.Lanczos.StoredProblem
 public import NLAlib.Krylov.Lanczos.StoredProgram
 public import NLAlib.Ops.Profiles.RoundedBlas
@@ -22,13 +22,15 @@ uses the same fixed tree and includes the raw matrix and supplied output capacit
 
 ## Main results
 
-* `NLAlib.Krylov.Lanczos.Stored.Rounded.algorithm`: total rounded stored certification.
-* `NLAlib.Krylov.Lanczos.Stored.Rounded.scalarAlgorithm`: actual scalar-only certification.
+* `NLAlib.Krylov.Lanczos.Rounded.Stored.Certification.algorithm`: total rounded stored
+  certification.
+* `NLAlib.Krylov.Lanczos.Rounded.Stored.Certification.scalarAlgorithm`: actual scalar-only
+  certification.
 -/
 
 @[expose] public section
 
-namespace NLAlib.Krylov.Lanczos.Stored.Rounded
+namespace NLAlib.Krylov.Lanczos.Rounded.Stored.Certification
 
 open Ops
 
@@ -48,7 +50,7 @@ noncomputable def model (M : Machine ℝ) (u : ℝ) (hM : StdModel u id M) (hu :
 
 /-- Complete canonical instruction counts of the actual context-linked stored tree. -/
 noncomputable def staticBudget (d : Fin 2 → ℕ) :
-    Count (RCLikeBlas.Operation ⊕ Bookkeeping) CmpTst := staticCost program d
+    Count (RCLikeBlas.Operation ⊕ Bookkeeping) CmpTst := staticCost Lanczos.Stored.program d
 
 /-- Rounded numerical output and full canonical resources refer to the same execution.
 Every supplied matrix, input and output cell contributes to resident modeled payload. -/
@@ -56,11 +58,11 @@ noncomputable def specification (cost : Standard.Costing)
     (E : (Fin 2 → ℕ) → ℝ) :
     Specification RCLikeBlas.Operation CmpTst (problem domain admitted) where
   budget := staticBudget
-  scratch d := staticPeak (ExactBlas.resources cost) program d
+  scratch d := staticPeak (ExactBlas.resources cost) Lanczos.Stored.program d
   work d := (ExactBlas.resources cost).work (staticBudget d)
   span d := (ExactBlas.resources cost).span (staticBudget d)
   memory d := d 0 * d 0 + (d 0 + (d 1 + 1) * d 0 + (2 * d 1 + 2)) +
-    staticPeak (ExactBlas.resources cost) program d
+    staticPeak (ExactBlas.resources cost) Lanczos.Stored.program d
   good d x _ _ m := m.pos = 0 ∧ m.store.length = 4 ∧ ∃ vs cs,
     m.store.readBlock 2 0 ((d 1 + 1) * d 0) = some vs ∧
     m.store.readBlock 3 0 (2 * d 1 + 2) = some cs ∧
@@ -77,7 +79,8 @@ noncomputable def algorithm (M : Machine ℝ) (u : ℝ) (hM : StdModel u id M) (
       (ScalarProducts.roundoff u (d 0) * Real.sqrt (d 0)) u (E d) (Blas.seq.err u) (d 0)) :
     Algorithm (model (domain := domain) (admitted := admitted) M u hM hu cost)
       (specification cost E) := by
-  refine Routine.algorithm (r := 2) (b := 4) (P := problem domain admitted) solveRoutine
+  refine Routine.algorithm (r := 2) (b := 4) (P := problem domain admitted)
+      Lanczos.Stored.solveRoutine
     (fun d _ => solveSpec (d 0) (E d)) (fun _ x => [x.val.1.1 0, x.val.1.2])
     ?_ ?_ ?_
     (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) ?_
@@ -109,7 +112,7 @@ noncomputable def algorithm (M : Machine ℝ) (u : ℝ) (hM : StdModel u id M) (
 /-- One fixed tree expands every level-one operation to scalar loops. The target signature
 contains scalar operation names only: neither BLAS nor matvec primitives are available. -/
 def scalarProgram : Program ScalarOp CmpTst 2 4 :=
-  program.link RoundedScalarBlas.table
+  Lanczos.Stored.program.link RoundedScalarBlas.table
 
 /-- Full instruction and scratch budgets are recomputed after scalar vector lowering.
 The mathematical output is exactly the same physical packed output relation. -/
@@ -151,4 +154,4 @@ noncomputable def scalarAlgorithm (M : Machine ℝ) (u : ℝ) (hM : StdModel u i
     rw [hbytes]
     exact le_rfl
 
-end NLAlib.Krylov.Lanczos.Stored.Rounded
+end NLAlib.Krylov.Lanczos.Rounded.Stored.Certification

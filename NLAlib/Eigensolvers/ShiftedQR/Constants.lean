@@ -153,7 +153,7 @@ theorem iterationConstantsWithScratch_writes {M : Machine ℝ} {I : Interp Op Ts
     (by omega) (by omega)
   refine hp.seq_le (by fp_sub) ?_
   intro μ hfr ⟨hpos, hThresh, hBase⟩
-  have hpow := (writes_scalarPower_exact (τ := τ) (n := 2 * k) hS hE hBase
+  have hpow := (scalarPower_writes_exact (τ := τ) (n := 2 * k) hS hE hBase
     (by rw [hfr.len_eq]; omega) (Fp.disj_inBlock_of_ne htb)).keep
     (Store.readsOnly_get a.1 a.2 (tol ^ 2)) hab.symm hThresh
   refine (hpow.in_frame rfl rfl (by simp [Mem.Live, hfr.length_eq]; omega)).mono
@@ -243,7 +243,7 @@ theorem initializeParametersWithScratch_writes {M : Machine ℝ} {I : Interp Op 
     intro b i hhi hlo
     dsimp only [Store.inBlock] at hhi hlo
     omega
-  have hcopy := (writes_unaryMap_of_disj_or_eq (md := .total) (m := μ₁) (τ := τ)
+  have hcopy := (unaryMap_writes_of_disj_or_eq (md := .total) (m := μ₁) (τ := τ)
     (x := raw) (y := (p.1, p.2 + 1))
     (n := 4) (f := id) (hS .copy)
     (Or.inl hcopySep) hRaw₁ (by rw [hfr₁.len_eq, hfr.len_eq]; omega)).keep

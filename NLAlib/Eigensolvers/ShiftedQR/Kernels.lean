@@ -150,7 +150,7 @@ theorem IsEigenvalueKernels.exactRoutinesFor {O Q : Type} [Has EigenvalueKernelO
 /-- A Ritz call writes the requested list of the supplied local routine applied to the actual
 input matrix. Input/output overlap is permitted because the input block is read first.
 The rule for one call of the operation. -/
-theorem writes_ritz {O Q : Type} [Has EigenvalueKernelOp O] {θ : ℝ}
+theorem ritz_writes {O Q : Type} [Has EigenvalueKernelOp O] {θ : ℝ}
     {K : KernelRoutines θ} {I : Interp O Q ℝ} {τ : Tape ℝ} {ρ : Env} {μ : Mem ℝ}
     (hI : IsEigenvalueKernels K I) {ds : List IExp} {ins outs : List Operand}
     {N k : ℕ} {a b : ℕ × ℕ} {H : Matrix (Fin N) (Fin N) ℂ}
@@ -170,7 +170,7 @@ theorem writes_ritz {O Q : Type} [Has EigenvalueKernelOp O] {θ : ℝ}
 /-- A small-eigenvalue call writes every characteristic-polynomial root with multiplicity of
 its actual stored matrix. The local listing law belongs to the supplied routine.
 The rule for one call of the operation. -/
-theorem writes_smallEig {O Q : Type} [Has EigenvalueKernelOp O] {θ : ℝ}
+theorem smallEig_writes {O Q : Type} [Has EigenvalueKernelOp O] {θ : ℝ}
     {K : KernelRoutines θ} {I : Interp O Q ℝ} {τ : Tape ℝ} {ρ : Env} {μ : Mem ℝ}
     (hI : IsEigenvalueKernels K I) {ds : List IExp} {ins outs : List Operand}
     {N : ℕ} {a b : ℕ × ℕ} {H : Matrix (Fin N) (Fin N) ℂ}

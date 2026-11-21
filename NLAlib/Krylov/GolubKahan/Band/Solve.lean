@@ -94,7 +94,7 @@ theorem solveSpecOf_post {stream : ℕ} {dec : K → ℝ} {m n b q p : ℕ} {ok 
 /-- The tree of the driver on five operands in different buffers, for any contracts: the step of
 the proof of `NLAlib.Krylov.GolubKahan.Band.solveRoutine_meets_of`, split from it for length.
 The block size `b` is fixed here; the judgment states it for every block size. -/
-private theorem writes_solve {dec : K → ℝ} {m n b q : ℕ} {Ext : ExtendPred ℝ}
+private theorem solve_writes {dec : K → ℝ} {m n b q : ℕ} {Ext : ExtendPred ℝ}
     {ok : ℕ → ℕ → ℕ → Prop} {Mv : Matrix (Fin n) (Fin b) ℝ → Matrix (Fin m) (Fin b) ℝ → Prop}
     {Rmv : Matrix (Fin m) (Fin b) ℝ → Matrix (Fin n) (Fin b) ℝ → Prop} {I : Interp Op Tst K}
     (hMv : AppliesColumns dec I (Has.inj OperatorPairOp.matvec) m n b Mv)
@@ -134,7 +134,7 @@ private theorem writes_solve {dec : K → ℝ} {m n b q : ℕ} {Ext : ExtendPred
   have hLive : (Mem.mk s₁ μ.pos).Live [(μ.store.length, 0)] := by
     simp only [Mem.live_cons, Mem.live_nil, and_true]
     omega
-  refine Writes.seq_le ((writes_sampleVector hSample stream (y := (μ.store.length, 0))
+  refine Writes.seq_le ((sampleVector_writes hSample stream (y := (μ.store.length, 0))
     (n := n * b) (show 0 + n * b ≤ s₁.len μ.store.length by omega)).in_frame rfl rfl hLive)
     (Fp.inBlock_le_sup_above le_rfl) fun μ₁ hfr₁ ⟨hω, hp₁⟩ => ?_
   have hz₁ := hz₀.congr hfr₁.len_eq
@@ -143,7 +143,7 @@ private theorem writes_solve {dec : K → ℝ} {m n b q : ℕ} {Ext : ExtendPred
   have hb1 := block_le (show 0 < q + 1 by omega) b n
   have hzz := hz₁
   simp only [outLens, Mem.room_cons, Mem.room_nil, and_true] at hzz
-  refine Writes.seq_le (writes_extend hO (Q := V) (W := (μ.store.length, 0)) (C := G)
+  refine Writes.seq_le (extend_writes hO (Q := V) (W := (μ.store.length, 0)) (C := G)
     (qs := []) (ws := τ.window stream μ.pos (n * b)) rfl rfl (by rw [Nat.zero_mul]; rfl)
     hVL.ne (by omega) hGL.ne' hok₀
     (by simp only [Mem.live_cons, Mem.live_nil, and_true, hL₁]; omega)
@@ -157,7 +157,7 @@ private theorem writes_solve {dec : K → ℝ} {m n b q : ℕ} {Ext : ExtendPred
     · exact le_sup_of_le_left (le_sup_of_le_right (le_sup_of_le_right (le_sup_of_le_left
         (Fp.inBlock_le_inBlock le_rfl (by rw [Nat.zero_add])))))
   have hlen₂ : ∀ B, μ₂.store.len B = μ₁.store.len B := hfr₂.len_eq
-  refine (writes_steps hMv hRmv hO hokU hokV (W := (μ.store.length, 0)) rfl (fun _ => rfl)
+  refine (steps_writes hMv hRmv hO hokU hokV (W := (μ.store.length, 0)) rfl (fun _ => rfl)
     (fun _ => rfl) hbuf hl
     (by simp only [Mem.live_cons, Mem.live_nil, and_true, hfr₂.length_eq, hL₁]; omega)
     (hz₁.congr hlen₂) (by rw [hlen₂]; change 0 + b * m ≤ μ₁.store.len μ.store.length; omega)
@@ -212,7 +212,7 @@ theorem solveRoutine_meets_of {dec : K → ℝ} {m n : ℕ} {Ext : ExtendPred �
       us vs gs rs ss
     rw [Tape.window_shift]
     exact hout
-  apply writes_solve hMv hRmv hO hSample stream hok₀ hokU hokV hbuf hl hz
+  apply solve_writes hMv hRmv hO hSample stream hok₀ hokU hokV hbuf hl hz
 
 /-- The driver meets its exact specification: under the exact contracts of the two products
 with $\mathbf{A}$ and $\mathbf{A}^{\mathsf{H}}$, of the basis extension and of the draws. No rank
@@ -224,8 +224,8 @@ theorem solveRoutine_meets {dec : K → ℝ} {m n : ℕ} {A : Matrix (Fin m) (Fi
     (solveRoutine (Op := Op) (Tst := Tst) stream).Meets I (solveSpec stream dec A) :=
   solveRoutine_meets_of (Ext := fun _ _ _ Q W Q' H R => IsBasisExtension Q W Q' H R)
     (ok := fun _ _ _ => True) (Mv := fun _ X W => W = A * X) (Rmv := fun _ X W => W = Aᴴ * X)
-    (fun _ _ _ _ _ _ hxy hl hx hy => writes_applyColumns hA.matvec hxy hl hx hy)
-    (fun _ _ _ _ _ _ hxy hl hx hy => writes_applyColumns hA.rmatvec hxy hl hx hy)
+    (fun _ _ _ _ _ _ hxy hl hx hy => applyColumns_writes hA.matvec hxy hl hx hy)
+    (fun _ _ _ _ _ _ hxy hl hx hy => applyColumns_writes hA.rmatvec hxy hl hx hy)
     hO hSample stream
 
 namespace Rounded
@@ -252,8 +252,8 @@ theorem solveRoutine_meets {dec : K → ℝ} {m n : ℕ} {A : Matrix (Fin m) (Fi
     (solveRoutine (Op := Op) (Tst := Tst) stream).Meets I
       (solveSpec stream dec A δ δ' η₀ μ ε ok) :=
   solveRoutine_meets_of (Ext := fun _ _ _ Q W Q' H R => IsBasisExtensionErr η₀ μ ε Q W Q' H R)
-    (fun _ _ _ _ _ _ hxy hl hx hy => writes_applyColumns_error hA.matvec hxy hl hx hy)
-    (fun _ _ _ _ _ _ hxy hl hx hy => writes_applyColumns_error hA.rmatvec hxy hl hx hy)
+    (fun _ _ _ _ _ _ hxy hl hx hy => applyColumns_writes_error hA.matvec hxy hl hx hy)
+    (fun _ _ _ _ _ _ hxy hl hx hy => applyColumns_writes_error hA.rmatvec hxy hl hx hy)
     hO hSample stream
 
 end Rounded

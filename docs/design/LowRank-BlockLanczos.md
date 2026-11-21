@@ -1089,11 +1089,11 @@ What is certified:
 * **CGS2 instance** (§3.5): `cgs2ExtendRoutine 0` meets the exact contract for an arbitrary
   basis, and `cgs2ExtendRoutine τ` meets the rounded contract at
   $\mu=4c+8(\eta_0+c)^2/\tau+5E$, $\varepsilon=3c+2E+2\tau$.
-* **Linking** is proved generically in the scheme (`linked_certifies`, `linkedAlgorithm`).
+* **Linking** is proved generically in the scheme (`linked_certifies`, `linkedSolveAlgorithm`).
 
 Not yet stated, so not proved:
 
-* the **concrete** linked certificates, that is `linkedAlgorithm` instantiated at
+* the **concrete** linked certificates, that is `linkedSolveAlgorithm` instantiated at
   `cgs2ExtendRoutine` over the exact BLAS model and over the rounded model (the generic theorem
   and both instance `Triple`s exist; the instantiation, with its `wellTyped` side condition
   and the recomputed costs, is not written);

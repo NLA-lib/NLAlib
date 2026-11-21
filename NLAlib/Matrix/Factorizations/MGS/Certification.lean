@@ -102,11 +102,11 @@ theorem laws {cost : Standard.Costing} {d : Fin 2 → ℕ}
 
 /-- The fixed instrumented tree determines its complete size-only instruction budget. -/
 noncomputable def staticBudget (d : Fin 2 → ℕ) :
-    Count (RCLikeBlas.Operation ⊕ Bookkeeping) CmpTst := staticCost MGS.program d
+    Count (RCLikeBlas.Operation ⊕ Bookkeeping) CmpTst := staticCost MGS.factorProgram d
 
 /-- Two scoped scalar cells are the complete extra payload for this exact catalog model. -/
-theorem staticPeak_program (cost : Standard.Costing) (d : Fin 2 → ℕ) :
-    staticPeak (resources cost) MGS.program d = 2 := by
+theorem staticPeak_factorProgram (cost : Standard.Costing) (d : Fin 2 → ℕ) :
+    staticPeak (resources cost) MGS.factorProgram d = 2 := by
   rw [staticPeak_eq, (resources cost).queryReserve_of_zero (fun _ _ => rfl), Nat.add_zero]
   change stmtPeak (fun (_ : RCLikeBlas.Operation) _ => 0)
     (.frame [.var 0, .var 1] [⟨0, .var 2⟩, ⟨0, .var 2⟩] factor)
@@ -120,10 +120,10 @@ theorem staticPeak_program (cost : Standard.Costing) (d : Fin 2 → ℕ) :
 noncomputable def specification (cost : Standard.Costing) :
     Specification RCLikeBlas.Operation CmpTst (problem (𝕜 := 𝕜)) where
   budget := staticBudget
-  scratch d := staticPeak (resources cost) MGS.program d
+  scratch d := staticPeak (resources cost) MGS.factorProgram d
   work d := (resources cost).work (staticBudget d)
   span d := (resources cost).span (staticBudget d)
-  memory d := d 1 * d 0 + staticPeak (resources cost) MGS.program d
+  memory d := d 1 * d 0 + staticPeak (resources cost) MGS.factorProgram d
   good d x _ _ m := m.pos = 0 ∧ m.store.readBlock 0 0 (d 1 * d 0) =
     some ((EntryCodec.scalar 𝕜).packFinMatrix (gramSchmidtQ x.val.1))
 

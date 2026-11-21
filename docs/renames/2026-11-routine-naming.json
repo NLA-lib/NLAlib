@@ -1,6 +1,6 @@
 {
  "date": "2026-11-21",
- "note": "Naming conventions of docs/contributing/programs.md ('Names of routines, files and certificates'). Module moves only rename files: the certificate file is Certification.lean (the namespace), and rounded variants live in a Rounded/ directory (the namespace). No certificate declaration is renamed. Specifications are renamed to match their routine (fooRoutine, fooSpec, fooRoutine_meets; a second specification is foo<Tag>Spec).",
+ "note": "Naming conventions of docs/contributing/programs.md ('Names of routines, files and certificates'). Certificate files are Certification.lean and rounded variants live in a Rounded/ directory. Certificates and programs are named for their routine (fooAlgorithm, fooProgram), unprefixed in a namespace dedicated to one solver (X.Certification, X.Stored); variant namespaces are nested family, Carried/Reorth, Rounded, Stored/Linked/Scalar, Certification. Operand-form statements about a tree are foo_writes / foo_wp. Specifications are renamed to match their routine. The names in scripts/ops_certificates.txt follow; no recorded attribute changes.",
  "renames": [
   {
    "old": "NLAlib.Krylov.Lanczos.Reorth.passSpec",
@@ -61,6 +61,2101 @@
    "old": "NLAlib.ShiftedQR.terminatingSmallEigSpec",
    "new": "NLAlib.ShiftedQR.smallEigCallSpec",
    "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm",
+   "new": "NLAlib.ShiftedQR.shqrSmallEigAlgorithm",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.roundedShQRAlgorithm",
+   "new": "NLAlib.ShiftedQR.shqrAlgorithm",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.exactAlgorithmWithPolynomialWork",
+   "new": "NLAlib.ShiftedQR.countedDeflationAlgorithm",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.exactForwardAlgorithm",
+   "new": "NLAlib.ShiftedQR.forwardDeflationAlgorithm",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.exactAlgorithm",
+   "new": "NLAlib.ShiftedQR.exactDeflationAlgorithm",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.Sign.certifiedAlgorithm",
+   "new": "NLAlib.Sign.signAlgorithm",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.Sign.fixedProgram",
+   "new": "NLAlib.Sign.signProgram",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.Sign.certifies_fixedProgram",
+   "new": "NLAlib.Sign.certifies_signProgram",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.Deflation.certifiedAlgorithm",
+   "new": "NLAlib.Deflation.deflateAlgorithm",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.Deflation.fixedProgram",
+   "new": "NLAlib.Deflation.deflateProgram",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.manifestAlgorithm",
+   "new": "NLAlib.SpectralBisection.bisectionAlgorithm",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.certifiedAlgorithm",
+   "new": "NLAlib.SpectralBisection.boundedBisectionAlgorithm",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.workCertifiedAlgorithm",
+   "new": "NLAlib.SpectralBisection.matrixWorkBisectionAlgorithm",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.countedAlgorithm",
+   "new": "NLAlib.SpectralBisection.countedBisectionAlgorithm",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.Sign.accepts_fixedProgram_of_isArithAccurate",
+   "new": "NLAlib.Sign.accepts_signProgram_of_isArithAccurate",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.Sign.wellTyped_fixedProgram",
+   "new": "NLAlib.Sign.wellTyped_signProgram",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.program",
+   "new": "NLAlib.SpectralBisection.bisectionProgram",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.HutchPlusPlus.program",
+   "new": "NLAlib.HutchPlusPlus.estimateProgram",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.MGS.program",
+   "new": "NLAlib.MGS.factorProgram",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.linkedProgram",
+   "new": "NLAlib.Krylov.GolubKahan.Band.linkedSolveProgram",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.program",
+   "new": "NLAlib.Krylov.GolubKahan.Band.solveProgram",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Stored.accepts",
+   "new": "NLAlib.Krylov.CG.HSCG.Stored.Certification.accepts",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Stored.algorithm",
+   "new": "NLAlib.Krylov.CG.HSCG.Stored.Certification.algorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Stored.countPoly_program",
+   "new": "NLAlib.Krylov.CG.HSCG.Stored.Certification.countPoly_program",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Stored.countedAlgorithm",
+   "new": "NLAlib.Krylov.CG.HSCG.Stored.Certification.countedAlgorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Stored.countedSpecification",
+   "new": "NLAlib.Krylov.CG.HSCG.Stored.Certification.countedSpecification",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Stored.eval_countPoly_program",
+   "new": "NLAlib.Krylov.CG.HSCG.Stored.Certification.eval_countPoly_program",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Stored.initialBytes_problem",
+   "new": "NLAlib.Krylov.CG.HSCG.Stored.Certification.initialBytes_problem",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Stored.operationCount",
+   "new": "NLAlib.Krylov.CG.HSCG.Stored.Certification.operationCount",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Stored.operationWork_unit_le",
+   "new": "NLAlib.Krylov.CG.HSCG.Stored.Certification.operationWork_unit_le",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Stored.problem",
+   "new": "NLAlib.Krylov.CG.HSCG.Stored.Certification.problem",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Stored.program",
+   "new": "NLAlib.Krylov.CG.HSCG.Stored.Certification.program",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Stored.specification",
+   "new": "NLAlib.Krylov.CG.HSCG.Stored.Certification.specification",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Stored.stored_checked",
+   "new": "NLAlib.Krylov.CG.HSCG.Stored.Certification.stored_checked",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Stored.algorithm",
+   "new": "NLAlib.Krylov.CG.HSPCG.Stored.Certification.algorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Stored.program",
+   "new": "NLAlib.Krylov.CG.HSPCG.Stored.Certification.program",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Stored.specification",
+   "new": "NLAlib.Krylov.CG.HSPCG.Stored.Certification.specification",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.Stored.accepts",
+   "new": "NLAlib.Krylov.CG.Reorth.Stored.Certification.accepts",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.Stored.algorithm",
+   "new": "NLAlib.Krylov.CG.Reorth.Stored.Certification.algorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.Stored.initialBytes_problem",
+   "new": "NLAlib.Krylov.CG.Reorth.Stored.Certification.initialBytes_problem",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.Stored.problem",
+   "new": "NLAlib.Krylov.CG.Reorth.Stored.Certification.problem",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.Stored.program",
+   "new": "NLAlib.Krylov.CG.Reorth.Stored.Certification.program",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.Stored.specification",
+   "new": "NLAlib.Krylov.CG.Reorth.Stored.Certification.specification",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Stored.accepts",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Stored.Certification.accepts",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Stored.algorithm",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Stored.Certification.algorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Stored.initialBytes_problem",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Stored.Certification.initialBytes_problem",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Stored.problem",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Stored.Certification.problem",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Stored.program",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Stored.Certification.program",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Stored.specification",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Stored.Certification.specification",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.accepts",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.accepts",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.algorithm",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.algorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.countPoly_scalarProgram",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.countPoly_scalarProgram",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.eval_countPoly_scalarProgram",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.eval_countPoly_scalarProgram",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.initialBytes_problem",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.initialBytes_problem",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.operationCount",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.operationCount",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.problem",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.problem",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.program",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.program",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.scalarAlgorithm",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.scalarAlgorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.scalarCountedAlgorithm",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.scalarCountedAlgorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.scalarCountedSpecification",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.scalarCountedSpecification",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.scalarProgram",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.scalarProgram",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.scalarSpecification",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.scalarSpecification",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.specification",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.specification",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Examples.admitted",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.Examples.admitted",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Examples.algorithm",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.Examples.algorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Examples.denseMatrix_one",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.Examples.denseMatrix_one",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Examples.domain",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.Examples.domain",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Examples.mul_one_ne_one",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.Examples.mul_one_ne_one",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Examples.supply",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.Examples.supply",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.accepts",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.accepts",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.algorithm",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.algorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.blasProgram",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.blasProgram",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.context_supply",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.context_supply",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.countPoly_program",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.countPoly_program",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.countedAlgorithm",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.countedAlgorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.countedSpecification",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.countedSpecification",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.eval_countPoly_program",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.eval_countPoly_program",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.initialBytes_problem",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.initialBytes_problem",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.matrix",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.matrix",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.operationCount",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.operationCount",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.preconditioner",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.preconditioner",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.problem",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.problem",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.program",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.program",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.specification",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.specification",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Examples.algorithm",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.Examples.algorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Examples.mul_one_ne_one",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.Examples.mul_one_ne_one",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Examples.supply",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.Examples.supply",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded.algorithm",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification.algorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded.countPoly_scalarProgram",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification.countPoly_scalarProgram",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded.eval_countPoly_scalarProgram",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification.eval_countPoly_scalarProgram",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded.exec_scalarProgram_work_le_and_spectral",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification.exec_scalarProgram_work_le_and_spectral",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded.model",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification.model",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded.operationCount",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification.operationCount",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded.problem",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification.problem",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded.scalarAlgorithm",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification.scalarAlgorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded.scalarCountedAlgorithm",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification.scalarCountedAlgorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded.scalarCountedSpecification",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification.scalarCountedSpecification",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded.scalarProgram",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification.scalarProgram",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded.scalarSpecification",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification.scalarSpecification",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded.specification",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification.specification",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded.staticBudget",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification.staticBudget",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded.solveRoutine_meets",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.solveRoutine_meets",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded.solveSpec",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.solveSpec",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Rounded.algorithm",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.Stored.Certification.algorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Rounded.countPoly_scalarProgram",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.Stored.Certification.countPoly_scalarProgram",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Rounded.eval_countPoly_scalarProgram",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.Stored.Certification.eval_countPoly_scalarProgram",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Rounded.exec_scalarProgram_work_le_and_ritzResidual",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.Stored.Certification.exec_scalarProgram_work_le_and_ritzResidual",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Rounded.model",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.Stored.Certification.model",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Rounded.operationCount",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.Stored.Certification.operationCount",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Rounded.problem",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.Stored.Certification.problem",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Rounded.scalarAlgorithm",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.Stored.Certification.scalarAlgorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Rounded.scalarCountedAlgorithm",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.Stored.Certification.scalarCountedAlgorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Rounded.scalarCountedSpecification",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.Stored.Certification.scalarCountedSpecification",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Rounded.scalarProgram",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.Stored.Certification.scalarProgram",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Rounded.scalarSpecification",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.Stored.Certification.scalarSpecification",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Rounded.specification",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.Stored.Certification.specification",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Rounded.staticBudget",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.Stored.Certification.staticBudget",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Rounded.solveRoutine_meets",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.Stored.solveRoutine_meets",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Rounded.solveSpec",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.Stored.solveSpec",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.algorithm",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Stored.Certification.algorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.initialBytes_problem",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Stored.Certification.initialBytes_problem",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.model",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Stored.Certification.model",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.problem",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Stored.Certification.problem",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.specification",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Stored.Certification.specification",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.staticBudget",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Stored.Certification.staticBudget",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.solveRoutine_meets",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Stored.solveRoutine_meets",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.solveSpec",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Stored.solveSpec",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.algorithm",
+   "new": "NLAlib.Krylov.Lanczos.Stored.Certification.algorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.initialBytes_problem",
+   "new": "NLAlib.Krylov.Lanczos.Stored.Certification.initialBytes_problem",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.model",
+   "new": "NLAlib.Krylov.Lanczos.Stored.Certification.model",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.problem",
+   "new": "NLAlib.Krylov.Lanczos.Stored.Certification.problem",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.specification",
+   "new": "NLAlib.Krylov.Lanczos.Stored.Certification.specification",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.staticBudget",
+   "new": "NLAlib.Krylov.Lanczos.Stored.Certification.staticBudget",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.solveRoutine",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Stored.solveRoutine",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Stored.Reorth.program",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Stored.program",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.SequentialCertification.algorithm",
+   "new": "NLAlib.Krylov.Lanczos.Linked.Certification.algorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.SequentialCertification.body_program_eq_link",
+   "new": "NLAlib.Krylov.Lanczos.Linked.Certification.body_program_eq_link",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.SequentialCertification.exactReferenceAlgorithm",
+   "new": "NLAlib.Krylov.Lanczos.Linked.Certification.exactReferenceAlgorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.SequentialCertification.for",
+   "new": "NLAlib.Krylov.Lanczos.Linked.Certification.for",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.SequentialCertification.original_staticBudget",
+   "new": "NLAlib.Krylov.Lanczos.Linked.Certification.original_staticBudget",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.SequentialCertification.program",
+   "new": "NLAlib.Krylov.Lanczos.Linked.Certification.program",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.SequentialCertification.program_eq_link",
+   "new": "NLAlib.Krylov.Lanczos.Linked.Certification.program_eq_link",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.SequentialCertification.ritzAlgorithm",
+   "new": "NLAlib.Krylov.Lanczos.Linked.Certification.ritzAlgorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.SequentialCertification.sequentialTable",
+   "new": "NLAlib.Krylov.Lanczos.Linked.Certification.sequentialTable",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.SequentialCertification.specification",
+   "new": "NLAlib.Krylov.Lanczos.Linked.Certification.specification",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.SequentialCertification.staticBudget",
+   "new": "NLAlib.Krylov.Lanczos.Linked.Certification.staticBudget",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.SequentialCertification.wellTyped_program",
+   "new": "NLAlib.Krylov.Lanczos.Linked.Certification.wellTyped_program",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.MGS.ScalarCertification.algorithm",
+   "new": "NLAlib.MGS.Scalar.Certification.algorithm",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.MGS.ScalarCertification.contracts_link",
+   "new": "NLAlib.MGS.Scalar.Certification.contracts_link",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.MGS.ScalarCertification.model",
+   "new": "NLAlib.MGS.Scalar.Certification.model",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.MGS.ScalarCertification.program",
+   "new": "NLAlib.MGS.Scalar.Certification.program",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.MGS.ScalarCertification.resources",
+   "new": "NLAlib.MGS.Scalar.Certification.resources",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.MGS.ScalarCertification.signature",
+   "new": "NLAlib.MGS.Scalar.Certification.signature",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.MGS.ScalarCertification.specification",
+   "new": "NLAlib.MGS.Scalar.Certification.specification",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.MGS.ScalarCertification.staticBudget",
+   "new": "NLAlib.MGS.Scalar.Certification.staticBudget",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.MGS.ScalarCertification.staticPeak_program",
+   "new": "NLAlib.MGS.Scalar.Certification.staticPeak_program",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.MGS.ScalarCertification.table",
+   "new": "NLAlib.MGS.Scalar.Certification.table",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.exec_scalarProgram_work_le_and_quadForm_le",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.exec_scalarProgram_work_le_and_quadForm_le",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.inputMatrix",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.inputMatrix",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.inputRhs",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.inputRhs",
+   "rule": "namespace-order"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Stored.linkedSolveRoutine_meets",
+   "new": "NLAlib.Krylov.CG.HSCG.Stored.solveRoutine_meets",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Stored.linkedSolveRoutine",
+   "new": "NLAlib.Krylov.CG.HSCG.Stored.solveRoutine",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Stored.linkedSolveSpec",
+   "new": "NLAlib.Krylov.CG.HSCG.Stored.solveSpec",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Stored.storedRoutine_meets",
+   "new": "NLAlib.Krylov.CG.HSCG.Stored.zeroStartRoutine_meets",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Stored.storedRoutine",
+   "new": "NLAlib.Krylov.CG.HSCG.Stored.zeroStartRoutine",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Stored.storedSpec",
+   "new": "NLAlib.Krylov.CG.HSCG.Stored.zeroStartSpec",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Stored.linkedSolveRoutine_meets",
+   "new": "NLAlib.Krylov.CG.HSPCG.Stored.solveRoutine_meets",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Stored.linkedSolveRoutine",
+   "new": "NLAlib.Krylov.CG.HSPCG.Stored.solveRoutine",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Stored.linkedSolveSpec",
+   "new": "NLAlib.Krylov.CG.HSPCG.Stored.solveSpec",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Stored.storedRoutine_meets",
+   "new": "NLAlib.Krylov.CG.HSPCG.Stored.zeroStartRoutine_meets",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Stored.storedRoutine",
+   "new": "NLAlib.Krylov.CG.HSPCG.Stored.zeroStartRoutine",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Stored.storedSpec",
+   "new": "NLAlib.Krylov.CG.HSPCG.Stored.zeroStartSpec",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.Stored.linkedSolveRoutine_meets",
+   "new": "NLAlib.Krylov.CG.Reorth.Stored.solveRoutine_meets",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.Stored.linkedSolveRoutine",
+   "new": "NLAlib.Krylov.CG.Reorth.Stored.solveRoutine",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.Stored.linkedSolveSpec",
+   "new": "NLAlib.Krylov.CG.Reorth.Stored.solveSpec",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.Stored.storedRoutine_meets",
+   "new": "NLAlib.Krylov.CG.Reorth.Stored.zeroStartRoutine_meets",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.Stored.storedRoutine",
+   "new": "NLAlib.Krylov.CG.Reorth.Stored.zeroStartRoutine",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.Stored.storedSpec",
+   "new": "NLAlib.Krylov.CG.Reorth.Stored.zeroStartSpec",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Stored.linkedSolveRoutine_meets",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Stored.solveRoutine_meets",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Stored.linkedSolveRoutine",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Stored.solveRoutine",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Stored.linkedSolveSpec",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Stored.solveSpec",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Stored.storedRoutine_meets",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Stored.zeroStartRoutine_meets",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Stored.storedRoutine",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Stored.zeroStartRoutine",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Stored.storedSpec",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Stored.zeroStartSpec",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.linkedSolveRoutine_meets",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.solveRoutine_meets",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.linkedSolveRoutine",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.solveRoutine",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.linkedSolveSpec",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.solveSpec",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.storedRoutine_meets",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.zeroStartRoutine_meets",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.storedRoutine",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.zeroStartRoutine",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.storedSpec",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.zeroStartSpec",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.blasRoutine_meets",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.solveRoutine_meets",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.blasRoutine",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.solveRoutine",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.blasSpec",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.solveSpec",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.storedRoutine_meets",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.zeroStartRoutine_meets",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.storedRoutine",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.zeroStartRoutine",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.storedSpec",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.zeroStartSpec",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.wp_averageDiagonal",
+   "new": "NLAlib.Ops.Hermitian.averageDiagonal_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.wp_averagePair",
+   "new": "NLAlib.Ops.Hermitian.averagePair_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.wp_boxTest",
+   "new": "NLAlib.Ops.Hermitian.boxTest_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.wp_clamp",
+   "new": "NLAlib.Ops.clamp_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.wp_conjugatePair",
+   "new": "NLAlib.Ops.Hermitian.conjugatePair_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.PairMatrix.wp_copy",
+   "new": "NLAlib.Ops.PairMatrix.copy_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.wp_copyPair",
+   "new": "NLAlib.Ops.Hermitian.copyPair_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.wp_copyPair_of_disj",
+   "new": "NLAlib.Ops.Hermitian.copyPair_wp_of_disj",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.wp_dotLoop",
+   "new": "NLAlib.Ops.Examples.dotLoop_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.wp_dotSum_seq",
+   "new": "NLAlib.Ops.dotSum_wp_seq",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.wp_halve",
+   "new": "NLAlib.Ops.Examples.halve_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.wp_hutch",
+   "new": "NLAlib.Ops.Examples.hutch_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.wp_idle",
+   "new": "NLAlib.Ops.Examples.idle_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.Resources.wp_mixedProgram",
+   "new": "NLAlib.Ops.Examples.Resources.mixedProgram_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.wp_mm_entry",
+   "new": "NLAlib.Ops.Examples.mm_wp_entry",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Pair.wp_multiply",
+   "new": "NLAlib.Ops.Pair.multiply_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.wp_negate",
+   "new": "NLAlib.Ops.Hermitian.negate_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.wp_npow",
+   "new": "NLAlib.Ops.Examples.npow_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.wp_prodLoop",
+   "new": "NLAlib.Ops.prodLoop_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.Certification.wp_repeat",
+   "new": "NLAlib.Ops.Examples.Certification.repeat_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.wp_residualCache",
+   "new": "NLAlib.Krylov.CG.residualCache_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.wp_residualCache_binaryQuantized",
+   "new": "NLAlib.Krylov.CG.residualCache_wp_binaryQuantized",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.wp_residualCache_fixedPoint",
+   "new": "NLAlib.Krylov.CG.residualCache_wp_fixedPoint",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.wp_residualCache_float64",
+   "new": "NLAlib.Krylov.CG.residualCache_wp_float64",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.wp_ripple_step",
+   "new": "NLAlib.Ops.Examples.ripple_wp_step",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.wp_scale",
+   "new": "NLAlib.Ops.Examples.scale_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.wp_scaleDiagonal",
+   "new": "NLAlib.Ops.Hermitian.scaleDiagonal_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.wp_scalePair",
+   "new": "NLAlib.Ops.Hermitian.scalePair_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.wp_shiftDiagonal",
+   "new": "NLAlib.Ops.Hermitian.shiftDiagonal_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.Certification.wp_solveProgram",
+   "new": "NLAlib.Krylov.GolubKahan.Band.Certification.solveProgram_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.ContextDenseRounded.wp_source_fn_of_ne",
+   "new": "NLAlib.Ops.ContextDenseRounded.source_wp_fn_of_ne",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.ContextDenseRounded.wp_source_of_ne",
+   "new": "NLAlib.Ops.ContextDenseRounded.source_wp_of_ne",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.ContextDense.wp_source_of_ne",
+   "new": "NLAlib.Ops.ContextDense.source_wp_of_ne",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.wp_unaryMap",
+   "new": "NLAlib.Ops.unaryMap_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.wp_unaryMap_of_disj_or_eq",
+   "new": "NLAlib.Ops.unaryMap_wp_of_disj_or_eq",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.HutchPlusPlus.writes_accumulate",
+   "new": "NLAlib.HutchPlusPlus.accumulate_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.CGS2.writes_addRows",
+   "new": "NLAlib.CGS2.addRows_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_allocatedSolve",
+   "new": "NLAlib.SpectralBisection.allocatedSolve_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Deflation.writes_apply",
+   "new": "NLAlib.Deflation.apply_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.StoredDense.writes_apply",
+   "new": "NLAlib.Ops.StoredDense.apply_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.writes_applyColumns",
+   "new": "NLAlib.Krylov.GolubKahan.Band.applyColumns_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.HutchPlusPlus.writes_applyColumns",
+   "new": "NLAlib.HutchPlusPlus.applyColumns_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.writes_applyColumns_error",
+   "new": "NLAlib.Krylov.GolubKahan.Band.applyColumns_writes_error",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.writes_applyColumns_of",
+   "new": "NLAlib.Krylov.GolubKahan.Band.applyColumns_writes_of",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.StoredDense.writes_apply_word",
+   "new": "NLAlib.Ops.StoredDense.apply_writes_word",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.writes_average",
+   "new": "NLAlib.Ops.Hermitian.average_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.writes_averageUpper",
+   "new": "NLAlib.Ops.Hermitian.averageUpper_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.writes_average_packed",
+   "new": "NLAlib.Ops.Hermitian.average_writes_packed",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.RCLikeScalar.writes_axpyWithScratch",
+   "new": "NLAlib.Ops.RCLikeScalar.axpyWithScratch_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.writes_binaryMap",
+   "new": "NLAlib.Ops.binaryMap_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_bottomLevel",
+   "new": "NLAlib.SpectralBisection.bottomLevel_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_bottomLevel_stored",
+   "new": "NLAlib.SpectralBisection.bottomLevel_writes_stored",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_bottomResult",
+   "new": "NLAlib.SpectralBisection.bottomResult_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.writes_boxTest",
+   "new": "NLAlib.Ops.Hermitian.boxTest_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_child",
+   "new": "NLAlib.SpectralBisection.child_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_child_storesStep",
+   "new": "NLAlib.SpectralBisection.child_writes_storesStep",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.writes_clamp",
+   "new": "NLAlib.Ops.clamp_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.writes_clamp_bindIdx",
+   "new": "NLAlib.Ops.clamp_writes_bindIdx",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.CGS2.writes_column",
+   "new": "NLAlib.CGS2.column_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.HutchPlusPlus.writes_combineTrace",
+   "new": "NLAlib.HutchPlusPlus.combineTrace_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.writes_complete",
+   "new": "NLAlib.Ops.Hermitian.complete_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_compress",
+   "new": "NLAlib.SpectralBisection.compress_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.PairMatrix.writes_conjTranspose",
+   "new": "NLAlib.Ops.PairMatrix.conjTranspose_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.PairMatrix.writes_conjTranspose_packed",
+   "new": "NLAlib.Ops.PairMatrix.conjTranspose_writes_packed",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_constantTail",
+   "new": "NLAlib.SpectralBisection.constantTail_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.writes_copyStrided",
+   "new": "NLAlib.Ops.copyStrided_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.RoundedPopped.writes_copyToWork",
+   "new": "NLAlib.ShiftedQR.RoundedPopped.copyToWork_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.writes_copyTriangle",
+   "new": "NLAlib.Ops.Hermitian.copyTriangle_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_deflate",
+   "new": "NLAlib.SpectralBisection.deflate_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_deflateSamples",
+   "new": "NLAlib.SpectralBisection.deflateSamples_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.writes_diagonal",
+   "new": "NLAlib.Ops.Hermitian.diagonal_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.PairMatrix.writes_diagonalReal",
+   "new": "NLAlib.Ops.PairMatrix.diagonalReal_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.RCLikeScalar.writes_dotWithScratch",
+   "new": "NLAlib.Ops.RCLikeScalar.dotWithScratch_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_downLarge",
+   "new": "NLAlib.SpectralBisection.downLarge_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_downLeaf",
+   "new": "NLAlib.SpectralBisection.downLeaf_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_downLevel",
+   "new": "NLAlib.SpectralBisection.downLevel_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_downLevelBody",
+   "new": "NLAlib.SpectralBisection.downLevelBody_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_downLevel_stored",
+   "new": "NLAlib.SpectralBisection.downLevel_writes_stored",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_downNode",
+   "new": "NLAlib.SpectralBisection.downNode_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_downNodes",
+   "new": "NLAlib.SpectralBisection.downNodes_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_downPrepare",
+   "new": "NLAlib.SpectralBisection.downPrepare_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_downSlot",
+   "new": "NLAlib.SpectralBisection.downSlot_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_downwardPass",
+   "new": "NLAlib.SpectralBisection.downwardPass_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_downwardPass_of_arenas",
+   "new": "NLAlib.SpectralBisection.downwardPass_writes_of_arenas",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.StoredCOO.writes_entries",
+   "new": "NLAlib.Ops.StoredCOO.entries_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.StoredCOO.writes_entry",
+   "new": "NLAlib.Ops.StoredCOO.entry_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.StoredCOO.writes_entry_valid",
+   "new": "NLAlib.Ops.StoredCOO.entry_writes_valid",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.HutchPlusPlus.writes_evaluate",
+   "new": "NLAlib.HutchPlusPlus.evaluate_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.HutchPlusPlus.writes_evaluation_workspace",
+   "new": "NLAlib.HutchPlusPlus.evaluation_writes_workspace",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.writes_extend",
+   "new": "NLAlib.Krylov.GolubKahan.Band.extend_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.writes_extend_product",
+   "new": "NLAlib.Krylov.GolubKahan.Band.extend_writes_product",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.MGS.writes_factorColumn",
+   "new": "NLAlib.MGS.factorColumn_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.MGS.writes_factorWithScratch",
+   "new": "NLAlib.MGS.factorWithScratch_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.writes_fillMap",
+   "new": "NLAlib.Ops.fillMap_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.writes_fillMap_readBlock",
+   "new": "NLAlib.Ops.fillMap_writes_readBlock",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.HutchPlusPlus.writes_finish",
+   "new": "NLAlib.HutchPlusPlus.finish_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.CGS2.writes_finish",
+   "new": "NLAlib.CGS2.finish_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.PairMatrix.writes_identity",
+   "new": "NLAlib.Ops.PairMatrix.identity_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.ContextDense.writes_impl",
+   "new": "NLAlib.Ops.ContextDense.impl_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.ContextDense.writes_impl_word",
+   "new": "NLAlib.Ops.ContextDense.impl_writes_word",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.StoredDense.writes_impl_word",
+   "new": "NLAlib.Ops.StoredDense.impl_writes_word",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.writes_indexNat",
+   "new": "NLAlib.ShiftedQR.indexNat_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.writes_indexNat_of_exactNatLit",
+   "new": "NLAlib.ShiftedQR.indexNat_writes_of_exactNatLit",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_initialConstants",
+   "new": "NLAlib.SpectralBisection.initialConstants_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_initialParameters",
+   "new": "NLAlib.SpectralBisection.initialParameters_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Sign.writes_initialScalars",
+   "new": "NLAlib.Sign.initialScalars_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_initialSizes",
+   "new": "NLAlib.SpectralBisection.initialSizes_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_initializeArenas",
+   "new": "NLAlib.SpectralBisection.initializeArenas_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_initializeArenas_stored",
+   "new": "NLAlib.SpectralBisection.initializeArenas_writes_stored",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Sign.writes_initialized",
+   "new": "NLAlib.Sign.initialized_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.writes_intervalScan",
+   "new": "NLAlib.Ops.intervalScan_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_leaf",
+   "new": "NLAlib.SpectralBisection.leaf_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_leafValues",
+   "new": "NLAlib.SpectralBisection.leafValues_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_leaf_packed",
+   "new": "NLAlib.SpectralBisection.leaf_writes_packed",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_levelParameters",
+   "new": "NLAlib.SpectralBisection.levelParameters_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_levelTail",
+   "new": "NLAlib.SpectralBisection.levelTail_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Pair.writes_linearCombination",
+   "new": "NLAlib.Ops.Pair.linearCombination_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.writes_loop_normSqMulRound",
+   "new": "NLAlib.ShiftedQR.loop_writes_normSqMulRound",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.writes_loop_normSqOpRound",
+   "new": "NLAlib.ShiftedQR.loop_writes_normSqOpRound",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.writes_mirror",
+   "new": "NLAlib.Ops.Hermitian.mirror_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.writes_mirror_lower",
+   "new": "NLAlib.Ops.Hermitian.mirror_writes_lower",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Pair.writes_multiply",
+   "new": "NLAlib.Ops.Pair.multiply_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.writes_negate_packed",
+   "new": "NLAlib.Ops.Hermitian.negate_writes_packed",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_node",
+   "new": "NLAlib.SpectralBisection.node_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_nodeBody",
+   "new": "NLAlib.SpectralBisection.nodeBody_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_nodeBranch",
+   "new": "NLAlib.SpectralBisection.nodeBranch_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_nodePrepare",
+   "new": "NLAlib.SpectralBisection.nodePrepare_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_nodeProjectors",
+   "new": "NLAlib.SpectralBisection.nodeProjectors_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_nodeScalars",
+   "new": "NLAlib.SpectralBisection.nodeScalars_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_nodeSplitIndex",
+   "new": "NLAlib.SpectralBisection.nodeSplitIndex_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.MGS.writes_normalize",
+   "new": "NLAlib.MGS.normalize_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.MGS.writes_normalizeGuard",
+   "new": "NLAlib.MGS.normalizeGuard_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.MGS.writes_normalize_residual",
+   "new": "NLAlib.MGS.normalize_writes_residual",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.RoundedScalarBlas.writes_nrm2_exact",
+   "new": "NLAlib.Ops.RoundedScalarBlas.nrm2_writes_exact",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.writes_pair_of_wp",
+   "new": "NLAlib.Ops.Hermitian.pair_writes_of_wp",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SmallEig.writes_perturbEntry",
+   "new": "NLAlib.SmallEig.perturbEntry_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SmallEig.writes_perturbLoop",
+   "new": "NLAlib.SmallEig.perturbLoop_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.HutchPlusPlus.writes_prepare",
+   "new": "NLAlib.HutchPlusPlus.prepare_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.HutchPlusPlus.writes_projectProbes",
+   "new": "NLAlib.HutchPlusPlus.projectProbes_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.HutchPlusPlus.writes_projectProbes_packed",
+   "new": "NLAlib.HutchPlusPlus.projectProbes_writes_packed",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_projectorTail",
+   "new": "NLAlib.SpectralBisection.projectorTail_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.RoundedWorklistState.writes_rangePop",
+   "new": "NLAlib.ShiftedQR.RoundedWorklistState.rangePop_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_reconstructResult",
+   "new": "NLAlib.SpectralBisection.reconstructResult_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.MGS.writes_reduce",
+   "new": "NLAlib.MGS.reduce_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SmallEig.writes_rhessCoeffs",
+   "new": "NLAlib.SmallEig.rhessCoeffs_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SmallEig.writes_rhessRotate",
+   "new": "NLAlib.SmallEig.rhessRotate_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.writes_ritz",
+   "new": "NLAlib.ShiftedQR.ritz_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_rootResultCopy",
+   "new": "NLAlib.SpectralBisection.rootResultCopy_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.writes_rotateLeftWithScratch",
+   "new": "NLAlib.ShiftedQR.rotateLeftWithScratch_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.writes_rotateLeftWithScratch_word",
+   "new": "NLAlib.ShiftedQR.rotateLeftWithScratch_writes_word",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.writes_rotateRightWithScratch",
+   "new": "NLAlib.ShiftedQR.rotateRightWithScratch_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.writes_rotateRightWithScratch_word",
+   "new": "NLAlib.ShiftedQR.rotateRightWithScratch_writes_word",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.writes_rotateRowWithScratch",
+   "new": "NLAlib.ShiftedQR.rotateRowWithScratch_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.writes_rotationLoop",
+   "new": "NLAlib.ShiftedQR.rotationLoop_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.CGS2.writes_round",
+   "new": "NLAlib.CGS2.round_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_round",
+   "new": "NLAlib.SpectralBisection.round_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Sign.writes_round",
+   "new": "NLAlib.Sign.round_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.writes_sampleVector",
+   "new": "NLAlib.Ops.sampleVector_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.writes_scalarBroadcast",
+   "new": "NLAlib.Ops.scalarBroadcast_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.writes_scalarBroadcast_readBlock",
+   "new": "NLAlib.Ops.scalarBroadcast_writes_readBlock",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.writes_scalarPower",
+   "new": "NLAlib.Ops.scalarPower_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.writes_scalarPower_exact",
+   "new": "NLAlib.Ops.scalarPower_writes_exact",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.writes_scale",
+   "new": "NLAlib.Ops.Hermitian.scale_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SmallEig.writes_scalePrelude",
+   "new": "NLAlib.SmallEig.scalePrelude_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.writes_scaleUpper",
+   "new": "NLAlib.Ops.Hermitian.scaleUpper_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.writes_scale_packed",
+   "new": "NLAlib.Ops.Hermitian.scale_writes_packed",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.writes_setFlag",
+   "new": "NLAlib.ShiftedQR.setFlag_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.writes_shift",
+   "new": "NLAlib.Ops.Hermitian.shift_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.writes_shiftNegate_packed",
+   "new": "NLAlib.Ops.Hermitian.shiftNegate_writes_packed",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.writes_shiftUpper",
+   "new": "NLAlib.Ops.Hermitian.shiftUpper_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.writes_shift_packed",
+   "new": "NLAlib.Ops.Hermitian.shift_writes_packed",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_signParameters",
+   "new": "NLAlib.SpectralBisection.signParameters_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.HutchPlusPlus.writes_sketch",
+   "new": "NLAlib.HutchPlusPlus.sketch_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.writes_smallEig",
+   "new": "NLAlib.ShiftedQR.smallEig_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.writes_solve",
+   "new": "NLAlib.Krylov.GolubKahan.Band.solve_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_solveBody",
+   "new": "NLAlib.SpectralBisection.solveBody_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_split",
+   "new": "NLAlib.SpectralBisection.split_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_split_storesStep",
+   "new": "NLAlib.SpectralBisection.split_writes_storesStep",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.RCLikeScalar.writes_starProductStep",
+   "new": "NLAlib.Ops.RCLikeScalar.starProductStep_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Sign.writes_start",
+   "new": "NLAlib.Sign.start_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.ColumnProducts.writes_step",
+   "new": "NLAlib.Ops.ColumnProducts.step_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Sign.writes_step",
+   "new": "NLAlib.Sign.step_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.ScalarProducts.writes_step",
+   "new": "NLAlib.Ops.ScalarProducts.step_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.writes_step_of",
+   "new": "NLAlib.Krylov.GolubKahan.Band.step_writes_of",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.ScalarProducts.writes_step_word",
+   "new": "NLAlib.Ops.ScalarProducts.step_writes_word",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.writes_steps",
+   "new": "NLAlib.Krylov.GolubKahan.Band.steps_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.ColumnProducts.writes_sum",
+   "new": "NLAlib.Ops.ColumnProducts.sum_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.ScalarProducts.writes_sum",
+   "new": "NLAlib.Ops.ScalarProducts.sum_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.ScalarProducts.writes_sum_word",
+   "new": "NLAlib.Ops.ScalarProducts.sum_writes_word",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.MGS.writes_sweep",
+   "new": "NLAlib.MGS.sweep_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Sign.writes_test",
+   "new": "NLAlib.Sign.test_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.PairMatrix.writes_traceRe",
+   "new": "NLAlib.Ops.PairMatrix.traceRe_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.PairMatrix.writes_traceRe_packed",
+   "new": "NLAlib.Ops.PairMatrix.traceRe_writes_packed",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.writes_triangle",
+   "new": "NLAlib.Ops.Hermitian.triangle_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.writes_unaryMap_of_disj_or_eq",
+   "new": "NLAlib.Ops.unaryMap_writes_of_disj_or_eq",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_upLevel",
+   "new": "NLAlib.SpectralBisection.upLevel_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_upLevel_eighAux",
+   "new": "NLAlib.SpectralBisection.upLevel_writes_eighAux",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_upNode",
+   "new": "NLAlib.SpectralBisection.upNode_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_upNode_leaf",
+   "new": "NLAlib.SpectralBisection.upNode_writes_leaf",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_upNode_shift",
+   "new": "NLAlib.SpectralBisection.upNode_writes_shift",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_upNode_shiftResult",
+   "new": "NLAlib.SpectralBisection.upNode_writes_shiftResult",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_upNode_splitResult",
+   "new": "NLAlib.SpectralBisection.upNode_writes_splitResult",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_upNodes",
+   "new": "NLAlib.SpectralBisection.upNodes_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_upShiftResult",
+   "new": "NLAlib.SpectralBisection.upShiftResult_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_upSplitResult",
+   "new": "NLAlib.SpectralBisection.upSplitResult_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.Hermitian.writes_upper",
+   "new": "NLAlib.Ops.Hermitian.upper_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_upwardPass",
+   "new": "NLAlib.SpectralBisection.upwardPass_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_upwardPass_of_arenas",
+   "new": "NLAlib.SpectralBisection.upwardPass_writes_of_arenas",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.StoredCOO.writes_zero",
+   "new": "NLAlib.Ops.StoredCOO.zero_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.CGS2.writes_zeroCol",
+   "new": "NLAlib.CGS2.zeroCol_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.CGS2.writes_zeroRows",
+   "new": "NLAlib.CGS2.zeroRows_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Sign.writes_loop",
+   "new": "NLAlib.Sign.loop_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.PairMatrix.writes_copy",
+   "new": "NLAlib.Ops.PairMatrix.copy_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.RCLikeScalar.writes_copy",
+   "new": "NLAlib.Ops.RCLikeScalar.copy_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.RCLikeScalar.writes_scal",
+   "new": "NLAlib.Ops.RCLikeScalar.scal_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Ops.RCLikeScalar.writes_axpy",
+   "new": "NLAlib.Ops.RCLikeScalar.axpy_writes",
+   "rule": "operand-form-statement"
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.linkedRoutine_meets_exact",
+   "new": "NLAlib.Krylov.GolubKahan.Band.linkedSolveRoutine_meets_exact",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.linkedRoutine_meets",
+   "new": "NLAlib.Krylov.GolubKahan.Band.linkedSolveRoutine_meets",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.linkedRoutine",
+   "new": "NLAlib.Krylov.GolubKahan.Band.linkedSolveRoutine",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.linkedAlgorithm",
+   "new": "NLAlib.Krylov.GolubKahan.Band.linkedSolveAlgorithm",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.linkedSpecification",
+   "new": "NLAlib.Krylov.GolubKahan.Band.linkedSolveSpecification",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.Rounded.linkedRoutine_meets",
+   "new": "NLAlib.Krylov.GolubKahan.Band.Rounded.linkedSolveRoutine_meets",
+   "rule": "certificate-program-names"
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.close_linkedRoutine",
+   "new": "NLAlib.Krylov.GolubKahan.Band.close_linkedSolveRoutine",
+   "rule": "certificate-program-names"
   }
  ],
  "statementChanged": [],
@@ -157,6 +2252,9 @@
   "NLAlib.Krylov.Lanczos.RoundedStoredCertificate": "NLAlib.Krylov.Lanczos.Rounded.StoredCertification",
   "NLAlib.Krylov.Lanczos.RoundedStoredSolve": "NLAlib.Krylov.Lanczos.Rounded.StoredSolve",
   "NLAlib.Krylov.Lanczos.StoredCertificate": "NLAlib.Krylov.Lanczos.StoredCertification",
-  "NLAlib.Ops.Examples.RoutineCertificate": "NLAlib.Ops.Examples.RoutineCertification"
+  "NLAlib.Ops.Examples.RoutineCertificate": "NLAlib.Ops.Examples.RoutineCertification",
+  "NLAlib.Krylov.CG.HSCG.Carried.Rounded": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Step",
+  "NLAlib.Krylov.Lanczos.Rounded.StoredSolve": "NLAlib.Krylov.Lanczos.Rounded.StoredRoutine",
+  "NLAlib.Krylov.Lanczos.Reorth.Rounded.StoredSolve": "NLAlib.Krylov.Lanczos.Reorth.Rounded.StoredRoutine"
  }
 }

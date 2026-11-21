@@ -33,12 +33,12 @@ taken by the deflation test.
 
 * `NLAlib.CGS2.cgs2Extend_eq`: the program is two allocations around the loop of the rounds.
 * `NLAlib.CGS2.ColMem.of_eqOff`: the layout is kept by a frame.
-* `NLAlib.CGS2.writes_zeroRows`, `NLAlib.CGS2.writes_zeroCol`, `NLAlib.CGS2.writes_addRows`: the
+* `NLAlib.CGS2.zeroRows_writes`, `NLAlib.CGS2.zeroCol_writes`, `NLAlib.CGS2.addRows_writes`: the
   three inner loops.
-* `NLAlib.CGS2.writes_finish`: the deflation test and its branches.
+* `NLAlib.CGS2.finish_writes`: the deflation test and its branches.
 * `NLAlib.CGS2.exists_readBlock_column`, `NLAlib.CGS2.exists_colOut`: the coefficient column
   read back.
-* `NLAlib.CGS2.writes_column`: one round.
+* `NLAlib.CGS2.column_writes`: one round.
 -/
 
 @[expose] public section
@@ -202,7 +202,7 @@ theorem ColMem.of_eqOff {n k b : ℕ} {Q W C : ℕ × ℕ} {hb tb : ℕ} {m m' :
 omit [Inhabited K] [Has Blas1Op Op] [Has CmpTst Tst] in
 /-- The loop that sets the rows `k, …, k + b - 1` of column `c` of the coefficient block to the
 zero literal writes those cells only. A fragment of `NLAlib.CGS2.cgs2ExtendRoutine`. -/
-theorem writes_zeroRows {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I) {τ' : Tape K}
+theorem zeroRows_writes {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I) {τ' : Tape K}
     {n k b c : ℕ} {Q W C : ℕ × ℕ} {hb tb : ℕ} {m : Mem K} (hC : C.1 < m.store.length)
     (hroom : C.2 + c * (k + b) + k + b ≤ m.store.len C.1) :
     Writes .total I τ' (Stmt.loop (IExp.var 2)
@@ -218,7 +218,7 @@ theorem writes_zeroRows {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I
 omit [Inhabited K] [Has Blas1Op Op] [Has CmpTst Tst] in
 /-- The loop that sets column `c` of the new block to the zero literal writes that column
 only. A fragment of `NLAlib.CGS2.cgs2ExtendRoutine`. -/
-theorem writes_zeroCol {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I) {τ' : Tape K}
+theorem zeroCol_writes {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I) {τ' : Tape K}
     {n k b c : ℕ} {Q W C : ℕ × ℕ} {hb tb : ℕ} {m : Mem K} (hQ : Q.1 < m.store.length)
     (hroom : Q.2 + k * n + c * n + n ≤ m.store.len Q.1) :
     Writes .total I τ' (Stmt.loop (IExp.var 0)
@@ -236,7 +236,7 @@ omit [Has Blas1Op Op] [Has CmpTst Tst] in
 coefficients `h₁` of the first, in column `c` of the coefficient block: the first `k + c` rows
 of that column then hold the machine sums, and nothing else is written.
 A fragment of `NLAlib.CGS2.cgs2ExtendRoutine`. -/
-theorem writes_addRows {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I) {τ' : Tape K}
+theorem addRows_writes {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I) {τ' : Tape K}
     {n k b c : ℕ} {Q W C : ℕ × ℕ} {hb tb : ℕ} {m : Mem K} {h₁ h₂ : List K}
     (hC : C.1 < m.store.length) (hh : hb < m.store.length) (hCh : C.1 < hb)
     (hroom : C.2 + c * (k + b) + (k + c) ≤ m.store.len C.1)
@@ -262,7 +262,7 @@ norm `β` of `w₂` and writes column `c` of the new block: if `β` is at most t
 of the threshold literal and `ν₀`, the column is zero and the diagonal coefficient is not
 written; otherwise the column is `w₂` scaled by `β` and the diagonal coefficient is `β`.
 A fragment of `NLAlib.CGS2.cgs2ExtendRoutine`. -/
-theorem writes_finish {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea : ℝ}
+theorem finish_writes {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea : ℝ}
     {N : ℕ → (ℕ → K) → K → Prop} {S : ℕ → K → (ℕ → K) → (ℕ → K) → Prop} {ok : ℕ → Prop}
     {I : Interp Op Tst K} (ops : ColOps M dec ed ea N S ok I) {τ' : Tape K} {τ : ℚ}
     {n k b c : ℕ} {Q W C : ℕ × ℕ} {hb tb : ℕ} {m : Mem K} {ν₀ : K} {w₂ : List K}
@@ -303,7 +303,7 @@ theorem writes_finish {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea :
   subst htw httw
   by_cases hle : dec β ≤ dec (M.mul (M.lit τ) ν₀)
   · simp only [hle, decide_true, ite_true]
-    refine (writes_zeroCol ops.scalar (m := m₃) (by room) (by room)).mono (by fp_sub) ?_
+    refine (zeroCol_writes ops.scalar (m := m₃) (by room) (by room)).mono (by fp_sub) ?_
     intro m₄ hfr₄ ⟨hq, hpos₄⟩
     refine ⟨by simp [hpos₄, hpos₃, hpos₂, hpos₁], β, _, hnβ,
       Store.holdsVec_iff_readBlock.mp hq, Or.inl ⟨hle, fun i hi => vec_map_range _ hi, ?_⟩⟩
@@ -411,7 +411,7 @@ one block `vs` and column `c` of the block is `wc`, the round writes only column
 block, of the coefficients and of the new block and the scratch, keeps the position, and the
 three columns written satisfy `NLAlib.CGS2.ColOut`.
 A fragment of `NLAlib.CGS2.cgs2ExtendRoutine`. -/
-theorem writes_column {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea : ℝ}
+theorem column_writes {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea : ℝ}
     {N : ℕ → (ℕ → K) → K → Prop} {S : ℕ → K → (ℕ → K) → (ℕ → K) → Prop} {ok : ℕ → Prop}
     {I : Interp Op Tst K} (ops : ColOps M dec ed ea N S ok I) {τ' : Tape K} {τ : ℚ}
     {n k b c : ℕ} {Q W C : ℕ × ℕ} {hb tb : ℕ} {m : Mem K} {vs wc : List K}
@@ -439,7 +439,7 @@ theorem writes_column {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea :
   have hhl : hb < m.store.length := by omega
   unfold cgs2ExtendColumn
   step ops.nrm2 as m₁ hfr₁ ⟨hpos₁, ν₀, hν₀, hn₀⟩
-  refine Writes.seq_le (writes_zeroRows ops.scalar (m := m₁) (by room) (by room)) (by fp_sub)
+  refine Writes.seq_le (zeroRows_writes ops.scalar (m := m₁) (by room) (by room)) (by fp_sub)
     fun m₂ hfr₂ ⟨hz₂, hpos₂⟩ => ?_
   have hl₂ : m₂.Live [Q, (W.1, W.2 + c * n), (C.1, C.2 + c * (k + b))] := by room
   have hV₂ : m₂.store.readBlock Q.1 Q.2 ((k + c) * n) = some vs := by kept
@@ -458,7 +458,7 @@ theorem writes_column {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea :
   have hw₄ : m₄.store.readBlock W.1 (W.2 + c * n) n = some w₂ := hw₂
   have hh₁₄ : m₄.store.readBlock C.1 (C.2 + c * (k + b)) (k + c) = some h₁ := by kept
   have hh₂' : m₄.store.readBlock hb 0 (k + c) = some h₂ := hh₂
-  refine Writes.seq_le (writes_addRows ops.scalar (m := m₄) (by room) (by room) hCh (by room)
+  refine Writes.seq_le (addRows_writes ops.scalar (m := m₄) (by room) (by room) hCh (by room)
     hh₁₄ hh₂') (by fp_sub) fun m₅ hfr₅ ⟨hs₅, hpos₅⟩ => ?_
   have hν₅ : m₅.store.get tb 0 = some ν₀ := by kept
   have hw₅ : m₅.store.readBlock W.1 (W.2 + c * n) n = some w₂ := by kept
@@ -468,7 +468,7 @@ theorem writes_column {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea :
     have h0 : m₂.store.get C.1 (C.2 + c * (k + b) + k + r) = some (M.lit 0) := hz₂ r hr
     kept
   have L₅ := ((((L.of_eqOff hfr₁).of_eqOff hfr₂).of_eqOff hfr₃).of_eqOff hfr₄).of_eqOff hfr₅
-  refine (writes_finish ops L₅ hc hok hν₅ hw₅).mono (by fp_sub)
+  refine (finish_writes ops L₅ hc hok hν₅ hw₅).mono (by fp_sub)
     fun m₆ hfr₆ ⟨hpos₆, β, qc, hnβ, hqc, hbr⟩ => ?_
   obtain ⟨cc, hcc, hout⟩ := exists_colOut hfr₆ hc hQC (by omega) hn₀ hp₁ hp₂ hnβ hs₅ hz₅ hbr
   exact ⟨by rw [hpos₆, hpos₅, hpos₄, hpos₃, hpos₂, hpos₁], w₂, cc, qc, by kept, hcc, hqc, hout⟩

@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Krylov.CG.HSCG.Carried.Solve
-public import NLAlib.Krylov.CG.HSCG.Carried.Rounded
+public import NLAlib.Krylov.CG.HSCG.Carried.Rounded.Step
 public import NLAlib.Krylov.CG.HSCG.Linked
 
 /-!

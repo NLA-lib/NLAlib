@@ -151,7 +151,7 @@ private theorem shiftEntry_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (Store.inBlock b.1 (b.2 + 2 * (i * n + i)) 2) := by
     intro c j ha hb
     exact hd c j (hfp c j hb) ha
-  have hw := writes_binaryMap (τ := τ)
+  have hw := binaryMap_writes (τ := τ)
     (x := (b.1, b.2 + 2 * (i * n + i)))
     (z := (b.1, b.2 + 2 * (i * n + i))) (hS .sub)
     (Store.holdsVec_of_readBlock hr) (Store.holdsVec_of_readBlock hs)
@@ -235,7 +235,7 @@ theorem copyMatrix_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (Env.frame [2 * (n * n)] [a, b]) (Store.inBlock b.1 b.2 (2 * (n * n)))
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix b H m'.store) m := by
   simpa only [HoldsMatrix, List.map_id] using
-    (writes_unaryMap_of_disj_or_eq (τ := τ) (f := id) (hS .copy) (Or.inl hd) hH hB)
+    (unaryMap_writes_of_disj_or_eq (τ := τ) (f := id) (hS .copy) (Or.inl hd) hH hB)
 
 /-- Initialization on any machine copies the actual raw matrix into both state matrices and
 subtracts the supplied shift on the machine (`NLAlib.ShiftedQR.machineShiftedPrefix`) only from

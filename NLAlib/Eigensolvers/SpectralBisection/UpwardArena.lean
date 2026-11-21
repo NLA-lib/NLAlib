@@ -18,7 +18,7 @@ identity/zero results suffice for total execution of the existing reverse-depth 
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_upwardPass_of_arenas`: root reconstruction from full arenas.
+* `NLAlib.SpectralBisection.upwardPass_writes_of_arenas`: root reconstruction from full arenas.
 -/
 
 @[expose] public section
@@ -44,7 +44,7 @@ local notation "ST" => (fun d lo => eighStep F n fuel R0 beta (EighNode.A (X d l
 /-- Full arena capacity and apartness supply every geometric prerequisite for actual upward
 execution. The returned root is exactly the existing pure recursion with budget `L + 1`.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_upwardPass_of_arenas (unif : K → Su → K) (normal : Sg → K × K)
+theorem upwardPass_writes_of_arenas (unif : K → Su → K) (normal : Sg → K × K)
     {I : Interp Op Tst K} (hS : IsScalar M I) (hQ : IsToNat dec I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) {m : Mem K}
     (hl : m.Live (arenaOperands c ma ua qa ea sz kd kp lv su sg))
@@ -72,7 +72,7 @@ theorem writes_upwardPass_of_arenas (unif : K → Su → K) (normal : Sg → K �
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hz
     rcases hz with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
       exact hl _ (by simp [arenaOperands])
-  refine (writes_upwardPass (M := M) (dec := dec) (mm := mm) (qr := qr)
+  refine (upwardPass_writes (M := M) (dec := dec) (mm := mm) (qr := qr)
     (n := n) (base := base) (fuel := fuel) (L := L) (R0 := R0) (eps := eps) (beta := beta)
     (ell := ell) (A := A) (τ := τ) (ma := ma) (lv := lv) (ua := ua) (qa := qa)
     (ea := ea) (sz := sz) (kd := kd) (kp := kp) (c := c) (m := m)

@@ -17,7 +17,7 @@ matrix operations come from the same interpretation and mathematical machine.
 
 ## Main results
 
-* `NLAlib.Sign.writes_step` returns the existing mathematical rounded step on the actual iterate.
+* `NLAlib.Sign.step_writes` returns the existing mathematical rounded step on the actual iterate.
 -/
 
 @[expose] public section
@@ -35,7 +35,7 @@ variable {K Op Tst Su Sg : Type} [Inhabited K] [Has ScalarOp Op] [Has MatrixOp O
 of this same actual input matrix. All four supplied regions are disjoint; the temporary scalar
 need not be initialized. Numerical accuracy is a separate property of the machine and product.
 A fragment of `NLAlib.Sign.signRoutine`. -/
-theorem writes_step {I : Interp Op Tst K} (hS : IsScalar M I)
+theorem step_writes {I : Interp Op Tst K} (hS : IsScalar M I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) {τ : Tape K} {n : ℕ}
     (A : Matrix (Fin n) (Fin n) (K × K)) {x w v c : ℕ × ℕ} {m : Mem K}
     (hl : m.Live [x, w, v, c])
@@ -66,7 +66,7 @@ theorem writes_step {I : Interp Op Tst K} (hS : IsScalar M I)
   have hv' : v.2 + 2 * (n * n) ≤ μ.store.len v.1 := by rw [hfr0.len_eq]; exact hv
   have hl1 : μ.Live [w, c, v] := by
     simpa [Mem.Live, hfr0.length_eq] using ⟨hl w (by simp), hl c (by simp), hl v (by simp)⟩
-  have hp := Hermitian.writes_shiftNegate_packed (dec := dec) (mm := mm) (qr := qr)
+  have hp := Hermitian.shiftNegate_writes_packed (dec := dec) (mm := mm) (qr := qr)
     (unif := unif) (normal := normal) (τ := τ) hS (mm A A) (M.lit 3)
     (hdis 1 2 (by decide)) (hdis 3 2 (by decide)) hW' hthree.2 hv' hl1
   refine (writes_frame rfl rfl hl1 hp).seq_le (le_sup_right.trans le_sup_left)
@@ -97,7 +97,7 @@ theorem writes_step {I : Interp Op Tst K} (hS : IsScalar M I)
   have hx' : x.2 + 2 * (n * n) ≤ χ.store.len x.1 := by rw [hfr0123.len_eq]; exact hx
   have hl3 : χ.Live [w, c, x] := by
     simpa [Mem.Live, hfr0123.length_eq] using ⟨hl w (by simp), hl c (by simp), hl x (by simp)⟩
-  have ha := Hermitian.writes_average_packed (dec := dec) (mm := mm) (qr := qr)
+  have ha := Hermitian.average_writes_packed (dec := dec) (mm := mm) (qr := qr)
     (unif := unif) (normal := normal) (τ := τ) hS _ (M.lit 4)
     (hdis 1 0 (by decide)) (hdis 3 0 (by decide)) hfour.2 hfour.1.2 hx' hl3
   refine (writes_frame rfl rfl hl3 ha).mono ((le_sup_left.trans le_sup_left).trans le_sup_left) ?_

@@ -53,8 +53,9 @@ noncomputable def algorithm (dataLength : ℕ → ℕ → ℕ)
       (specification dataLength matrix work workspace w stream) := by
   refine Routine.algorithm (r := 3) (b := 2) (estimateRoutine stream dataLength)
     (fun _ _ => estimateSpec stream matrix) (fun _ x => [x.val.1])
-    (ht := wellTyped_program work workspace stream) ?_ ?_ ?_
-    (hspace := fun d _ => staticPeak_program_le work workspace w hW stream d) (hmemory := ?_)
+    (ht := wellTyped_estimateProgram work workspace stream) ?_ ?_ ?_
+    (hspace := fun d _ => staticPeak_estimateProgram_le work workspace w hW stream d) (hmemory :=
+        ?_)
   · intro d _ x I hI
     obtain ⟨hS, hB, hA, hSample, hLit, hC⟩ := ExactLinear.laws hI
     exact estimateRoutine_meets hS hB hC hA hSample hLit stream
@@ -95,18 +96,18 @@ def operationCount (d : Fin 3 → ℕ) : ℕ :=
 
 /-- The instruction polynomial of the program, evaluated by the kernel. It is the same for every
 stream. -/
-theorem countPoly_program (stream : ℕ) :
-    (program (Op := ExactLinear.Operation) (Tst := CmpTst) stream).countPoly =
+theorem countPoly_estimateProgram (stream : ℕ) :
+    (estimateProgram (Op := ExactLinear.Operation) (Tst := CmpTst) stream).countPoly =
       [(230, []), (155, [1]), (71, [2]), (38, [1, 2]), (6, [0, 1]), (6, [0, 2]),
         (38, [1, 1])] := by
   kernel_rfl
 
 /-- The polynomial of the program at the sizes `d` is the operation count. -/
-theorem eval_countPoly_program (stream : ℕ) (d : Fin 3 → ℕ) :
+theorem eval_countPoly_estimateProgram (stream : ℕ) (d : Fin 3 → ℕ) :
     CountPoly.eval (List.ofFn d)
-      (program (Op := ExactLinear.Operation) (Tst := CmpTst) stream).countPoly =
+      (estimateProgram (Op := ExactLinear.Operation) (Tst := CmpTst) stream).countPoly =
       operationCount d := by
-  rw [countPoly_program]
+  rw [countPoly_estimateProgram]
   poly_eval [operationCount]
 
 /-- The certificate with explicit work: when every operation counts one, the work and the span
@@ -121,7 +122,7 @@ noncomputable def countedAlgorithm (dataLength : ℕ → ℕ → ℕ)
         work := operationCount, span := operationCount } :=
   (algorithm dataLength matrix (fun _ _ => 1) workspace w hW stream).withCountPoly
     (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) operationCount
-    (fun d _ => (eval_countPoly_program stream d).le)
+    (fun d _ => (eval_countPoly_estimateProgram stream d).le)
 
 /-- What the certificate states, with no reference to routines or contracts. For every order
 $n$, sketch width $k$ and positive probe count $\ell$, every stored operator supplied in the
@@ -138,7 +139,7 @@ theorem estimate_checked (dataLength : ℕ → ℕ → ℕ)
     (x : (problem (𝕜 := 𝕜) dataLength).Input d) (I : Interp ExactLinear.Operation CmpTst 𝕜)
     (hI : (ExactLinear.model (problem dataLength) dataLength matrix (fun _ _ => 1)
       workspace).contracts d x I) (τ : Tape 𝕜) :
-    ∃ st, exec (program stream) I (ExactLinear.resources (fun _ _ => 1) workspace)
+    ∃ st, exec (estimateProgram stream) I (ExactLinear.resources (fun _ _ => 1) workspace)
         (problem (𝕜 := 𝕜) dataLength).formats τ d
         ((problem (𝕜 := 𝕜) dataLength).initial d x) = some st ∧
       (ExactLinear.resources (fun _ _ => 1) workspace).work st.cost ≤ operationCount d ∧

@@ -56,7 +56,7 @@ Givens formation, rotations, shifted steps, inverse-row solves, shift search, sc
 operations and the deflation worklist expand into scalar/index syntax. The local
 `RitzSearchContract`, `IterationContract` and `DecouplingContract` are composition theorems for
 fixed implementations. [Exact.lean](../../NLAlib/Eigensolvers/ShiftedQR/Exact.lean) substitutes
-the concrete implementations into all three layers. `exactAlgorithm` has no remaining
+the concrete implementations into all three layers. `exactDeflationAlgorithm` has no remaining
 implementation parameter or successful-execution premise.
 
 Choosing the spectral kernels, scalar abstraction level, shift order and storage layout is a
@@ -123,7 +123,7 @@ of the execution layer. Shared memory and scalar rules live in Ops; solver files
 | Candidate strategy | `Potential`, `Radius`, `Acceptance`, `Trial`, `Search*`, `Grid*`, `FinishSearch`, `CompleteSearch` | First accepted candidate, streamed grid and defined fallback |
 | One strategy iteration | `Iteration*`, `PrepareIteration`, `Constants` | Concrete `iteration` and `iteration_contract` |
 | Decoupling and deflation | `Decouple*`, `Scan`, `BlockCopy`, `Worklist*`, `Range*`, `Deflation*`, `Output` | Capped progress, range ownership, complete solver and backward certificate |
-| Closed numerical certificates | `Exact`, `ForwardError` | `exactAlgorithm`, `exactForwardAlgorithm` |
+| Closed numerical certificates | `Exact`, `ForwardError` | `exactDeflationAlgorithm`, `forwardDeflationAlgorithm` |
 | Resources | `StepProgram`, `Workspace`, `SearchWorkspace`, `Cost`, canonical specification | Same-tree manifest, component scratch bounds and an explicit full-work majorant |
 
 Existing support changes belong in `Matrix/Norms/Frobenius` (norm bounds),
@@ -212,7 +212,7 @@ need not be polynomial when the supplied kernel costs are not. Since `k = 2^m`, 
 assertion of polynomial dependence on m alone, bit length or accuracy. F and M remain explicit
 inputs.
 
-`exactAlgorithmWithPolynomialWork` retains the original full count budget, scratch, resident
+`countedDeflationAlgorithm` retains the original full count budget, scratch, resident
 memory, backward guarantee and HD9 forward guarantee, and exposes this expression in its
 work/span fields. Its run is identified with the original run by deterministic execution.
 The shared machinery is in [Ops-PolynomialWork.md](Ops-PolynomialWork.md).

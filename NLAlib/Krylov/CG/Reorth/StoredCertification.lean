@@ -19,12 +19,12 @@ and cap are allowed. All counts, work, span and memory refer to the actual trans
 
 ## Main results
 
-* `NLAlib.Krylov.CG.Reorth.Stored.algorithm`: the total stored dense certificate.
+* `NLAlib.Krylov.CG.Reorth.Stored.Certification.algorithm`: the total stored dense certificate.
 -/
 
 @[expose] public section
 
-namespace NLAlib.Krylov.CG.Reorth.Stored
+namespace NLAlib.Krylov.CG.Reorth.Stored.Certification
 
 open Ops
 
@@ -41,7 +41,7 @@ abbrev problem : Problem ℝ 2 5 :=
   StoredProblem.problem (fun d => ![0, d 0, d 0, d 0]) domain admitted accepts supply
 
 /-- The fixed tree initializes the iterate and forwards the matrix to each scalar matvec. -/
-def program : Program RCLikeBlas.Operation CmpTst 2 5 := storedRoutine.close 2 5
+def program : Program RCLikeBlas.Operation CmpTst 2 5 := zeroStartRoutine.close 2 5
 
 /-- Resident memory counts the matrix words, RHS and all supplied output capacity. -/
 theorem initialBytes_problem (d : Fin 2 → ℕ) (x : (problem domain admitted supply).Input d) :
@@ -69,13 +69,13 @@ There is no successful-run, oracle matrix or numerical-output callback in the as
 noncomputable def algorithm (cost : Standard.Costing) :
     Algorithm (ExactBlas.model (problem domain admitted supply) cost)
       (specification domain admitted supply cost) := by
-  refine Routine.algorithm (r := 2) (b := 5) (P := problem domain admitted supply) storedRoutine
-    (fun d _ => storedSpec (d 0)) (fun _ x => [x.val.1.1 0, x.val.1.2])
+  refine Routine.algorithm (r := 2) (b := 5) (P := problem domain admitted supply) zeroStartRoutine
+    (fun d _ => zeroStartSpec (d 0)) (fun _ x => [x.val.1.1 0, x.val.1.2])
     ?_ ?_ ?_
     (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) ?_
   · intro d _ x I hI
     obtain ⟨hS, hB, hC⟩ := ExactBlas.laws hI
-    exact storedRoutine_meets hS hB hC
+    exact zeroStartRoutine_meets hS hB hC
   · intro d _ x
     let μ := (problem domain admitted supply).initial d x
     have hlen (i : Fin 4) := StoredProblem.initial_len d x i
@@ -93,4 +93,4 @@ noncomputable def algorithm (cost : Standard.Costing) :
     rw [initialBytes_problem]
     exact le_rfl
 
-end NLAlib.Krylov.CG.Reorth.Stored
+end NLAlib.Krylov.CG.Reorth.Stored.Certification

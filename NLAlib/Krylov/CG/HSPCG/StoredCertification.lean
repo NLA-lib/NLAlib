@@ -21,12 +21,12 @@ transformed tree.
 
 ## Main results
 
-* `NLAlib.Krylov.CG.HSPCG.Stored.algorithm`: the total stored dense certificate.
+* `NLAlib.Krylov.CG.HSPCG.Stored.Certification.algorithm`: the total stored dense certificate.
 -/
 
 @[expose] public section
 
-namespace NLAlib.Krylov.CG.HSPCG.Stored
+namespace NLAlib.Krylov.CG.HSPCG.Stored.Certification
 
 open Ops
 
@@ -36,7 +36,7 @@ variable (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d)
       accepts d rawA rawP rhs)
 
 /-- The fixed tree initializes the iterate and forwards the matrix to each scalar matvec. -/
-def program : Program RCLikeBlas.Operation CmpTst 2 7 := storedRoutine.close 2 7
+def program : Program RCLikeBlas.Operation CmpTst 2 7 := zeroStartRoutine.close 2 7
 
 /-- Canonical resources and the exact converged-or-capped physical CG state. -/
 noncomputable def specification (cost : Standard.Costing) :
@@ -54,13 +54,13 @@ There is no successful-run, oracle matrix or numerical-output callback in the as
 noncomputable def algorithm (cost : Standard.Costing) :
     Algorithm (ExactBlas.model (problem domain admitted supply) cost)
       (specification domain admitted supply cost) := by
-  refine Routine.algorithm (r := 2) (b := 7) (P := problem domain admitted supply) storedRoutine
-    (fun d _ => storedSpec (d 0)) (fun _ x => [x.val.1.1 0, x.val.1.1 1, x.val.1.2])
+  refine Routine.algorithm (r := 2) (b := 7) (P := problem domain admitted supply) zeroStartRoutine
+    (fun d _ => zeroStartSpec (d 0)) (fun _ x => [x.val.1.1 0, x.val.1.1 1, x.val.1.2])
      ?_ ?_ ?_
     (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) ?_
   · intro d _ x I hI
     obtain ⟨hS, hB, _⟩ := ExactBlas.laws hI
-    exact storedRoutine_meets hS hB
+    exact zeroStartRoutine_meets hS hB
   · intro d _ x
     let μ := (problem domain admitted supply).initial d x
     have hlen (i : Fin 5) := initial_len d x i
@@ -79,4 +79,4 @@ noncomputable def algorithm (cost : Standard.Costing) :
     rw [initialBytes_problem]
     exact le_rfl
 
-end NLAlib.Krylov.CG.HSPCG.Stored
+end NLAlib.Krylov.CG.HSPCG.Stored.Certification

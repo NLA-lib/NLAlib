@@ -40,7 +40,7 @@ probabilistic program logic (`NLAlib.Ops.Algorithm.measureReal_not_accepts_le_of
 * `NLAlib.ShiftedQR.shqrSmallEigProgram`, `NLAlib.ShiftedQR.shqrSmallEigProblem`: the program and
   the problem.
 * `NLAlib.ShiftedQR.shqrSmallEigWork`: the explicit work and span polynomial.
-* `NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm`: the certificate.
+* `NLAlib.ShiftedQR.shqrSmallEigAlgorithm`: the certificate.
 
 ## Main results
 
@@ -252,7 +252,7 @@ memory, with work and span at most `NLAlib.ShiftedQR.shqrSmallEigWork`, writing 
 the output and the failure word. The output's accuracy holds with probability at least
 $1 - \varphi$ (`NLAlib.ShiftedQR.roundedShQRSmallEig_algorithm_measureReal_not_accepts_le`).
 Algorithm: shifted-qr-rounded (run model) -/
-noncomputable def roundedShQRSmallEigAlgorithm (Mch : Machine ℝ) (c₁ c₂ : PolyLogTail)
+noncomputable def shqrSmallEigAlgorithm (Mch : Machine ℝ) (c₁ c₂ : PolyLogTail)
     (admitted : ∃ d, ShQRSmallEigSizes Mch c₁ c₂ d) (sU sG : ℕ) :
     Algorithm (smallEigModel (shqrSmallEigProblem Mch c₁ c₂ admitted) Mch sU)
       (shqrSmallEigSpecification Mch c₁ c₂ admitted sG) :=
@@ -305,7 +305,7 @@ eigenvalues separated by $\Gamma > 0$, $\|\mathbf{H}\|_2 \le \Sigma$, $0 < \delt
 $0 < \varphi \le 1$ and $\boldsymbol{u} \le \boldsymbol{u}_0$
 (`NLAlib.ShiftedQR.uShQRSmallEig`). Let `I` meet the model, be measurable and read the tape only
 in its windows. Then
-$$\mathbb{P}\bigl[\mathsf{roundedShQRSmallEigAlgorithm}(\mathbf{H}) \text{ fails, exceeds its
+$$\mathbb{P}\bigl[\mathsf{shqrSmallEigAlgorithm}(\mathbf{H}) \text{ fails, exceeds its
   budget, scratch, memory, work or span, writes outside the matrix, the output and the failure
   word, or lists no } \operatorname{spec}(\mathbf{H} + \mathbf{E}),\
   \|\mathbf{E}\|_2 \le \delta\bigr] \le \varphi\,,$$
@@ -329,7 +329,7 @@ theorem roundedShQRSmallEig_algorithm_measureReal_not_accepts_le {u : ℝ}
     (hu : u ≤ uShQRSmallEig (d 0) (d 1) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ x.val.1.φ c₁ c₂)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
     P.real {ω | ¬ (shqrSmallEigSpecification Mch c₁ c₂ admitted sG).Accepts smallEigResources d x
-      (exec (roundedShQRSmallEigAlgorithm Mch c₁ c₂ admitted sU sG).program I smallEigResources
+      (exec (shqrSmallEigAlgorithm Mch c₁ c₂ admitted sU sG).program I smallEigResources
         (shqrSmallEigProblem Mch c₁ c₂ admitted).formats (ξ ω) d
         ((shqrSmallEigProblem Mch c₁ c₂ admitted).initial d x))
       fun _ m => ((shqrSmallEigProblem Mch c₁ c₂ admitted).initial d x).store.EqOff
@@ -342,7 +342,7 @@ theorem roundedShQRSmallEig_algorithm_measureReal_not_accepts_le {u : ℝ}
   have hT := roundedShQRSmallEig_measureReal_not_spectrum_le (O := SmallEigOp) (Q := Tst)
     (sG := sG) hS hM hL hd.1 hQ hC hIm hloc hSmp hDisk hU hG hA hB hb₁ hb₂ hHess hV hHV hκ hΓ
     hgap hHS hδ hδS hφ hφ1 x.val.1.degree_eq hu hin hξ
-  refine (roundedShQRSmallEigAlgorithm Mch c₁ c₂ admitted sU sG).measureReal_not_accepts_le_of_wp
+  refine (shqrSmallEigAlgorithm Mch c₁ c₂ admitted sU sG).measureReal_not_accepts_le_of_wp
     hd x I hI P ξ _ ?_
   refine (measureReal_mono ?_).trans hT
   intro ω hω hW
@@ -386,7 +386,7 @@ theorem roundedShQRSmallEig_algorithm_measureReal_not_accepts_le_unconditional
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
     P.real {ω | ¬ (shqrSmallEigSpecification Mch ginibreGapTail
       ginibreConditionTail admitted sG).Accepts smallEigResources d x
-      (exec (roundedShQRSmallEigAlgorithm Mch ginibreGapTail
+      (exec (shqrSmallEigAlgorithm Mch ginibreGapTail
         ginibreConditionTail admitted sU sG).program I smallEigResources
         (shqrSmallEigProblem Mch ginibreGapTail ginibreConditionTail
           admitted).formats (ξ ω) d

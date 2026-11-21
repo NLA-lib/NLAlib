@@ -18,7 +18,7 @@ operand. The shared independent-loop rule retains the computed output columns.
 
 ## Main results
 
-* `NLAlib.HutchPlusPlus.writes_applyColumns` computes the packed matrix product.
+* `NLAlib.HutchPlusPlus.applyColumns_writes` computes the packed matrix product.
 -/
 
 @[expose] public section
@@ -37,7 +37,7 @@ local instance instInhabitedApply : Inhabited 𝕜 := ⟨0⟩
 operator data and input columns may share a buffer when their spans satisfy the contract.
 A fragment of `NLAlib.HutchPlusPlus.estimateRoutine`: run only inside its tree, on its
 operands and the buffers it allocates. -/
-theorem writes_applyColumns {dataLength : ℕ → ℕ → ℕ}
+theorem applyColumns_writes {dataLength : ℕ → ℕ → ℕ}
     {matrix : (m n : ℕ) → List 𝕜 → Matrix (Fin m) (Fin n) 𝕜}
     (hI : StoredOperator.IsExact dataLength matrix I) {n k : ℕ} {data x y : ℕ × ℕ}
     (as : List 𝕜) (X : Matrix (Fin n) (Fin k) 𝕜) (hl : m.Live [data, x, y])

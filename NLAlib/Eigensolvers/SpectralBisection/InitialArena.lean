@@ -17,7 +17,7 @@ future size slots zero. The parameter input remains available to every downward 
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_initializeArenas_stored`: actual initialized mathematical data.
+* `NLAlib.SpectralBisection.initializeArenas_writes_stored`: actual initialized mathematical data.
 -/
 
 @[expose] public section
@@ -52,7 +52,7 @@ private theorem initializeFp_le_arenas {n L : ℕ}
 /-- Actual initialization stores the mathematical root, future zeros and shared constants.
 Its input parameter block is retained and its write frame stays inside the eleven arenas.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_initializeArenas_stored {K Op Tst : Type} [Inhabited K]
+theorem initializeArenas_writes_stored {K Op Tst : Type} [Inhabited K]
     [Has ScalarOp Op] [Has IndexOp Op] (M : Machine K) (F : FloatMachine K ℕ ℕ)
     (fuel : ℕ) (R0 eps beta : K) {n L : ℕ}
     (A : Matrix (Fin n) (Fin n) (K × K)) {I : Interp Op Tst K}
@@ -78,7 +78,7 @@ theorem writes_initializeArenas_stored {K Op Tst : Type} [Inhabited K]
   have hPar2 : μ.store.readBlock par.1 par.2 2 = some [R0, eps] := by
     simpa using Store.readBlock_sub hPar (o := 0) (n := 2) (by omega)
   obtain ⟨hOut, hIn⟩ := apart_initialize_of_arenas hAP hProtect
-  have hW := writes_initializeArenas (τ := τ) hS hIndex ((EntryCodec.pair K).packFinMatrix A)
+  have hW := initializeArenas_writes (τ := τ) hS hIndex ((EntryCodec.pair K).packFinMatrix A)
     R0 eps hl hOut hIn hA hPar2
     hCaps.1 hCaps.2.1 hCaps.2.2.1 hCaps.2.2.2
   have hSub := initializeFp_le_arenas (n := n) (L := L) c ma ua qa ea sz kd kp lv su sg

@@ -18,8 +18,8 @@ compose these transformations with matrix multiplication without exposing entry 
 
 ## Main results
 
-* `NLAlib.Ops.PairMatrix.writes_conjTranspose_packed`: the actual packed conjugate transpose.
-* `NLAlib.Ops.PairMatrix.writes_traceRe_packed`: the actual rounded finite trace.
+* `NLAlib.Ops.PairMatrix.conjTranspose_writes_packed`: the actual packed conjugate transpose.
+* `NLAlib.Ops.PairMatrix.traceRe_writes_packed`: the actual rounded finite trace.
 -/
 
 @[expose] public section
@@ -33,7 +33,7 @@ variable {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
 /-- Conjugate transpose writes exactly the mathematical machine's packed finite output.
 Readable input and disjoint writable output blocks suffice, including distinct regions of one
 buffer. No numerical accuracy or successful-execution premise is assumed. -/
-theorem writes_conjTranspose_packed {I : Interp Op Tst K} (hI : IsScalar M I) {τ : Tape K}
+theorem conjTranspose_writes_packed {I : Interp Op Tst K} (hI : IsScalar M I) {τ : Tape K}
     {k r : ℕ} (Q : Matrix (Fin k) (Fin r) (K × K)) {x y : ℕ × ℕ} {μ : Mem K}
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (k * r)))
       (Store.inBlock y.1 y.2 (2 * (k * r))))
@@ -50,7 +50,7 @@ theorem writes_conjTranspose_packed {I : Interp Op Tst K} (hI : IsScalar M I) {�
     Store.holdsEntries_of_readBlock rfl (by simpa only [Nat.mul_comm] using hQ)
   have hfinite : (Matrix.of fun (i : Fin k) (j : Fin r) => B i j) = Q :=
     C.matrix_packFinMatrix Q
-  refine (writes_conjTranspose hI B hl hB hY (by
+  refine (conjTranspose_writes hI B hl hB hY (by
     simpa only [Nat.mul_comm] using hxy)).mono le_rfl ?_
   intro μ' _ ⟨houtput, hpos⟩
   have hread := houtput.readBlock_packFinMatrix rfl
@@ -90,7 +90,7 @@ theorem traceReF_packFinMatrix {n : ℕ} (A : Matrix (Fin n) (Fin n) (K × K)) :
 
 /-- The actual packed trace kernel stores the existing machine's rounded finite trace.
 The accumulator need not be initialized, and disjoint regions of one buffer are supported. -/
-theorem writes_traceRe_packed {I : Interp Op Tst K} (hI : IsScalar M I) {τ : Tape K}
+theorem traceRe_writes_packed {I : Interp Op Tst K} (hI : IsScalar M I) {τ : Tape K}
     {n : ℕ} (A : Matrix (Fin n) (Fin n) (K × K)) {x y : ℕ × ℕ} {μ : Mem K}
     (hA : μ.store.readBlock x.1 x.2 (2 * (n * n)) = some ((EntryCodec.pair K).packFinMatrix A))
     (hy : y.2 < μ.store.len y.1)
@@ -99,7 +99,7 @@ theorem writes_traceRe_packed {I : Interp Op Tst K} (hI : IsScalar M I) {τ : Ta
       (Store.inBlock y.1 y.2 1)
       (fun μ' => μ'.pos = μ.pos ∧ μ'.store.get y.1 y.2 =
         some ((M.toFloatMachine dec mm qr unif normal).traceRe A)) μ := by
-  refine (writes_traceRe hI (Store.holdsVec_of_readBlock hA) hy hdisj).mono le_rfl ?_
+  refine (traceRe_writes hI (Store.holdsVec_of_readBlock hA) hy hdisj).mono le_rfl ?_
   intro μ' _ ⟨htrace, hpos⟩
   rw [traceReF_packFinMatrix (dec := dec) (mm := mm) (qr := qr)
     (unif := unif) (normal := normal)] at htrace

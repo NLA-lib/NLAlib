@@ -168,22 +168,45 @@ One name for each thing, in every family:
   error under an exact model, say) there is no second specification. The tag `of` names the
   form generic in its relations, with the specification `fooSpecOf`.
 - **A linked or stored routine** meets the specification of the routine it is built from: a
-  routine linked through a table is `R.link T`, one on stored data is `R.withData …`.
+  routine linked through a table is `R.link T`, one on stored data is `R.withData …`. The solver
+  on stored data is named as the matrix-free one, in the namespace `X.Stored`
+  (`HSCG.Stored.solveRoutine`, `HSCG.Stored.zeroStartRoutine`).
+- **Namespaces of variants** are nested in one order: the family, its algorithmic variant
+  (`Carried`, `Reorth`), `Rounded`, then `Stored`, `Linked` or `Scalar` (the solver on stored
+  data, linked through a table, or linked down to scalar operations), then `Certification`,
+  as in `Lanczos.Reorth.Rounded.Stored.Certification`. Directories follow the namespace as far
+  as `Rounded/`; the stored, linked and scalar variants are files with that prefix.
 - **Rounded variants** live in the namespace `X.Rounded` and the directory `X/Rounded/`, with
-  the same file names as the exact family. A family whose namespace is not split (shifted QR)
-  marks its rounded files and declarations with the prefix `Rounded`/`rounded`. The
+  the same file names as the exact family. A family whose namespace is not split (shifted QR,
+  SmallEig) marks its rounded files and declarations with the prefix `Rounded`/`rounded`. The
   directories `Krylov/FinitePrecision` and `Matrix/FinitePrecision` hold the mathematics of
   rounding errors and the machines of the rounded models (with, in the `Ops*` files of
   `Matrix/FinitePrecision`, the statements of the matrix kernels on those machines), not solvers.
 - **Files.** The certificate of a solver is in `Certification.lean`, matching the namespace
-  `X.Certification`; a variant has a prefix (`StoredCertification.lean`,
-  `LinkedCertification.lean`). The trees and routine definitions of a solver are in
-  `Alg.lean`. The specification and judgment of the routine `fooRoutine` are in a file named
-  for it: `Foo.lean`, or `FooRoutine.lean` when `Foo.lean` holds the mathematics or the tree,
-  and plain `Routine.lean` for the routine a directory is named after.
-- **Certificates.** `algorithm` is the certificate of a solver; `countedAlgorithm` is the same
-  certificate with its work as a closed form; `scalarAlgorithm` and `scalarCountedAlgorithm`
-  are those of the solver linked down to scalar operations.
+  `X.Certification`; a variant has a prefix (`StoredCertification.lean` for
+  `X.Stored.Certification`, `LinkedCertification.lean`, `ScalarCertification.lean`). The trees
+  and routine definitions of a solver are in `Alg.lean`. The specification and judgment of the
+  routine `fooRoutine` are in a file named for it: `Foo.lean`, or `FooRoutine.lean` when
+  `Foo.lean` holds the mathematics or the tree, and plain `Routine.lean` for the routine a
+  directory is named after.
+- **Certificates and programs.** The certificate of a routine is named for it with the suffix
+  `Algorithm`, on the program with the suffix `Program` (`ShiftedQR.stepAlgorithm` on
+  `ShiftedQR.stepProgram`, `Sign.signAlgorithm` on `Sign.signProgram`). In a namespace that
+  holds one solver's certificate (`X.Certification`) or one solver on stored data (`X.Stored`),
+  the solver's name is dropped: `algorithm`, `program`, `problem`, `specification`. A further
+  certificate of the same solver has a prefix saying what it adds: `countedAlgorithm` has its
+  work as a closed form, `scalarAlgorithm` and `scalarCountedAlgorithm` are those of the solver
+  linked down to scalar operations, `exactReferenceAlgorithm` is the certificate at the exact
+  reference model, `ritzAlgorithm` adds the Ritz postcondition. With a solver's name the prefix
+  comes first (`ShiftedQR.exactDeflationAlgorithm`,
+  `SpectralBisection.countedBisectionAlgorithm`).
+- **Statements in operand form** about a tree are named for the tree, with the suffix `writes`
+  after an underscore for a `Writes` statement (with its footprint), `wp` for a
+  weakest-precondition statement without one, and `pwrites` for a probabilistic one
+  (`Sign.loop_writes`); a second statement adds a tag after
+  (`ShiftedQR.rotateRows_writes_word`). The rules of the program logic in `NLAlib/Ops/Logic`
+  are about statement forms, not trees, and are named as Mathlib names rules, conclusion first
+  (`Ops.writes_frame`).
 - **In prose**, the interface of a routine is written with its modes,
   `[n] (x : read n, y : update n) → (z : write 1)`; the routine notation infers the modes from
   the side an operand is named on, so the header in the source does not show them.

@@ -204,7 +204,7 @@ theorem rangePop_writes_of_isExactNatLit [Has ScalarOp Op] {M : Machine ℝ} {I 
     exact hd c j hO ⟨hB.1, by have := hB.2.1; omega, by have := hB.2.2; omega⟩
   unfold rangePop
   refine writes_bindIdx_of_decode_nat hQ rfl rfl hcount rfl hcap ?_
-  have hw := writes_unaryMap_of_disj_or_eq (md := .total) (τ := τ) (f := id)
+  have hw := unaryMap_writes_of_disj_or_eq (md := .total) (τ := τ) (f := id)
     (x := (b.1, b.2 + 1 + 2 * rs.length)) (y := out) (hS .copy) (Or.inl hsep) htop hout
   simp only [List.map_id] at hw
   refine hw.frame_seq_le rfl rfl (by simpa [Mem.Live] using hl) le_sup_right ?_

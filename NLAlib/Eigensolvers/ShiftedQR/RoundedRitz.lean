@@ -119,7 +119,7 @@ theorem subdiagProductWithScratch_writes_word {M : Machine ℝ} {I : Interp Op T
   intro m₁ hfr₁ ⟨hp₁, hOne⟩
   have hH₁ := hH.of_eqOff hfr₁ hap.symm
   let xs : ℕ → ℕ × ℕ := fun i => (a.1, a.2 + 2 * ((n - k + i) * (n + 1) + (n - k + i + 1)))
-  have hloop := writes_loop_normSqMulRound (τ := τ) (m := m₁) (N := k) hS
+  have hloop := loop_writes_normSqMulRound (τ := τ) (m := m₁) (N := k) hS
     (ρ := Env.frame [n + 1, k] [a, t, p]) (cnt := .var 1) rfl
     (xs := xs) (tl := t) (pl := p) (R := Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
     (z := fun j => subdiagEntry H (n - k + j)) (v := M.lit 1)
@@ -401,7 +401,7 @@ theorem comptau_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     refine (writes_call_const (hS (.lit 1)) rfl trivial hp').seq_le le_sup_left ?_
     intro m₁ hfr₁ ⟨hp₁, hOne⟩
     have hD₁ := hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) hdp.symm hD'
-    have hloop := writes_loop_normSqMulRound (τ := τ) (m := m₁) (N := zs.length) hS
+    have hloop := loop_writes_normSqMulRound (τ := τ) (m := m₁) (N := zs.length) hS
       (ρ := Env.frame [zs.length] [d, t, p]) (cnt := .var 0) rfl
       (xs := fun i => (d.1, d.2 + 2 * i)) (tl := t) (pl := p)
       (R := Store.inBlock d.1 d.2 (2 * zs.length)) (z := fun j => zs.getD j 0) (v := M.lit 1)

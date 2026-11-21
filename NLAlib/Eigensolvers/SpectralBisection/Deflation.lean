@@ -22,8 +22,8 @@ successful-run premise is part of a primitive contract.
 ## Main results
 
 * `NLAlib.SpectralBisection.sampledGaussian` is the actual scaled sample matrix.
-* `NLAlib.SpectralBisection.writes_deflateSamples` connects the sample program to that matrix.
-* `NLAlib.SpectralBisection.writes_deflate` returns the actual selected QR columns.
+* `NLAlib.SpectralBisection.deflateSamples_writes` connects the sample program to that matrix.
+* `NLAlib.SpectralBisection.deflate_writes` returns the actual selected QR columns.
 -/
 
 @[expose] public section
@@ -45,7 +45,7 @@ omit [Inhabited K] [Has MatrixOp Op] in
 span and scale cell are spatially disjoint from its output span; shared buffers are permitted.
 Explicit side and slot bounds ensure every stored sample used by the program exists.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_deflateSamples {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
+theorem deflateSamples_writes {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {n k lo side : ℕ} {sg sq g : ℕ × ℕ}
     (S : ℕ → ℕ → K × K) (a : K) (hside : side < 2) (hslot : lo + k ≤ n)
     (hl : m.Live [sg, sq, g])
@@ -97,7 +97,7 @@ theorem writes_deflateSamples {M : Machine K} {I : Interp Op Tst K} (hS : IsScal
     have hsrc := C.entryBlock_le_inBlock sg.1 sg.2 ((2 * n) * n)
       (Idx.add_lt_mul hjn hin)
     have hdst := C.entryBlock_le_inBlock g.1 g.2 (k * k) (Idx.add_lt_mul hj hi)
-    have hw := Pair.writes_multiply hS (md := md) (τ := τ) (m := m')
+    have hw := Pair.multiply_writes hS (md := md) (τ := τ) (m := m')
       (x := (sg.1, sg.2 + 2 * (n * (2 * (lo + j) + side) + i)))
       (c := sq) (z := (g.1, g.2 + 2 * (j * k + i)))
       (by simpa [C, EntryCodec.entryBlock, Nat.mul_comm n] using hsgg.mono hsrc hdst)
@@ -119,7 +119,7 @@ theorem writes_deflateSamples {M : Machine K} {I : Interp Op Tst K} (hS : IsScal
 copies the first requested QR columns. All four scratch matrices are scoped. The output may
 alias an original input: its copy occurs after every input-dependent computation.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_deflate {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
+theorem deflate_writes {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
     {mm : ∀ {l m n : ℕ}, Matrix (Fin l) (Fin m) (K × K) →
       Matrix (Fin m) (Fin n) (K × K) → Matrix (Fin l) (Fin n) (K × K)}
     {qr : ∀ {m n : ℕ}, Matrix (Fin m) (Fin n) (K × K) →
@@ -160,7 +160,7 @@ theorem writes_deflate {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
   have hP₀ := (hBelow.readBlock hpL p.2 (2 * (k * k))).trans hP
   have hz₀ : z.2 + 2 * (k * r) ≤ s.len z.1 := by rw [(hBelow z.1 hzL).1]; exact hz
   refine (writes_frame rfl rfl (by simp [Mem.Live, hs]; omega)
-    (writes_deflateSamples hS S a hside hslot (by simp [Mem.Live, hs]; omega)
+    (deflateSamples_writes hS S a hside hslot (by simp [Mem.Live, hs]; omega)
       hsg₀ hsq₀ (by simpa using hGlen.ge)
       (Fp.disj_inBlock_of_ne (by dsimp only; omega))
       (Fp.disj_inBlock_of_ne (by dsimp only; omega)))).seq_le
@@ -189,7 +189,7 @@ theorem writes_deflate {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
     rw [hfr₃.len_eq, hfr₂.len_eq, hfr₁.len_eq]; exact hz₀
   refine (writes_frame rfl rfl (by
     simp [Mem.Live, hfr₃.length_eq, hfr₂.length_eq, hfr₁.length_eq, hs]; omega)
-    (PairMatrix.writes_copy hS (by
+    (PairMatrix.copy_writes hS (by
       simp [Mem.Live, hfr₃.length_eq, hfr₂.length_eq, hfr₁.length_eq, hs]; omega)
       (Or.inl (Fp.disj_inBlock_of_ne (by dsimp only; omega))) hread hz₃)).mono le_sup_left ?_
   exact fun _ _ hp => ⟨hp.1.trans (hpos₃.trans (hpos₂.trans hpos₁)), hp.2⟩

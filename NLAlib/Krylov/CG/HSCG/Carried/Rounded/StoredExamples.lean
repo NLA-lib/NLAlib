@@ -16,13 +16,15 @@ satisfy the complete precision window, yielding the scalar-only stored CG certif
 
 ## Main results
 
-* `NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Examples.supply`: nonempty raw spectral inputs.
-* `NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Examples.algorithm`: positive-roundoff scalar CG.
+* `NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.Examples.supply`: nonempty raw
+  spectral inputs.
+* `NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.Examples.algorithm`: positive-roundoff
+  scalar CG.
 -/
 
 @[expose] public section
 
-namespace NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Examples
+namespace NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.Examples
 
 open Ops
 open scoped Matrix
@@ -46,7 +48,7 @@ theorem denseMatrix_one : StoredOperator.denseMatrix 1 1 [1] = (1 : Matrix (Fin 
 This supplies data and capacity only, without assuming any execution or numerical output. -/
 theorem supply (d : Fin 2 → ℕ) (hd : domain d) :
     ∃ raw rhs : List ℝ, raw.length = d 0 * d 0 ∧ rhs.length = d 0 ∧
-      Stored.accepts (fun _ => 1) (fun _ => 1) d raw rhs := by
+      Certification.accepts (fun _ => 1) (fun _ => 1) d raw rhs := by
   change d = ![1, 1] at hd
   subst d
   refine ⟨[1], [1], by norm_num, by norm_num, ?_⟩
@@ -65,11 +67,11 @@ theorem mul_one_ne_one : (inflMachine (1 / 100000000)).mul 1 1 ≠ 1 := by
 its results by one plus that value, so this certificate is not an exact-arithmetic instance. -/
 noncomputable def algorithm :
     Algorithm (RoundedScalarBlas.model
-      (Stored.problem (fun _ => 1) (fun _ => 1) domain admitted supply)
+      (Certification.problem (fun _ => 1) (fun _ => 1) domain admitted supply)
       (inflMachine (1 / 100000000)))
-      (Stored.scalarSpecification (fun _ => 1) (fun _ => 1) domain admitted supply
+      (Certification.scalarSpecification (fun _ => 1) (fun _ => 1) domain admitted supply
         (fun _ => 64 / 100000000)) := by
-  refine Stored.scalarAlgorithm (fun _ => 1) (fun _ => 1) domain admitted supply
+  refine Certification.scalarAlgorithm (fun _ => 1) (fun _ => 1) domain admitted supply
     (inflMachine (1 / 100000000)) (1 / 100000000) (stdModel_infl (by norm_num))
     (by norm_num) (fun _ => 4 / 100000000) (fun _ => 64 / 100000000) ?_ ?_ ?_ ?_ ?_
   all_goals
@@ -83,4 +85,4 @@ noncomputable def algorithm :
   · norm_num
   · norm_num
 
-end NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Examples
+end NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.Certification.Examples

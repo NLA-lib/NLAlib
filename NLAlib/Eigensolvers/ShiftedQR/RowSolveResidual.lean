@@ -117,7 +117,7 @@ theorem columnResidual_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
         some [(residualPrefix R w j j).re, (residualPrefix R w j j).im]) m := by
   let x : ℕ × ℕ := (v.1, v.2 + 2 * j)
   have hcopy := Writes.of_wp_eq_updBlock
-    (Hermitian.wp_copyPair_of_disj (md := .total) (τ := τ) (x := x) hS
+    (Hermitian.copyPair_wp_of_disj (md := .total) (τ := τ) (x := x) hS
       (Fp.disj_inBlock_of_ne hzv.symm) (HoldsVector.get_re hV j)
       (HoldsVector.get_im hV j) hz rfl)
   have hw : Writes .total I τ Hermitian.copyPair (Env.frame [] [x, z])

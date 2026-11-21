@@ -88,7 +88,7 @@ theorem eval_upNode_split {K Op Tst : Type} [Has ScalarOp Op] [Has MatrixOp Op]
 reading the declared stored kind. All source reads, capacities and spatial assumptions are
 explicit; the selected implementation's correctness is discharged by its checked theorem.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_upNode_shift {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
+theorem upNode_writes_shift {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     [Has MatrixOp Op] [Has IdxTst Tst] {M : Machine K} {dec : K → ℝ}
     {I : Interp Op Tst K} (hS : IsScalar M I) (hQ : IsToNat dec I)
     {τ : Tape K} {m : Mem K} {n d lo k : ℕ} {ua qa ea kd kp t : ℕ × ℕ}
@@ -121,6 +121,6 @@ theorem writes_upNode_shift {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
       (ua.1, ua.2 + 2 * (n * n) * d + 2 * n * lo), (ea.1, ea.2 + n * d + lo)] := by
     simp only [Mem.live_cons, Mem.live_nil, and_true] at hl ⊢
     exact ⟨hl.1, hl.2.2.1, hl.2.2.2.2.2, hl.1, hl.2.2.1⟩
-  simpa only [Writes, Wp, hev] using writes_upShiftResult hS U values s hl' hU hE hs hu he hap
+  simpa only [Writes, Wp, hev] using upShiftResult_writes hS U values s hl' hU hE hs hu he hap
 
 end NLAlib.SpectralBisection

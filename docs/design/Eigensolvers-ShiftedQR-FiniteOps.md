@@ -267,7 +267,7 @@ $\beta$). The worklist's scalar arithmetic is exact in C4 and rounded in P3.
 | T2 | **precision theorem** (Thm 1.4): $\log_2(1/\boldsymbol{u}_{\mathrm{ShQR}}) \le c\,k\log_2(nB\Sigma/(\delta\Gamma\phi))$ with explicit $c$ | L | plan |
 | T3 | relative form ($\delta\|\mathbf{H}\|$, $\Sigma$ computed as $2\|\mathbf{H}\|_{\mathsf F}$) | M | plan |
 | T4 | Hermitian corollary (Remark 1.7, $k = 2$, $B = 1$; optional) | L | plan |
-| T5 | work bound of `roundedAlgorithm` (as `exactAlgorithmWithPolynomialWork`, `Ops-PolynomialWork`) | M | plan |
+| T5 | work bound of `roundedAlgorithm` (as `countedDeflationAlgorithm`, `Ops-PolynomialWork`) | M | plan |
 
 ### Totals
 
@@ -1086,7 +1086,7 @@ same program but not the same run; the headline is restated as a canonical certi
   static count (`stmtWorkMono`, kernel-checked), the second the kernel-call polynomial of the
   pruned tree (`Stmt.keepCalls`, coefficient $8$, degree $4$) times the envelope
   (`Program.exec_lift_le_add_selected`, new in `NLAlib/Ops/SelectedWork.lean`).
-* **Certificate** `roundedShQRAlgorithm` (hypotheses: `admitted`, measurable `Bad`,
+* **Certificate** `shqrAlgorithm` (hypotheses: `admitted`, measurable `Bad`,
   $\beta \ge 0$, `ks ≤ kw`): termination from T1d through `wp_frame`, work from the run bound.
 * **Headline** `roundedShQR_algorithm_measureReal_not_accepts_le`: under T1c's hypotheses, the
   probability that the counted run is not accepted (success, every resource bound, the frame
@@ -1097,5 +1097,5 @@ same program but not the same run; the headline is restated as a canonical certi
   whole tape (`IsTapeLaw`), which covers every window the program reads.
 * **CI.** `scripts/OpsPrograms.lean` imports `NLAlib` only, so a scaffold certificate is not
   inventoried. On promotion it needs the reviewed line
-  `NLAlib.ShiftedQR.roundedShQRAlgorithm hyps=4 uniform=yes confined=yes charged=no
+  `NLAlib.ShiftedQR.shqrAlgorithm hyps=4 uniform=yes confined=yes charged=no
   budget=manifest scratch=manifest`.

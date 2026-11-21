@@ -18,7 +18,7 @@ actual machine literals; no exact-real arithmetic hypothesis is required.
 ## Main results
 
 * `NLAlib.SpectralBisection.BottomOutput`: the mathematical identity and zero output.
-* `NLAlib.SpectralBisection.writes_bottomResult`: total initialization from disjoint capacity.
+* `NLAlib.SpectralBisection.bottomResult_writes`: total initialization from disjoint capacity.
 -/
 
 @[expose] public section
@@ -60,7 +60,7 @@ theorem readsOnly_bottomOutput {K : Type} (M : Machine K) (k : ℕ) (u e : ℕ �
 
 /-- Literal identity and zero eigenvalues are initialized from output capacity alone.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_bottomResult {K Op Tst : Type} [Has ScalarOp Op]
+theorem bottomResult_writes {K Op Tst : Type} [Has ScalarOp Op]
     {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I) {τ : Tape K}
     {m : Mem K} {k : ℕ} {u e : ℕ × ℕ} (hl : m.Live [u, e])
     (hu : u.2 + 2 * (k * k) ≤ m.store.len u.1) (he : e.2 + k ≤ m.store.len e.1)
@@ -70,7 +70,7 @@ theorem writes_bottomResult {K Op Tst : Type} [Has ScalarOp Op]
       (Store.inBlock u.1 u.2 (2 * (k * k)) ⊔ Store.inBlock e.1 e.2 k)
       (fun m' => m'.pos = m.pos ∧ BottomOutput M k u e m'.store) m := by
   simp only [Mem.live_cons, Mem.live_nil, and_true] at hl
-  refine (writes_frame rfl rfl (by room) (PairMatrix.writes_identity hS hu)).seq
+  refine (writes_frame rfl rfl (by room) (PairMatrix.identity_writes hS hu)).seq
     fun m₁ hfr ⟨hU, hp⟩ => ?_
   have hU' := PairMatrix.holdsEntries_of_holdsVec hU
   have hz : e.2 + k ≤ m₁.store.len e.1 := by rw [hfr.len_eq]; exact he

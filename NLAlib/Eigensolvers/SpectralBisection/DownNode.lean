@@ -16,7 +16,7 @@ branch returns one existing mathematical bisection-step constructor in the level
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_downNode`: the actual active-slot dispatch stores its step.
+* `NLAlib.SpectralBisection.downNode_writes`: the actual active-slot dispatch stores its step.
 -/
 
 @[expose] public section
@@ -28,7 +28,7 @@ open Ops
 /-- Every active slot returns the existing mathematical step, including both leaf cases and
 all nonleaf outcomes. Writable geometry and operation contracts replace success-only premises.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_downNode {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
+theorem downNode_writes {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
     [Has MatrixOp Op] [Has CmpTst Tst] [Has IdxTst Tst]
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp dec I)
@@ -83,7 +83,7 @@ theorem writes_downNode {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has I
     refine (writes_ifPos (n := 1) (P := fun ν => ν.pos = μ.pos ∧
       StoresStep M R n d lo ma ua qa ea sz kd kp leafResult ν) rfl ?_).seq_le le_sup_left ?_
     · simp only [Nat.zero_lt_one, if_true]
-      have hLeaf := writes_downLeaf (dec := dec) (mm := mm) (qr := qr) (unif := M.mul)
+      have hLeaf := downLeaf_writes (dec := dec) (mm := mm) (qr := qr) (unif := M.mul)
         (normal := fun z : K × K => M.normalWords z.1 z.2) (τ := τ)
         (n := n) (d := d) (lo := lo) (ma := ma) (ua := ua) (ea := ea) (kd := kd)
         (qa := qa) (sz := sz) (kp := kp) hS hL true R A (by room)
@@ -102,7 +102,7 @@ theorem writes_downNode {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has I
     subst ν
     refine writes_ifPos (n := k - 1) rfl ?_
     rw [if_pos (by omega)]
-    have hLarge := writes_downLarge M dec mm qr (τ := τ) (μ := μ)
+    have hLarge := downLarge_writes M dec mm qr (τ := τ) (μ := μ)
       (n := n) (L := L) (fuel := fuel) (d := d) (lo := lo) (k := k)
       (par := par) (lv := lv) (su := su) (sg := sg) (ma := ma) (ua := ua)
       (qa := qa) (ea := ea) (sz := sz) (kd := kd) (kp := kp) (c := c) (t := t)

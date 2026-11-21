@@ -174,7 +174,7 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O]
 square root, $\gamma' = \mathrm{fl}(\gamma/\mathrm{fl}(\sqrt N))$ in `Sc[0]`, and the stored
 $\sqrt{1/2}$ in `Sc[1]`, written in the three cells of `Sc` only.
 A step in the proof of `ginibrePerturb_writes_word`. -/
-private theorem writes_scalePrelude {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+private theorem scalePrelude_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hL : IsIndexLit M I) {τ : Tape ℝ} {ρ : Env} {m : Mem ℝ} {F : Fp} {P : Mem ℝ → Prop}
     {e : IExp} {N L : ℕ} {o₁ o₄ o₅ : Operand}
     {i₂ u₂ i₃ u₃ i₆ u₆ i₇ u₇ : List Operand} {next : Stmt O Q} {q : ℕ × ℕ} {γ : ℝ}
@@ -253,8 +253,8 @@ omit [Has IndexOp O] in
 the words $w_0, w_1$ at `G[2j]`, `G[2j+1]`, the six calls store $\mathrm{fl}(a_k +
 \mathrm{fl}(\mathrm{fl}(w_k\sqrt{1/2})\gamma'))$ at `A[2j + k]`, writing only those cells and the
 two words of `G`.
-A step in the proof of `writes_perturbLoop`. -/
-private theorem writes_perturbEntry {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+A step in the proof of `perturbLoop_writes`. -/
+private theorem perturbEntry_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {ρ : Env} {m : Mem ℝ} {L t zb zo : ℕ} {g h w₀ w₁ a₀ a₁ : ℝ}
     {i₁ u₁ i₂ u₂ i₃ u₃ i₄ u₄ i₅ u₅ i₆ u₆ : List Operand}
     (h₁ : Operand.evalList ρ i₁ = some [(L, t), (L + 1, 1)])
@@ -333,7 +333,7 @@ omit [Has IndexOp O] in
 /-- **The perturbation loop**: with $\gamma'$ in `Sc[0]`, $\sqrt{1/2}$ in `Sc[1]`, the words $x_t$
 at `G[t]` and $\mathbf{A}$ at `a`, the $N^2$ rounds store `NLAlib.Ops.Machine.perturbWords` at `a`.
 A step in the proof of `ginibrePerturb_writes_word`. -/
-private theorem writes_perturbLoop {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+private theorem perturbLoop_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {ρ : Env} {m : Mem ℝ} {N L : ℕ} {n : IExp} {a : ℕ × ℕ} {γ : ℝ}
     {A : Matrix (Fin N) (Fin N) ℂ} {x : ℕ → ℝ}
     {i₁ u₁ i₂ u₂ i₃ u₃ i₄ u₄ i₅ u₅ i₆ u₆ : List Operand} (hn : n.eval ρ.idx = some (N * N))
@@ -384,7 +384,7 @@ private theorem writes_perturbLoop {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     have ha₀ := hW.get_re r c
     have ha₁ := hW.get_im r c
     rw [hold, hjc] at ha₀ ha₁
-    refine (writes_perturbEntry hS (h₁ j) (h₁' j) (h₂ j) (h₂' j) (h₃ j) (h₃' j) (h₄ j) (h₄' j)
+    refine (perturbEntry_writes hS (h₁ j) (h₁' j) (h₂ j) (h₂' j) (h₃ j) (h₃' j) (h₄ j) (h₄' j)
       (h₅ j) (h₅' j) (h₆ j) (h₆' j) haL (by pomega) (by pomega) (by pomega) hg' hh'
       (hx' _ le_rfl (by pomega)) (hx' _ (by pomega) (by pomega)) ha₀ ha₁).mono
       (sup_le (fun b i hi => Or.inr (hi.1 ▸ le_rfl))
@@ -824,7 +824,7 @@ theorem ginibrePerturb_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
   rintro m₁ hf₁ ⟨hp₁, hr₁⟩
   have hq₁ : m₁.store.get q.1 q.2 = some γ :=
     (hf₁.2 _ _ (Store.not_inBlock_of (by pomega))).trans (hBelow.get_of hql hq)
-  refine writes_scalePrelude hS hL rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl hq₁
+  refine scalePrelude_writes hS hL rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl hq₁
     (by pomega) (by rw [hf₁.length_eq]; pomega) (by rw [hf₁.len_eq]; exact hSc)
     (hab _ _ _ (by pomega)) ?_
   intro m₂ hf₂ hp₂ hg₂ hh₂
@@ -834,7 +834,7 @@ theorem ginibrePerturb_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
   have hA₂ : HoldsMatrix a A m₂.store :=
     ((hA.of_below hBelow hal).of_eqOff hf₁ (Fp.disj_inBlock_of_ne (by pomega))).of_eqOff hf₂
       (Fp.disj_inBlock_of_ne (by pomega))
-  refine (writes_perturbLoop hS rfl (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl)
+  refine (perturbLoop_writes hS rfl (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl)
     (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl)
     (fun _ => rfl) (fun _ => rfl) (by pomega) (by rw [hf₂.length_eq, hf₁.length_eq]; exact hlen)
     (by rw [hf₂.len_eq, hf₁.len_eq]; exact hG) hg₂ hh₂ hx₂ hA₂).mono le_rfl ?_

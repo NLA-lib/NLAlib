@@ -47,7 +47,7 @@ columns of `V`, at the offset `b * b * (j * (j + 3) / 2)`. The scratch block of
 
 * `NLAlib.Krylov.GolubKahan.Band.applyColumns`, `NLAlib.Krylov.GolubKahan.Band.step`,
   `NLAlib.Krylov.GolubKahan.Band.solve`, `NLAlib.Krylov.GolubKahan.Band.solveRoutine`,
-  `NLAlib.Krylov.GolubKahan.Band.program`: the program.
+  `NLAlib.Krylov.GolubKahan.Band.solveProgram`: the program.
 * `NLAlib.Krylov.GolubKahan.Band.coefOffsetR`, `NLAlib.Krylov.GolubKahan.Band.coefOffsetS`,
   `NLAlib.Krylov.GolubKahan.Band.outLens`: the packed layout.
 * `NLAlib.Krylov.GolubKahan.Band.IsStoredRun`, `NLAlib.Krylov.GolubKahan.Band.IsExactStoredRun`,
@@ -63,10 +63,10 @@ columns of `V`, at the offset `b * b * (j * (j + 3) / 2)`. The scratch block of
   depend on the name of the empty column type.
 * `NLAlib.Krylov.GolubKahan.Band.coefOffsetR_succ`,
   `NLAlib.Krylov.GolubKahan.Band.coefOffsetS_succ`: consecutive block columns are adjacent.
-* `NLAlib.Krylov.GolubKahan.Band.writes_applyColumns_of`,
-  `NLAlib.Krylov.GolubKahan.Band.writes_applyColumns`,
-  `NLAlib.Krylov.GolubKahan.Band.writes_applyColumns_error`: a block of products.
-* `NLAlib.Krylov.GolubKahan.Band.writes_step_of`, `NLAlib.Krylov.GolubKahan.Band.writes_steps`,
+* `NLAlib.Krylov.GolubKahan.Band.applyColumns_writes_of`,
+  `NLAlib.Krylov.GolubKahan.Band.applyColumns_writes`,
+  `NLAlib.Krylov.GolubKahan.Band.applyColumns_writes_error`: a block of products.
+* `NLAlib.Krylov.GolubKahan.Band.step_writes_of`, `NLAlib.Krylov.GolubKahan.Band.steps_writes`,
   `NLAlib.Krylov.GolubKahan.Band.StoredPrefix.succ`,
   `NLAlib.Krylov.GolubKahan.Band.StoredPrefix.exists_storedOut`: the rounds of the driver,
   from which `NLAlib.Krylov.GolubKahan.Band.solveRoutine_meets_of` is proved.
@@ -178,7 +178,7 @@ def solveRoutine (stream : ℕ) : Routine Op Tst :=
 
 /-- The fixed program: four dimensions `[m, n, b, q]` and the five output buffers `U`, `V`,
 `G`, `R`, `S`. -/
-def program (stream : ℕ) : Program Op Tst 4 5 := (solveRoutine stream).close 4 5
+def solveProgram (stream : ℕ) : Program Op Tst 4 5 := (solveRoutine stream).close 4 5
 
 /-! ### The relation between the stored blocks -/
 
@@ -295,7 +295,7 @@ length `c`, one output block of length `r` in another buffer, no window) whose r
 block `xs` writes a block `ys` with `rel` of every pair of decoded columns. The position of the
 tape does not move. Zero dimensions are included.
 A fragment of `NLAlib.Krylov.GolubKahan.Band.solveRoutine`. -/
-theorem writes_applyColumns_of {dec : K → ℝ} {r c b : ℕ} {Rm : BlockRel K}
+theorem applyColumns_writes_of {dec : K → ℝ} {r c b : ℕ} {Rm : BlockRel K}
     {rel : (Fin c → ℝ) → (Fin r → ℝ) → Prop} {I : Interp Op Tst K} {o : Op}
     (hA : I.Satisfies .total o (Rm.spec (MatvecOperands r c)))
     (hnd : Rm.nd = 2) (hwin : Rm.win [r, c] = 0) (hin : Rm.inLens [r, c] = [c])
@@ -354,7 +354,7 @@ $\mathbf{A}$, the loop over the `b` columns of the readable block `xs` writes a 
 decodes to $\mathbf{A}\mathbf{X}$, $\mathbf{X}$ the decoded input block. The output is in
 another buffer; the position of the tape does not move. Zero dimensions are included.
 A fragment of `NLAlib.Krylov.GolubKahan.Band.solveRoutine`. -/
-theorem writes_applyColumns {dec : K → ℝ} {m n b : ℕ} {A : Matrix (Fin m) (Fin n) ℝ}
+theorem applyColumns_writes {dec : K → ℝ} {m n b : ℕ} {A : Matrix (Fin m) (Fin n) ℝ}
     {I : Interp Op Tst K} {o : Op}
     (hA : I.Satisfies .total o ((matvecRel dec A).spec (MatvecOperands m n)))
     {τ : Tape K} {μ : Mem K} {x y : ℕ × ℕ} {xs : List K} (hxy : x.1 ≠ y.1)
@@ -364,7 +364,7 @@ theorem writes_applyColumns {dec : K → ℝ} {m n b : ℕ} {A : Matrix (Fin m) 
       (Store.inBlock y.1 y.2 (b * m))
       (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock y.1 y.2 (b * m) = some ys ∧
         decodeMatrix dec m b ys = A * decodeMatrix dec n b xs) μ := by
-  refine (writes_applyColumns_of (rel := fun x y => y = A *ᵥ x) hA rfl rfl rfl rfl
+  refine (applyColumns_writes_of (rel := fun x y => y = A *ᵥ x) hA rfl rfl rfl rfl
     (fun _ _ => trivial) (fun _ _ _ h => h) hxy hl hx hy).mono le_rfl ?_
   rintro μ' - ⟨hpos, ys, hys, hcol⟩
   refine ⟨hpos, ys, hys, ?_⟩
@@ -379,7 +379,7 @@ with $\mathbf{A}$ at the allowance $\delta$, the loop over the `b` columns of th
 $\|\mathbf{A}\mathbf{x}_c - \mathbf{w}_c\| \le \delta\|\mathbf{x}_c\|$ in the Euclidean norm,
 $\mathbf{x}_c$ the decoded column of the input. The output is in another buffer; the position
 of the tape does not move. A fragment of `NLAlib.Krylov.GolubKahan.Band.solveRoutine`. -/
-theorem writes_applyColumns_error {dec : K → ℝ} {m n b : ℕ} {A : Matrix (Fin m) (Fin n) ℝ}
+theorem applyColumns_writes_error {dec : K → ℝ} {m n b : ℕ} {A : Matrix (Fin m) (Fin n) ℝ}
     {δ : ℝ} {I : Interp Op Tst K} {o : Op}
     (hA : I.Satisfies .total o ((matvecErrorRel dec A δ).spec (MatvecOperands m n)))
     {τ : Tape K} {μ : Mem K} {x y : ℕ × ℕ} {xs : List K} (hxy : x.1 ≠ y.1)
@@ -391,7 +391,7 @@ theorem writes_applyColumns_error {dec : K → ℝ} {m n b : ℕ} {A : Matrix (F
         ∀ c, ‖WithLp.toLp 2 (A *ᵥ (decodeMatrix dec n b xs).col c -
           (decodeMatrix dec m b ys).col c)‖ ≤
             δ * ‖WithLp.toLp 2 ((decodeMatrix dec n b xs).col c)‖) μ :=
-  writes_applyColumns_of
+  applyColumns_writes_of
     (rel := fun x y => ‖WithLp.toLp 2 (A *ᵥ x - y)‖ ≤ δ * ‖WithLp.toLp 2 x‖) hA rfl rfl rfl rfl
     (fun _ _ => trivial) (fun _ _ _ h => h) hxy hl hx hy
 
@@ -448,7 +448,7 @@ the step, the step writes only the cells of
 block related by `Mv` to block `j` of `V`, and block `j + 1` of `V` as a stored extension by a
 block related by `Rmv` to block `j` of `U`.
 A fragment of `NLAlib.Krylov.GolubKahan.Band.solveRoutine`. -/
-theorem writes_step_of {dec : K → ℝ} {m n b j : ℕ} {Ext : ExtendPred ℝ}
+theorem step_writes_of {dec : K → ℝ} {m n b j : ℕ} {Ext : ExtendPred ℝ}
     {ok : ℕ → ℕ → ℕ → Prop} {Mv : Matrix (Fin n) (Fin b) ℝ → Matrix (Fin m) (Fin b) ℝ → Prop}
     {Rmv : Matrix (Fin m) (Fin b) ℝ → Matrix (Fin n) (Fin b) ℝ → Prop} {I : Interp Op Tst K}
     (hMv : AppliesColumns dec I (Has.inj OperatorPairOp.matvec) m n b Mv)
@@ -487,7 +487,7 @@ theorem writes_step_of {dec : K → ℝ} {m n b j : ℕ} {Ext : ExtendPred ℝ}
     (le_sup_of_le_right (Fp.inBlock_le_inBuf _ _ _)) fun μ₁ hfr₁ ⟨hp₁, ys, hys, hrel⟩ => ?_
   have hlen₁ := hfr₁.len_eq
   have hL₁ := hfr₁.length_eq
-  refine Writes.seq_le (writes_extend_product hO (X := (V.1, V.2 + j * b * n)) rfl rfl rfl hUW
+  refine Writes.seq_le (extend_writes_product hO (X := (V.1, V.2 + j * b * n)) rfl rfl rfl hUW
     (by omega) (by omega) hokU
     (by simp only [Mem.live_cons, Mem.live_nil, and_true, hL₁]; exact ⟨hUL, hWL, hRL⟩)
     (hfr₁.readBlock_of hu fun i _ hF => hUW hF.1) hys (by rw [hlen₁]; exact hUr)
@@ -509,7 +509,7 @@ theorem writes_step_of {dec : K → ℝ} {m n b j : ℕ} {Ext : ExtendPred ℝ}
   have hv₃ : μ₃.store.readBlock V.1 V.2 ((j + 1) * b * n) = some vs :=
     hfr₃.readBlock_of (hfr₂.readBlock_of (hfr₁.readBlock_of hv fun i _ hF => hVW hF.1)
       fun i _ hF => by simp only [fpNF] at hF; omega) fun i _ hF => hVW hF.1
-  refine (writes_extend_product hO (X := (U.1, U.2 + j * b * m)) rfl rfl rfl hVW (by omega)
+  refine (extend_writes_product hO (X := (U.1, U.2 + j * b * m)) rfl rfl rfl hVW (by omega)
     (by omega) hokV
     (by simp only [Mem.live_cons, Mem.live_nil, and_true, hfr₃.length_eq, hL₂]
         exact ⟨hVL, hWL, hSL⟩)
@@ -653,7 +653,7 @@ room for a block of either side, the `q` framed block steps write only cells of 
 that contains the cells of every step, do not move the tape, and leave the stored prefix of
 `q` steps. The loop is given by its evaluated bound, dimensions and operands.
 A fragment of `NLAlib.Krylov.GolubKahan.Band.solveRoutine`. -/
-theorem writes_steps {dec : K → ℝ} {m n b q : ℕ} {Ext : ExtendPred ℝ}
+theorem steps_writes {dec : K → ℝ} {m n b q : ℕ} {Ext : ExtendPred ℝ}
     {ok : ℕ → ℕ → ℕ → Prop} {Mv : Matrix (Fin n) (Fin b) ℝ → Matrix (Fin m) (Fin b) ℝ → Prop}
     {Rmv : Matrix (Fin m) (Fin b) ℝ → Matrix (Fin n) (Fin b) ℝ → Prop} {I : Interp Op Tst K}
     (hMv : AppliesColumns dec I (Has.inj OperatorPairOp.matvec) m n b Mv)
@@ -693,7 +693,7 @@ theorem writes_steps {dec : K → ℝ} {m n b q : ℕ} {Ext : ExtendPred ℝ}
   have h6 := coefOffsetS_succ b j
   have hlen := hfr.len_eq
   have hl' := hl.congr hfr.length_eq
-  refine ((writes_step_of hMv hRmv hO (hokU j hj) (hokV j hj) hbuf' hl' hus hvs
+  refine ((step_writes_of hMv hRmv hO (hokU j hj) (hokV j hj) hbuf' hl' hus hvs
     (by rw [hlen]; omega) (by rw [hlen]; omega) (by rw [hlen]; omega) (by rw [hlen]; omega)
     (by rw [hlen]; exact hWm) (by rw [hlen]; exact hWn)).in_frame (hd j) (ha j) hl').mono
     (hF j hj) fun μ'' hfr' ⟨hp', hL, hR⟩ => ⟨hp'.trans hp, hpre.succ hbuf hlt hfr' hL hR⟩

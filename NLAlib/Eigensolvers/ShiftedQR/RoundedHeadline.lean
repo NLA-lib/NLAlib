@@ -539,7 +539,7 @@ theorem roundedRange_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
             RoundedPopped H₀ e thr ps a t p st out w r f j M lo d rest done A roots μ)
         (RoundedCopied H₀ e thr ps a t p st out w r f j lo d) 0 := fun ds args hds hargs =>
     PWrites.of_writes le_rfl fun μ τ ⟨M, rest, done, A, roots, hHM, hP⟩ =>
-      ((hP.writes_copyToWork (tape := τ) hS).in_frame hds hargs
+      ((hP.copyToWork_writes (tape := τ) hS).in_frame hds hargs
         (hP.1.live_of_subset (by simp))).mono le_rfl fun μ₁ _ ⟨hP₁, hW₁⟩ =>
           ⟨M, rest, done, A, roots, hHM, hP₁, hW₁⟩
   unfold roundedProcessRangeWith
@@ -605,7 +605,7 @@ theorem roundedWorklistRound_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
     hI hloc (by positivity)
     (PWrites.of_writes (F := Store.inBlock st.1 st.2 1 ⊔ Store.inBlock r.1 r.2 2) le_rfl
       fun μ τ ⟨⟨M, hHM, hst⟩, cnt, hcnt, hpos⟩ =>
-        ((hst.writes_rangePop (tape := τ) hS hL hQ hNat hcnt hpos).in_frame rfl rfl
+        ((hst.rangePop_writes (tape := τ) hS hL hQ hNat hcnt hpos).in_frame rfl rfl
           (hst.1.live_of_subset (by simp))).mono le_rfl fun μ₁ _ h => ⟨M, hHM, h⟩) ?_).mono
     (fun _ h => h) (by fp_sub [roundedWorklistFp]) (fun _ h => h) (by simp)
   refine PWrites.bindIdx hI (B := n + 1) rfl rfl

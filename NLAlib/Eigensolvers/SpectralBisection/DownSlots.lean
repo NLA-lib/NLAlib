@@ -20,7 +20,7 @@ every active slot, without introducing an execution-stage record.
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_downNodes`: the actual size-query loop stores all active steps.
+* `NLAlib.SpectralBisection.downNodes_writes`: the actual size-query loop stores all active steps.
 -/
 
 @[expose] public section
@@ -40,7 +40,7 @@ abbrev downSlotsBody {Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op]
 /-- One stored-size query and its active-node branch satisfy total correctness from actual
 word reads and node output geometry. Inactive slots perform no node call.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_downSlot {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
+theorem downSlot_writes {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
     [Has MatrixOp Op] [Has CmpTst Tst] [Has IdxTst Tst]
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp dec I)
@@ -85,7 +85,7 @@ theorem writes_downSlot {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has I
   by_cases hpos : 0 < k
   · rw [if_pos hpos]
     have hg := hgeometry hpos
-    have hn := writes_downNode M dec mm qr (τ := τ) (μ := μ)
+    have hn := downNode_writes M dec mm qr (τ := τ) (μ := μ)
       (n := n) (L := L) (fuel := fuel) (d := d) (lo := lo) (k := k)
       (par := par) (lv := lv) (su := su) (sg := sg) (ma := ma) (ua := ua)
       (qa := qa) (ea := ea) (sz := sz) (kd := kd) (kp := kp) (c := c) (t := t)
@@ -103,7 +103,7 @@ theorem writes_downSlot {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has I
 per positive-size slot. A partition of slot intervals and one apart collection of output levels
 retain all completed outcomes; pending inputs are protected by the exact prefix frame.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_downNodes {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
+theorem downNodes_writes {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
     [Has MatrixOp Op] [Has CmpTst Tst] [Has IdxTst Tst]
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp dec I)
@@ -197,7 +197,7 @@ theorem writes_downNodes {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has 
       exact hp.mono le_rfl le_sup_right
     have hLive : μ'.Live [par, lv, su, sg, ma, ua, qa, ea, sz, kd, kp, c, t] := by
       simpa only [Mem.Live, hfr.length_eq] using hl
-    have hSlot := writes_downSlot M dec mm qr hS hL hC hMM hQR hQ
+    have hSlot := downSlot_writes M dec mm qr hS hL hC hMM hQR hQ
       (τ := τ) (μ := μ') (L := L) (fuel := fuel) (A lo) R0 beta R eps (U lo) S
       (hslot lo hi) hexact hLive (by rw [hfr.len_eq]; exact ht) hsize
       (fun hpos => Mem.readBlocks_of_eqOff hfrCoarse (hinput hpos) (hread lo hi hpos))

@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Krylov.CG.HSCG.Carried.Rounded
+public import NLAlib.Krylov.CG.HSCG.Carried.Rounded.Step
 public import NLAlib.ForMathlib.Analysis.InnerProductSpace.PiL2
 
 /-!

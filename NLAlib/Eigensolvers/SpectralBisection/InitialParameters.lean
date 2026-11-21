@@ -17,7 +17,7 @@ shared scalar-block rule and spatial separation, including views of the same buf
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_initialParameters`: the root level stores its supplied words.
+* `NLAlib.SpectralBisection.initialParameters_writes`: the root level stores its supplied words.
 -/
 
 @[expose] public section
@@ -30,7 +30,7 @@ variable {K Op Tst : Type} [Has ScalarOp Op] {M : Machine K}
 
 /-- The actual supplied radius and tolerance are copied into the root level pair.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_initialParameters {I : Interp Op Tst K} (hS : IsScalar M I)
+theorem initialParameters_writes {I : Interp Op Tst K} (hS : IsScalar M I)
     {τ : Tape K} {pb po lb lo : ℕ} {m : Mem K} (R eps : K)
     (hPar : m.store.readBlock pb po 2 = some [R, eps])
     (hdis : Fp.Disj (Store.inBlock pb po 2) (Store.inBlock lb lo 2))

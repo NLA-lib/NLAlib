@@ -82,7 +82,7 @@ needs a representation bridge.
 
 The solver model wrappers use the model's actual declared workspace. Linked-profile results
 transfer primitive counts through sequential/pairwise BLAS lowering. Ordinary Lanczos also
-has `SequentialCertification.algorithm` for the actual sequential scalar tree, with a fresh
+has `Linked.Certification.algorithm` for the actual sequential scalar tree, with a fresh
 full canonical instrumented manifest, work/span and payload bounds. Its reduction-error
 budgets are derived from the scalar unit roundoff independently of the high-level BLAS scheme.
 A conditional profile-transfer theorem alone is not that canonical certificate.

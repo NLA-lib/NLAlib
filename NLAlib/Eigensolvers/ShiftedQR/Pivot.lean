@@ -45,7 +45,7 @@ def checkComplexPivot : Stmt Op Tst := ops% [] (Y, Flag) → (Flag) {
 
 omit [Has CmpTst Tst] in
 /-- A step in the proof of `checkComplexPivot_writes`. -/
-private theorem writes_setFlag {M : Machine ℝ} {I : Interp Op Tst ℝ}
+private theorem setFlag_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {y f : ℕ × ℕ} (hf : f.2 + 1 ≤ m.store.len f.1) :
     Writes .total I τ (.call (Has.inj (ScalarOp.lit 1)) [] [] [⟨1, .var 1⟩])
@@ -85,7 +85,7 @@ theorem checkComplexPivot_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     by_cases hi : yv.im = 0
     · simp only [id_eq, hi, decide_true] at htest1
       refine writes_ite rfl rfl htest1 ?_
-      refine (writes_setFlag (τ := τ) hS hE hf).mono le_rfl ?_
+      refine (setFlag_writes (τ := τ) hS hE hf).mono le_rfl ?_
       intro μ _ ⟨hp, hflag⟩
       exact ⟨hp, Or.inr ⟨hflag, Complex.ext hr hi⟩⟩
     · simp only [id_eq, hi, decide_false] at htest1

@@ -16,7 +16,7 @@ updated exactly in place or copied between disjoint regions of one arena.
 ## Main results
 
 * `NLAlib.Ops.scalarBroadcast`: the explicit vector/scalar loop.
-* `NLAlib.Ops.writes_scalarBroadcast`: its total pointwise mathematical result.
+* `NLAlib.Ops.scalarBroadcast_writes`: its total pointwise mathematical result.
 -/
 
 @[expose] public section
@@ -30,7 +30,7 @@ def scalarBroadcast {Op Tst : Type} (o : Op) : Stmt Op Tst :=
 
 /-- A stored broadcast operation returns its pointwise value. The vector operands may alias
 exactly; the broadcast scalar must be disjoint from the entire output vector. -/
-theorem writes_scalarBroadcast {K Op Tst : Type} {o : Op} {f : K → K → K}
+theorem scalarBroadcast_writes {K Op Tst : Type} {o : Op} {f : K → K → K}
     {I : Interp Op Tst K} (hI : I.IsFn .total o (.bin fun x y => some (f x y)) AnyOperands)
     {τ : Tape K} {m : Mem K} {n : ℕ} {x a y : ℕ × ℕ} {v : ℕ → K} {c : K}
     (hx : m.store.HoldsVec x.1 x.2 n v) (ha : m.store.get a.1 a.2 = some c)
@@ -61,7 +61,7 @@ theorem writes_scalarBroadcast {K Op Tst : Type} {o : Op} {f : K → K → K}
     Store.get_upd_self hz _, hpos⟩
 
 /-- Packed vector readback of the same broadcast loop. -/
-theorem writes_scalarBroadcast_readBlock {K Op Tst : Type} [Inhabited K]
+theorem scalarBroadcast_writes_readBlock {K Op Tst : Type} [Inhabited K]
     {o : Op} {f : K → K → K} {I : Interp Op Tst K}
     (hI : I.IsFn .total o (.bin fun x y => some (f x y)) AnyOperands)
     {τ : Tape K} {m : Mem K} {n : ℕ} {x a y : ℕ × ℕ} {xs : List K} {c : K}
@@ -73,7 +73,7 @@ theorem writes_scalarBroadcast_readBlock {K Op Tst : Type} [Inhabited K]
       (Store.inBlock y.1 y.2 n)
       (fun m' => m'.pos = m.pos ∧
         m'.store.readBlock y.1 y.2 n = some (xs.map fun v => f v c)) m := by
-  refine (writes_scalarBroadcast hI (Store.holdsVec_of_readBlock hx) ha hy hxy hay).mono
+  refine (scalarBroadcast_writes hI (Store.holdsVec_of_readBlock hx) ha hy hxy hay).mono
     le_rfl ?_
   intro m' _ ⟨hv, hp⟩
   refine ⟨hp, Store.readBlock_eq_some_iff.mpr ⟨?_, ?_⟩⟩

@@ -21,15 +21,17 @@ pairing stopping cache, and implements both matrix actions through dense scalar 
 
 ## Main results
 
-* `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.problem`: the raw seven-buffer problem.
-* `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.program`: the complete scalar-only tree.
-* `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.specification`: physical prefix and complete resources.
-* `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.algorithm`: total rounded scalar PCG certificate.
+* `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.problem`: the raw seven-buffer problem.
+* `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.program`: the complete scalar-only tree.
+* `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.specification`: physical prefix and complete
+  resources.
+* `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.algorithm`: total rounded scalar PCG
+  certificate.
 -/
 
 @[expose] public section
 
-namespace NLAlib.Krylov.CG.HSPCG.Rounded.Stored
+namespace NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification
 
 open Ops
 open scoped Matrix
@@ -145,13 +147,13 @@ noncomputable def algorithm (M : Machine ℝ) (u : ℝ)
       (problem lowerA upperA lowerP upperP domain admitted supply) M)
       (specification lowerA upperA lowerP upperP domain admitted supply M u hM hu E) := by
   refine Routine.algorithm (r := 2) (b := 7)
-    (P := problem lowerA upperA lowerP upperP domain admitted supply) storedRoutine
-    (fun d _ => storedSpec hM hu (d 0) (E d) (lowerA d) (upperA d) (lowerP d) (upperP d))
+    (P := problem lowerA upperA lowerP upperP domain admitted supply) zeroStartRoutine
+    (fun d _ => zeroStartSpec hM hu (d 0) (E d) (lowerA d) (upperA d) (lowerP d) (upperP d))
     (fun _ x => [x.val.1.1 0, x.val.1.1 1, x.val.1.2])  ?_ ?_ ?_
     (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) ?_
   · intro d hd x I hI
     obtain ⟨hS, hCmp⟩ := RoundedScalarBlas.model_laws hI
-    exact storedRoutine_meets hS hCmp hM hu (hAccuracy d hd) (ha d hd) (hp d hd) (hAp d hd)
+    exact zeroStartRoutine_meets hS hCmp hM hu (hAccuracy d hd) (ha d hd) (hp d hd) (hAp d hd)
       (hPp d hd)
   · intro d hd x
     let μ := (problem lowerA upperA lowerP upperP domain admitted supply).initial d x
@@ -183,4 +185,4 @@ noncomputable def algorithm (M : Machine ℝ) (u : ℝ)
     rw [initialBytes_problem]
     exact le_rfl
 
-end NLAlib.Krylov.CG.HSPCG.Rounded.Stored
+end NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification

@@ -490,7 +490,6 @@ public import NLAlib.Krylov.CG.HSCG.Carried.Certification
 public import NLAlib.Krylov.CG.HSCG.Carried.Exact
 public import NLAlib.Krylov.CG.HSCG.Carried.Initialization
 public import NLAlib.Krylov.CG.HSCG.Carried.Linked
-public import NLAlib.Krylov.CG.HSCG.Carried.Rounded
 public import NLAlib.Krylov.CG.HSCG.Carried.Rounded.Alg
 public import NLAlib.Krylov.CG.HSCG.Carried.Rounded.Bounds
 public import NLAlib.Krylov.CG.HSCG.Carried.Rounded.Certification
@@ -506,6 +505,7 @@ public import NLAlib.Krylov.CG.HSCG.Carried.Rounded.Solve
 public import NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stability
 public import NLAlib.Krylov.CG.HSCG.Carried.Rounded.Standard
 public import NLAlib.Krylov.CG.HSCG.Carried.Rounded.State
+public import NLAlib.Krylov.CG.HSCG.Carried.Rounded.Step
 public import NLAlib.Krylov.CG.HSCG.Carried.Rounded.StoredCertification
 public import NLAlib.Krylov.CG.HSCG.Carried.Rounded.StoredExamples
 public import NLAlib.Krylov.CG.HSCG.Carried.Rounded.StoredRoutine
@@ -683,7 +683,7 @@ public import NLAlib.Krylov.Lanczos.Reorth.Rounded.Spectral
 public import NLAlib.Krylov.Lanczos.Reorth.Rounded.Stability
 public import NLAlib.Krylov.Lanczos.Reorth.Rounded.State
 public import NLAlib.Krylov.Lanczos.Reorth.Rounded.StoredCertification
-public import NLAlib.Krylov.Lanczos.Reorth.Rounded.StoredSolve
+public import NLAlib.Krylov.Lanczos.Reorth.Rounded.StoredRoutine
 public import NLAlib.Krylov.Lanczos.Reorth.Rounds
 public import NLAlib.Krylov.Lanczos.Reorth.Spec
 public import NLAlib.Krylov.Lanczos.Reorth.State
@@ -714,7 +714,7 @@ public import NLAlib.Krylov.Lanczos.Rounded.Solve
 public import NLAlib.Krylov.Lanczos.Rounded.Stability
 public import NLAlib.Krylov.Lanczos.Rounded.State
 public import NLAlib.Krylov.Lanczos.Rounded.StoredCertification
-public import NLAlib.Krylov.Lanczos.Rounded.StoredSolve
+public import NLAlib.Krylov.Lanczos.Rounded.StoredRoutine
 public import NLAlib.Krylov.Lanczos.Rounded.Update
 public import NLAlib.Krylov.Lanczos.Rounds
 public import NLAlib.Krylov.Lanczos.Spec

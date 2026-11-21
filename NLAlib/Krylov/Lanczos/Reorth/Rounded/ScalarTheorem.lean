@@ -11,7 +11,8 @@ public import NLAlib.Krylov.Lanczos.Reorth.Rounded.Spectral
 /-!
 # Scalar Lanczos with full reorthogonalization in rounded arithmetic: one statement
 
-The certificate `NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded.scalarCountedAlgorithm` is unfolded
+The certificate `NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification.scalarCountedAlgorithm`
+is unfolded
 here into one theorem about a run, joined with the orthogonality and the two-sided Ritz value
 bounds of a reorthogonalized run (`NLAlib.LanczosReorthRun.specNorm_transpose_mul_self_sub_one_le`,
 `NLAlib.LanczosReorthRun.eigenvalue_tridiagonal_le_add`,
@@ -21,13 +22,13 @@ cancellation in the reorthogonalization, which the statement reads off the store
 
 ## Main results
 
-* `NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded.exec_scalarProgram_work_le_and_spectral`: the
-  statement.
+* `exec_scalarProgram_work_le_and_spectral`, in the namespace
+  `NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification`: the statement.
 -/
 
 @[expose] public section
 
-namespace NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded
+namespace NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification
 
 open Ops
 open scoped Matrix
@@ -155,4 +156,4 @@ theorem exec_scalarProgram_work_le_and_spectral (M : Machine ℝ) (u : ℝ)
       (by rwa [hδ]) (by rwa [ht]) hi
     simpa only [← htmat, hH, LanczosReorthRun.backwardRadius, hδ] using hlower
 
-end NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded
+end NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification

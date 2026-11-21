@@ -112,7 +112,7 @@ theorem runs_upNode_kernelWeight {K Su Sg : Type} [Inhabited K]
       (fun c m' => Dense.kernelWeight T (Count.original c) ≤ 2 * T k ∧
         m'.pos = m.pos ∧ StoresResult n d lo ua ea
           (step.assemble (M.toFloatMachine dec mm qr unif normal) children) m'.store) := by
-  have htotal := writes_upNode (τ := τ) mm qr unif normal hS hQ hMM step children hStep hChildren
+  have htotal := upNode_writes (τ := τ) mm qr unif normal hS hQ hMM step children hStep hChildren
     hLit hk hl ht hroom hap
   apply Wp.runs_original_weighted (htotal.wp fun _ _ hp => hp)
     (Dense.matrixWeight (MatrixOp.dimensionWeight T)) (fun _ _ => 0) W

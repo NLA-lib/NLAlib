@@ -209,7 +209,7 @@ theorem IsEigenvalueKernels.backwardLeafContract {θ : ℝ} {K : KernelRoutines 
     BackwardLeafContract 0 (smallEigLeaf (O := O) (Q := Q)) I := by
   intro d w o tape μ B _ hB hl hroom _
   unfold smallEigLeaf
-  refine (writes_smallEig hK rfl rfl rfl hl hB hroom).mono le_rfl ?_
+  refine (smallEig_writes hK rfl rfl rfl hl hB hroom).mono le_rfl ?_
   rintro μ' - ⟨-, hO⟩
   exact ⟨K.smallEig d B, 0, by rw [specNorm_zero], by simpa using K.listing d B, hO⟩
 

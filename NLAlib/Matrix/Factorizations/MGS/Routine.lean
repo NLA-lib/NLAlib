@@ -74,7 +74,7 @@ theorem factorRoutine_meets (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I
     have hLive : (Mem.mk store m.pos).Live [y, (m.store.length, 0)] := by
       simp only [Mem.live_cons, Mem.live_nil]
       exact ⟨by omega, hNew, trivial⟩
-    refine ((writes_factorWithScratch hS hB hC _ hLive (by kept)
+    refine ((factorWithScratch_writes hS hB hC _ hLive (by kept)
       (Fp.disj_inBlock_of_ne (Ne.symm (Nat.ne_of_lt hl)))
       (by simpa using ht.ge) (by simpa only [(hBelow y.1 hl).1] using hroom)).in_frame
         rfl rfl hLive).mono (by fp_sub) (fun _ _ h => h)

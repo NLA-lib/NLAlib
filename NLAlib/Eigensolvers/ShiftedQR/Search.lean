@@ -162,7 +162,7 @@ theorem searchStoredWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
   have hsource : Store.inBlock ss.1 (ss.2 + 2 * i) 2 ≤
       Store.inBlock ss.1 ss.2 (2 * candidates.length) :=
     Fp.inBlock_le_inBlock (by omega) (by omega)
-  have hcopy := writes_unaryMap_of_disj_or_eq (md := .total) (τ := τp) (m := m') (f := id)
+  have hcopy := unaryMap_writes_of_disj_or_eq (md := .total) (τ := τp) (m := m') (f := id)
     (x := (ss.1, ss.2 + 2 * i)) (y := s) (n := 2) (hS .copy)
     (Or.inl (hsep.symm.mono (hsource.trans (by fp_sub)) (by fp_sub)))
     hPair (by rw [hfr.len_eq]; exact hs)

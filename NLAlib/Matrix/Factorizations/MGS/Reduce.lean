@@ -19,7 +19,7 @@ The two vector inputs may alias; the coefficient cell is disjoint from both vect
 
 ## Main results
 
-* `NLAlib.MGS.writes_reduce` executes one exact Hermitian projection subtraction.
+* `NLAlib.MGS.reduce_writes` executes one exact Hermitian projection subtraction.
 -/
 
 @[expose] public section
@@ -35,7 +35,7 @@ variable {𝕜 Op Tst : Type} [RCLike 𝕜] [Has ScalarOp Op] [Has Blas1Op Op]
 all other cells. Input/output vector overlap is allowed by the local block contracts.
 A fragment of `NLAlib.MGS.sweepRoutine`: run only inside its tree, on its operands
 and the buffers it allocates. -/
-theorem writes_reduce (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+theorem reduce_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hB : RCLikeBlas.IsExact I) {n : ℕ} {q v r : ℕ × ℕ} (qs vs : List 𝕜)
     (hl : m.Live [q, v, r])
     (hq : m.store.readBlock q.1 q.2 n = some qs)

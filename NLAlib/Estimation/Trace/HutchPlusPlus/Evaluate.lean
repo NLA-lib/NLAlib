@@ -17,7 +17,7 @@ estimator on the actual sketch and probes, including rank-deficient sketch image
 
 ## Main results
 
-* `NLAlib.HutchPlusPlus.writes_evaluate` returns the existing mathematical `hutchpp`.
+* `NLAlib.HutchPlusPlus.evaluate_writes` returns the existing mathematical `hutchpp`.
 -/
 
 @[expose] public section
@@ -49,7 +49,7 @@ variable [Has ScalarOp Op] [Has Blas1Op Op] [Has IndexOp Op] [Has StoredOperator
 sketch and probes. All workspaces are explicit, with ordinary capacity and separation premises.
 A fragment of `NLAlib.HutchPlusPlus.estimateRoutine`: run only inside its tree, on its
 operands and the buffers it allocates. -/
-theorem writes_evaluate (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+theorem evaluate_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hB : RCLikeBlas.IsExact I) (hLit : IsIndexLit (RCLikeBlas.machine : Machine 𝕜) I)
     {dataLength : ℕ → ℕ → ℕ}
     {matrix : (m n : ℕ) → List 𝕜 → Matrix (Fin m) (Fin n) 𝕜}
@@ -95,7 +95,7 @@ theorem writes_evaluate (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     simp only [Mem.live_cons, Mem.live_nil]
     exact ⟨hl data (by simp), hl b (by simp), hl c (by simp), trivial⟩
   unfold evaluate
-  refine Writes.seq_le ((writes_applyColumns hI as W hl₃ hA hBInput hCB hCD hc).in_frame
+  refine Writes.seq_le ((applyColumns_writes hI as W hl₃ hA hBInput hCB hCD hc).in_frame
     rfl rfl hl₃) le_sup_left ?_
   intro m₁ hfr ⟨hp, hC⟩
   have hB₁ := hfr.keep (Store.readsOnly_readBlock _ _ _ _) hCB hBInput
@@ -109,7 +109,7 @@ theorem writes_evaluate (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     have hm := Nat.mul_le_mul_left n (Nat.succ_le_of_lt hj)
     rw [Nat.mul_succ, Nat.mul_comm n (k + ell)] at hm
     exact Fp.inBlock_le_inBlock (by omega) (by omega)
-  refine ((writes_accumulate hS hB hLit (fun j => List.ofFn (column W j))
+  refine ((accumulate_writes hS hB hLit (fun j => List.ofFn (column W j))
     (fun j => List.ofFn (column (matrix n n as * W) j)) hl₄
     (read_columns hB₁) (read_columns hC)
     (fun j hj => (Fp.disj_sup_left.mpr ⟨hTB, hOB⟩).mono le_rfl (hsub b j hj))

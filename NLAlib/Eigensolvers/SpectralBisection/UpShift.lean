@@ -17,7 +17,7 @@ is the one-child assembly of the pure bisection recursion, using explicit scalar
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_upShiftResult`: both actual reconstructed output blocks.
+* `NLAlib.SpectralBisection.upShiftResult_writes`: both actual reconstructed output blocks.
 -/
 
 @[expose] public section
@@ -29,7 +29,7 @@ open Ops
 /-- The actual child basis and pointwise shifted eigenvalues are returned together. Spatial
 separation allows input and output regions to share an arena buffer.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_upShiftResult {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
+theorem upShiftResult_writes {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I) {τ : Tape K}
     {m : Mem K} {k : ℕ} {uc ec sigma u e : ℕ × ℕ}
     (U : Matrix (Fin k) (Fin k) (K × K)) (values : List K) (s : K)
@@ -50,7 +50,7 @@ theorem writes_upShiftResult {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
   have hUE : Fp.Disj (Store.inBlock u.1 u.2 (2 * (k * k)))
       (Fp.blocks [e] [k]) := by simpa using hd 0 1 (by simp)
   simp only [Mem.live_cons, Mem.live_nil, and_true] at hl
-  refine (writes_frame rfl rfl (by room) (PairMatrix.writes_copy hS (by room)
+  refine (writes_frame rfl rfl (by room) (PairMatrix.copy_writes hS (by room)
     (Or.inl (by simpa using hd 2 0 (by simp))) hU hu)).seq_readBlock hUE ?_
   intro m₁ hfr _ _
   have hE₁ := hfr.keep (Store.readsOnly_readBlock _ _ _ _) (by
@@ -58,7 +58,7 @@ theorem writes_upShiftResult {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
   have hs₁ := hfr.keep (Store.readsOnly_get _ _ _) (by
     simpa using hd 0 4 (by simp)) hs
   exact (writes_frame rfl rfl (by room)
-    (writes_scalarBroadcast_readBlock (hS .add) hE₁ hs₁ (by rw [hfr.len_eq]; exact he)
+    (scalarBroadcast_writes_readBlock (hS .add) hE₁ hs₁ (by rw [hfr.len_eq]; exact he)
       (Or.inl (by simpa using hd 3 1 (by simp)))
       (by simpa using hd 4 1 (by simp)))).readBlocks_singleton
 

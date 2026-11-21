@@ -70,7 +70,7 @@ tape law); that one interpretation is measurable (`NLAlib.Ops.Interp.IsMeasurabl
 
 The headline and the operation count concern the same program, not one run. The headline on one run,
 with explicit work and span bounds conjoined with correctness, is the certificate
-`NLAlib.ShiftedQR.roundedShQRAlgorithm` and its bound
+`NLAlib.ShiftedQR.shqrAlgorithm` and its bound
 `NLAlib.ShiftedQR.roundedShQR_algorithm_measureReal_not_accepts_le`
 (`NLAlib.Eigensolvers.ShiftedQR.RoundedCertification`).
 -/

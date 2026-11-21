@@ -19,7 +19,7 @@ within the bound, even when the original word decodes to a negative value.
 ## Main results
 
 * `NLAlib.Ops.clamp` is the fixed scalar program.
-* `NLAlib.Ops.wp_clamp` identifies its entire updated memory, permitting operand aliases.
+* `NLAlib.Ops.clamp_wp` identifies its entire updated memory, permitting operand aliases.
 * `NLAlib.Ops.toNatFn_clampWord` gives the bounded natural floor of the selected word.
 -/
 
@@ -45,7 +45,7 @@ def clamp : Stmt Op Tst :=
 
 /-- The total functional clamp changes exactly its output cell. The scalar copy contract and
 exact comparison contract use the same interpretation; input words are actual readable cells. -/
-theorem wp_clamp {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
+theorem clamp_wp {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hC : IsCmp dec I) {md : Mode} {τ : Tape K}
     {a b x z : ℕ × ℕ} {lo hi w : K} {m : Mem K}
     (ha : m.store.get a.1 a.2 = some lo) (hb : m.store.get b.1 b.2 = some hi)
@@ -70,7 +70,7 @@ theorem wp_clamp {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
 
 /-- Framed version of the functional clamp, with its selected output and preserved tape
 position. No initialization or nonaliasing assumption is needed on the output. -/
-theorem writes_clamp {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
+theorem clamp_writes {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hC : IsCmp dec I) {md : Mode} {τ : Tape K}
     {a b x z : ℕ × ℕ} {lo hi w : K} {m : Mem K}
     (ha : m.store.get a.1 a.2 = some lo) (hb : m.store.get b.1 b.2 = some hi)
@@ -78,7 +78,7 @@ theorem writes_clamp {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     Writes md I τ clamp (Env.frame [] [a, b, x, z]) (Store.inBlock z.1 z.2 1)
       (fun m' => m'.pos = m.pos ∧
         m'.store.get z.1 z.2 = some (clampWord dec lo hi w)) m := by
-  apply wp_clamp hS hC ha hb hx hz
+  apply clamp_wp hS hC ha hb hx hz
   exact ⟨(Store.EqOff.refl _ _).upd ⟨rfl, le_rfl, by omega⟩ _, rfl,
     Store.get_upd_self hz _⟩
 
@@ -102,7 +102,7 @@ theorem toNatFn_clampWord {dec : K → ℝ} {lo hi w : K} {bound : ℕ}
 endpoints decode to zero and the bound. The callback receives the precise bounded floor and
 an arbitrary framed post-state. This applies to computed split sizes, including negative or
 oversized initial words, without an execution-success assumption. -/
-theorem writes_clamp_bindIdx [Has IdxTst Tst] {M : Machine K} {dec : K → ℝ}
+theorem clamp_writes_bindIdx [Has IdxTst Tst] {M : Machine K} {dec : K → ℝ}
     {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I) (hQ : IsToNat dec I)
     {τ : Tape K} {ρ : Env} {m : Mem K} {args : List Operand} {out : Operand}
     {bound : IExp} {body : Stmt Op Tst} {a b x z : ℕ × ℕ} {lo hi w : K} {B : ℕ}
@@ -122,7 +122,7 @@ theorem writes_clamp_bindIdx [Has IdxTst Tst] {M : Machine K} {dec : K → ℝ}
     simp only [Mem.live_cons, Mem.live_nil, and_true]
     exact ⟨Store.lt_length_of_get ha, Store.lt_length_of_get hb,
       Store.lt_length_of_get hx, Store.lt_length_of_lt_len hz⟩
-  refine (writes_frame rfl hargs hl (writes_clamp hS hC ha hb hx hz)).seq
+  refine (writes_frame rfl hargs hl (clamp_writes hS hC ha hb hx hz)).seq
     fun m' hfr ⟨hpos, hget⟩ => ?_
   refine writes_bindIdx_of_isIndex hQ (v := min B ⌊dec w⌋₊)
     (by simp [Operand.evalList, hout]) hB

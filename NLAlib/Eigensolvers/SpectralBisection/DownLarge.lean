@@ -17,7 +17,7 @@ outcome is the corresponding existing mathematical step, with no successful-run 
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_downLarge`: total dispatch for a slot of size at least two.
+* `NLAlib.SpectralBisection.downLarge_writes`: total dispatch for a slot of size at least two.
 -/
 
 @[expose] public section
@@ -29,7 +29,7 @@ open Ops
 /-- The actual threshold computation and query choose the same leaf or nonleaf step as the
 mathematical algorithm. Capacity and spatial premises concern actual input and output regions.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_downLarge {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
+theorem downLarge_writes {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
     [Has MatrixOp Op] [Has CmpTst Tst] [Has IdxTst Tst]
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp dec I)
@@ -95,7 +95,7 @@ theorem writes_downLarge {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has 
       rw [← hout]
       simp [eighStep, show ¬ k ≤ 1 by omega, Machine.toFloatMachine, hle]
     rw [hEq]
-    have hLeaf := writes_downLeaf (dec := dec) (mm := mm) (qr := qr) (unif := M.mul)
+    have hLeaf := downLeaf_writes (dec := dec) (mm := mm) (qr := qr) (unif := M.mul)
       (normal := fun z : K × K => M.normalWords z.1 z.2) (τ := τ)
       (n := n) (d := d) (lo := lo) (ma := ma) (ua := ua) (ea := ea) (kd := kd)
       (qa := qa) (sz := sz) (kp := kp) hS hL false R A (by room) hr'.2.2.2.2.2.2.1
@@ -104,7 +104,7 @@ theorem writes_downLarge {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has 
       (by simp [Operand.evalList, Operand.eval, IExp.eval, Env.frame, Nat.add_assoc])
       (by room) hLeaf).mono le_sup_left fun _ _ h => ⟨h.1.trans hm.1, h.2⟩
   · simp only [hle, decide_false, Bool.false_eq_true, if_false]
-    have hn := writes_node M dec mm qr (τ := τ) (μ := ν)
+    have hn := node_writes M dec mm qr (τ := τ) (μ := ν)
       (n := n) (L := L) (fuel := fuel) (d := d) (lo := lo) (k := k)
       (par := par) (lv := lv) (su := su) (sg := sg) (ma := ma) (ua := ua)
       (qa := qa) (ea := ea) (sz := sz) (kd := kd) (ks := kp) (c := c) hS hL hC hMM hQR hQ

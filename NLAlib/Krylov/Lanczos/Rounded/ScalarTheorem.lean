@@ -11,7 +11,8 @@ public import NLAlib.Krylov.Lanczos.Rounded.Ritz
 /-!
 # Scalar Lanczos in rounded arithmetic: one statement
 
-The certificate `NLAlib.Krylov.Lanczos.Stored.Rounded.scalarCountedAlgorithm` is unfolded here
+The certificate `NLAlib.Krylov.Lanczos.Rounded.Stored.Certification.scalarCountedAlgorithm` is
+unfolded here
 into one theorem about a run, joined with the Ritz residual bound
 `NLAlib.Krylov.Lanczos.Rounded.Output.ritzResidual` for the output of that same run: the run
 succeeds, executes at most an explicit number of instructions of the scalar model, and every
@@ -19,13 +20,14 @@ eigenpair of the tridiagonal matrix it stores has a bounded residual.
 
 ## Main results
 
-* `NLAlib.Krylov.Lanczos.Stored.Rounded.exec_scalarProgram_work_le_and_ritzResidual`: the
+* `NLAlib.Krylov.Lanczos.Rounded.Stored.Certification.exec_scalarProgram_work_le_and_ritzResidual`:
+  the
   statement.
 -/
 
 @[expose] public section
 
-namespace NLAlib.Krylov.Lanczos.Stored.Rounded
+namespace NLAlib.Krylov.Lanczos.Rounded.Stored.Certification
 
 open Ops
 
@@ -95,4 +97,4 @@ theorem exec_scalarProgram_work_le_and_ritzResidual (M : Machine ℝ) (u : ℝ)
   obtain ⟨-, -, vs, cs, hvs, hcs, hout⟩ := hg
   exact ⟨st, hr, hw, vs, cs, hvs, hcs, hout, fun hk hb hs => hout.ritzResidual hk hb hs⟩
 
-end NLAlib.Krylov.Lanczos.Stored.Rounded
+end NLAlib.Krylov.Lanczos.Rounded.Stored.Certification

@@ -16,7 +16,7 @@ proofs state the mathematical entries; the fill rule preserves the previously wr
 
 ## Main results
 
-* `NLAlib.Ops.Hermitian.writes_copyTriangle` copies the actual strict-upper stored word pairs.
+* `NLAlib.Ops.Hermitian.copyTriangle_writes` copies the actual strict-upper stored word pairs.
 -/
 
 @[expose] public section
@@ -27,7 +27,7 @@ variable {K Op Tst : Type} [Has ScalarOp Op]
 
 /-- Copying the strict upper triangle returns the same stored entries and preserves every
 other cell. Input and output blocks are disjoint, including within one live arena buffer. -/
-theorem writes_copyTriangle {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+theorem copyTriangle_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {τ : Tape K} {n : ℕ} {x y : ℕ × ℕ} {m : Mem K} {A : ℕ → ℕ → K × K}
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (n * n)))
       (Store.inBlock y.1 y.2 (2 * (n * n))))
@@ -61,7 +61,7 @@ theorem writes_copyTriangle {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar
     omega
   have hpair := hxy.mono (C.entryBlock_le_inBlock x.1 x.2 (n * n) hflat)
     (C.entryBlock_le_inBlock y.1 y.2 (n * n) hflat)
-  have hentry := writes_pair_of_wp (md := .total) (τ := τ) (wp_copyPair_of_disj hI
+  have hentry := pair_writes_of_wp (md := .total) (τ := τ) (copyPair_wp_of_disj hI
     (x := (x.1, x.2 + 2 * (j * n + i))) (z := (y.1, y.2 + 2 * (j * n + i)))
     hpair (hread 0) (hread 1) hroom rfl) hroom
   refine (writes_frame rfl rfl ?_ hentry).mono le_rfl ?_
@@ -73,7 +73,7 @@ omit [Has ScalarOp Op] in
 /-- A triangular entry procedure needs only a word-level transition specification. The shared
 matrix rule supplies its actual entry, transposed entry, scalar, output room, and all framing.
 The procedure is fixed before matrix sizes and values are chosen. -/
-theorem writes_triangle {I : Interp Op Tst K} {τ : Tape K} (entry : Stmt Op Tst)
+theorem triangle_writes {I : Interp Op Tst K} {τ : Tape K} (entry : Stmt Op Tst)
     (F : (K × K) → (K × K) → K → K × K)
     (hentry : ∀ (μ : Mem K) (x xt c z : ℕ × ℕ) (a aT : K × K) (d : K),
       Fp.Disj (Store.inBlock x.1 x.2 2) (Store.inBlock z.1 z.2 2) →
@@ -130,13 +130,13 @@ theorem writes_triangle {I : Interp Op Tst K} {τ : Tape K} (entry : Stmt Op Tst
     (hcy.mono le_rfl (hsub i j (hi.trans hj) hj y.1 y.2)) hl'
     (hread i j (hi.trans hj) hj 0) (hread i j (hi.trans hj) hj 1)
     (hread j i hj (hi.trans hj) 0) (hread j i hj (hi.trans hj) 1) hc' hroom
-  have hw := writes_pair_of_wp (md := .total) (τ := τ) he hroom
+  have hw := pair_writes_of_wp (md := .total) (τ := τ) he hroom
   exact (writes_frame rfl rfl hl' hw).mono le_rfl fun _ _ h => ⟨h.1, h.2.trans hp⟩
 
 omit [Has ScalarOp Op] in
 /-- A diagonal entry procedure is lifted to all diagonal positions by the injective-region
 rule. Its matrix-level proof supplies no partial-output invariant or component framing. -/
-theorem writes_diagonal {I : Interp Op Tst K} {τ : Tape K} (entry : Stmt Op Tst)
+theorem diagonal_writes {I : Interp Op Tst K} {τ : Tape K} (entry : Stmt Op Tst)
     (F : (K × K) → K → K × K)
     (hentry : ∀ (μ : Mem K) (x c z : ℕ × ℕ) (a : K × K) (d : K),
       Fp.Disj (Store.inBlock x.1 x.2 2) (Store.inBlock z.1 z.2 2) →
@@ -195,13 +195,13 @@ theorem writes_diagonal {I : Interp Op Tst K} {τ : Tape K} (entry : Stmt Op Tst
       (y.1, y.2 + 2 * (j * n + j)) (A j j) d
       (hxy.mono (hsub x.1 x.2) (hsub y.1 y.2)) (hcy.mono le_rfl (hsub y.1 y.2))
       hl' (hread 0) (hread 1) hc' hroom
-    have hw := writes_pair_of_wp (md := .total) (τ := τ) he hroom
+    have hw := pair_writes_of_wp (md := .total) (τ := τ) he hroom
     exact (writes_frame rfl rfl hl' hw).mono le_rfl fun _ _ h => ⟨h.1, h.2.trans hp⟩
 
 omit [Has ScalarOp Op] in
 /-- Strict-upper and diagonal procedure specifications compose into one inclusive upper
 matrix specification. Region disjointness preserves the strict-upper entries automatically. -/
-theorem writes_upper {I : Interp Op Tst K} {τ : Tape K}
+theorem upper_writes {I : Interp Op Tst K} {τ : Tape K}
     (offDiagonal diagonalEntry : Stmt Op Tst) {n : ℕ} {x c y : ℕ × ℕ} {m : Mem K}
     (U : ℕ → ℕ → K × K) (D : ℕ → K × K)
     {A : ℕ → ℕ → K × K} {d : K}
@@ -246,7 +246,7 @@ theorem writes_upper {I : Interp Op Tst K} {τ : Tape K}
 
 /-- Shifting the upper triangle writes the copied strict-upper words and the machine-rounded
 diagonal difference, with zero imaginary diagonal. Disjoint regions of one arena are allowed. -/
-theorem writes_shiftUpper {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+theorem shiftUpper_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {τ : Tape K} {n : ℕ} {x c y : ℕ × ℕ} {m : Mem K} {A : ℕ → ℕ → K × K} {d : K}
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (n * n)))
       (Store.inBlock y.1 y.2 (2 * (n * n))))
@@ -259,21 +259,21 @@ theorem writes_shiftUpper {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M
       (fun μ => μ.store.HoldsRowEntries (EntryCodec.pair K) ⟨y.1, y.2, n, n, n⟩
         (fun j => j + 1) (fun i j => if i = j then (M.sub (A i i).1 d, M.lit 0) else A i j) ∧
         μ.pos = m.pos) m := by
-  have ht := writes_triangle (I := I) (τ := τ) copyEntry (fun a _ _ => a) (by
+  have ht := triangle_writes (I := I) (τ := τ) copyEntry (fun a _ _ => a) (by
     intro μ x xt c z a aT d hxz _ _ hl hr hi _ _ _ hz
     exact wp_frame rfl rfl
       (by simpa [Mem.Live] using And.intro (hl x (by simp)) (hl z (by simp)))
-      (wp_copyPair_of_disj hI hxz hr hi hz rfl)) hxy hcy hX hc hY hl
-  refine writes_upper copyEntry shiftDiagonal (fun i j => A i j)
+      (copyPair_wp_of_disj hI hxz hr hi hz rfl)) hxy hcy hX hc hY hl
+  refine upper_writes copyEntry shiftDiagonal (fun i j => A i j)
     (fun i => (M.sub (A i i).1 d, M.lit 0)) hxy hcy hX hc hY hl ht ?_
   intro μ hX' hc' hY' hl'
-  exact writes_diagonal shiftDiagonal (fun a d => (M.sub a.1 d, M.lit 0)) (by
+  exact diagonal_writes shiftDiagonal (fun a d => (M.sub a.1 d, M.lit 0)) (by
     intro μ x c z a d _ _ _ hr _ hc hz
-    exact wp_shiftDiagonal hI hr hc hz rfl) hxy hcy hX' hc' hY' hl'
+    exact shiftDiagonal_wp hI hr hc hz rfl) hxy hcy hX' hc' hY' hl'
 
 /-- Scaling the upper triangle writes actual rounded quotients and zero imaginary diagonal.
 Input/output matrices may share an arena when their word regions are disjoint. -/
-theorem writes_scaleUpper {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+theorem scaleUpper_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {τ : Tape K} {n : ℕ} {x c y : ℕ × ℕ} {m : Mem K} {A : ℕ → ℕ → K × K} {d : K}
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (n * n)))
       (Store.inBlock y.1 y.2 (2 * (n * n))))
@@ -286,23 +286,23 @@ theorem writes_scaleUpper {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M
       (fun μ => μ.store.HoldsRowEntries (EntryCodec.pair K) ⟨y.1, y.2, n, n, n⟩
         (fun j => j + 1) (fun i j => if i = j then (M.div (A i i).1 d, M.lit 0)
           else (M.div (A i j).1 d, M.div (A i j).2 d)) ∧ μ.pos = m.pos) m := by
-  have ht := writes_triangle (I := I) (τ := τ) scaleEntry
+  have ht := triangle_writes (I := I) (τ := τ) scaleEntry
     (fun a _ d => (M.div a.1 d, M.div a.2 d)) (by
       intro μ x xt c z a aT d hxz _ hcz hl hr hi _ _ hc hz
       exact wp_frame rfl rfl (by
         simpa [Mem.Live] using ⟨hl x (by simp), hl c (by simp), hl z (by simp)⟩)
-        (wp_scalePair hI hxz hcz hr hi hc hz rfl)) hxy hcy hX hc hY hl
-  refine writes_upper scaleEntry scaleDiagonal
+        (scalePair_wp hI hxz hcz hr hi hc hz rfl)) hxy hcy hX hc hY hl
+  refine upper_writes scaleEntry scaleDiagonal
     (fun i j => (M.div (A i j).1 d, M.div (A i j).2 d))
     (fun i => (M.div (A i i).1 d, M.lit 0)) hxy hcy hX hc hY hl ht ?_
   intro μ hX' hc' hY' hl'
-  exact writes_diagonal scaleDiagonal (fun a d => (M.div a.1 d, M.lit 0)) (by
+  exact diagonal_writes scaleDiagonal (fun a d => (M.div a.1 d, M.lit 0)) (by
     intro μ x c z a d _ _ _ hr _ hc hz
-    exact wp_scaleDiagonal hI hr hc hz rfl) hxy hcy hX' hc' hY' hl'
+    exact scaleDiagonal_wp hI hr hc hz rfl) hxy hcy hX' hc' hY' hl'
 
 /-- Hermitian averaging writes the two actual rounded operations per component, with zero
 imaginary diagonal. Every transposed input word belongs to the same supplied matrix. -/
-theorem writes_averageUpper {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+theorem averageUpper_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {τ : Tape K} {n : ℕ} {x c y : ℕ × ℕ} {m : Mem K} {A : ℕ → ℕ → K × K} {d : K}
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (n * n)))
       (Store.inBlock y.1 y.2 (2 * (n * n))))
@@ -317,18 +317,18 @@ theorem writes_averageUpper {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar
           (M.div (M.add (A i i).1 (A i i).1) d, M.lit 0)
           else (M.div (M.add (A i j).1 (A j i).1) d,
             M.div (M.sub (A i j).2 (A j i).2) d)) ∧ μ.pos = m.pos) m := by
-  have ht := writes_triangle (I := I) (τ := τ) averagePair
+  have ht := triangle_writes (I := I) (τ := τ) averagePair
     (fun a b d => (M.div (M.add a.1 b.1) d, M.div (M.sub a.2 b.2) d)) (by
       intro μ x xt c z a aT d hxz htz hcz _ hr hi htr hti hc hz
-      exact wp_averagePair hI hxz htz hcz hr hi htr hti hc hz rfl) hxy hcy hX hc hY hl
-  refine writes_upper averagePair averageDiagonal
+      exact averagePair_wp hI hxz htz hcz hr hi htr hti hc hz rfl) hxy hcy hX hc hY hl
+  refine upper_writes averagePair averageDiagonal
     (fun i j => (M.div (M.add (A i j).1 (A j i).1) d,
       M.div (M.sub (A i j).2 (A j i).2) d))
     (fun i => (M.div (M.add (A i i).1 (A i i).1) d, M.lit 0))
     hxy hcy hX hc hY hl ht ?_
   intro μ hX' hc' hY' hl'
-  exact writes_diagonal averageDiagonal (fun a d => (M.div (M.add a.1 a.1) d, M.lit 0)) (by
+  exact diagonal_writes averageDiagonal (fun a d => (M.div (M.add a.1 a.1) d, M.lit 0)) (by
     intro μ x c z a d _ hcz _ hr _ hc hz
-    exact wp_averageDiagonal hI hcz hr hc hz rfl) hxy hcy hX' hc' hY' hl'
+    exact averageDiagonal_wp hI hcz hr hc hz rfl) hxy hcy hX' hc' hY' hl'
 
 end NLAlib.Ops.Hermitian

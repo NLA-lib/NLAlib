@@ -22,8 +22,8 @@ views, including views of one arena.
 ## Main results
 
 * `NLAlib.Ops.scalarPower`: the computable scalar implementation.
-* `NLAlib.Ops.writes_scalarPower`: its actual word-level result.
-* `NLAlib.Ops.writes_scalarPower_exact`: its exact arithmetic specialization.
+* `NLAlib.Ops.scalarPower_writes`: its actual word-level result.
+* `NLAlib.Ops.scalarPower_writes_exact`: its exact arithmetic specialization.
 -/
 
 @[expose] public section
@@ -46,7 +46,7 @@ theorem stmtCost_scalarPower (n x z : ℕ) :
 
 /-- Sequential multiplication returns its actual machine word, preserving the input through
 spatial separation. The output word need not be initialized and zero exponents are admitted. -/
-theorem writes_scalarPower {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
+theorem scalarPower_writes {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
     {τ : Tape K} {m : Mem K} {n : ℕ} {x z : ℕ × ℕ} {v : K}
     (hx : m.store.get x.1 x.2 = some v) (hz : z.2 < m.store.len z.1)
     (hsep : Fp.Disj (Store.inBlock x.1 x.2 1) (Store.inBlock z.1 z.2 1)) :
@@ -75,7 +75,7 @@ theorem writes_scalarPower {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar 
 
 /-- Under the exact real arithmetic model the actual sequential power equals the mathematical
 natural power, with no sign or nonzero assumption on its base. -/
-theorem writes_scalarPower_exact {M : Machine ℝ} {I : Interp Op Tst ℝ}
+theorem scalarPower_writes_exact {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M)
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {x z : ℕ × ℕ} {v : ℝ}
     (hx : m.store.get x.1 x.2 = some v) (hz : z.2 < m.store.len z.1)
@@ -87,6 +87,6 @@ theorem writes_scalarPower_exact {M : Machine ℝ} {I : Interp Op Tst ℝ}
     induction n with
     | zero => simpa using hE.lit 1
     | succ n ih => rw [Function.iterate_succ_apply', ih, hmul, pow_succ]
-  exact (writes_scalarPower hS hx hz hsep).mono le_rfl (fun _ _ h => ⟨h.1, he ▸ h.2⟩)
+  exact (scalarPower_writes hS hx hz hsep).mono le_rfl (fun _ _ h => ⟨h.1, he ▸ h.2⟩)
 
 end NLAlib.Ops

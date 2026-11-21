@@ -34,7 +34,7 @@ variable {Op Tst : Type} [Has ScalarOp Op]
 
 /-- Functional refinement of the isolated dense leaf. The function is the actual scalar
 word recurrence, and its operands retain the matrix product's separate-output admission. -/
-theorem wp_source_fn_of_ne {I : Interp Op Tst ℝ} {tape : Tape ℝ} {mem : Mem ℝ}
+theorem source_wp_fn_of_ne {I : Interp Op Tst ℝ} {tape : Tape ℝ} {mem : Mem ℝ}
     {M : Machine ℝ} (hS : IsScalar M I) (context : List (ℕ × ℕ))
     (index : Fin context.length) {n : ℕ} (raw : List ℝ)
     (hLive : mem.Live context)
@@ -56,7 +56,7 @@ theorem wp_source_fn_of_ne {I : Interp Op Tst ℝ} {tape : Tape ℝ} {mem : Mem 
   have hAll : mem.Live (context ++ [x, y]) :=
     (Mem.live_append _ _ _).mpr ⟨hLive, hl⟩
   simp only [List.append_assoc, List.cons_append, List.nil_append]
-  apply (ContextDense.writes_impl_word hS context index raw xs hAll hData hx
+  apply (ContextDense.impl_writes_word hS context index raw xs hAll hData hx
     (Fp.disj_inBlock_of_ne hDY) (Fp.disj_inBlock_of_ne hXY.symm) hy).wp
   intro mem' hFrame hResult
   have hr : mem'.readBlocks [y] [n] =
@@ -88,7 +88,7 @@ theorem callS_source_fn_of_ne {Src : Type} {I : Interp Op Tst ℝ}
     Mode.total.Holds ((I.linkContext table context).callS o d ins outs τ mem)
       (((((matvecFn (wordKernel M n raw)).rel).spec
         (MatvecOperands n n)).on .total d ins outs τ mem).post mem) := by
-  have hw := wp_source_fn_of_ne hS context index raw hLive hData hOut hp
+  have hw := source_wp_fn_of_ne hS context index raw hLive hData hOut hp
   obtain ⟨_, ⟨rfl, _⟩, hn⟩ := hp
   obtain ⟨hl, ⟨xs, hr, _⟩, hz⟩ := hn rfl
   obtain ⟨x, vals, rfl, _, rfl⟩ := Mem.readBlocks_one hr
@@ -101,7 +101,7 @@ theorem callS_source_fn_of_ne {Src : Type} {I : Interp Op Tst ℝ}
 /-- A isolated data capability implements the original exact operator contract. Its
 matrix is decoded from the words actually read, while the ordinary output stays outside
 the buffer of the data. The premise is a local primitive precondition, never a successful run. -/
-theorem wp_source_of_ne {I : Interp Op Tst ℝ} {tape : Tape ℝ} {mem : Mem ℝ}
+theorem source_wp_of_ne {I : Interp Op Tst ℝ} {tape : Tape ℝ} {mem : Mem ℝ}
     {M : Machine ℝ} (hS : IsScalar M I) (context : List (ℕ × ℕ))
     (index : Fin context.length) {n : ℕ} {error : ℝ} (raw : List ℝ)
     (hError : ∀ xs : List ℝ,
@@ -127,7 +127,7 @@ theorem wp_source_of_ne {I : Interp Op Tst ℝ} {tape : Tape ℝ} {mem : Mem ℝ
   have hAll : mem.Live (context ++ [x, y]) := by
     exact (Mem.live_append _ _ _).mpr ⟨hLive, hl⟩
   simp only [List.append_assoc, List.cons_append, List.nil_append]
-  apply (ContextDense.writes_impl_word hS context index raw xs hAll hData hx
+  apply (ContextDense.impl_writes_word hS context index raw xs hAll hData hx
     (Fp.disj_inBlock_of_ne hDY) (Fp.disj_inBlock_of_ne hXY.symm) hy).wp
   intro mem' hFrame hResult
   have hr : mem'.readBlocks [y] [n] =
@@ -162,7 +162,7 @@ theorem callS_source_of_ne {Src : Type} {I : Interp Op Tst ℝ}
     Mode.total.Holds ((I.linkContext table context).callS o d ins outs τ mem)
       ((((matvecErrorRel id (StoredOperator.denseMatrix n n raw) error).spec
         (MatvecOperands n n)).on .total d ins outs τ mem).post mem) := by
-  have hw := wp_source_of_ne hS context index raw hError hLive hData hOut hp
+  have hw := source_wp_of_ne hS context index raw hError hLive hData hOut hp
   obtain ⟨_, ⟨rfl, _⟩, hn⟩ := hp
   obtain ⟨hl, ⟨xs, hr, _⟩, hz⟩ := hn rfl
   obtain ⟨x, vals, rfl, _, rfl⟩ := Mem.readBlocks_one hr

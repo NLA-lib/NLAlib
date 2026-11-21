@@ -21,8 +21,8 @@ stored by columns. Only scalar multiplication, addition and literal zero are use
 
 * `NLAlib.Ops.ScalarProducts.step` adds one product to an accumulator.
 * `NLAlib.Ops.ScalarProducts.sum` sums products with explicit word strides.
-* `NLAlib.Ops.ScalarProducts.writes_sum_word` returns the actual machine accumulation.
-* `NLAlib.Ops.ScalarProducts.writes_sum` specializes it to the exact stored sum.
+* `NLAlib.Ops.ScalarProducts.sum_writes_word` returns the actual machine accumulation.
+* `NLAlib.Ops.ScalarProducts.sum_writes` specializes it to the exact stored sum.
 -/
 
 @[expose] public section
@@ -54,7 +54,7 @@ variable {K : Type} {M : Machine K}
 
 /-- A streamed scalar step performs multiplication and addition, preserving the input
 accumulator through the disjoint temporary cell. -/
-theorem writes_step_word (hS : IsScalar M I)
+theorem step_writes_word (hS : IsScalar M I)
     {x y t out : ℕ × ℕ} (a b acc : K) (hl : m.Live [x, y, t, out])
     (hX : m.store.readBlock x.1 x.2 1 = some [a])
     (hY : m.store.readBlock y.1 y.2 1 = some [b])
@@ -86,7 +86,7 @@ theorem writes_step_word (hS : IsScalar M I)
 /-- The streamed loop returns the actual machine sum, using only the declared accumulator and
 temporary. Inputs can share a buffer or repeat words; their accessed cells stay outside
 the two-cell write footprint. Empty products return literal zero. -/
-theorem writes_sum_word (hS : IsScalar M I)
+theorem sum_writes_word (hS : IsScalar M I)
     {n sx sy : ℕ} {x y t out : ℕ × ℕ} (xs ys : ℕ → K)
     (hl : m.Live [x, y, t, out])
     (hX : ∀ j < n, m.store.readBlock x.1 (x.2 + sx * j) 1 = some [xs j])
@@ -118,7 +118,7 @@ theorem writes_sum_word (hS : IsScalar M I)
   have hY' := hWhole.keep (Store.readsOnly_readBlock _ _ _ [ys i]) (hDY i hi) (hY i hi)
   have hl' : m'.Live [(x.1, x.2 + sx * i), (y.1, y.2 + sy * i), t, out] := by
     simpa only [Mem.live_cons, Mem.live_nil] using hl.congr hWhole.length_eq
-  refine ((writes_step_word hS (xs i) (ys i) (sumWord M xs ys i)
+  refine ((step_writes_word hS (xs i) (ys i) (sumWord M xs ys i)
     hl' hX' hY' hAcc hTO (by simpa only [hWhole.len_eq] using ht)
     (by simpa only [hWhole.len_eq] using ho)).in_frame rfl rfl hl').mono le_rfl ?_
   intro m'' _ h
@@ -140,7 +140,7 @@ theorem sumWord_exact (xs ys : ℕ → 𝕜) (n : ℕ) :
 
 /-- A streamed scalar step adds the exact product, preserving the input accumulator
 through the disjoint temporary cell. -/
-theorem writes_step (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+theorem step_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     {x y t out : ℕ × ℕ} (a b acc : 𝕜) (hl : m.Live [x, y, t, out])
     (hX : m.store.readBlock x.1 x.2 1 = some [a])
     (hY : m.store.readBlock y.1 y.2 1 = some [b])
@@ -151,12 +151,12 @@ theorem writes_step (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
       (Store.inBlock t.1 t.2 1 ⊔ Store.inBlock out.1 out.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 1 = some [acc + a * b]) m := by
   simpa only [RCLikeBlas.machine] using
-    writes_step_word hS a b acc hl hX hY hA hTO ht ho
+    step_writes_word hS a b acc hl hX hY hA hTO ht ho
 
 /-- The streamed loop returns the exact sum, using only the declared accumulator and
 temporary. Inputs can share a buffer or repeat words; their accessed cells stay outside
 the two-cell write footprint. Empty products return literal zero. -/
-theorem writes_sum (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+theorem sum_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     {n sx sy : ℕ} {x y t out : ℕ × ℕ} (xs ys : ℕ → 𝕜)
     (hl : m.Live [x, y, t, out])
     (hX : ∀ j < n, m.store.readBlock x.1 (x.2 + sx * j) 1 = some [xs j])
@@ -172,7 +172,7 @@ theorem writes_sum (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 1 =
         some [∑ j ∈ Finset.range n, xs j * ys j]) m := by
   simpa only [sumWord_exact] using
-    writes_sum_word hS xs ys hl hX hY hDX hDY hTO ht ho
+    sum_writes_word hS xs ys hl hX hY hDX hDY hTO ht ho
 
 end Exact
 

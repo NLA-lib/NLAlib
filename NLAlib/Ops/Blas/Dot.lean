@@ -21,7 +21,7 @@ is `(1 + u) (1 + e) - 1`. `NLAlib.Ops.nrm2Sum`: the squares, `sum`, and a square
 
 * `NLAlib.Ops.isDotErr_of_isSumErr`: mathematics, from the sum of the rounded products to the dot
   product.
-* `NLAlib.Ops.wp_prodLoop`: the loop that fills the scratch block.
+* `NLAlib.Ops.prodLoop_wp`: the loop that fills the scratch block.
 * `NLAlib.Ops.dotSumRoutine_meets`, `NLAlib.Ops.nrm2SumRoutine_meets`: the judgments.
 -/
 
@@ -69,7 +69,7 @@ def prodLoop (n : IExp) (x y t : Operand) : Stmt Op Tst :=
 
 /-- **The product loop** fills the block `t` from offset zero with the rounded products and
 writes nothing else. -/
-theorem wp_prodLoop {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {md : Mode}
+theorem prodLoop_wp {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {md : Mode}
     {τ : Tape K} {ρ : Env} {n : IExp} {x y t : Operand} {N bx by' bt ox oy : ℕ} {S : Store K}
     {p : ℕ} {a b : ℕ → K} (hn : n.eval ρ.idx = some N)
     (hx : ∀ k, x.eval (ρ.pushIdx k) = some (bx, ox + k))
@@ -143,7 +143,7 @@ theorem dotSumRoutine_meets {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar
   have hz : z.2 < m.store.len z.1 := by omega
   refine (Writes.of_wp_upd_cell hz ?_).mono le_rfl
     fun m' _ ⟨hpos, v, hv, he⟩ => ⟨hpos, [[v]], hv, he⟩
-  refine wp_alloc rfl (wp_seq (wp_prodLoop hI (a := vec xs) (b := vec ys) rfl (fun _ => rfl)
+  refine wp_alloc rfl (wp_seq (prodLoop_wp hI (a := vec xs) (b := vec ys) rfl (fun _ => rfl)
     (fun _ => rfl) (fun _ => rfl) hlx.ne hly.ne (by simp) ?_ ?_ fun s' hfr hr => ?_))
   · exact fun k hk => by store_simp [Store.get_of_readBlock hxs hk default]
   · exact fun k hk => by store_simp [Store.get_of_readBlock hys hk default]
@@ -171,7 +171,7 @@ theorem nrm2SumRoutine_meets {M : Machine K} {I : Interp Op Tst K} (hI : IsScala
     fun m' _ ⟨hpos, v, hv, he⟩ => ⟨hpos, [[v]], hv, he⟩
   have hg : ∀ k < n, (m.store.push n).get x.1 (x.2 + k) = some (vec xs k) :=
     fun k hk => by store_simp [Store.get_of_readBlock hxs hk default]
-  refine wp_alloc rfl (wp_seq (wp_prodLoop hI (a := vec xs) (b := vec xs) rfl (fun _ => rfl)
+  refine wp_alloc rfl (wp_seq (prodLoop_wp hI (a := vec xs) (b := vec xs) rfl (fun _ => rfl)
     (fun _ => rfl) (fun _ => rfl) hlx.ne hlx.ne (by simp) hg hg fun s' hfr hr => ?_))
   have hlen : s'.length = m.store.length + 1 := by rw [hfr.length_eq, Store.length_push]
   have hlenz : s'.len z.1 = m.store.len z.1 := by rw [hfr.len_eq, Store.len_push_of_lt hlz]

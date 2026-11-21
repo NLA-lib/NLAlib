@@ -512,7 +512,7 @@ omit [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
 work matrix, and the popped state survives.
 Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
 and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
-theorem RoundedPopped.writes_copyToWork {Mch : Machine ℝ} {I : Interp O Q ℝ}
+theorem RoundedPopped.copyToWork_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     {tape : Tape ℝ} {μ : Mem ℝ} {n j lo d : ℕ} {a t p st out w r f : ℕ × ℕ}
     {H₀ M A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {roots : Fin (n + 1) → ℂ} {e thr : ℝ}
     {ps : List ℝ} {rest done : List (ℕ × ℕ)}
@@ -531,7 +531,8 @@ theorem RoundedPopped.writes_copyToWork {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (by simpa using hG.disj 0 5 (by simp) : Fp.Disj (Store.inBlock a.1 a.2
       (2 * ((n + 1) * (n + 1)))) (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))))).mono
       le_rfl (by fp_sub)
-  refine (copyToWork_writes (τ := tape) (lo := lo) (d := d) hS (hG.live_of_subset (by simp))
+  refine (ShiftedQR.copyToWork_writes (τ := tape) (lo := lo) (d := d) hS (hG.live_of_subset (by
+      simp))
     hP.2.2.2.2.2.2.1 hr.2.1 (by have := hG.room.2.2.2.2.2.1; omega) hAW).mono le_rfl ?_
   rintro μ₁ hfr₁ ⟨-, hW₁⟩
   exact ⟨hP.of_eqOff_work hfr₁ (by fp_sub), hW₁⟩
@@ -563,7 +564,7 @@ theorem roundedRange_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
   unfold roundedProcessRangeWith
   have hd : d ≤ n + 1 := by have := hr.2.1; omega
   have hsq := Nat.mul_le_mul hd hd
-  refine (hP.writes_copyToWork (tape := tape) hS).frame_seq_le rfl rfl hlAW
+  refine (hP.copyToWork_writes (tape := tape) hS).frame_seq_le rfl rfl hlAW
     (by fp_sub [roundedWorklistFp]) ?_
   rintro μ₁ - ⟨hP₁, hW₁⟩
   have hG₁ := hP₁.1
@@ -595,7 +596,7 @@ omit [Has CmpTst Q] in
 `rangePop` pops the top range $(lo, d)$ into the scan registers and reaches a popped state.
 Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
 and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
-theorem RoundedWorklistState.writes_rangePop {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
+theorem RoundedWorklistState.rangePop_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hQ : IsToNat id I)
     (hNat : IsExactNatLit id Mch (n + 1)) {fails : Prop} {tape : Tape ℝ} {μ : Mem ℝ} {j : ℕ}
     {a t p st out w r f : ℕ × ℕ} {H₀ M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e thr : ℝ}
@@ -691,7 +692,7 @@ theorem roundedWorklistRound_backwardStep {Mch : Machine ℝ} {I : Interp O Q �
       ⟨M', hMM', RoundedWorklistState.of_core hG ht hp hfr le_rfl hcore'⟩)
   have hlSR : μ.Live [st, r] := hG.live_of_subset (by simp)
   unfold roundedWorklistRoundWith
-  refine (hst.writes_rangePop hS hL hQ hNat hcount hpos).frame_seq_le rfl rfl hlSR
+  refine (hst.rangePop_writes hS hL hQ hNat hcount hpos).frame_seq_le rfl rfl hlSR
     (by fp_sub [roundedWorklistFp]) ?_
   rintro μ₁ - ⟨lo, d, rest, done, A, roots, hP₁, hLo, hSize⟩
   have hbounds := hP₁.2.2.2.2.2.1.active_block (r := (lo, d)) List.mem_cons_self

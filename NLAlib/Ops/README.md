@@ -170,14 +170,14 @@ lemma:
 - **One tree, several routines or table entries.** An operation whose contract admits several
   operand layouts (an output apart from an input, or that input itself) is implemented by one
   routine per layout, all with the same tree; the tree's lemma, stated for every layout, is the
-  common proof of those routines (`RCLikeScalar.writes_copy`, `writes_scal`, `writes_axpy`). A
+  common proof of those routines (`RCLikeScalar.copy_writes`, `writes_scal`, `writes_axpy`). A
   tree that is the body of two table entries is proved once for both
-  (`StoredDense.writes_impl_word`, used by `implRoutine` and the context-forwarded
+  (`StoredDense.impl_writes_word`, used by `implRoutine` and the context-forwarded
   `ContextDense.impl`).
 - **A judgment read on a loop invariant.** A loop over a routine keeps an invariant stated on
   the memory (the state of a recurrence held in the operands). The judgment of the body, read on
   that invariant, is a corollary used by the loop rule and by nothing else
-  (`Carried.Rounded.step_writes`, `HSPCG.Rounded.step_writes_function`, `MGS.writes_sweep`).
+  (`Carried.Rounded.step_writes`, `HSPCG.Rounded.step_writes_function`, `MGS.sweep_writes`).
 - **An empty block past the end of a buffer.** A judgment requires room for every written
   block; a statement that must also hold for a block of length zero placed anywhere stays in
   operand form (`hessenbergReduceLast_writes_word`).

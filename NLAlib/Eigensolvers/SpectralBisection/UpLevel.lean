@@ -18,7 +18,7 @@ is the mathematical assembly of the existing recursive bisection algorithm.
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_upLevel`: total stored mathematical reconstruction of one level.
+* `NLAlib.SpectralBisection.upLevel_writes`: total stored mathematical reconstruction of one level.
 -/
 
 @[expose] public section
@@ -32,7 +32,7 @@ radius and literal two determine its shifts through the scalar machine. All rema
 hypotheses concern actual node/child reads, decoded size bounds, output capacity and spatial
 separation. Scratch is freshly allocated and removed, and the tape position is unchanged.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_upLevel {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
+theorem upLevel_writes {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     [Has MatrixOp Op] [Has IdxTst Tst] {M : Machine K} {dec : K → ℝ}
     (mm : MatMulMap (K × K)) (qr : QRMap (K × K)) (unif : K → Su → K) (normal : Sg → K × K)
     {I : Interp Op Tst K} (hS : IsScalar M I) (hQ : IsToNat dec I)
@@ -106,7 +106,7 @@ theorem writes_upLevel {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
   have hShifts : m₁.store.readBlock m.store.length 0 2 =
       some [M.div R (M.lit 2), M.neg (M.div R (M.lit 2))] := by
     simpa [v, List.range_succ] using hshift
-  refine (writes_frame rfl rfl (by room) (writes_upNodes (m := m₁)
+  refine (writes_frame rfl rfl (by room) (upNodes_writes (m := m₁)
     (t := (m.store.length, 0)) mm qr unif normal hS hQ hMM
     ks ws steps children (by room) hSizes₁ hDecode hBound
     (fun lo hlo hpos => (hSteps lo hlo hpos).of_below hBelow₁

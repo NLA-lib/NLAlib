@@ -36,7 +36,7 @@ rounded PCG execution. The output is its actual initialized prefix, with an earl
 at a zero computed residual. The geometric precision bound is a conservative sufficient
 condition, rather than a practical long-cap tolerance.
 
-A fragment of `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.storedRoutine`, not a routine: it runs
+A fragment of `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.zeroStartRoutine`, not a routine: it runs
 inside `zeroStart`, on the same operands, without a frame of its own. -/
 theorem solve_writes {F : Machine ℝ} {em u e : ℝ} {ε : Blas1Err}
     {ok : ℕ → Prop} {n cap : ℕ} {A P : Matrix (Fin n) (Fin n) ℝ}

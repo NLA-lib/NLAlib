@@ -21,7 +21,7 @@ conditions establish total execution; no successful-run premise is used.
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_child_storesStep`: a child represents its whole shift outcome.
+* `NLAlib.SpectralBisection.child_writes_storesStep`: a child represents its whole shift outcome.
 -/
 
 @[expose] public section
@@ -33,7 +33,7 @@ open Ops
 /-- The actual single-child program stores every field of its mathematical shift outcome,
 including the signed half-radius recovered from the retained radius on the upward pass.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_child_storesStep {K Su Sg Op Tst : Type} [Inhabited K]
+theorem child_writes_storesStep {K Su Sg Op Tst : Type} [Inhabited K]
     [Has ScalarOp Op] [Has IndexOp Op] {M : Machine K} (dec : K → ℝ)
     (mm : MatMulMap (K × K)) (qr : QRMap (K × K)) (unif : K → Su → K)
     (normal : Sg → K × K) {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndexLit M I)
@@ -61,7 +61,7 @@ theorem writes_child_storesStep {K Su Sg Op Tst : Type} [Inhabited K]
   dsimp only
   intro hl hA hshift hroom hxy hsy hap
   obtain ⟨hy, hz, hw, -⟩ := hroom
-  refine (writes_child dec mm qr unif normal hS hL A _ hl hA hshift hy
+  refine (child_writes dec mm qr unif normal hS hL A _ hl hA hshift hy
     (by omega) (by omega) hxy hsy hap).mono le_rfl ?_
   intro μ' _ ⟨hpos, hreads⟩
   refine ⟨hpos, rfl, ?_⟩
@@ -71,7 +71,7 @@ theorem writes_child_storesStep {K Su Sg Op Tst : Type} [Inhabited K]
 /-- An interior split stores the complete existing mathematical branch outcome, with its two
 bases, compressions, child sizes and parent metadata in one tuple.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_split_storesStep {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
+theorem split_writes_storesStep {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     [Has IndexOp Op] [Has MatrixOp Op] {M : Machine K} (dec : K → ℝ)
     (mm : MatMulMap (K × K)) (qr : QRMap (K × K)) {I : Interp Op Tst K}
     (hS : IsScalar M I) (hL : IsIndexLit M I)
@@ -97,7 +97,7 @@ theorem writes_split_storesStep {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op
       (fun μ' => μ'.pos = μ.pos ∧ StoresStep M R n d lo ma ua qa ea sz kd ks step μ') μ := by
   dsimp only
   simp only [branchOutcome, if_neg (Nat.ne_of_lt hInterior.2), if_neg (Nat.ne_of_gt hInterior.1)]
-  refine (writes_split dec mm qr M.mul (fun z : K × K => M.normalWords z.1 z.2)
+  refine (split_writes dec mm qr M.mul (fun z : K × K => M.normalWords z.1 z.2)
     hS hL hMM hQR S Pp Pm A (M.lit 2) M.sqrtHalf (M.div R (M.lit 2))
     (M.neg (M.div R (M.lit 2))) hInterior hslot hl hread hroom hap hprotect).mono le_rfl ?_
   intro μ' _ ⟨hpos, hreads⟩
@@ -145,7 +145,7 @@ private theorem splitInputs_matrix_shifts {K : Type} {m : Mem K} {n d lo k : ℕ
 its entire mathematical outcome. Every premise is a primitive contract or a condition on
 actual readable inputs, writable outputs and their spatial separation.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_nodeBranch {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
+theorem nodeBranch_writes {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     [Has IndexOp Op] [Has MatrixOp Op] {M : Machine K} (dec : K → ℝ)
     (mm : MatMulMap (K × K)) (qr : QRMap (K × K)) {I : Interp Op Tst K}
     (hS : IsScalar M I) (hL : IsIndexLit M I)
@@ -184,7 +184,7 @@ theorem writes_nodeBranch {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     refine (writes_ifZero (P := Post (.shift true (F.hermShift A half) half)) rfl ?_).seq_le
       le_rfl ?_
     · simp only [Nat.sub_self]
-      exact writes_frame rfl rfl (by room) (writes_child_storesStep dec mm qr M.mul
+      exact writes_frame rfl rfl (by room) (child_writes_storesStep dec mm qr M.mul
         (fun z : K × K => M.normalWords z.1 z.2) hS hL true R A
           hlchild hA hhalf hroom hxy hsy hap)
     intro μ₁ hfr₁ hstate
@@ -207,7 +207,7 @@ theorem writes_nodeBranch {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
         (F.hermShift A (M.neg half)) (M.neg half))) rfl ?_).seq_le le_rfl ?_
       · exact writes_frame rfl rfl
           (by simpa only [Mem.live_cons, Mem.live_nil, and_true] using hlchild)
-          (writes_child_storesStep dec mm qr M.mul
+          (child_writes_storesStep dec mm qr M.mul
             (fun z : K × K => M.normalWords z.1 z.2) hS hL false R A
             (by simpa only [Mem.live_cons, Mem.live_nil, and_true] using hlchild)
             hA hnegative hroom hxy hsy hap)
@@ -225,7 +225,7 @@ theorem writes_nodeBranch {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
       subst μ₂
       apply writes_ifPos rfl
       rw [if_pos (Nat.mul_pos hi.1 (by omega))]
-      exact writes_frame rfl rfl (by room) (writes_split_storesStep dec mm qr hS hL hMM hQR
+      exact writes_frame rfl rfl (by room) (split_writes_storesStep dec mm qr hS hL hMM hQR
         S Pp Pm A R hi hslot hl hread (by simpa only [branchOutcome, hp, hm, if_false, stepOutputs,
           stepOutputLengths] using hroom)
         (by simpa only [branchOutcome, hp, hm, if_false, stepOutputs,

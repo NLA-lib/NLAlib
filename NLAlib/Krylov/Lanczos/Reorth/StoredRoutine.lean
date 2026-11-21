@@ -22,18 +22,18 @@ different from those of the other operands, forwarded to every product.
 
 ## Main definitions
 
-* `NLAlib.Krylov.Lanczos.Stored.Reorth.solveRoutine`,
-  `NLAlib.Krylov.Lanczos.Stored.Reorth.solveSpec`: the routine and its specification.
+* `NLAlib.Krylov.Lanczos.Reorth.Stored.solveRoutine`,
+  `NLAlib.Krylov.Lanczos.Reorth.Stored.solveSpec`: the routine and its specification.
 
 ## Main results
 
-* `NLAlib.Krylov.Lanczos.Stored.Reorth.solveRoutine_meets`: the routine meets its
+* `NLAlib.Krylov.Lanczos.Reorth.Stored.solveRoutine_meets`: the routine meets its
   specification.
 -/
 
 @[expose] public section
 
-namespace NLAlib.Krylov.Lanczos.Stored.Reorth
+namespace NLAlib.Krylov.Lanczos.Reorth.Stored
 
 open Ops
 
@@ -74,4 +74,4 @@ theorem solveRoutine_meets (hS : IsScalar RCLikeBlas.machine I) (hB : RCLikeBlas
         m.store raw (fun z hz => List.mem_map_of_mem hz) hraw'
       exact Lanczos.Reorth.solveRoutine_meets hs RCLikeBlas.exactModel_real hb' trivial hA hc hP.2)
 
-end NLAlib.Krylov.Lanczos.Stored.Reorth
+end NLAlib.Krylov.Lanczos.Reorth.Stored

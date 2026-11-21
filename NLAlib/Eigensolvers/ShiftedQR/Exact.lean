@@ -26,7 +26,7 @@ initial-plus-scratch payload under the same jointly realized operation model.
 
 * `NLAlib.ShiftedQR.scalarDecouple`: concrete implemented scalar capped decoupling.
 * `NLAlib.ShiftedQR.scalarDecouple_contract`: its total local theorem.
-* `NLAlib.ShiftedQR.exactAlgorithm`: the closed raw-input total deflation certificate.
+* `NLAlib.ShiftedQR.exactDeflationAlgorithm`: the closed raw-input total deflation certificate.
 -/
 
 @[expose] public section
@@ -64,7 +64,7 @@ under its raw Hessenberg, spectral separation, eigenvector-conditioning and para
 hypotheses. Every resource bound refers to this same concrete scalar program. Explicit local
 spectral-kernel work and workspace charges are supplied by the operation model.
 Algorithm: shifted-qr (run model) -/
-noncomputable def exactAlgorithm
+noncomputable def exactDeflationAlgorithm
     (kernelWork kernelWorkspace : EigenvalueKernelOp → List ℕ → ℕ) :
     Algorithm (model deflationProblem exactRoutines (resources kernelWork kernelWorkspace))
       (deflationSpecification scalarDecouple kernelWork kernelWorkspace) :=

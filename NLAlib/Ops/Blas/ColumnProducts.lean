@@ -47,7 +47,7 @@ variable {𝕜 : Type} [RCLike 𝕜] {I : Interp Op Tst 𝕜} {τ : Tape 𝕜} {
 
 /-- A local contraction step writes the old accumulator plus the exact Hermitian product.
 The input vectors may overlap; the temporary cell must preserve the accumulator. -/
-theorem writes_step (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+theorem step_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hB : RCLikeBlas.IsExact I) {n : ℕ} {x y t out : ℕ × ℕ} (xs ys : List 𝕜) (a : 𝕜)
     (hl : m.Live [x, y, t, out])
     (hX : m.store.readBlock x.1 x.2 n = some xs)
@@ -80,7 +80,7 @@ theorem writes_step (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
 
 /-- Sum the actual column inner products with one caller-owned temporary cell.
 Readable inputs are retained through the two-cell output footprint, including shared buffers. -/
-theorem writes_sum (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+theorem sum_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hB : RCLikeBlas.IsExact I) {n k : ℕ} {x y t out : ℕ × ℕ}
     (xs ys : ℕ → List 𝕜) (hl : m.Live [x, y, t, out])
     (hX : ∀ j < k, m.store.readBlock x.1 (x.2 + n * j) n = some (xs j))
@@ -114,7 +114,7 @@ theorem writes_sum (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
   have hY' := hWhole.keep (Store.readsOnly_readBlock _ _ _ (ys i)) (hDY i hi) (hY i hi)
   have hl' : m'.Live [(x.1, x.2 + n * i), (y.1, y.2 + n * i), t, out] := by
     simpa only [Mem.live_cons, Mem.live_nil] using hl.congr hWhole.length_eq
-  refine ((writes_step hS hB (xs i) (ys i)
+  refine ((step_writes hS hB (xs i) (ys i)
     (∑ j ∈ Finset.range i, RCLikeBlas.dot n (xs j) (ys j)) hl' hX' hY' hacc
     ((hDX i hi).mono le_sup_left le_rfl) ((hDY i hi).mono le_sup_left le_rfl) hTO
     (by simpa only [hWhole.len_eq] using ht)

@@ -18,23 +18,25 @@ exact arithmetic. The certificate includes literal-zero initialization and all s
 
 ## Main results
 
-* `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Examples.algorithm`: positive-roundoff scalar PCG.
+* `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.Examples.algorithm`: positive-roundoff scalar
+  PCG.
 -/
 
 @[expose] public section
 
-namespace NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Examples
+namespace NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.Examples
 
 open Ops
-open HSCG.Carried.Rounded.Stored.Examples (domain admitted)
+open HSCG.Carried.Rounded.Stored.Certification.Examples (domain admitted)
 
 /-- The existing raw identity matrix and nonzero right-hand side supply both independently
 stored operators, with the two reference spectral windows equal to the singleton one. -/
 theorem supply (d : Fin 2 → ℕ) (hd : domain d) :
     ∃ rawA rawP rhs : List ℝ,
       rawA.length = d 0 * d 0 ∧ rawP.length = d 0 * d 0 ∧ rhs.length = d 0 ∧
-        Stored.accepts (fun _ => 1) (fun _ => 1) (fun _ => 1) (fun _ => 1) d rawA rawP rhs := by
-  obtain ⟨raw, rhs, hr, hb, h⟩ := HSCG.Carried.Rounded.Stored.Examples.supply d hd
+        Certification.accepts (fun _ => 1) (fun _ => 1) (fun _ => 1) (fun _ => 1) d rawA rawP rhs :=
+            by
+  obtain ⟨raw, rhs, hr, hb, h⟩ := HSCG.Carried.Rounded.Stored.Certification.Examples.supply d hd
   exact ⟨raw, raw, rhs, hr, hr, hb, h.1, h.1, h.2, h.2⟩
 
 /-- Actual word multiplication is nonexact at the chosen strictly positive scalar roundoff. -/
@@ -45,12 +47,12 @@ theorem mul_one_ne_one : (inflMachine (1 / 1000000000000)).mul 1 1 ≠ 1 := by
 system and preconditioner words and a nonzero RHS at unit roundoff one trillionth. -/
 noncomputable def algorithm :
     Algorithm (RoundedScalarBlas.model
-      (Stored.problem (fun _ => 1) (fun _ => 1) (fun _ => 1) (fun _ => 1)
+      (Certification.problem (fun _ => 1) (fun _ => 1) (fun _ => 1) (fun _ => 1)
         domain admitted supply) (inflMachine (1 / 1000000000000)))
-      (Stored.specification (fun _ => 1) (fun _ => 1) (fun _ => 1) (fun _ => 1)
+      (Certification.specification (fun _ => 1) (fun _ => 1) (fun _ => 1) (fun _ => 1)
         domain admitted supply (inflMachine (1 / 1000000000000)) (1 / 1000000000000)
         (stdModel_infl (by norm_num)) (by norm_num) (fun _ => 64 / 1000000000000)) := by
-  refine Stored.algorithm (fun _ => 1) (fun _ => 1) (fun _ => 1) (fun _ => 1)
+  refine Certification.algorithm (fun _ => 1) (fun _ => 1) (fun _ => 1) (fun _ => 1)
     domain admitted supply (inflMachine (1 / 1000000000000)) (1 / 1000000000000)
     (stdModel_infl (by norm_num)) (by norm_num) (fun _ => 64 / 1000000000000)
     ?_ ?_ ?_ ?_ ?_ ?_
@@ -66,4 +68,4 @@ noncomputable def algorithm :
   · norm_num
   · norm_num
 
-end NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Examples
+end NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.Examples

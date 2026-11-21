@@ -18,7 +18,7 @@ reduced probe while reusing its scalar coefficient cell. No rank assumption is n
 
 ## Main results
 
-* `NLAlib.HutchPlusPlus.writes_projectProbes` computes the sweep of every actual probe.
+* `NLAlib.HutchPlusPlus.projectProbes_writes` computes the sweep of every actual probe.
 -/
 
 @[expose] public section
@@ -34,7 +34,7 @@ variable {𝕜 Op Tst : Type} [RCLike 𝕜] [Has ScalarOp Op] [Has Blas1Op Op]
 contains only the probe tail and scalar workspace, so the basis remains readable.
 A fragment of `NLAlib.HutchPlusPlus.estimateRoutine`: run only inside its tree, on its
 operands and the buffers it allocates. -/
-theorem writes_projectProbes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+theorem projectProbes_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hB : RCLikeBlas.IsExact I) {n k ell : ℕ} {b t : ℕ × ℕ}
     (Q G : ℕ → Fin n → 𝕜) (hl : m.Live [b, t])
     (hQ : ∀ i < k, m.store.readBlock b.1 (b.2 + n * i) n = some (List.ofFn (Q i)))
@@ -87,7 +87,7 @@ theorem writes_projectProbes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) 
         (hl.congr hfr.length_eq) t (by simp), trivial⟩
     have ht₀ : Store.inBlock t.1 t.2 1 ≤ Store.inBlock t.1 t.2 2 :=
       Fp.inBlock_le_inBlock le_rfl (by omega)
-    refine ((MGS.writes_sweep hS hB Q (G j) hl' hQ' hG' ?_
+    refine ((MGS.sweep_writes hS hB Q (G j) hl' hQ' hG' ?_
       ((hprotect j hj).mono ht₀ le_rfl) (by rw [hfr.len_eq]; omega)
       (by have hm := Nat.mul_le_mul_left n (Nat.succ_le_of_lt (show k + j < k + ell by omega))
           rw [Nat.mul_succ, Nat.mul_comm n (k + ell)] at hm

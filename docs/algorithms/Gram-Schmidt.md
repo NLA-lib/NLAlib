@@ -69,7 +69,7 @@ a linked implementation accounts for its own lower instructions and temporaries.
 
 The [fully scalar implementation](../../NLAlib/Matrix/Factorizations/MGS/ScalarCertification.lean)
 expands every vector call into scalar field operations and conjugation. Its operation model
-contains no BLAS names. `MGS.ScalarCertification.algorithm` proves the same actual matrix output
+contains no BLAS names. `MGS.Scalar.Certification.algorithm` proves the same actual matrix output
 with the complete lower instruction count, an independent three-cell scratch bound and
 resident payload at most `n*k + 3`. The additional cell is reused by the scalar vector kernels.
 Real conjugation can be [implemented by copying](../../NLAlib/Ops/Profiles/RealStar.lean).

@@ -18,7 +18,7 @@ to.
 
 ## Main results
 
-* `NLAlib.Ops.Examples.wp_halve`: total correctness by `wp_whileFuel`, with an invariant on the
+* `NLAlib.Ops.Examples.halve_wp`: total correctness by `wp_whileFuel`, with an invariant on the
   decoded state (`dec a = v / 2 ^ i` after `i` rounds) and the bound `Nat.size v` from the
   mathematics; the fuel only has to be at least that.
 * `NLAlib.Ops.Examples.runs_halve`: the same with counts that depend on the data,
@@ -119,7 +119,7 @@ theorem halveInv_cap {dec : K → ℕ} {m : Mem K} {x : ℕ × ℕ} {v k : ℕ} 
 /-- **Total correctness of the halving loop**, with the bound on the rounds from the
 mathematics: if the fuel is at least the bit length of the decoded number, the run ends with a
 word that decodes to zero. -/
-theorem wp_halve {dec : K → ℕ} {h : K → K} {I : Interp HOp HTst K} (hI : IsHalving dec h I)
+theorem halve_wp {dec : K → ℕ} {h : K → K} {I : Interp HOp HTst K} (hI : IsHalving dec h I)
     {τ : Tape K} {k : ℕ} {m : Mem K} {x : ℕ × ℕ} {a : K} (hx : m.store.get x.1 x.2 = some a)
     (hk : Nat.size (dec a) ≤ k) :
     Wp .total I τ halve ⟨[k, x.2], [x.1]⟩ (fun m' => ∃ a', m' = m.upd x a' ∧ dec a' = 0) m := by

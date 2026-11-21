@@ -17,7 +17,7 @@ root result is the existing recursive matrix algorithm on the indexed sample tre
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_upwardPass`: total root reconstruction by the actual loop.
+* `NLAlib.SpectralBisection.upwardPass_writes`: total root reconstruction by the actual loop.
 -/
 
 @[expose] public section
@@ -46,7 +46,7 @@ local notation "PRE" => (fun r => Fp.loopPrefix (fun j => REG (L - j)) r)
 under the exact completed-level prefix; capacity and spatial arena conditions are explicit.
 Every iteration uses the actual total upward-level theorem, with no successful-run premise.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_upwardPass (unif : K → Su → K) (normal : Sg → K × K)
+theorem upwardPass_writes (unif : K → Su → K) (normal : Sg → K × K)
     {I : Interp Op Tst K} (hS : IsScalar M I) (hQ : IsToNat dec I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) {m : Mem K}
     (hl : m.Live [lv, ua, qa, ea, sz, kd, kp, c, ma])
@@ -114,7 +114,7 @@ theorem writes_upwardPass (unif : K → Su → K) (normal : Sg → K × K)
     have hframeLive : m'.Live [lv, ua, qa, ea, sz, kd, kp, c] := by
       intro z hz
       exact hl' z (List.mem_append_left [ma] hz)
-    have hw := writes_upLevel_eighAux (M := M) (dec := dec) (mm := mm) (qr := qr)
+    have hw := upLevel_writes_eighAux (M := M) (dec := dec) (mm := mm) (qr := qr)
       (n := n) (base := base) (fuel := fuel) (R0 := R0) (eps := eps) (beta := beta)
       (ell := ell) (A := A) (d := L - r) (budget := r) (τ := τ) (m := m')
       unif normal hS hQ hMM

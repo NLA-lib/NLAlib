@@ -18,7 +18,7 @@ ordinary scalar operations; their mathematical output requires no numerical assu
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_rootResultCopy`: total copying of the stored root pair.
+* `NLAlib.SpectralBisection.rootResultCopy_writes`: total copying of the stored root pair.
 -/
 
 @[expose] public section
@@ -29,7 +29,7 @@ open Ops
 
 /-- The final copies write both supplied result blocks and consume no random words.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_rootResultCopy {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
+theorem rootResultCopy_writes {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
     {τ : Tape K} {μ : Mem K} {n : ℕ} {ua ea u dv : ℕ × ℕ}
     (result : Matrix (Fin n) (Fin n) (K × K) × (Fin n → K))
@@ -59,12 +59,12 @@ theorem writes_rootResultCopy {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
       (Fp.blocks [dv] [n]) := hAP.2.2.1
   have hED : Fp.Disj (Store.inBlock ea.1 ea.2 n) (Store.inBlock dv.1 dv.2 n) := by
     simpa using hAP.disj_getD (i := 1) (j := 3) (by simp) (by simp) (by simp)
-  have hc := PairMatrix.writes_copy (md := .total) (rows := n) (cols := n) (τ := τ)
+  have hc := PairMatrix.copy_writes (md := .total) (rows := n) (cols := n) (τ := τ)
     hS (by room) (Or.inl hUU) hU hroom.1
   refine (hc.in_frame rfl rfl (by room)).seq_readBlock hUD ?_
   intro μ₁ hfr₁ _ _
   have hE₁ := hfr₁.keep (Store.readsOnly_readBlock ea.1 ea.2 n _) hUE hE
-  have hv := writes_unaryMap_of_disj_or_eq (md := .total) (f := id) (τ := τ) (hS .copy)
+  have hv := unaryMap_writes_of_disj_or_eq (md := .total) (f := id) (τ := τ) (hS .copy)
     (Or.inl hED) hE₁ (by rw [hfr₁.len_eq]; exact hroom.2.1)
   simp only [List.map_id] at hv
   exact (hv.in_frame rfl rfl (by room)).readBlocks_singleton

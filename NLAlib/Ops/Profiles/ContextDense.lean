@@ -19,8 +19,8 @@ retain their interface. Matrix words are read by the actual scalar program.
 ## Main results
 
 * `NLAlib.Ops.ContextDense.impl` selects a matrix from a fixed context interface.
-* `NLAlib.Ops.ContextDense.writes_impl_word` transfers the actual machine-word execution.
-* `NLAlib.Ops.ContextDense.writes_impl` is its exact-arithmetic specialization.
+* `NLAlib.Ops.ContextDense.impl_writes_word` transfers the actual machine-word execution.
+* `NLAlib.Ops.ContextDense.impl_writes` is its exact-arithmetic specialization.
 -/
 
 @[expose] public section
@@ -56,7 +56,7 @@ theorem eval_frameOperand (d : List ℕ) (args : List (ℕ × ℕ)) (i : Fin arg
 
 /-- Context forwarding preserves the actual dense execution and its output footprint.
 No abstract matrix-vector call is executed by this leaf. -/
-theorem writes_impl_word {I : Interp Op Tst ℝ} {tape : Tape ℝ} {mem : Mem ℝ}
+theorem impl_writes_word {I : Interp Op Tst ℝ} {tape : Tape ℝ} {mem : Mem ℝ}
     {M : Machine ℝ} (hS : IsScalar M I) (context : List (ℕ × ℕ))
     (index : Fin context.length) {m n : ℕ} {x y : ℕ × ℕ} (ds xs : List ℝ)
     (hl : mem.Live (context ++ [x, y]))
@@ -88,12 +88,12 @@ theorem writes_impl_word {I : Interp Op Tst ℝ} {tape : Tape ℝ} {mem : Mem �
       Option.bind_some, Option.map_some]
     rfl
   exact writes_frame hd ha (fun a ha => hl a (by simp at ha ⊢; aesop))
-    (StoredDense.writes_impl_word hS ds xs
+    (StoredDense.impl_writes_word hS ds xs
       (fun a ha => hl a (by simp at ha ⊢; aesop)) hD hX hYD hYX hy)
 
 /-- Context forwarding preserves the actual dense execution and its output footprint.
 No abstract matrix-vector call is executed by this leaf. -/
-theorem writes_impl {I : Interp Op Tst ℝ} {tape : Tape ℝ} {mem : Mem ℝ}
+theorem impl_writes {I : Interp Op Tst ℝ} {tape : Tape ℝ} {mem : Mem ℝ}
     (hS : IsScalar RCLikeBlas.machine I) (context : List (ℕ × ℕ))
     (index : Fin context.length) {m n : ℕ} {x y : ℕ × ℕ} (ds xs : List ℝ)
     (hl : mem.Live (context ++ [x, y]))
@@ -110,7 +110,7 @@ theorem writes_impl {I : Interp Op Tst ℝ} {tape : Tape ℝ} {mem : Mem ℝ}
   have hr : StoredDense.rowWord RCLikeBlas.machine m n ds xs =
       StoredDense.row m n ds xs := funext (StoredDense.rowWord_exact m n ds xs)
   simpa only [hr] using
-    (writes_impl_word (tape := tape) (M := RCLikeBlas.machine) hS context index ds xs
+    (impl_writes_word (tape := tape) (M := RCLikeBlas.machine) hS context index ds xs
       hl hD hX hYD hYX hy)
 
 end NLAlib.Ops.ContextDense

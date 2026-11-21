@@ -12,7 +12,7 @@ public import NLAlib.Ops.OperationCount
 # The operation count of scalar reorthogonalized Lanczos
 
 The scalar-only stored fully reorthogonalized Lanczos program
-(`NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded.scalarProgram`) executes, on a
+(`NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification.scalarProgram`) executes, on a
 matrix of order `n` with iteration cap `k`, at most
 
 `33 n² k + 92 n k² + 152 k² + 269 n k + 581 k + 58 n + 179`
@@ -25,16 +25,18 @@ branch counts both sides.
 
 ## Main results
 
-* `NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded.countPoly_scalarProgram`: the polynomial of the
+* `NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification.countPoly_scalarProgram`: the
+  polynomial of the
   program.
-* `NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded.scalarCountedAlgorithm`: the certificate with this
+* `NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification.scalarCountedAlgorithm`: the
+  certificate with this
   explicit work
   and span.
 -/
 
 @[expose] public section
 
-namespace NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded
+namespace NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification
 
 open Ops
 
@@ -79,4 +81,4 @@ noncomputable def scalarCountedAlgorithm (M : Machine ℝ) (u : ℝ) (hM : StdMo
   (scalarAlgorithm M u hM hu E hprec).withCountPoly (fun _ _ => le_rfl) (fun _ _ => le_rfl)
     (fun _ _ => le_rfl) operationCount (fun d _ => (eval_countPoly_scalarProgram d).le)
 
-end NLAlib.Krylov.Lanczos.Stored.Reorth.Rounded
+end NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification

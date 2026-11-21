@@ -17,7 +17,7 @@ public import NLAlib.Matrix.FinitePrecision.ProductRounded
 
 Word pairs $(x, y)$ of complex numbers, their squared moduli
 $\mathrm{fl}(\mathrm{fl}(x^2) + \mathrm{fl}(y^2))$ on a machine with the standard model, and their
-rounded products and sums: one loop rule (`NLAlib.ShiftedQR.writes_loop_normSqOpRound`) gives
+rounded products and sums: one loop rule (`NLAlib.ShiftedQR.loop_writes_normSqOpRound`) gives
 the stored word of a fold of squared moduli by any scalar operation, on any scalar machine; the
 accuracy lemmas bound the rounded product of moduli
 (`NLAlib.ShiftedQR.abs_sqrt_prodWords_normSqFactors_sub_le`) and the rounded Euclidean norm of
@@ -33,7 +33,7 @@ number are bounded once (`NLAlib.ShiftedQR.abs_rpow_inv_natCast_sub_le`).
 
 ## Main results
 
-* `NLAlib.ShiftedQR.writes_loop_normSqOpRound`, `NLAlib.ShiftedQR.writes_loop_normSqMulRound`:
+* `NLAlib.ShiftedQR.loop_writes_normSqOpRound`, `NLAlib.ShiftedQR.loop_writes_normSqMulRound`:
   the fold and product loops on any scalar machine.
 * `NLAlib.ShiftedQR.prodWords_normSqFactors_bounds`: the rounded product of squared moduli.
 * `NLAlib.ShiftedQR.abs_sqrt_prodWords_normSqFactors_sub_le`: the rounded product of moduli.
@@ -125,8 +125,8 @@ machine function `g`. If, in round $i < N$, the operand `x` addresses a pair hol
 region `R` apart from the scratch view `t` (three words) and the accumulator word `p`, and `p` holds
 $v$, then the loop stores in `p` the fold `NLAlib.ShiftedQR.foldWords` by `g` of $v$ and the machine
 squared moduli of $z_0, \dots, z_{N-1}$, and writes only `p` and `t`.
-A step in the proof of `writes_loop_normSqMulRound`, `pairVecNormWithScratch_writes_word`. -/
-theorem writes_loop_normSqOpRound {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsScalar M I)
+A step in the proof of `loop_writes_normSqMulRound`, `pairVecNormWithScratch_writes_word`. -/
+theorem loop_writes_normSqOpRound {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsScalar M I)
     {o : ScalarOp} {g : ℝ → ℝ → ℝ} (hg : M.fn o = .bin fun a b => some (g a b))
     {τ : Tape ℝ} {m : Mem ℝ} {ρ : Env} {cnt : IExp} {N : ℕ} (hN : cnt.eval ρ.idx = some N)
     {x t p : Operand} {xs : ℕ → ℕ × ℕ} {tl pl : ℕ × ℕ} {R : Fp} {z : ℕ → ℂ} {v : ℝ}
@@ -176,10 +176,10 @@ theorem writes_loop_normSqOpRound {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS 
   exact ⟨hp''.trans (hp'.trans hpos), by simpa [foldWords, normSqFactors, normSqWord] using hMul⟩
 
 /-- The product loop of squared moduli on any scalar machine: the fold loop
-(`NLAlib.ShiftedQR.writes_loop_normSqOpRound`) by the multiplication stores the rounded product
+(`NLAlib.ShiftedQR.loop_writes_normSqOpRound`) by the multiplication stores the rounded product
 `NLAlib.prodWords` of $v$ and the machine squared moduli of $z_0, \dots, z_{N-1}$.
 A step in the proof of `subdiagProductWithScratch_writes_word`, `comptau_writes_word`. -/
-theorem writes_loop_normSqMulRound {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsScalar M I)
+theorem loop_writes_normSqMulRound {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {m : Mem ℝ} {ρ : Env} {cnt : IExp} {N : ℕ} (hN : cnt.eval ρ.idx = some N)
     {x t p : Operand} {xs : ℕ → ℕ × ℕ} {tl pl : ℕ × ℕ} {R : Fp} {z : ℕ → ℂ} {v : ℝ}
     (hx : ∀ i < N, x.eval (ρ.pushIdx i) = some (xs i))
@@ -196,7 +196,7 @@ theorem writes_loop_normSqMulRound {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS
       (Store.inBlock pl.1 pl.2 1 ⊔ Store.inBlock tl.1 tl.2 3)
       (fun m' => m'.pos = m.pos ∧
         m'.store.get pl.1 pl.2 = some (prodWords M (normSqFactors M v z) N)) m := by
-  simpa only [foldWords_mul] using writes_loop_normSqOpRound (τ := τ) hS (o := .mul) rfl hN hx
+  simpa only [foldWords_mul] using loop_writes_normSqOpRound (τ := τ) hS (o := .mul) rfl hN hx
     ht ht2 hp hxR hre him hroom hv hRt hRp htp
 
 /-! ### Scalar estimates -/
@@ -502,7 +502,7 @@ theorem pairVecNormWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst 
   refine (writes_call_const (hS (.lit 0)) rfl trivial hp).seq_le le_sup_left ?_
   intro m₁ hfr₁ ⟨hp₁, hZero⟩
   have hD₁ := hD.of_eqOff hfr₁ hdp.symm
-  have hloop := writes_loop_normSqOpRound (τ := τ) (m := m₁) (N := N) hS (o := .add) rfl
+  have hloop := loop_writes_normSqOpRound (τ := τ) (m := m₁) (N := N) hS (o := .add) rfl
     (ρ := Env.frame [N] [d, t, p]) (cnt := .var 0) rfl
     (xs := fun i => (d.1, d.2 + 2 * i)) (tl := t) (pl := p)
     (R := Store.inBlock d.1 d.2 (2 * (1 * N))) (z := vecGetD r) (v := M.lit 0)

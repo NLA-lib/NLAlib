@@ -19,7 +19,7 @@ Zero cap and zero input remain explicit complete outcomes.
 
 ## Main results
 
-* `NLAlib.Krylov.Lanczos.SequentialCertification.ritzAlgorithm`: the same consequence
+* `NLAlib.Krylov.Lanczos.Linked.Certification.ritzAlgorithm`: the same consequence
   for the actual sequential scalar lowering, retaining its separate resource manifest.
 
 * `NLAlib.Krylov.Lanczos.Certification.ritzAlgorithm`: complete resource certification and
@@ -63,7 +63,7 @@ noncomputable def ritzAlgorithm
 
 end NLAlib.Krylov.Lanczos.Certification
 
-namespace NLAlib.Krylov.Lanczos.SequentialCertification
+namespace NLAlib.Krylov.Lanczos.Linked.Certification
 
 open Ops
 
@@ -73,13 +73,14 @@ variable {domain : (Fin 2 → ℕ) → Prop} {admitted : ∃ d, domain d}
 /-- The actual sequential scalar lowering retains its complete independently computed resource
 specification while strengthening its output with the same physical Ritz residual guarantee. -/
 noncomputable def ritzAlgorithm
-    (model : Standard.Model (Certification.problem (K := K) domain admitted) (fun d => d 0))
+    (model : Standard.Model (Lanczos.Certification.problem (K := K) domain admitted) (fun d => d 0))
     (E : (Fin 2 → ℕ) → ℝ) (cert : Algorithm model.access (specification model E))
     (hsmall : ∀ d, domain d → (d 1 : ℝ) * E d ≤ 1 / 100) :
     Algorithm model.access
-      { specification model E with good := (Certification.ritzSpecification model E).good } :=
+      { specification model E with good := (Lanczos.Certification.ritzSpecification model E).good }
+          :=
   cert.mapPost _ fun d hd _ _ _ _ h => by
     obtain ⟨hpos, vs, cs, hv, hc, hout⟩ := h
     exact ⟨hpos, vs, cs, hv, hc, hout.ritzOutput (hsmall d hd)⟩
 
-end NLAlib.Krylov.Lanczos.SequentialCertification
+end NLAlib.Krylov.Lanczos.Linked.Certification

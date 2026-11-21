@@ -28,7 +28,7 @@ return U, V, G, R, S
 
 Full reorthogonalization is the fact that every extension is against all stored columns of
 its side. The [driver](../../NLAlib/Krylov/GolubKahan/Band/Alg.lean) is
-`Krylov.GolubKahan.Band.solve`; `Krylov.GolubKahan.Band.program` fixes its four dimensions
+`Krylov.GolubKahan.Band.solve`; `Krylov.GolubKahan.Band.solveProgram` fixes its four dimensions
 `[m, n, b, q]` and five output buffers.
 
 The first scheme for `extend` is
@@ -255,7 +255,7 @@ certificate.
 
 The following are not stated in the library, so nothing here should be read as claiming them.
 
-- The concrete linked certificates: `linkedAlgorithm` instantiated at `CGS2.cgs2ExtendRoutine`
+- The concrete linked certificates: `linkedSolveAlgorithm` instantiated at `CGS2.cgs2ExtendRoutine`
   over an exact or a rounded BLAS model. The generic linking theorem and both certificates of
   the scheme exist; the instantiation, with its well-typedness side condition and its
   recomputed costs, is not written.

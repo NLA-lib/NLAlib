@@ -26,7 +26,7 @@ mathematical recurrence `NLAlib.MGS.mgsSweep`, with no orthogonality or rank ass
 ## Main results
 
 * `NLAlib.MGS.sweepRoutine_meets`: the sweep meets its specification.
-* `NLAlib.MGS.writes_sweep`: the same, read with the columns of `Q` given one by one.
+* `NLAlib.MGS.sweep_writes`: the same, read with the columns of `Q` given one by one.
 -/
 
 @[expose] public section
@@ -88,7 +88,7 @@ theorem sweepRoutine_meets (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     have hl' : m'.Live [(q.1, q.2 + n * i), v, r] := by
       simpa only [Mem.live_cons, Mem.live_nil] using hlive.congr hfr.length_eq
     refine writes_frame rfl rfl hl' ?_
-    refine (writes_reduce hS hB (List.ofFn (Q i)) (List.ofFn (mgsSweep Q w i))
+    refine (reduce_writes hS hB (List.ofFn (Q i)) (List.ofFn (mgsSweep Q w i))
       hl' hcolm hvec (hdis.mono le_sup_left le_rfl) hvr.symm
       (Or.inl ((hdis.mono le_sup_right le_rfl).symm))
       (by simpa only [hfr.len_eq] using hroom.2)
@@ -107,7 +107,7 @@ theorem sweepRoutine_meets (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
 column loop of `NLAlib.MGS.factorRoutine` and the probe projection of Hutch++ keep their basis
 as a list of column facts. It is the judgment `NLAlib.MGS.sweepRoutine_meets` at the block of the
 first `k` columns. -/
-theorem writes_sweep (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+theorem sweep_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hB : RCLikeBlas.IsExact I) {n k : ℕ} {q v r : ℕ × ℕ}
     (Q : ℕ → Fin n → 𝕜) (w : Fin n → 𝕜) (hl : m.Live [q, v, r])
     (hQ : ∀ i < k, m.store.readBlock q.1 (q.2 + n * i) n = some (List.ofFn (Q i)))

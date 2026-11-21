@@ -12,7 +12,7 @@ public import NLAlib.Ops.OperationCount
 # The operation count of scalar preconditioned conjugate gradient
 
 The scalar-only stored preconditioned conjugate gradient program
-(`NLAlib.Krylov.CG.HSPCG.Rounded.Stored.program`) executes, on a
+(`NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.program`) executes, on a
 matrix of order `n` with iteration cap `k`, at most
 
 `66 n² k + 33 n² + 228 n k + 390 k + 73 n + 181`
@@ -25,14 +25,16 @@ branch counts both sides.
 
 ## Main results
 
-* `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.countPoly_program`: the polynomial of the program.
-* `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.countedAlgorithm`: the certificate with this explicit work
+* `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.countPoly_program`: the polynomial of the
+  program.
+* `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.countedAlgorithm`: the certificate with this
+  explicit work
   and span.
 -/
 
 @[expose] public section
 
-namespace NLAlib.Krylov.CG.HSPCG.Rounded.Stored
+namespace NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification
 
 open Ops
 
@@ -87,4 +89,4 @@ noncomputable def countedAlgorithm (M : Machine ℝ) (u : ℝ)
     hPp hwindow).withCountPoly (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl)
     operationCount (fun d _ => (eval_countPoly_program d).le)
 
-end NLAlib.Krylov.CG.HSPCG.Rounded.Stored
+end NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification

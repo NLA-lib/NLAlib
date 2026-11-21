@@ -64,19 +64,19 @@ theorem initialBytes_problem (dataLength : ℕ → ℕ → ℕ) (d : Fin 3 → �
 
 /-- The canonical manifest retains original calls, comparisons and structural instructions. -/
 noncomputable def staticBudget (stream : ℕ) (d : Fin 3 → ℕ) :
-    Count (ExactLinear.Operation ⊕ Bookkeeping) CmpTst := staticCost (program stream) d
+    Count (ExactLinear.Operation ⊕ Bookkeeping) CmpTst := staticCost (estimateProgram stream) d
 
 /-- The entire fixed estimator is well typed for the standardized exact-linear signatures. -/
-theorem wellTyped_program (work workspace : ExactLinear.Operation → List ℕ → ℕ)
+theorem wellTyped_estimateProgram (work workspace : ExactLinear.Operation → List ℕ → ℕ)
     (stream : ℕ) :
-    (program stream).wellTyped (ExactLinear.resources work workspace)
+    (estimateProgram stream).wellTyped (ExactLinear.resources work workspace)
       (fun _ => .cell) = true := by
   rfl
 
 /-- Primitive workspace is added once to the independent stored-matrix/scalar polynomial. -/
-theorem staticPeak_program_le (work workspace : ExactLinear.Operation → List ℕ → ℕ)
+theorem staticPeak_estimateProgram_le (work workspace : ExactLinear.Operation → List ℕ → ℕ)
     (w : ℕ) (hW : ∀ o d, workspace o d ≤ w) (stream : ℕ) (d : Fin 3 → ℕ) :
-    staticPeak (ExactLinear.resources work workspace) (program stream) d ≤
+    staticPeak (ExactLinear.resources work workspace) (estimateProgram stream) d ≤
       2 * d 0 * (d 1 + d 2) + 2 + w := by
   rw [staticPeak_eq,
     (ExactLinear.resources work workspace).queryReserve_of_zero (fun _ _ => rfl), Nat.add_zero]

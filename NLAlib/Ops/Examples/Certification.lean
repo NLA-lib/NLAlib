@@ -127,7 +127,7 @@ noncomputable def repeatSpecification : Specification ScalarOp Empty repeatProbl
   good d x _ _ m' := m'.store.get 1 0 = some ((d 0 : ℝ) * (show ℝ from x.val.1))
 
 /-- The total program-logic proof of the source program. -/
-theorem wp_repeat {I : Interp ScalarOp Empty ℝ} (hI : IsScalar exactMachine I)
+theorem repeat_wp {I : Interp ScalarOp Empty ℝ} (hI : IsScalar exactMachine I)
     (d : Fin 1 → ℕ) (input : repeatProblem.Input d) (τ : Tape ℝ) :
     Wp .total I τ repeatProgram.body (Program.environment (b := 2) d)
       (fun m' => m'.store.get 1 0 = some ((d 0 : ℝ) * (show ℝ from input.val.1)))
@@ -194,7 +194,7 @@ theorem peak_repeatProgram (d : Fin 1 → ℕ) :
 noncomputable def repeatAlgorithm : Algorithm repeatModel repeatSpecification :=
   Algorithm.ofWp repeatProgram (by decide)
     (fun d _ x I hI τ => by
-      have h := wp_repeat hI.1 d x τ
+      have h := repeat_wp hI.1 d x τ
       exact h.mono fun _ hg _ _ => hg)
     (fun d _ => le_of_eq (staticCost_repeatProgram d))
     (fun d _ => le_of_eq (peak_repeatProgram d))

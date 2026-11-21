@@ -60,7 +60,7 @@ theorem downLevelBody_kernelWeight_sum_le_of_exec {K : Type} [Inhabited K]
   have hl := hG.live
   simp only [Mem.live_cons, Mem.live_nil, and_true] at hl
   rcases hl with ⟨hparl, hlvl, hsul, hsgl, hmal, hual, hqal, heal, hszl, hkdl, hkpl, hcl, htl⟩
-  have hp := writes_downPrepare (τ := τ) (m := a.mem) (L := L) hS hL hSample
+  have hp := downPrepare_writes (τ := τ) (m := a.mem) (L := L) hS hL hSample
     (M.lit 1) (M.lit 2) (M.div (M.lit 1) (M.lit 2)) R eps (by room) hG.prepare_apart
     (by simpa using Store.readBlock_sub hc (o := 0) (n := 3) (by omega)) hlv
     hG.next_room hG.uniform_room hG.gaussian_room (by have := hG.scratch_room; omega)

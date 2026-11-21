@@ -19,7 +19,7 @@ structural work remains in the full instruction count.
 ## Main results
 
 * `NLAlib.SpectralBisection.solve_kernelWeight_le_of_exec`: allocated source kernel bound.
-* `NLAlib.SpectralBisection.program_kernelWeight_le_of_exec`: canonical actual-count bound.
+* `NLAlib.SpectralBisection.bisectionProgram_kernelWeight_le_of_exec`: canonical actual-count bound.
 -/
 
 @[expose] public section
@@ -113,7 +113,7 @@ variable {K : Type} [Inhabited K]
 
 /-- The actual canonical execution has the same matrix-kernel bound, after removing only
 its structural instruction coordinates. Its raw buffers are supplied without preprocessing. -/
-theorem program_kernelWeight_le_of_exec
+theorem bisectionProgram_kernelWeight_le_of_exec
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     {I : Interp DenseOp (CmpTst ⊕ IdxTst) K}
     (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp dec I)
@@ -124,7 +124,7 @@ theorem program_kernelWeight_le_of_exec
     (T : ℕ → ℕ) (hT : Monotone T) (hadd : ∀ i j, T i + T j ≤ T (i + j))
     (R : ResourceModel DenseOp (CmpTst ⊕ IdxTst)) {τ : Tape K}
     {st : St (DenseOp ⊕ Bookkeeping) (CmpTst ⊕ IdxTst) K}
-    (hr : exec (program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) I R
+    (hr : exec (bisectionProgram (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) I R
       (problem (K := K) domain admitted).formats τ d
       ((problem (K := K) domain admitted).initial d x) = some st) :
     Dense.kernelWeight T (Count.original st.cost) ≤

@@ -13,7 +13,7 @@ public import NLAlib.Ops.Blas.Fill
 /-!
 # Capped conjugate gradient with a carried residual product on a stored dense matrix
 
-`NLAlib.Krylov.CG.HSCG.Carried.Stored.storedRoutine` reads a matrix stored as `n * n` words and
+`NLAlib.Krylov.CG.HSCG.Carried.Stored.zeroStartRoutine` reads a matrix stored as `n * n` words and
 a right-hand side, and writes the iterate, the residual, the direction and the cell of the
 carried residual product: it fills the iterate with literal zeros and runs the capped solver on
 the stored matrix. That solver is the matrix-free one on stored data
@@ -22,17 +22,17 @@ those of the other operands, forwarded to every product.
 
 ## Main definitions
 
-* `NLAlib.Krylov.CG.HSCG.Carried.Stored.linkedSolveRoutine`: the capped solver on a stored
+* `NLAlib.Krylov.CG.HSCG.Carried.Stored.solveRoutine`: the capped solver on a stored
   matrix.
-* `NLAlib.Krylov.CG.HSCG.Carried.Stored.storedRoutine`,
-  `NLAlib.Krylov.CG.HSCG.Carried.Stored.storedSpec`: the routine from the zero iterate and its
+* `NLAlib.Krylov.CG.HSCG.Carried.Stored.zeroStartRoutine`,
+  `NLAlib.Krylov.CG.HSCG.Carried.Stored.zeroStartSpec`: the routine from the zero iterate and its
   specification.
 
 ## Main results
 
-* `NLAlib.Krylov.CG.HSCG.Carried.Stored.linkedSolveRoutine_meets`: the stored solver meets the
+* `NLAlib.Krylov.CG.HSCG.Carried.Stored.solveRoutine_meets`: the stored solver meets the
   specification of the matrix-free solver at the matrix decoded from the stored words.
-* `NLAlib.Krylov.CG.HSCG.Carried.Stored.storedRoutine_meets`: the routine meets its
+* `NLAlib.Krylov.CG.HSCG.Carried.Stored.zeroStartRoutine_meets`: the routine meets its
   specification.
 -/
 
@@ -48,7 +48,7 @@ variable {I : Interp RCLikeBlas.Operation CmpTst ℝ}
 
 /-- The capped solver on a stored matrix: the matrix-free capped solver with the matrix
 words, `n * n` of them, a new isolated leading operand forwarded to every product. -/
-def linkedSolveRoutine : Routine RCLikeBlas.Operation CmpTst :=
+def solveRoutine : Routine RCLikeBlas.Operation CmpTst :=
   (Carried.solveRoutine (Op := Standard.Operation) (Tst := CmpTst)).withData
     [fun d => d.headD 0 * d.headD 0] (ContextLinear.table 1 0)
 
@@ -56,12 +56,12 @@ def linkedSolveRoutine : Routine RCLikeBlas.Operation CmpTst :=
 offsets of `A`, `b`, `x`, `r`, `p`, `v`. -/
 def zeroStart : Stmt RCLikeBlas.Operation CmpTst := ops% [n, cap] (A, B) → (X, R, P, RHO) {
   run (fillRoutine (Has.inj (ScalarOp.lit 0))) [n] (X);
-  run linkedSolveRoutine [n, cap] (A, B, X, R, P, RHO)
+  run solveRoutine [n, cap] (A, B, X, R, P, RHO)
 }
 
 /-- The specification of the capped solver on a stored matrix: for a positive-definite matrix
 decoded from the stored words, that of the matrix-free capped solver at that matrix. -/
-noncomputable def linkedSolveSpec : Routine.Spec ℝ :=
+noncomputable def solveSpec : Routine.Spec ℝ :=
   .onData 1
     (fun d raws =>
       (StoredOperator.denseMatrix (d.headD 0) (d.headD 0) (raws.headD [])).PosDef)
@@ -71,9 +71,9 @@ noncomputable def linkedSolveSpec : Routine.Spec ℝ :=
 /-- The stored solver meets its specification: it is the matrix-free solver on stored data, and
 under the interpretation in which a product reads the stored words that solver meets its own
 specification at the decoded matrix (`NLAlib.Ops.Routine.Meets.withData`). -/
-theorem linkedSolveRoutine_meets (hS : IsScalar RCLikeBlas.machine I)
+theorem solveRoutine_meets (hS : IsScalar RCLikeBlas.machine I)
     (hB : RCLikeBlas.IsExact I) (hCmp : IsCmp id I) :
-    linkedSolveRoutine.Meets I linkedSolveSpec :=
+    solveRoutine.Meets I solveSpec :=
   Routine.Meets.withData _ _
     (fun d raws =>
       ContextLinear.relation (StoredOperator.denseMatrix (d.headD 0) (d.headD 0) (raws.headD [])))
@@ -96,13 +96,13 @@ theorem linkedSolveRoutine_meets (hS : IsScalar RCLikeBlas.machine I)
 /-- Capped conjugate gradient with a carried residual product on a stored dense matrix from the
 zero iterate: the matrix words are isolated, the right-hand side is read, and the iterate, the
 residual, the direction and the cell of the carried residual product are written. -/
-def storedRoutine : Routine RCLikeBlas.Operation CmpTst :=
+def zeroStartRoutine : Routine RCLikeBlas.Operation CmpTst :=
   routine% [n, k] (isolated A : n * n, b : n) → (x : n, r : n, p : n, v : 1) := zeroStart
 
 /-- For a positive-definite matrix decoded from the stored words, the written blocks are the
 conjugate gradient state from the zero iterate at the earlier of the cap and exact convergence,
 with the carried residual product. -/
-noncomputable def storedSpec (n : ℕ) : Routine.Spec ℝ :=
+noncomputable def zeroStartSpec (n : ℕ) : Routine.Spec ℝ :=
   spec% [m, cap] (raw, bs) → (xs', rs, ps, [v])
     requires m = n ∧ (StoredOperator.denseMatrix n n raw).PosDef
     ensures decodedState id n xs' rs ps =
@@ -113,8 +113,8 @@ noncomputable def storedSpec (n : ℕ) : Routine.Spec ℝ :=
 /-- Capped conjugate gradient on a stored matrix meets its specification for every exact scalar
 and vector interpretation and every cap: the iterate is zeroed, then the stored solver runs,
 each used by its judgment. -/
-theorem storedRoutine_meets (hS : IsScalar RCLikeBlas.machine I) (hB : RCLikeBlas.IsExact I)
-    (hCmp : IsCmp id I) {n : ℕ} : storedRoutine.Meets I (storedSpec n) := by
+theorem zeroStartRoutine_meets (hS : IsScalar RCLikeBlas.machine I) (hB : RCLikeBlas.IsExact I)
+    (hCmp : IsCmp id I) {n : ℕ} : zeroStartRoutine.Meets I (zeroStartSpec n) := by
   routine_intro [n', cap] (a, b, x, r, p, v) reads (raw, bs)
   obtain ⟨hn, hPos⟩ := hpre
   obtain rfl : n = n' := hn.symm
@@ -123,7 +123,7 @@ theorem storedRoutine_meets (hS : IsScalar RCLikeBlas.machine I) (hB : RCLikeBla
     simp [decv, vec, i.isLt, RCLikeBlas.machine]
   call (fillRoutine_meets (Tst := CmpTst) (hS (.lit 0))) [n] (x) as m₁ hfr₁ hpos₁ (xs₀) hzero
   obtain rfl : xs₀ = List.replicate n (RCLikeBlas.machine.lit 0) := hzero
-  call (linkedSolveRoutine_meets hS hB hCmp) [n, cap] (a, b, x, r, p, v)
+  call (solveRoutine_meets hS hB hCmp) [n, cap] (a, b, x, r, p, v)
     (pre := ⟨hPos, rfl⟩) as m₂ hfr₂ hpos₂ (xs', rs, ps, vs) hst
   obtain ⟨rr, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock hvs)
   routine_exit

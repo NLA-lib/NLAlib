@@ -21,7 +21,7 @@ The contract of `mm` is functional: the result is `f` of the two input blocks, f
 * Exact satisfaction (`NLAlib.Ops.Examples.mm_satisfies`): the run of the triple loop
   `NLAlib.Ops.Examples.mmImpl` is the block function of `NLAlib.Ops.Examples.mmF`, the triple
   loop written as a function on lists through a machine. It reuses the accumulation loop of the
-  dot product (`NLAlib.Ops.Examples.wp_dotLoop`) for each entry.
+  dot product (`NLAlib.Ops.Examples.dotLoop_wp`) for each entry.
 * Mathematics (`NLAlib.Ops.Examples.abs_dec_mmF_sub_le`): each entry of `mmF` is a rounded dot
   product.
 * Corollary (`NLAlib.Ops.Examples.runs_sq2_link`): the linked program computes `mmF`, within
@@ -158,7 +158,7 @@ def mmImpl : Impl ScalarOp Empty where
       ⟨2, .var 5 + .var 6 * .var 2 + .var 7⟩ ⟨3, .const 0⟩)))
 
 /-- One entry: the accumulation loop appends entry `i c + j` to the block written so far. -/
-theorem wp_mm_entry {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {md : Mode}
+theorem mm_wp_entry {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {md : Mode}
     {τ : Tape K}
     {a b c i j : ℕ} (hi : i < a) (hj : j < c) {A B C : ℕ × ℕ} {s : Store K} {p : ℕ}
     {As Bs : List K} {tb : Buf K} (hAC : A.1 ≠ C.1) (hBC : B.1 ≠ C.1)
@@ -178,7 +178,7 @@ theorem wp_mm_entry {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith 
     rw [Nat.add_comm, Nat.add_mul_div_right _ _ (by omega), Nat.div_eq_of_lt hj, Nat.zero_add]
   have hmod : (i * c + j) % c = j := by
     rw [Nat.add_comm, Nat.add_mul_mod_self_right, Nat.mod_eq_of_lt hj]
-  refine wp_dotLoop hI (s := s.updBlock C.1 C.2 (mmPrefix M b c As Bs (i * c + j)))
+  refine dotLoop_wp hI (s := s.updBlock C.1 C.2 (mmPrefix M b c As Bs (i * c + j)))
     (bz := C.1) (oz := C.2 + i * c + j) (fx := fun k => A.2 + i * b + k)
     (fy := fun k => B.2 + k * c + j) (a := fun k => vec As (i * b + k))
     (b := fun k => vec Bs (k * c + j)) rfl rfl (fun _ => rfl) (fun _ => rfl) (fun _ => rfl)
@@ -221,7 +221,7 @@ theorem mm_satisfies {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith
       m' = ⟨s.updBlock z.1 z.2 (mmPrefix M b c As Bs (i * c + j)) ++ [tb], p⟩) ⟨tb, htb, rfl⟩ ?_
       (fun m' ⟨tb', h1, h2⟩ => ⟨tb', h1, by rw [h2, Nat.succ_mul]⟩)
     rintro j hj m' ⟨tb, htb, rfl⟩
-    exact wp_mm_entry hI hi hj (hadm A (by simp) z (by simp)) (hadm B (by simp) z (by simp)) hA
+    exact mm_wp_entry hI hi hj (hadm A (by simp) z (by simp)) (hadm B (by simp) z (by simp)) hA
       hB hC htb
       fun tb' h => ⟨tb', h, rfl⟩
   · rintro m' ⟨tb, _, rfl⟩

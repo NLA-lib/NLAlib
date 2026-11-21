@@ -19,7 +19,7 @@ not a separate execution-phase state.
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_nodePrepare`: exact stored preparation on actual words.
+* `NLAlib.SpectralBisection.nodePrepare_writes`: exact stored preparation on actual words.
 -/
 
 @[expose] public section
@@ -31,7 +31,7 @@ open Ops
 /-- Preparation computes the existing capped-sign projectors while retaining every original
 input and the signed half-radius words needed by the selected branch.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_nodePrepare {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
+theorem nodePrepare_writes {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     [Has IndexOp Op] [Has MatrixOp Op] [Has CmpTst Tst]
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp dec I)
@@ -72,7 +72,7 @@ theorem writes_nodePrepare {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
   have hScalarSub : Fp.blocks [t, (t.1, t.2 + 2), (t.1, t.2 + 3)] [2, 1, 2] ≤
       Fp.blocks [t, sp, w, b, tm, pp, pm] (nodeScratchLengths k) := by
     fp_sub [nodeScratchLengths]
-  have hscalars := writes_nodeScalars (M := M) (μ := μ) (τ := τ)
+  have hscalars := nodeScalars_writes (M := M) (μ := μ) (τ := τ)
     (L := L) (d := d) (lo := lo)
     (lv := lv) (c := c) (su := su) (t := t) hS hL R (M.lit 2) U
     (by kept) (by kept) (by kept) (by omega)
@@ -92,7 +92,7 @@ theorem writes_nodePrepare {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
   have hwSub : Store.inBlock w.1 w.2 (2 * (k * k)) ≤
       Fp.blocks [t, sp, w, b, tm, pp, pm] (nodeScratchLengths k) := by
     fp_sub [nodeScratchLengths]
-  have hShift := Hermitian.writes_shift_packed
+  have hShift := Hermitian.shift_writes_packed
     (M := M) (dec := dec) (mm := mm) (qr := qr) (unif := M.mul)
     (normal := fun z : K × K => M.normalWords z.1 z.2) (μ := μ₁) (τ := τ)
     (x := (ma.1, ma.2 + 2 * (n * n) * d + 2 * n * lo)) (c := (t.1, t.2 + 4)) (y := w) hS A _
@@ -103,7 +103,7 @@ theorem writes_nodePrepare {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     rfl rfl (by room) hwSub ?_
   clear hShift
   intro μ₂ hfr₂ ⟨⟨hp₂, hW₂⟩, hcarry₂⟩
-  have hParams := writes_signParameters (M := M) (I := I) (μ := μ₂) (τ := τ)
+  have hParams := signParameters_writes (M := M) (I := I) (μ := μ₂) (τ := τ)
     (d := d) (lv := lv) (par := par) (two := (c.1, c.2 + 1)) (sp := sp) hS R beta (M.lit 2)
     (by kept) (by kept) (by kept) (by room)
     (hsprotect.symm.mono (by fp_sub [nodeInputs, nodeInputLengths, Fp.cells])
@@ -119,7 +119,7 @@ theorem writes_nodePrepare {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
       [M.lit 1, M.lit 2, M.div (M.lit 1) (M.lit 2), M.neg (M.lit 1), M.sqrtHalf] := by kept
   have hc4 := Store.readBlock_sub hC₃ (o := 0) (n := 4) (by omega)
   have hProjApart := apart_nodeProjectors hsap hsprotect
-  have hProj := writes_nodeProjectors (M := M) (dec := dec) (mm := mm)
+  have hProj := nodeProjectors_writes (M := M) (dec := dec) (mm := mm)
     (qr := qr) (unif := M.mul) (normal := fun z : K × K => M.normalWords z.1 z.2)
     (m := μ₃) (τ := τ) (fuel := fuel) (w := w) (sp := sp) (c := c)
     (b := b) (t := tm) (pp := pp) (pm := pm)

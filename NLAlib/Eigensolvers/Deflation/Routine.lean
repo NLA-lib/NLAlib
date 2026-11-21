@@ -95,7 +95,7 @@ theorem deflateRoutine_meets (hS : IsScalar M I) (hSample : IsSample I)
         rw [(hBelow z.1 hz).1]
         exact hroom
       refine (writes_frame rfl rfl (by simp [Mem.Live, hs]; omega)
-        (writes_apply hS hSample hMM hQR P hrank (by simp [Mem.Live, hs]; omega)
+        (apply_writes hS hSample hMM hQR P hrank (by simp [Mem.Live, hs]; omega)
           (by dsimp only; omega) (by dsimp only; omega) (by dsimp only; omega)
           hP₀ (by simpa using hGlen.ge) (by simpa using hYlen.ge)
           (by simpa using hQlen.ge) (by simpa using hRlen.ge) hz₀)).mono ?_ ?_

@@ -20,8 +20,8 @@ Straight-line arithmetic uses the shared pure scalar-block evaluator and packed-
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_signParameters`: stored tolerance and doubled radius.
-* `NLAlib.SpectralBisection.writes_nodeScalars`: five actual rounded scalar setup words.
+* `NLAlib.SpectralBisection.signParameters_writes`: stored tolerance and doubled radius.
+* `NLAlib.SpectralBisection.nodeScalars_writes`: five actual rounded scalar setup words.
 -/
 
 @[expose] public section
@@ -33,7 +33,7 @@ open Ops
 /-- The sign parameters are the supplied tolerance and the actual product of the stored two
 and radius words. Source and destination regions may lie in one buffer when disjoint.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_signParameters {K Op Tst : Type} [Has ScalarOp Op]
+theorem signParameters_writes {K Op Tst : Type} [Has ScalarOp Op]
     {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
     {τ : Tape K} {μ : Mem K} {d : ℕ} {lv par two sp : ℕ × ℕ} (R β t : K)
     (hR : μ.store.get lv.1 (lv.2 + 2 * d) = some R)
@@ -71,7 +71,7 @@ theorem writes_signParameters {K Op Tst : Type} [Has ScalarOp Op]
 the machine literal of `L+d`, the rounded radius quotient and the sampled shift. All scalar
 operations remain explicit; a division requires no meta-level successful-run assumption.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_nodeScalars {K Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op]
+theorem nodeScalars_writes {K Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op]
     {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndexLit M I)
     {τ : Tape K} {μ : Mem K} {L d lo : ℕ} {lv c su t : ℕ × ℕ} (R two U : K)
     (hR : μ.store.get lv.1 (lv.2 + 2 * d) = some R)

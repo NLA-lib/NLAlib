@@ -18,7 +18,7 @@ batches. The position advances by the sum of their exact lengths.
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_downPrepare`: the actual next parameters and sampled words.
+* `NLAlib.SpectralBisection.downPrepare_writes`: the actual next parameters and sampled words.
 -/
 
 @[expose] public section
@@ -30,7 +30,7 @@ open Ops
 /-- The level preparation writes the actual rounded parameters and both actual tape windows.
 It draws exactly `levelSampleSize n` words, including for empty matrices.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_downPrepare {K Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op]
+theorem downPrepare_writes {K Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op]
     [Has SampleOp Op] {M : Machine K} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hIndex : IsIndexLit M I) (hSample : IsSample I)
     {τ : Tape K} {n L d : ℕ} {c lv su sg t : ℕ × ℕ} {m : Mem K}
@@ -61,18 +61,18 @@ theorem writes_downPrepare {K Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op]
       (fun _ => 0) ![3, 2, 2, 4] (by intro i; fin_cases i <;> simp)
       (by intro i j hij he; fin_cases i <;> fin_cases j <;> simp at he hij ⊢)
     simpa using h
-  have hP := writes_levelParameters (τ := τ) (L := L) hS hIndex one two half R eps hp hc hLv hv ht
+  have hP := levelParameters_writes (τ := τ) (L := L) hS hIndex one two half R eps hp hc hLv hv ht
   have hLive : c.1 < m.store.length ∧ lv.1 < m.store.length ∧ su.1 < m.store.length ∧
       sg.1 < m.store.length ∧ t.1 < m.store.length := by simpa [Mem.Live] using hl
   rcases hLive with ⟨hlc, hlv, hlu, hlg, hlt⟩
   refine (hP.in_frame rfl rfl (by room)).seq fun μ hfr0 hpar => ?_
-  have hU := writes_sampleVector (τ := τ) (m := μ) hSample Stream.unif
+  have hU := sampleVector_writes (τ := τ) (m := μ) hSample Stream.unif
     (y := su) (n := n) (by rw [hfr0.len_eq]; exact hu)
   refine (hU.in_frame rfl rfl (by room)).seq fun ν hfr1 hunif => ?_
   have hV := hfr1.keep (Store.readsOnly_readBlock lv.1 (lv.2 + 2 * (d + 1)) 2 _)
     (by simpa using hd 3 2 (by simp)) hpar.2
   have hfr01 := hfr0.trans' hfr1
-  have hG := writes_sampleVector (τ := τ) (m := ν) hSample Stream.gauss
+  have hG := sampleVector_writes (τ := τ) (m := ν) hSample Stream.gauss
     (y := sg) (n := 4 * (n * n)) (by rw [hfr01.len_eq]; exact hg)
   refine (hG.in_frame rfl rfl (by room)).mono le_rfl ?_
   intro ξ hfr2 hgauss

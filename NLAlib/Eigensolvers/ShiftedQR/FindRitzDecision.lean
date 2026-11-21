@@ -50,7 +50,7 @@ theorem findRitzChoice_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     exact (Writes.skip ⟨rfl, by simpa only [if_pos hc] using ha⟩).mono bot_le (fun _ _ h => h)
   · simp only [id_eq, hc, decide_false] at ht
     refine writes_ite rfl rfl ht ?_
-    refine (writes_indexNat hL hE rfl rfl ?_).mono le_rfl ?_
+    refine (indexNat_writes hL hE rfl rfl ?_).mono le_rfl ?_
     · exact Store.lt_len_of_get ha
     · intro m' _ hp
       exact ⟨hp.1, by simpa only [if_neg hc] using hp.2⟩
@@ -76,13 +76,13 @@ theorem findRitzDecision_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
   have hw := findRitzChoice_writes hL hE hCmp (τ := τ) (h := h) hwords.1 hl hr
   change Writes .total I τ (.seq _ _) _ _ _ m
   refine Writes.seq_le (hw.in_frame rfl rfl hlive) (by fp_sub) fun m' hfr ⟨hp, hstart⟩ => ?_
-  refine Writes.seq_le (writes_indexNat hL hE rfl rfl (by
+  refine Writes.seq_le (indexNat_writes hL hE rfl rfl (by
     change r.2 + 1 < m'.store.len r.1
     rw [hfr.len_eq]
     omega)) (by fp_sub) fun m'' hfr' ⟨hp', hhalf⟩ => ?_
   have hstart' := hfr'.keep (Store.readsOnly_get _ _ _)
     (Fp.disj_inBlock_of_le (by omega)).symm hstart
-  refine (writes_indexNat hL hE rfl rfl (by
+  refine (indexNat_writes hL hE rfl rfl (by
     change r.2 + 2 < m''.store.len r.1
     rw [hfr'.len_eq, hfr.len_eq]
     omega)).mono (by fp_sub) ?_

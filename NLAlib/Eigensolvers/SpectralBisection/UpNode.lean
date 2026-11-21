@@ -19,8 +19,8 @@ The proofs consume the same mathematical outcome representation as the downward 
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_upNode_leaf`: a stored leaf keeps its complete result.
-* `NLAlib.SpectralBisection.writes_upNode_shiftResult`: actual one-child assembly.
+* `NLAlib.SpectralBisection.upNode_writes_leaf`: a stored leaf keeps its complete result.
+* `NLAlib.SpectralBisection.upNode_writes_shiftResult`: actual one-child assembly.
 -/
 
 @[expose] public section
@@ -45,7 +45,7 @@ def upNodeRegionLengths (n k : ℕ) : List ℕ :=
 /-- A stored leaf already has its mathematical output, and its actual metadata dispatch
 executes no arithmetic or matrix calls.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_upNode_leaf {K Op Tst : Type} [Has ScalarOp Op] [Has MatrixOp Op]
+theorem upNode_writes_leaf {K Op Tst : Type} [Has ScalarOp Op] [Has MatrixOp Op]
     [Has IdxTst Tst] {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     (hQ : IsToNat dec I) {τ : Tape K} {m : Mem K} {n d lo k : ℕ} {R : K}
     {ma ua qa ea sz kd kp t : ℕ × ℕ} (U : Matrix (Fin k) (Fin k) (K × K))
@@ -65,7 +65,7 @@ theorem writes_upNode_leaf {K Op Tst : Type} [Has ScalarOp Op] [Has MatrixOp Op]
 The scalar shift words are the actual upward half-radius computation, and constructor
 literals decode exactly within their explicitly declared integer range.
 A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
-theorem writes_upNode_shiftResult {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
+theorem upNode_writes_shiftResult {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     [Has MatrixOp Op] [Has IdxTst Tst] {M : Machine K} {dec : K → ℝ}
     {I : Interp Op Tst K} (hS : IsScalar M I) (hQ : IsToNat dec I)
     {τ : Tape K} {m : Mem K} {n d lo k : ℕ} {R sigma : K} {side : Bool}
@@ -96,7 +96,7 @@ theorem writes_upNode_shiftResult {K Op Tst : Type} [Inhabited K] [Has ScalarOp 
     simpa only [upNodeRegions, upNodeRegionLengths, resultOperands, List.cons_append,
       List.nil_append] using hap) side
   simp only [resultOperands, resultLengths, Mem.room_cons, Mem.room_nil, and_true] at hroom
-  refine (writes_upNode_shift hS hQ side child.1 (List.ofFn child.2) sigma
+  refine (upNode_writes_shift hS hQ side child.1 (List.ofFn child.2) sigma
     (M.lit ((if side then 2 else 3 : ℕ) : ℚ)) hl hStep.kind_read hdec
     hChild.matrix_read hChild.values_read hs hroom.1 hroom.2 hApart).mono le_rfl ?_
   intro m' _ ⟨hp, hr⟩

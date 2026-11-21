@@ -130,7 +130,7 @@ theorem span_mixedCount (n : ℕ) : memoryResources.span (mixedCount n) = 4 * n 
   work_mixedCount n
 
 /-- The allocations succeed, clean up their payload buffers and retain the tape position. -/
-theorem wp_mixedProgram (I : Interp Empty Empty Unit) (τ : Tape Unit) (d : Fin 1 → ℕ)
+theorem mixedProgram_wp (I : Interp Empty Empty Unit) (τ : Tape Unit) (d : Fin 1 → ℕ)
     (x : mixedProblem.Input d) :
     Wp .total I τ mixedProgram.body (Program.environment (b := 0) d)
       (fun m => m.store = [] ∧ m.pos = 0) (mixedProblem.initial d x) := by
@@ -140,7 +140,7 @@ theorem wp_mixedProgram (I : Interp Empty Empty Unit) (τ : Tape Unit) (d : Fin 
 /-- A complete mixed-memory certificate for every natural vector length. -/
 noncomputable def mixedAlgorithm : Algorithm mixedModel mixedSpecification :=
   Algorithm.ofWp mixedProgram wellTyped_mixedProgram
-    (fun d _ x I _ τ => (wp_mixedProgram I τ d x).mono fun _ h _ _ => h)
+    (fun d _ x I _ τ => (mixedProgram_wp I τ d x).mono fun _ h _ _ => h)
     (fun d _ => le_of_eq (staticCost_mixedProgram d))
     (fun d _ => le_of_eq (staticPeak_mixedProgram d))
     (fun d _ => le_of_eq (work_mixedCount (d 0)))

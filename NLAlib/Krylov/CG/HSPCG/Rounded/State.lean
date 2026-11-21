@@ -79,7 +79,7 @@ variable {Op Tst : Type} [Has Blas1Op Op]
 /-- Refresh the stopping cache with the actual functional rounded dot. The four vectors
 are preserved, and both the numerical bound and deterministic computed word are retained.
 
-A fragment of `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.storedRoutine`, not a routine: it
+A fragment of `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.zeroStartRoutine`, not a routine: it
 writes the stopping-cache cell that `solve` allocates. -/
 theorem cache_writes {F : Machine ℝ} {ε : Blas1Err} {ok : ℕ → Prop} {n : ℕ}
     {I : Interp Op Tst ℝ} (hB : IsBlas1 id ε ok I) (hok : ok n)
@@ -123,7 +123,7 @@ variable [Has ScalarOp Op] [Has OperatorOp Op]
 /-- The existing step and the refreshed stopping cache have the same adjacent computed
 pairings. Both divisions are justified by the mathematical active-step margins.
 
-A fragment of `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.storedRoutine`, not a routine: the
+A fragment of `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.zeroStartRoutine`, not a routine: the
 round of `rounds`, on the stopping-cache cell that `solve` allocates. -/
 theorem guardedStep_writes {F : Machine ℝ} {n : ℕ} {em u : ℝ} {ε : Blas1Err}
     {A P : Matrix (Fin n) (Fin n) ℝ} {O : MatvecOracle P} {I : Interp Op Tst ℝ}

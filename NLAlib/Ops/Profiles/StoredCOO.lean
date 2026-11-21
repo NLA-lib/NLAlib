@@ -136,7 +136,7 @@ private theorem cooMatrix_mulVec (rows cols : ℕ) (pattern : List (ℕ × ℕ))
 variable {𝕜 : Type} [RCLike 𝕜] {I : Interp Op Tst 𝕜} {tape : Tape 𝕜} {m : Mem 𝕜}
 
 /-- A fragment of `NLAlib.Ops.StoredCOO.matvecRoutine`. -/
-private theorem writes_entry_valid (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+private theorem entry_writes_valid (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     {rows cols row col p : ℕ} {data x y : ℕ × ℕ} {t : ℕ}
     (hr : row < rows) (hc : col < cols) (a b : 𝕜) (v : ℕ → 𝕜)
     (hl : m.Live [data, x, y, (t, 0)])
@@ -162,7 +162,7 @@ private theorem writes_entry_valid (hS : IsScalar (RCLikeBlas.machine : Machine 
     exact ⟨hl data (by simp), hl x (by simp), hl (t, 0) (by simp), hl y (by simp), trivial⟩
   have hcell : Store.inBlock y.1 (y.2 + row) 1 ≤ Store.inBlock y.1 y.2 rows :=
     Fp.inBlock_le_inBlock (by omega) (by omega)
-  refine ((ScalarProducts.writes_step hS a b (v row) hl' hA hX hA'
+  refine ((ScalarProducts.step_writes hS a b (v row) hl' hA hX hA'
     (hTY.mono le_rfl hcell) (by simpa using ht)
     (by change y.2 + row + 1 ≤ m.store.len y.1; omega)).in_frame
       rfl rfl hl').mono (sup_le le_sup_right (hcell.trans le_sup_left)) ?_
@@ -172,7 +172,7 @@ private theorem writes_entry_valid (hS : IsScalar (RCLikeBlas.machine : Machine 
   exact ⟨hp, hV.update_of_frame (by simpa only [sup_comm] using hfr) hTY hg⟩
 
 /-- A fragment of `NLAlib.Ops.StoredCOO.matvecRoutine`. -/
-private theorem writes_entry (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+private theorem entry_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     {rows cols row col p : ℕ} {data x y : ℕ × ℕ} {t : ℕ}
     (a : 𝕜) (xs v : ℕ → 𝕜) (hl : m.Live [data, x, y, (t, 0)])
     (hA : m.store.readBlock data.1 (data.2 + p) 1 = some [a])
@@ -188,7 +188,7 @@ private theorem writes_entry (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) 
   by_cases hr : row < rows
   · by_cases hc : col < cols
     · simpa only [if_pos (show row < rows ∧ col < cols from ⟨hr, hc⟩)] using
-        writes_entry_valid (tape := tape) hS hr hc a (xs col) v hl hA
+        entry_writes_valid (tape := tape) hS hr hc a (xs col) v hl hA
         (by simp [Store.readBlock, hX col hc]) hV hTY ht hy
     · unfold entry
       refine writes_ifPos rfl ?_
@@ -202,7 +202,7 @@ private theorem writes_entry (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) 
     exact ⟨rfl, by simpa only [false_and, hr, if_false] using hV⟩
 
 /-- A fragment of `NLAlib.Ops.StoredCOO.matvecRoutine`. -/
-private theorem writes_entries (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+private theorem entries_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     {rows cols p : ℕ} {data x y : ℕ × ℕ} {t : ℕ} (pattern : List (ℕ × ℕ))
     (vals : List 𝕜) (xs v : ℕ → 𝕜) (hl : m.Live [data, x, y, (t, 0)])
     (hD : m.store.readBlock data.1 (data.2 + p) pattern.length = some vals)
@@ -235,7 +235,7 @@ private theorem writes_entries (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜
       have hsub : Store.inBlock data.1 (data.2 + (p + 1)) tail.length ≤
           Store.inBlock data.1 (data.2 + p) (tail.length + 1) :=
         Fp.inBlock_le_inBlock (by omega) (by omega)
-      refine Writes.seq_le (writes_entry hS a xs v hl hHead hX hV hTY ht hy) le_rfl ?_
+      refine Writes.seq_le (entry_writes hS a xs v hl hHead hX hV hTY ht hy) le_rfl ?_
       intro m₁ hfr ⟨hp, hV₁⟩
       have hTail₁ := hfr.keep (Store.readsOnly_readBlock _ _ _ vals)
         (hDD.mono le_rfl hsub) hTail
@@ -248,7 +248,7 @@ private theorem writes_entries (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜
         simpa only [accumulated, List.tail_cons, List.getD_cons_zero] using hV₂⟩
 
 /-- A fragment of `NLAlib.Ops.StoredCOO.matvecRoutine`. -/
-private theorem writes_zero (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+private theorem zero_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     {rows cols : ℕ} {data x y : ℕ × ℕ} {t : ℕ} (hy : y.2 + rows ≤ m.store.len y.1) :
     Writes .total I tape (.loop (.var 0) (.call (Has.inj (ScalarOp.lit 0)) [] []
       [⟨2, .var 4 + .var 5⟩]))
@@ -305,7 +305,7 @@ theorem matvecRoutine_meets (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I
     exact fun i hi => Store.get_of_readBlock hRead hi 0
   have hcap : y.2 + rows ≤ store.len y.1 := by
     simpa only [(hBelow y.1 hyLive).1] using hroom
-  refine Writes.seq_le (writes_zero hS hcap) le_sup_left ?_
+  refine Writes.seq_le (zero_writes hS hcap) le_sup_left ?_
   intro m₁ hfr ⟨hV, hp⟩
   have hD₁ := hfr.keep (Store.readsOnly_readBlock _ _ _ vals) hYD hData
   have hX₁ := hfr.keep (Store.readsOnly_holdsVec _ _ _ (fun i => xs.getD i 0)) hYX hInput
@@ -316,7 +316,7 @@ theorem matvecRoutine_meets (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I
     Fp.disj_inBlock_of_ne (Ne.symm (Nat.ne_of_lt hxLive))
   have hTY : Fp.Disj (Store.inBlock m.store.length 0 1) (Store.inBlock y.1 y.2 rows) :=
     Fp.disj_inBlock_of_ne (Ne.symm (Nat.ne_of_lt hyLive))
-  refine (writes_entries hS pattern vals (fun i => xs.getD i 0) (fun _ => 0)
+  refine (entries_writes hS pattern vals (fun i => xs.getD i 0) (fun _ => 0)
     (hLive.congr hfr.length_eq)
     (by simpa only [Nat.add_zero] using hD₁) hX₁ hV
     (Fp.disj_sup_left.mpr ⟨by simpa only [Nat.add_zero] using hYD,

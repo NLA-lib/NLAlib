@@ -17,7 +17,7 @@ tail are retained through that in-place prefix factorization.
 
 ## Main results
 
-* `NLAlib.HutchPlusPlus.writes_prepare` computes the packed basis and actual probes.
+* `NLAlib.HutchPlusPlus.prepare_writes` computes the packed basis and actual probes.
 -/
 
 @[expose] public section
@@ -67,7 +67,7 @@ variable [Has ScalarOp Op] [Has Blas1Op Op] [Has CmpTst Tst]
 Every temporary allocation is cleaned up and both sample windows are identified exactly.
 A fragment of `NLAlib.HutchPlusPlus.estimateRoutine`: run only inside its tree, on its
 operands and the buffers it allocates. -/
-theorem writes_prepare (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+theorem prepare_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hB : RCLikeBlas.IsExact I) (hC : IsCmp RCLike.re I)
     {dataLength : ℕ → ℕ → ℕ}
     {matrix : (m n : ℕ) → List 𝕜 → Matrix (Fin m) (Fin n) 𝕜}
@@ -96,13 +96,13 @@ theorem writes_prepare (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
       (Store.inBlock b.1 (b.2 + n * k) (n * ell)) :=
     Fp.disj_inBlock_of_le (by rw [Nat.mul_comm n k])
   unfold prepare
-  refine Writes.seq_le ((writes_sketch hI hSample stream as hl hA
+  refine Writes.seq_le ((sketch_writes hI hSample stream as hl hA
     (hBA.mono hsub le_rfl) (by rw [Nat.add_mul] at hb; omega)).in_frame rfl rfl hl) hsub ?_
   intro m₁ hfr₁ ⟨hp₁, hImage⟩
   have hlG : m₁.Live [(b.1, b.2 + n * k)] := by
     simp only [Mem.live_cons, Mem.live_nil]
     exact ⟨(hl.congr hfr₁.length_eq) b (by simp), trivial⟩
-  refine Writes.seq_le ((writes_sampleVector hSample stream
+  refine Writes.seq_le ((sampleVector_writes hSample stream
     (by change b.2 + n * k + n * ell ≤ m₁.store.len b.1
         rw [hfr₁.len_eq]
         rw [hsize] at hb

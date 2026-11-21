@@ -22,8 +22,8 @@ those of the explicitly chosen exact BLAS operation model.
 
 * `NLAlib.Krylov.Lanczos.Stored.solveRoutine`, `NLAlib.Krylov.Lanczos.Stored.program`: the
   stored routine and its program.
-* `NLAlib.Krylov.Lanczos.Stored.Reorth.solveRoutine`,
-  `NLAlib.Krylov.Lanczos.Stored.Reorth.program`: the reorthogonalized ones.
+* `NLAlib.Krylov.Lanczos.Reorth.Stored.solveRoutine`,
+  `NLAlib.Krylov.Lanczos.Reorth.Stored.program`: the reorthogonalized ones.
 -/
 
 @[expose] public section
@@ -48,7 +48,11 @@ theorem environment_eq (d : Fin 2 → ℕ) :
       (Env.frame [d 0, d 1] [(1, 0), (2, 0), (3, 0)]).withContext [(0, 0)] 2 := by
   rfl
 
-namespace Reorth
+end NLAlib.Krylov.Lanczos.Stored
+
+namespace NLAlib.Krylov.Lanczos.Reorth.Stored
+
+open Ops
 
 /-- Reorthogonalized Lanczos on a stored dense matrix: the matrix-free routine with the matrix
 words, `n * n` of them, a new isolated leading operand forwarded to every product. -/
@@ -59,5 +63,4 @@ def solveRoutine : Routine RCLikeBlas.Operation CmpTst :=
 /-- The fixed reorthogonalized program: the stored routine on the four supplied buffers. -/
 def program : Program RCLikeBlas.Operation CmpTst 2 4 := solveRoutine.close 2 4
 
-end Reorth
-end NLAlib.Krylov.Lanczos.Stored
+end NLAlib.Krylov.Lanczos.Reorth.Stored

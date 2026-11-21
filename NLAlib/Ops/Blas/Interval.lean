@@ -20,7 +20,7 @@ No exactness or distinguishability of the machine's zero and one literals is ass
 ## Main results
 
 * `NLAlib.Ops.intervalScan`: a scalar/comparison implementation for a vector of words.
-* `NLAlib.Ops.writes_intervalScan`: its exact output flag and frame on spatially disjoint inputs.
+* `NLAlib.Ops.intervalScan_writes`: its exact output flag and frame on spatially disjoint inputs.
 -/
 
 @[expose] public section
@@ -68,7 +68,7 @@ open Classical in
 are spatially disjoint from the output flag; they may share its buffer at other offsets.
 The output cell needs capacity, and no output initialization or scalar literal exactness is
 assumed. Every other cell and the tape position are preserved. -/
-theorem writes_intervalScan {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
+theorem intervalScan_writes {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hC : IsCmp dec I) {md : Mode} {τ : Tape K} {m : Mem K}
     {n : ℕ} {x lo hi z : ℕ × ℕ} {a b : K} (v : ℕ → K)
     (hx : m.store.HoldsVec x.1 x.2 n v)

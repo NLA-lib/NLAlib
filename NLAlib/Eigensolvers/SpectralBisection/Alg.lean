@@ -35,7 +35,8 @@ that `k > 1` and that the node's stopping window is larger than the requested to
 * `NLAlib.SpectralBisection.bottomLevel`: fully initialized output at the recursion boundary.
 * `NLAlib.SpectralBisection.upLevel`: child and split assembly from the actual metadata.
 * `NLAlib.SpectralBisection.solve`: the fixed arena program for an explicit node subprogram.
-* `NLAlib.SpectralBisection.program`: the complete tree with the actual node implementation.
+* `NLAlib.SpectralBisection.bisectionProgram`: the complete tree with the actual node
+  implementation.
 -/
 
 @[expose] public section
@@ -303,11 +304,11 @@ def solve (node : Stmt Op Tst) : Stmt Op Tst := ops% [n, L, F] (A, par) → (U, 
 
 /-- The complete fixed first-order program: the explicit node tree is substituted before any
 size or input is supplied. Numerical and resource certification are separate theorems. -/
-def program : Program Op Tst 3 4 := ⟨solve node⟩
+def bisectionProgram : Program Op Tst 3 4 := ⟨solve node⟩
 
 /-- The final program contains the explicit node statement through frames, with no node call
 added to the operation signature and no input-dependent program construction. -/
-theorem body_program_eq_solve :
-    (program (Op := Op) (Tst := Tst)).body = solve node := rfl
+theorem body_bisectionProgram_eq_solve :
+    (bisectionProgram (Op := Op) (Tst := Tst)).body = solve node := rfl
 
 end NLAlib.SpectralBisection

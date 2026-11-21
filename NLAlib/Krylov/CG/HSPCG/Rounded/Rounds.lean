@@ -89,7 +89,7 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op]
 /-- The capped loop returns its actual initialized numerical prefix. Active divisors are
 derived from raw matrix and precision inputs, and every early exit has zero residual.
 
-A fragment of `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.storedRoutine`, not a routine: it
+A fragment of `NLAlib.Krylov.CG.HSPCG.Rounded.Stored.zeroStartRoutine`, not a routine: it
 runs on the stopping-cache cell that `solve` allocates. -/
 theorem rounds_writes {F : Machine ℝ} {em u e : ℝ} {ε : Blas1Err}
     {ok : ℕ → Prop} {n cap : ℕ} {A P : Matrix (Fin n) (Fin n) ℝ}

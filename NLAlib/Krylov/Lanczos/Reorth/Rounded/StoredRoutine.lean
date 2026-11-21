@@ -9,25 +9,25 @@ public import NLAlib.Krylov.Lanczos.Rounded.Solve
 public import NLAlib.Krylov.Lanczos.Reorth.Rounded.Solve
 public import NLAlib.Ops.Profiles.ContextLinearRoundedGuarded
 public import NLAlib.Ops.RoutineData
-public import NLAlib.Krylov.Lanczos.StoredRoutine
+public import NLAlib.Krylov.Lanczos.Reorth.StoredRoutine
 public import NLAlib.Ops.RoutineSyntax
 public import NLAlib.Ops.Logic.RoutineIntro
 
 /-!
-# Lanczos on a stored dense matrix: the rounded specification
+# Reorthogonalized Lanczos on a stored dense matrix: the rounded specification
 
-The routine `NLAlib.Krylov.Lanczos.Stored.solveRoutine` meets a second specification, in rounded
-arithmetic: for a symmetric matrix decoded from the stored words, the packed basis and
-coefficients are a rounded Lanczos output. The accuracy of the product with the stored matrix is
-a hypothesis on the scalar machine, for every stored word list.
+The routine `NLAlib.Krylov.Lanczos.Reorth.Stored.solveRoutine` meets a second specification, in
+rounded arithmetic: the packed basis and coefficients are a rounded two-pass output for the
+matrix decoded from the stored words. The accuracy of the product with the stored matrix is a
+hypothesis on the scalar machine, for every stored word list.
 
 ## Main definitions
 
-* `NLAlib.Krylov.Lanczos.Stored.Rounded.solveSpec`: the rounded specification.
+* `NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.solveSpec`: the rounded specification.
 
 ## Main results
 
-* `NLAlib.Krylov.Lanczos.Stored.Rounded.solveRoutine_meets`: the routine meets the rounded
+* `NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.solveRoutine_meets`: the routine meets the rounded
   specification.
 -/
 
@@ -35,24 +35,24 @@ a hypothesis on the scalar machine, for every stored word list.
 
 open scoped Matrix
 
-namespace NLAlib.Krylov.Lanczos.Stored.Rounded
+namespace NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored
 
 open Ops
 
 variable {I : Interp RCLikeBlas.Operation CmpTst ℝ} {M : Machine ℝ} {u em E : ℝ}
   {e : Blas1Err} {ok : ℕ → Prop}
 
-/-- For a symmetric matrix of order `n` decoded from the stored words, the rounded specification of
-the matrix-free routine at that matrix, with allowance `E`. -/
-noncomputable def solveSpec (n : ℕ) (E : ℝ) : Routine.Spec ℝ :=
-  .onData 1 (fun d raws => d.headD 0 = n ∧ (StoredOperator.denseMatrix n n (raws.headD []))ᵀ =
-      StoredOperator.denseMatrix n n (raws.headD []))
-    (fun _ raws => Lanczos.Rounded.solveSpec id (StoredOperator.denseMatrix n n (raws.headD [])) E)
+/-- For a matrix of order `n` decoded from the stored words, the rounded specification of the
+matrix-free two-pass routine at that matrix, with the stated allowances. -/
+noncomputable def solveSpec (n : ℕ) (em u E : ℝ) (e : Blas1Err) : Routine.Spec ℝ :=
+  .onData 1 (fun d _ => d.headD 0 = n)
+    (fun _ raws =>
+      Lanczos.Reorth.Rounded.solveSpec id (StoredOperator.denseMatrix n n (raws.headD [])) em u E e)
 
-/-- Lanczos on a stored dense matrix meets its rounded specification under the standard model of
-scalar arithmetic, rounded vector contracts and a normwise bound on the product with every stored
-matrix, including zero input, zero dimension and early breakdown: it is the matrix-free rounded
-routine on stored data (`NLAlib.Ops.Routine.Meets.withData`). -/
+/-- Reorthogonalized Lanczos on a stored dense matrix meets its rounded specification under the
+standard model of scalar arithmetic, rounded vector contracts and a normwise bound on the product
+with every stored matrix: it is the matrix-free rounded routine on stored data
+(`NLAlib.Ops.Routine.Meets.withData`). -/
 theorem solveRoutine_meets (hS : IsScalar M I) (hM : StdModel u id M) (hB : IsBlas1 id e ok I)
     {n : ℕ} (hok : ok n) (hCmp : IsCmp id I) (hprec : Lanczos.Rounded.Precision em u E e n)
     (hem : 0 ≤ em)
@@ -61,7 +61,7 @@ theorem solveRoutine_meets (hS : IsScalar M I) (hM : StdModel u id M) (hB : IsBl
         decv id n ((List.range n).map (StoredDense.rowWord M n n raw xs)))‖ ≤
           em * specNorm (StoredOperator.denseMatrix n n raw) *
             ‖WithLp.toLp 2 (decv id n xs)‖) :
-    solveRoutine.Meets I (solveSpec n E) :=
+    Lanczos.Reorth.Stored.solveRoutine.Meets I (solveSpec n em u E e) :=
   Routine.Meets.withData _ _
     (fun _ raws => ContextLinearRounded.relation M e
       (StoredOperator.denseMatrix n n (raws.headD []))
@@ -74,7 +74,7 @@ theorem solveRoutine_meets (hS : IsScalar M I) (hM : StdModel u id M) (hB : IsBl
       obtain ⟨a, rfl⟩ := List.length_eq_one_iff.mp hc
       split_reads hr as (raw)
       have hraw' : m.store.readBlock a.1 a.2 (n * n) = some raw := by
-        rw [← hP.1]
+        rw [← hP]
         exact hraw
       exact ContextLinearRounded.satisfies_guarded hS hB [a] ⟨0, by simp⟩ m.store raw
         (mul_nonneg hem (specNorm_nonneg _)) (hError raw)
@@ -83,11 +83,11 @@ theorem solveRoutine_meets (hS : IsScalar M I) (hM : StdModel u id M) (hB : IsBl
       obtain ⟨a, rfl⟩ := List.length_eq_one_iff.mp hc
       split_reads hr as (raw)
       have hraw' : m.store.readBlock a.1 a.2 (n * n) = some raw := by
-        rw [← hP.1]
+        rw [← hP]
         exact hraw
       obtain ⟨hs, hb', hA, hc⟩ := ContextLinearRounded.guarded_laws hS hB hCmp [a]
         ⟨0, by simp⟩ m.store raw (mul_nonneg hem (specNorm_nonneg _)) (hError raw)
         (fun z hz => List.mem_map_of_mem hz) hraw'
-      exact Lanczos.Rounded.solveRoutine_meets hs hM hb' hok hA hc hP.2 hprec)
+      exact Lanczos.Reorth.Rounded.solveRoutine_meets hs hM hb' hok hA hc hprec)
 
-end NLAlib.Krylov.Lanczos.Stored.Rounded
+end NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored

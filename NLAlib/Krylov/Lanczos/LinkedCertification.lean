@@ -22,13 +22,13 @@ certificate is substituted for the lowered program's complete canonical accounti
 
 ## Main results
 
-* `NLAlib.Krylov.Lanczos.SequentialCertification.algorithm`: actual lowered-tree certificate.
-* `NLAlib.Krylov.Lanczos.SequentialCertification.body_program_eq_link`: the precise scalar lowering.
+* `NLAlib.Krylov.Lanczos.Linked.Certification.algorithm`: actual lowered-tree certificate.
+* `NLAlib.Krylov.Lanczos.Linked.Certification.body_program_eq_link`: the precise scalar lowering.
 -/
 
 @[expose] public section
 
-namespace NLAlib.Krylov.Lanczos.SequentialCertification
+namespace NLAlib.Krylov.Lanczos.Linked.Certification
 
 open Ops
 open scoped Matrix
@@ -44,7 +44,7 @@ def sequentialTable : Table Standard.Operation Standard.Operation CmpTst :=
 def program : Program Standard.Operation CmpTst 2 3 := Rounded.seqSolveRoutine.close 2 3
 
 /-- The program is the oracle program with its vector operations linked. -/
-theorem program_eq_link : program = Certification.program.link sequentialTable := rfl
+theorem program_eq_link : program = Lanczos.Certification.program.link sequentialTable := rfl
 
 /-- The canonical program is exactly the tree whose sequential numerical proof is reused. -/
 theorem body_program_eq_link : program.body =
@@ -72,10 +72,11 @@ theorem wellTyped_program (scheme : Standard.Scheme) (cost : Standard.Costing)
 Resident payload includes every supplied output slot; scratch is the static bound of the
 actual lowered tree, including its primitive workspace and query reservation. -/
 noncomputable def specification
-    (model : Standard.Model (Certification.problem (K := K) domain admitted) (fun d => d 0))
+    (model : Standard.Model (Lanczos.Certification.problem (K := K) domain admitted) (fun d => d 0))
     (E : (Fin 2 → ℕ) → ℝ) :
-    Specification Standard.Operation CmpTst (Certification.problem (K := K) domain admitted) :=
-  { Certification.specification model E with
+    Specification Standard.Operation CmpTst (Lanczos.Certification.problem (K := K) domain admitted)
+        :=
+  { Lanczos.Certification.specification model E with
     budget := staticBudget
     scratch d := staticPeak model.resources program d
     work d := model.resources.work (staticBudget d)
@@ -87,7 +88,7 @@ noncomputable def specification
 rounded matvec, symmetry and precision assumptions. Every canonical resource bound is checked
 on that same lowered program, with no successful-execution premise. -/
 noncomputable def algorithm
-    (model : Standard.Model (Certification.problem (K := K) domain admitted) (fun d => d 0))
+    (model : Standard.Model (Lanczos.Certification.problem (K := K) domain admitted) (fun d => d 0))
     (cost : Standard.Costing) (matvecWork matvecScratch : List ℕ → ℕ)
     (hresources : model.resources =
       Standard.resources model.scheme cost matvecWork matvecScratch)
@@ -114,8 +115,9 @@ noncomputable def algorithm
         (haccuracy d hd).scal
       exact Rounded.seqSolveRoutine_meets hS model.scalar hu (hA.mono (hbudget d hd x)) hCmp
         (hAT d hd x) hp)
-    (fun d _ x => ⟨Mem.readBlocks_of_cons (Certification.initial_readBlock d x) rfl, fun _ => rfl,
-      Certification.initial_room d x⟩)
+    (fun d _ x => ⟨Mem.readBlocks_of_cons (Lanczos.Certification.initial_readBlock d x) rfl, fun _
+        => rfl,
+      Lanczos.Certification.initial_room d x⟩)
     (fun d _ x τ m' _ hpos ys hys hrel c _ => by
       read_outputs hys as (vs, cs)
       exact ⟨hpos, vs, cs, hvs, hcs, hrel⟩)
@@ -124,7 +126,7 @@ noncomputable def algorithm
     (fun _ _ => le_rfl)
     (fun _ _ => le_rfl)
     (fun d _ x => by
-      rw [Certification.initialBytes_problem]
+      rw [Lanczos.Certification.initialBytes_problem]
       exact le_rfl)
 
 /-- The sequentially lowered canonical program has an explicit exact identity-operator
@@ -132,21 +134,22 @@ instance for every admitted dimension, cap and supplied real right-hand side. -/
 noncomputable def exactReferenceAlgorithm (domain : (Fin 2 → ℕ) → Prop)
     (admitted : ∃ d, domain d) (cost : Standard.Costing)
     (matvecWork matvecScratch : List ℕ → ℕ) :
-    Algorithm (Certification.exactReferenceModel domain admitted cost
+    Algorithm (Lanczos.Certification.exactReferenceModel domain admitted cost
       matvecWork matvecScratch).access
-      (specification (Certification.exactReferenceModel domain admitted cost
+      (specification (Lanczos.Certification.exactReferenceModel domain admitted cost
         matvecWork matvecScratch) (fun _ => 0)) := by
-  refine algorithm (Certification.exactReferenceModel domain admitted cost
+  refine algorithm (Lanczos.Certification.exactReferenceModel domain admitted cost
     matvecWork matvecScratch) cost matvecWork matvecScratch rfl
     (fun _ => 0) (fun _ => 0) ?_ ?_ ?_
   · intro d hd
-    constructor <;> norm_num [Certification.exactReferenceModel, Standard.referenceModel,
+    constructor <;> norm_num [Lanczos.Certification.exactReferenceModel, Standard.referenceModel,
       Standard.Model.ofKernels, Standard.Scheme.roundoff, Blas.seq.err, Blas.level1Err,
       Blas.seqSumErr]
   · intro d hd x
-    simp [Certification.exactReferenceModel, Standard.referenceModel,
+    simp [Lanczos.Certification.exactReferenceModel, Standard.referenceModel,
       Standard.Model.ofKernels, Standard.Scheme.roundoff]
   · intro d hd x
-    simp [Certification.exactReferenceModel, Standard.referenceModel, Standard.Model.ofKernels]
+    simp [Lanczos.Certification.exactReferenceModel, Standard.referenceModel,
+        Standard.Model.ofKernels]
 
-end NLAlib.Krylov.Lanczos.SequentialCertification
+end NLAlib.Krylov.Lanczos.Linked.Certification

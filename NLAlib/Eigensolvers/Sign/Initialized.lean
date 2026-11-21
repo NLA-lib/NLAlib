@@ -18,7 +18,7 @@ matrix is the existing mathematical capped sign algorithm on the supplied words.
 
 ## Main results
 
-* `NLAlib.Sign.writes_initialized` refines the complete initialized sign implementation.
+* `NLAlib.Sign.initialized_writes` refines the complete initialized sign implementation.
 -/
 
 @[expose] public section
@@ -37,7 +37,7 @@ actual stored input and parameters: a fragment of `NLAlib.Sign.signRoutine`, run
 that the routine allocates. The written blocks are pairwise apart and apart from the matrix and
 the parameters, which may overlap each other. Workspace needs capacity, not initial contents. The
 theorem is total and does not assume numerical convergence or successful execution. -/
-theorem writes_initialized {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I)
+theorem initialized_writes {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) (hIndex : IsIndexLit M I)
     {τ : Tape K} {n cap : ℕ} (A : Matrix (Fin n) (Fin n) (K × K)) (eps b : K)
     {a par x w v t : ℕ × ℕ} {m : Mem K}
@@ -86,7 +86,7 @@ theorem writes_initialized {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp
   have heps : μ.store.get par.1 par.2 = some eps := by
     simpa using Store.get_of_readBlock hsrc.2 (j := 0) (by simp) eps
   have ht' : t.2 + 5 ≤ μ.store.len t.1 := by rw [hfr0.len_eq]; exact ht
-  have hs := writes_initialScalars (τ := τ) hS heps hden.2 ht'
+  have hs := initialScalars_writes (τ := τ) hS heps hden.2 ht'
   have hls : μ.Live [par, (t.1, t.2 + 2), t] := by
     simpa [Mem.Live, hfr0.length_eq] using
       (show par.1 < m.store.length ∧ t.1 < m.store.length from
@@ -103,7 +103,7 @@ theorem writes_initialized {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp
       (Store.inBlock x.1 x.2 (2 * (n * n))) :=
     (hsp.mono le_rfl hxF).mono
       (Fp.inBlock_le_inBlock (by simp) (by simp)) le_rfl
-  have hscale := Hermitian.writes_scale_packed (dec := dec) (mm := mm) (qr := qr)
+  have hscale := Hermitian.scale_writes_packed (dec := dec) (mm := mm) (qr := qr)
     (unif := unif) (normal := normal) (τ := τ) hS A b
     (hsa.mono le_rfl hxF) hpx hsrc'.1 hb hx' hlsScale
   refine (writes_frame rfl rfl hlsScale hscale).seq_le
@@ -127,7 +127,7 @@ theorem writes_initialized {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp
       ⟨hl x (by simp), hl w (by simp), hl v (by simp), hl t (by simp)⟩
   have hlFrame : χ.Live [x, w, v, t, x, w, v, t] :=
     (Mem.live_append χ _ _).mpr ⟨hlχ, hlχ⟩
-  have hs := writes_start (cap := cap) (dec := dec) (mm := mm) (qr := qr)
+  have hs := start_writes (cap := cap) (dec := dec) (mm := mm) (qr := qr)
     (unif := unif) (normal := normal) (τ := τ) hS hC hMM B η h01 hlχ hLoopAP
     hscaled.2 hconstants.1 hconstants.2.1 hconstants.2.2
     (by rw [hfrAll.len_eq]; exact hx) hwχ hvχ htχ

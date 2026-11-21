@@ -100,7 +100,7 @@ variable [Has ScalarOp Op] [Has Blas1Op Op] [Has CmpTst Tst]
 readable preceding columns and a disjoint two-cell scalar workspace.
 A fragment of `NLAlib.MGS.factorRoutine`: run only inside its tree, on its operands
 and the buffers it allocates. -/
-theorem writes_factorColumn (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+theorem factorColumn_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hB : RCLikeBlas.IsExact I) (hC : IsCmp RCLike.re I)
     {n k j : ℕ} (A : Matrix (Fin n) (Fin k) 𝕜) (hj : j < k) {y t : ℕ × ℕ}
     (hl : m.Live [y, t])
@@ -131,7 +131,7 @@ theorem writes_factorColumn (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I
     simpa only [Mem.live_cons, Mem.live_nil] using
       And.intro (hl y (by simp)) ⟨hl y (by simp), hl t (by simp), trivial⟩
   unfold factorColumn
-  refine Writes.seq_le ((writes_sweep hS hB Q (A.col ⟨j, hj⟩) hl₃ hQ' hv hdis
+  refine Writes.seq_le ((sweep_writes hS hB Q (A.col ⟨j, hj⟩) hl₃ hQ' hv hdis
     (htv.mono ht₀ le_rfl) (by omega) hz).in_frame rfl rfl hl₃)
     (sup_le (ht₀.trans le_sup_right) le_sup_left) ?_
   intro m₁ hfr ⟨hp, hv₁⟩
@@ -140,7 +140,7 @@ theorem writes_factorColumn (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I
     simpa only [Q, mgsSweep_gramSchmidtQ A j hj] using hv₁
   have hl₂ : m₁.Live [(y.1, y.2 + n * j), t] := by
     simpa only [Mem.live_cons, Mem.live_nil] using hl.congr hfr.length_eq
-  refine ((writes_normalize_residual hS hB hC ((gramSchmidtQ A).col ⟨j, hj⟩)
+  refine ((normalize_writes_residual hS hB hC ((gramSchmidtQ A).col ⟨j, hj⟩)
     (gramSchmidtR A ⟨j, hj⟩ ⟨j, hj⟩) (gramSchmidtR_apply_self_nonneg A _)
     (fun h => (gramSchmidtQ_col_eq_zero_iff A _).mpr h)
     (fun h => by rw [dotProduct_gramSchmidtQ_col, if_pos rfl, if_neg h])
@@ -154,7 +154,7 @@ theorem writes_factorColumn (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I
 `gramSchmidtQ` for every matrix, using caller-owned disjoint scalar workspace.
 A fragment of `NLAlib.MGS.factorRoutine`: run only inside its tree, on its operands
 and the buffers it allocates. -/
-theorem writes_factorWithScratch (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+theorem factorWithScratch_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hB : RCLikeBlas.IsExact I) (hC : IsCmp RCLike.re I)
     {n k : ℕ} (A : Matrix (Fin n) (Fin k) 𝕜) {y t : ℕ × ℕ}
     (hl : m.Live [y, t])
@@ -201,7 +201,7 @@ theorem writes_factorWithScratch (hS : IsScalar (RCLikeBlas.machine : Machine �
       simpa [EntryCodec.scalar, Nat.mul_comm] using
         (EntryCodec.scalar 𝕜).disj_columns (L := ⟨y.1, y.2, n, k, n⟩)
           (by exact le_rfl) (ne_of_gt hi)
-    refine ((writes_factorColumn hS hB hC A hj hl' hQ hv hdis
+    refine ((factorColumn_writes hS hB hC A hj hl' hQ hv hdis
       (hty.mono le_rfl (hcol j hj)) (by simpa only [hfr.len_eq] using ht)
       (by have hb := hcol j hj; have hm := Nat.mul_le_mul_left n (Nat.succ_le_of_lt hj)
           rw [Nat.mul_succ, Nat.mul_comm n k] at hm

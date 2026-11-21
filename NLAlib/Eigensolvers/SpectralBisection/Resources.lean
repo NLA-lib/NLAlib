@@ -21,7 +21,8 @@ Format checking and a manifest alone are not a total numerical/resource certific
 
 * `NLAlib.SpectralBisection.problem`: explicit raw input and output buffers.
 * `NLAlib.SpectralBisection.initialBytes_problem`: all supplied resident word capacity.
-* `NLAlib.SpectralBisection.wellTyped_program`: every primitive uses its declared storage format.
+* `NLAlib.SpectralBisection.wellTyped_bisectionProgram`: every primitive uses its declared
+  storage format.
 * `NLAlib.SpectralBisection.staticBudget`: the complete instrumented syntactic manifest.
 -/
 
@@ -121,13 +122,13 @@ theorem initial_get_parameter (d : Fin 3 → ℕ)
 It contains all scalar/matrix/sample calls, queries and core addressing/control instructions. -/
 noncomputable def staticBudget (d : Fin 3 → ℕ) :
     Count (DenseOp ⊕ Bookkeeping) (CmpTst ⊕ IdxTst) :=
-  staticCost (program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) d
+  staticCost (bisectionProgram (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) d
 
 /-- The entire fixed program respects the standard dense signature's storage formats,
 independently of the chosen matrix work and scratch functions. This is format checking;
 execution, numerical output and sharp resource bounds require their own proofs. -/
-theorem wellTyped_program (matrixWork matrixWorkspace : MatrixOp → List ℕ → ℕ) :
-    (program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).wellTyped
+theorem wellTyped_bisectionProgram (matrixWork matrixWorkspace : MatrixOp → List ℕ → ℕ) :
+    (bisectionProgram (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).wellTyped
       (Dense.resources matrixWork matrixWorkspace) (fun _ => .cell) = true := by
   rfl
 

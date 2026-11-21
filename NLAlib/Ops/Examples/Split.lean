@@ -55,7 +55,7 @@ def idleRel : BlockRel K where
   rel _ _ _ ys := ys = []
 
 /-- A call of an idle kernel. -/
-theorem wp_idle {J : Interp Op IdxTst K} {o : Op}
+theorem idle_wp {J : Interp Op IdxTst K} {o : Op}
     (hK : J.Satisfies .total o ((idleRel (K := K)).spec AnyOperands)) {τ : Tape K} {ρ : Env}
     {e : IExp} {n : ℕ} (he : e.eval ρ.idx = some n) {m : Mem K} :
     Wp .total J τ (.call o [e] [] []) ρ (· = m) m := by
@@ -97,9 +97,9 @@ theorem runsW_split {J : Interp Op IdxTst K} {o : Op} {dec : K → ℝ}
       fun c m' => m' = m ∧ c = Count.test .toNat [] +
         (Count.one o [⌊dec w⌋₊] + Count.one o [k - ⌊dec w⌋₊]) := by
   refine (RunsFromW.bindIdx (st := St.init m) rfl rfl (hidx.index_eq hx h0) hle
-    (RunsFromW.seq (RunsFromW.call rfl (wp_idle hK rfl)) fun st' c hc => ?_)).runsW
+    (RunsFromW.seq (RunsFromW.call rfl (idle_wp hK rfl)) fun st' c hc => ?_)).runsW
   obtain ⟨rfl, hm⟩ := hc
-  refine (RunsFromW.call rfl (wp_idle hK (m := st'.mem) rfl)).mono le_rfl ?_
+  refine (RunsFromW.call rfl (idle_wp hK (m := st'.mem) rfl)).mono le_rfl ?_
   rintro c' m' ⟨rfl, rfl⟩
   exact ⟨hm, rfl⟩
 
@@ -184,9 +184,9 @@ theorem splitRoutine_meets {I : Interp LOp IdxTst K} {dec : K → ℝ}
     cases e
     cases e'
     simpa using Store.get_of_readBlock hx Nat.zero_lt_one w
-  refine wp_bindIdx rfl rfl (hidx.index_eq hxw h0) hle (wp_seq ((wp_idle hK rfl).mono ?_))
+  refine wp_bindIdx rfl rfl (hidx.index_eq hxw h0) hle (wp_seq ((idle_wp hK rfl).mono ?_))
   rintro m' rfl
-  exact (wp_idle hK rfl).mono fun m' e => ⟨[], rfl, rfl, by rw [e]; rfl⟩
+  exact (idle_wp hK rfl).mono fun m' e => ⟨[], rfl, rfl, by rw [e]; rfl⟩
 
 /-- The routine of the split implements the contract of `work` at all operands: one cell
 read, nothing written. -/

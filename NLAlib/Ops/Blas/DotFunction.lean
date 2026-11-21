@@ -49,7 +49,7 @@ theorem isFn_dot_seq {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) :
     obtain ⟨x, y, xs, ys, rfl, hx, hy, rfl⟩ := Mem.readBlocks_two hr
     obtain ⟨z, rfl, hz'⟩ := Mem.room_one hz
     change z.2 + 1 ≤ mem.store.len z.1 at hz'
-    refine ⟨⟨rfl, rfl, rfl⟩, (wp_dotSum_seq hI hl hx hy (by omega)).mono ?_⟩
+    refine ⟨⟨rfl, rfl, rfl⟩, (dotSum_wp_seq hI hl hx hy (by omega)).mono ?_⟩
     intro mem' rfl
     exact ⟨[[_]], rfl, rfl, rfl⟩
 

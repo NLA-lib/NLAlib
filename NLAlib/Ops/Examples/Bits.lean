@@ -223,7 +223,7 @@ theorem ripplePrefix_succ (a b : ℕ → Bool) (i : ℕ) :
   simp [ripplePrefix, List.range_succ]
 
 /-- One position of the adder: the sum bit is appended to the block, the carry cell is updated. -/
-theorem wp_ripple_step {I : Interp BitOp Empty Bool} (hI : IsBits I) {md : Mode} {τ : Tape Bool}
+theorem ripple_wp_step {I : Interp BitOp Empty Bool} (hI : IsBits I) {md : Mode} {τ : Tape Bool}
     {w i : ℕ} (hi : i < w) {x y z : ℕ × ℕ} {s : Store Bool} {p : ℕ} {xs ys : List Bool}
     (hxz : x.1 ≠ z.1) (hyz : y.1 ≠ z.1) (hx : s.readBlock x.1 x.2 w = some xs)
     (hy : s.readBlock y.1 y.2 w = some ys) (hz : z.2 + w ≤ s.len z.1) {Q : Mem Bool → Prop}
@@ -307,7 +307,7 @@ theorem ripple_satisfies {I : Interp BitOp Empty Bool} (hI : IsBits I) {d : List
     ⟨s.updBlock z.1 z.2 (ripplePrefix (vec xs) (vec ys) i) ++
       [[some (carry (vec xs) (vec ys) i)]], p⟩) rfl ?_ ?_
   · rintro i hi m' rfl
-    exact wp_ripple_step hI hi (hadm x (by simp) z (by simp)) (hadm y (by simp) z (by simp)) hx
+    exact ripple_wp_step hI hi (hadm x (by simp) z (by simp)) (hadm y (by simp) z (by simp)) hx
       hy hz rfl
   · rintro m' rfl
     simp [Mem.updBlock, rippleF, ripplePrefix]

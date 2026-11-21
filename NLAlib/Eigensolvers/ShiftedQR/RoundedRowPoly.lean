@@ -293,7 +293,7 @@ private theorem rowEntry_round_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     Fp.disj_sup_right.mpr ⟨hsep.mono (by fp_sub) le_rfl, htY⟩
   have hZ : Fp.Disj (Store.inBlock z.1 z.2 2) (R ⊔ Store.inBlock y.1 (y.2 + 2 * i) 2) :=
     Fp.disj_sup_right.mpr ⟨hsep.mono (by fp_sub) le_rfl, hzY⟩
-  have hlc := Pair.writes_linearCombination (τ := τ) (m := m) hS
+  have hlc := Pair.linearCombination_writes (τ := τ) (m := m) hS
     (a := (v.1, v.2 + 2 * l)) (b := o) (x := (a.1, a.2 + 2 * (i * (n + 1) + l)))
     (y := (y.1, y.2 + 2 * i)) (t := t) (z := z) (av := ((r ⟨l, hl1⟩).re, (r ⟨l, hl1⟩).im))
     (bv := oo) (xv := ((W ⟨l, hl1⟩ ⟨i, hi⟩).re, (W ⟨l, hl1⟩ ⟨i, hi⟩).im)) (yv := w)
@@ -528,7 +528,7 @@ theorem rowShiftStep_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
       o.1 < m.store.length ∧ w.1 < m.store.length ∧ t.1 < m.store.length ∧
       z.1 < m.store.length ∧ y.1 < m.store.length := by simpa [Mem.Live] using hl
   unfold rowShiftStep
-  have hc1 := writes_unaryMap_of_disj_or_eq (md := .total) (τ := τ) (m := m) (f := id) (hS .copy)
+  have hc1 := unaryMap_writes_of_disj_or_eq (md := .total) (τ := τ) (m := m) (f := id) (hS .copy)
     (Or.inl (hsep.symm.mono (by fp_sub) (by fp_sub))) hA hw
   refine hc1.frame_seq_le (by simp [IExp.evalList, IExp.eval, Env.frame])
     (by simp [Operand.evalList, Operand.eval, Env.frame, IExp.eval])
@@ -574,7 +574,7 @@ theorem rowShiftStep_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     have := hsep.mono (show Store.inBlock y.1 y.2 (2 * (1 * (n + 1))) ≤ _ by fp_sub)
       (show Store.inBlock v.1 v.2 (2 * (1 * (n + 1))) ≤ _ by fp_sub)
     simpa using this
-  have hc2 := writes_unaryMap_of_disj_or_eq (md := .total) (τ := τ) (m := m₃) (f := id)
+  have hc2 := unaryMap_writes_of_disj_or_eq (md := .total) (τ := τ) (m := m₃) (f := id)
     (hS .copy) (Or.inl hYV) hY₃' hvroom
   refine (hc2.in_frame (by simp [IExp.evalList, IExp.eval, Env.frame])
     (by simp [Operand.evalList, Operand.eval, Env.frame, IExp.eval])

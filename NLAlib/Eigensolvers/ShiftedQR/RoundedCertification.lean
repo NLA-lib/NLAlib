@@ -55,7 +55,7 @@ probabilistic program logic (`NLAlib.Ops.Algorithm.measureReal_not_accepts_le_of
 * `NLAlib.ShiftedQR.shqrProblem`: the five raw buffers and the admitted sizes.
 * `NLAlib.ShiftedQR.shqrModel`, `NLAlib.ShiftedQR.shqrResources`: the access model and its costs.
 * `NLAlib.ShiftedQR.shqrWork`: the explicit work and span polynomial.
-* `NLAlib.ShiftedQR.roundedShQRAlgorithm`: the certificate.
+* `NLAlib.ShiftedQR.shqrAlgorithm`: the certificate.
 
 ## Main results
 
@@ -554,7 +554,7 @@ writing only the matrix, the output and the failure word. The output's accuracy 
 probability at least $1 - \varphi$
 (`NLAlib.ShiftedQR.roundedShQR_algorithm_measureReal_not_accepts_le`).
 Algorithm: shifted-qr-rounded (run model) -/
-noncomputable def roundedShQRAlgorithm (Mch : Machine ℝ)
+noncomputable def shqrAlgorithm (Mch : Machine ℝ)
     (admitted : ∃ d, ShQRSizes Mch d) (s : ℕ) (W : ℕ → ℕ)
     (Bad : (d : ℕ) → Matrix (Fin d) (Fin d) ℂ → Set (Fin (W d) → ℝ))
     (hBad : ∀ d B, MeasurableSet (Bad d B)) {β : ℝ} (hβ : 0 ≤ β)
@@ -587,7 +587,7 @@ $0 \le \varphi_{\mathrm{se}} \le$ `shqrSmallEigFailure` and
 $\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{ShQR}}$. Let `I` meet the model, be measurable and
 read the tape only in its windows, and let the tape $\xi$ have the stream laws `law`, with
 `law` $s_U$ uniform on $[0, 1]$. Then the probability that the counted run of
-`NLAlib.ShiftedQR.roundedShQRAlgorithm` on $\xi$ fails, exceeds its budget, scratch or memory,
+`NLAlib.ShiftedQR.shqrAlgorithm` on $\xi$ fails, exceeds its budget, scratch or memory,
 has work above `NLAlib.ShiftedQR.shqrWork kernelWork` or span above
 `NLAlib.ShiftedQR.shqrWork kernelSpan`, writes outside the matrix, the output and the failure
 word, or does not set the failure word to $0$ and store all eigenvalues of some
@@ -621,7 +621,7 @@ theorem roundedShQR_algorithm_measureReal_not_accepts_le {u : ℝ} (hM : StdMode
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
     P.real {ω | ¬ (shqrSpecification Mch admitted kernelWork kernelSpan kernelWorkspace
         hspan).Accepts (shqrResources kernelWork kernelSpan kernelWorkspace hspan) d x
-      (exec (roundedShQRAlgorithm Mch admitted sU W Bad hBad hβse0 kernelWork kernelSpan
+      (exec (shqrAlgorithm Mch admitted sU W Bad hBad hβse0 kernelWork kernelSpan
           kernelWorkspace hspan).program I
         (shqrResources kernelWork kernelSpan kernelWorkspace hspan)
         (shqrProblem Mch admitted).formats (ξ ω) d ((shqrProblem Mch admitted).initial d x))
@@ -635,7 +635,7 @@ theorem roundedShQR_algorithm_measureReal_not_accepts_le {u : ℝ} (hM : StdMode
   have hT := roundedShQR_measureReal_not_spectrum_le (O := ShQROp) (Q := Tst) hS hM hL hd.1 hQ
     hC hIm hloc hSE' hDisk hU hHess hV hHV hκ hΓ hgap hHS hδ hδS hφ hφ1 x.val.1.degree_eq
     hβse0 hse hφse0 hφse hu hin hξ
-  refine (roundedShQRAlgorithm Mch admitted sU W Bad hBad hβse0 kernelWork kernelSpan
+  refine (shqrAlgorithm Mch admitted sU W Bad hBad hβse0 kernelWork kernelSpan
     kernelWorkspace hspan).measureReal_not_accepts_le_of_wp hd x I hI P ξ _ ?_
   refine (measureReal_mono ?_).trans hT
   intro ω hω hW

@@ -15,7 +15,7 @@ residual sum. Actual dimension-literal arithmetic then combines the stored scala
 
 ## Main results
 
-* `NLAlib.HutchPlusPlus.writes_accumulate` returns the exact two trace sums.
+* `NLAlib.HutchPlusPlus.accumulate_writes` returns the exact two trace sums.
 -/
 
 @[expose] public section
@@ -31,7 +31,7 @@ variable {𝕜 Op Tst : Type} [RCLike 𝕜] [Has ScalarOp Op] [Has Blas1Op Op] [
 Input blocks are read from actual columns and retained through disjoint scalar writes.
 A fragment of `NLAlib.HutchPlusPlus.estimateRoutine`: run only inside its tree, on its
 operands and the buffers it allocates. -/
-theorem writes_accumulate (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+theorem accumulate_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hB : RCLikeBlas.IsExact I) (hLit : IsIndexLit (RCLikeBlas.machine : Machine 𝕜) I)
     {n k ell : ℕ} {b c t out : ℕ × ℕ} (xs ys : ℕ → List 𝕜)
     (hl : m.Live [b, c, t, out])
@@ -58,7 +58,7 @@ theorem writes_accumulate (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
   have hF₁ : Store.inBlock t.1 t.2 1 ⊔ Store.inBlock t.1 (t.2 + 1) 1 ≤
       Store.inBlock t.1 t.2 2 := sup_le ht₀ ht₁
   unfold accumulate
-  refine Writes.seq_le ((ColumnProducts.writes_sum hS hB xs ys hl
+  refine Writes.seq_le ((ColumnProducts.sum_writes hS hB xs ys hl
     (fun j hj => hX j (by omega)) (fun j hj => hY j (by omega))
     (fun j hj => (hDX j (by omega)).mono hF₀ le_rfl)
     (fun j hj => (hDY j (by omega)).mono hF₀ le_rfl)
@@ -74,7 +74,7 @@ theorem writes_accumulate (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     simp only [Mem.live_cons, Mem.live_nil]
     exact ⟨(hl.congr hfr₁.length_eq) b (by simp), (hl.congr hfr₁.length_eq) c (by simp),
       (hl.congr hfr₁.length_eq) t (by simp), (hl.congr hfr₁.length_eq) t (by simp), trivial⟩
-  refine Writes.seq_le ((ColumnProducts.writes_sum hS hB (fun j => xs (k + j))
+  refine Writes.seq_le ((ColumnProducts.sum_writes hS hB (fun j => xs (k + j))
     (fun j => ys (k + j)) hl₁
     (fun j hj => by simpa [Nat.mul_add, Nat.add_assoc] using hX₁ (k + j) (by omega))
     (fun j hj => by simpa [Nat.mul_add, Nat.add_assoc] using hY₁ (k + j) (by omega))
@@ -93,7 +93,7 @@ theorem writes_accumulate (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     simp only [Mem.live_cons, Mem.live_nil]
     exact ⟨(hl.congr (hfr₂.length_eq.trans hfr₁.length_eq)) t (by simp),
       (hl.congr (hfr₂.length_eq.trans hfr₁.length_eq)) out (by simp), trivial⟩
-  refine ((writes_combineTrace hS hLit _ _ hl₂ hlo₂ hhi hTO
+  refine ((combineTrace_writes hS hLit _ _ hl₂ hlo₂ hhi hTO
     (by simpa only [hfr₂.len_eq, hfr₁.len_eq] using ht)
     (by simpa only [hfr₂.len_eq, hfr₁.len_eq] using ho)).in_frame
       rfl rfl hl₂).mono le_rfl ?_

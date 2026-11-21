@@ -119,7 +119,7 @@ theorem repeatBlock_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
       μ.store.readBlock t.1 t.2 (n * j) = some (List.replicate j xs).flatten)
     ⟨rfl, by simp⟩ fun j hj μ hfr ⟨hp, hpre⟩ => ?_
   have hsμ := hfr.keep (Store.readsOnly_readBlock _ _ _ _) (Fp.disj_inBlock_of_ne hst.symm) hs
-  have hcp := writes_unaryMap_of_disj_or_eq (md := .total) (τ := τ) (f := id) (hS .copy)
+  have hcp := unaryMap_writes_of_disj_or_eq (md := .total) (τ := τ) (f := id) (hS .copy)
     (y := (t.1, t.2 + n * j)) (Or.inl (Fp.disj_inBlock_of_ne hst)) hsμ
     (by rw [hfr.len_eq]; nlinarith)
   refine (hcp.in_frame rfl rfl ?_).mono (Fp.inBlock_le_inBlock (by omega) (by nlinarith)) ?_
@@ -377,7 +377,7 @@ def findRounded (Tau : Stmt O Q) : Stmt O Q := ops% [d, m, k] (H, SS) → (Cente
 omit [Has ScalarOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- A dimension literal up to an exact bound stores the natural as an exact real word. The rule for
 one call of the operation. -/
-private theorem writes_indexNat_of_exactNatLit {M : Machine ℝ} {I : Interp O Q ℝ}
+private theorem indexNat_writes_of_exactNatLit {M : Machine ℝ} {I : Interp O Q ℝ}
     (hL : IsIndexLit M I) {B : ℕ} (hNat : IsExactNatLit id M B) {τ : Tape ℝ} {m : Mem ℝ}
     {ρ : Env} {e : IExp} {out : Operand} {n : ℕ} {z : ℕ × ℕ}
     (he : e.eval ρ.idx = some n) (ho : out.eval ρ = some z) (hn : n ≤ B)
@@ -399,14 +399,14 @@ theorem findRitzInitialize_writes_of_exactNatLit {M : Machine ℝ} {I : Interp O
       (Store.inBlock r.1 r.2 3)
       (fun m' => m'.pos = m.pos ∧ SearchWords r 0 (k / 2) 1 m'.store) m := by
   change Writes .total I τ (.seq _ _) _ _ _ m
-  refine Writes.seq_le (writes_indexNat_of_exactNatLit hL hNat rfl rfl (Nat.zero_le _)
+  refine Writes.seq_le (indexNat_writes_of_exactNatLit hL hNat rfl rfl (Nat.zero_le _)
     (by change r.2 < m.store.len r.1; omega)) (by fp_sub) fun m' hfr ⟨hp, hzero⟩ => ?_
-  refine Writes.seq_le (writes_indexNat_of_exactNatLit hL hNat rfl rfl (Nat.div_le_self _ _)
+  refine Writes.seq_le (indexNat_writes_of_exactNatLit hL hNat rfl rfl (Nat.div_le_self _ _)
     (by change r.2 + 1 < m'.store.len r.1; rw [hfr.len_eq]; omega))
     (by fp_sub) fun m'' hfr' ⟨hp', hhalf⟩ => ?_
   have hzero' := hfr'.keep (Store.readsOnly_get _ _ _)
     (Fp.disj_inBlock_of_le (by omega)).symm hzero
-  refine (writes_indexNat_of_exactNatLit hL hNat rfl rfl hk (by
+  refine (indexNat_writes_of_exactNatLit hL hNat rfl rfl hk (by
     change r.2 + 2 < m''.store.len r.1
     rw [hfr'.len_eq, hfr.len_eq]
     omega)).mono (by fp_sub) ?_
@@ -449,20 +449,20 @@ theorem findRitzDecision_writes_of_exactNatLit {M : Machine ℝ} {I : Interp O Q
         (fun _ _ h => h)
     · simp only [id_eq, hc, decide_false] at ht
       refine writes_ite rfl rfl ht ?_
-      refine (writes_indexNat_of_exactNatLit hL hNat rfl rfl hah ?_).mono le_rfl ?_
+      refine (indexNat_writes_of_exactNatLit hL hNat rfl rfl hah ?_).mono le_rfl ?_
       · exact Store.lt_len_of_get hwords.1
       · intro m' _ hp
         exact ⟨hp.1, by simpa only [if_neg hc] using hp.2⟩
   change Writes .total I τ (.seq _ _) _ _ _ m
   refine Writes.seq_le (hch.in_frame rfl rfl hlive) (by fp_sub) fun m' hfr ⟨hp, hstart⟩ => ?_
-  refine Writes.seq_le (writes_indexNat_of_exactNatLit hL hNat rfl rfl
+  refine Writes.seq_le (indexNat_writes_of_exactNatLit hL hNat rfl rfl
     ((Nat.div_le_self _ _).trans (by omega)) (by
       change r.2 + 1 < m'.store.len r.1
       rw [hfr.len_eq]
       omega)) (by fp_sub) fun m'' hfr' ⟨hp', hhalf⟩ => ?_
   have hstart' := hfr'.keep (Store.readsOnly_get _ _ _)
     (Fp.disj_inBlock_of_le (by omega)).symm hstart
-  refine (writes_indexNat_of_exactNatLit hL hNat rfl rfl he (by
+  refine (indexNat_writes_of_exactNatLit hL hNat rfl rfl he (by
     change r.2 + 2 < m''.store.len r.1
     rw [hfr'.len_eq, hfr.len_eq]
     omega)).mono (by fp_sub) ?_
@@ -651,7 +651,7 @@ theorem findRitzCopy_writes_of_readBlock {M : Machine ℝ} {I : Interp O Q ℝ}
   have hsLive := Store.lt_length_of_get hre
   have hcLive := Store.lt_length_of_lt_len (show center.2 < m.store.len center.1 by omega)
   have hcopy := Writes.of_wp_eq_updBlock
-    (Hermitian.wp_copyPair_of_disj (md := .total) (τ := τ)
+    (Hermitian.copyPair_wp_of_disj (md := .total) (τ := τ)
       (x := (ss.1, ss.2 + 2 * a)) (z := center) hS hlocal hre (by simpa [Nat.add_assoc] using him)
       hCenter rfl)
   refine (hcopy.in_frame rfl rfl (by simp [Mem.Live]; omega)).mono le_rfl ?_

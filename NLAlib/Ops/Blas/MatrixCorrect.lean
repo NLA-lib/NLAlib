@@ -18,7 +18,7 @@ including disjoint input and output regions in the same buffer.
 
 ## Main results
 
-* `NLAlib.Ops.PairMatrix.writes_conjTranspose`: the actual stored conjugate transpose.
+* `NLAlib.Ops.PairMatrix.conjTranspose_writes`: the actual stored conjugate transpose.
 -/
 
 @[expose] public section
@@ -29,7 +29,7 @@ variable {K Op Tst : Type} [Has ScalarOp Op]
 
 /-- Copying an interleaved matrix is the generic unary map of scalar copy, including
 exact in-place operands and spatially disjoint regions of a shared buffer. -/
-theorem wp_copy [Inhabited K] {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+theorem copy_wp [Inhabited K] {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {rows cols : ℕ} {x y : ℕ × ℕ} {xs : List K}
     (hl : m.Live [x, y])
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (rows * cols)))
@@ -40,12 +40,12 @@ theorem wp_copy [Inhabited K] {M : Machine K} {I : Interp Op Tst K} (hI : IsScal
     Wp md I τ (copy (Op := Op) (Tst := Tst))
       (Env.frame [rows, cols] [x, y]) Q m := by
   refine wp_frame rfl rfl hl
-    (wp_unaryMap_of_disj_or_eq (hI .copy) (f := id) hxy hx hy ?_)
+    (unaryMap_wp_of_disj_or_eq (hI .copy) (f := id) hxy hx hy ?_)
   simpa using hQ
 
 /-- Copy writes exactly its stored input block, frames every other cell, and consumes no
 random words. No source/output buffer inequality is required. -/
-theorem writes_copy [Inhabited K] {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+theorem copy_writes [Inhabited K] {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {rows cols : ℕ} {x y : ℕ × ℕ} {xs : List K}
     (hl : m.Live [x, y])
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (rows * cols)))
@@ -56,7 +56,7 @@ theorem writes_copy [Inhabited K] {M : Machine K} {I : Interp Op Tst K} (hI : Is
       (Env.frame [rows, cols] [x, y]) (Store.inBlock y.1 y.2 (2 * (rows * cols)))
       (fun m' => m'.pos = m.pos ∧
         m'.store.readBlock y.1 y.2 (2 * (rows * cols)) = some xs) m := by
-  have hw := Writes.of_wp_eq_updBlock (wp_copy hI (md := md) (τ := τ) hl hxy hx hy
+  have hw := Writes.of_wp_eq_updBlock (copy_wp hI (md := md) (τ := τ) hl hxy hx hy
     (Q := fun m' => m' = m.updBlock y xs) rfl)
   have hlen := Store.length_of_readBlock hx
   rw [hlen] at hw
@@ -69,7 +69,7 @@ theorem writes_copy [Inhabited K] {M : Machine K} {I : Interp Op Tst K} (hI : Is
 /-- Conjugate transpose writes the machine-negated imaginary words and copied real words of
 the actual input matrix. Input and output word blocks are disjoint, including when they share
 a buffer. No initialized output words, numerical model or successful-run premise is assumed. -/
-theorem writes_conjTranspose {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+theorem conjTranspose_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {r c : ℕ} {x y : ℕ × ℕ}
     (A : ℕ → ℕ → K × K) (hl : m.Live [x, y])
     (hx : m.store.HoldsEntries (EntryCodec.pair K) ⟨x.1, x.2, r, c, r⟩ A)
@@ -119,12 +119,12 @@ theorem writes_conjTranspose {M : Machine K} {I : Interp Op Tst K} (hI : IsScala
         exact hxy x.1 (x.2 + 2 * (j * r + i) + 1)
           ⟨rfl, by omega, by omega⟩ ⟨hb, by omega, by omega⟩
       · exact Or.inl hb
-    have hwp := Hermitian.wp_conjugatePair hI (md := md) (τ := τ) (m := m')
+    have hwp := Hermitian.conjugatePair_wp hI (md := md) (τ := τ) (m := m')
       (x := (x.1, x.2 + 2 * (j * r + i))) (z := (y.1, y.2 + 2 * (i * c + j)))
       hxr hxi hspace hprotect
       (Q := fun m'' => m'' = m'.updBlock (y.1, y.2 + 2 * (i * c + j))
         [(A i j).1, M.neg (A i j).2]) rfl
-    have hentry := Hermitian.writes_pair_of_wp (md := md) (I := I) (τ := τ) (m := m')
+    have hentry := Hermitian.pair_writes_of_wp (md := md) (I := I) (τ := τ) (m := m')
       (z := (y.1, y.2 + 2 * (i * c + j))) (v := ((A i j).1, M.neg (A i j).2)) hwp hspace
     refine writes_frame rfl rfl (by simpa [Mem.Live] using hl.congr hfr.length_eq) ?_
     exact hentry.mono le_rfl fun _ _ h => ⟨h.1, h.2.trans hp⟩

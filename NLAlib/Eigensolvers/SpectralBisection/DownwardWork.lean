@@ -100,7 +100,7 @@ theorem downwardPass_kernelWeight_le_of_exec
   · simpa only [Finset.sum_const, Finset.card_range, smul_eq_mul] using hb.1
   · intro i hi ν hfr hp
     have hLive := hl.congr hfr.length_eq
-    have hw := writes_downLevel M dec mm qr R0 eps0 beta A
+    have hw := downLevel_writes M dec mm qr R0 eps0 beta A
       (τ := τ) (L := L) (fuel := fuel) (d := i) (base := base)
       hS hL hC hMM hQR hQ hSample hexact hLive hp.1 hp.2.2.2.1 hp.2.1 hp.2.2.1
       (hp.2.2.2.2 (i + 1) le_rfl (by omega)) (hGeom i (by omega) ν hfr)

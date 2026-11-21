@@ -112,7 +112,7 @@ private theorem holdsMatrix_colVec {N L : ℕ} {s : Store ℝ} {v : Fin N → �
 -\Re g_j, \Im g_j)$ into `Uv`, then their rounded Givens coefficients into `Cf`; only `Cf` and `Uv`
 are written.
 A step in the proof of `rhess_loop_writes`. -/
-private theorem writes_rhessCoeffs {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+private theorem rhessCoeffs_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hC : IsCmp id I) {τ : Tape ℝ} {ρ : Env} {m : Mem ℝ} {F : Fp} {P : Mem ℝ → Prop}
     {L t : ℕ} {x₀ x₁ y₀ y₁ : ℝ} {i₁ u₁ i₂ u₂ i₃ u₃ i₄ u₄ : List Operand} {ds : List IExp}
     {as : List Operand} {next : Stmt O Q}
@@ -198,7 +198,7 @@ omit [Has CmpTst Q] in
 entries $j, j + 1$ of the vector at `G`, then of the rows and the columns $j, j + 1$ of the matrix
 at `a`; only `a`, `G` and the scratch `Tm` are written.
 A step in the proof of `rhess_loop_writes`. -/
-private theorem writes_rhessRotate {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+private theorem rhessRotate_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {ρ : Env} {m : Mem ℝ} {N L j : ℕ} (hj : j + 1 < N) {a : ℕ × ℕ}
     {B : Matrix (Fin N) (Fin N) ℂ} {v : Fin N → ℂ} {cs : ℂ × ℂ} {ds₆ ds₇ ds₈ : List IExp}
     {as₆ as₇ as₈ : List Operand} (hd₆ : IExp.evalList ρ.idx ds₆ = some [])
@@ -236,7 +236,7 @@ private theorem writes_rhessRotate {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     intro b i hi
     simp [Fp.blocks, Store.inBlock] at hi
     exact Or.inr (show L ≤ b by omega)
-  refine (writes_rotateLeftWithScratch_word (τ := τ) (m := m) (c := (L + 1, 0)) (s := (L + 1, 2))
+  refine (rotateLeftWithScratch_writes_word (τ := τ) (m := m) (c := (L + 1, 0)) (s := (L + 1, 2))
     (x := (L, 2 * j)) (y := (L, 2 * j + 2)) (t := (L + 3, 0)) (cv := cs.1) (sv := cs.2)
     (xv := v ⟨j, by omega⟩) (yv := v ⟨j + 1, hj⟩) hS (by simp) (by simp) (by simp) (by simp)
     (Fp.disj_inBlock_of_le (by omega)) hc0 hc1 (by simpa using hs0) (by simpa using hs1) hx0
@@ -358,7 +358,7 @@ private theorem rhess_loop_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
     have hjN : j + 1 < N := by omega
     obtain ⟨hx0, hx1⟩ := get_colVec hW ⟨j, by omega⟩
     obtain ⟨hy0, hy1⟩ := get_colVec hW ⟨j + 1, hjN⟩
-    refine writes_rhessCoeffs hS hC (t := 2 * j) (h₁ j) (h₁' j) (h₂ j) (h₂' j) (h₃ j) (h₃' j)
+    refine rhessCoeffs_writes hS hC (t := 2 * j) (h₁ j) (h₁' j) (h₂ j) (h₂' j) (h₃ j) (h₃' j)
       (h₄ j) (h₄' j) (hd₅ j) (ha₅ j) hx0 hx1 (by simpa [show 2 * (j + 1) = 2 * j + 2 by ring]
         using hy0) (by simpa [show 2 * (j + 1) + 1 = 2 * j + 3 by ring] using hy1)
       (by omega) hCf' hUv' (sup_le (fun b i hi => Or.inr (show L ≤ b by have := hi.1; pomega))
@@ -372,7 +372,7 @@ private theorem rhess_loop_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
       simp [Store.inBlock] at h1 h2; omega
     have hB₂ := hB.of_eqOff hf₂ hdA
     have hW₂ := hW.of_eqOff hf₂ hdV
-    refine (writes_rhessRotate hS hjN (hd₆ j) (ha₆ j) (hd₇ j) (ha₇ j) (hd₈ j) (ha₈ j) haL
+    refine (rhessRotate_writes hS hjN (hd₆ j) (ha₆ j) (hd₇ j) (ha₇ j) (hd₈ j) (ha₈ j) haL
       (by rw [hf₂.length_eq]; exact hl') (by rw [hf₂.len_eq]; exact hG')
       (by rw [hf₂.len_eq]; exact hTm') hc₂ hs₂ hB₂ hW₂).mono le_rfl ?_
     rintro μ₃ hf₃ ⟨hp₃, hB₃, hW₃⟩

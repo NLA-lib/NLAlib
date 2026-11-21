@@ -26,7 +26,7 @@ contract are two instances.
 ## Main results
 
 * `NLAlib.CGS2.ColsDone.succ`: one more column.
-* `NLAlib.CGS2.writes_round`: a round keeps the invariant.
+* `NLAlib.CGS2.round_writes`: a round keeps the invariant.
 * `NLAlib.CGS2.cgs2ExtendRoutine_meets_of`: the program satisfies the contract of a basis extension
   for every predicate implied by the relations of its columns.
 -/
@@ -116,7 +116,7 @@ def ColsStored (M : Machine K) (dec : K → ℝ) (ed ea : ℝ) (N : (ℕ → K) 
 `qs`, the words read at entry in column `c` of the block and the invariant before round `c`,
 the round writes only its three columns and the scratch, keeps the position, and establishes
 the invariant before round `c + 1`. -/
-theorem writes_round {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea : ℝ}
+theorem round_writes {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea : ℝ}
     {N : ℕ → (ℕ → K) → K → Prop} {S : ℕ → K → (ℕ → K) → (ℕ → K) → Prop} {ok : ℕ → Prop}
     {I : Interp Op Tst K} (ops : ColOps M dec ed ea N S ok I) {τ' : Tape K} {τ : ℚ}
     {n k b c : ℕ} {Q W C : ℕ × ℕ} {hb tb : ℕ} {m : Mem K} {qs ws : List K}
@@ -132,7 +132,7 @@ theorem writes_round {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea : 
   have hV : m.store.readBlock Q.1 Q.2 ((k + c) * n) = some (qs ++ qn) := by
     rw [Nat.add_mul]
     exact Store.readBlock_add hqs hqn
-  refine (writes_column ops L hc hok hV hw).mono le_rfl ?_
+  refine (column_writes ops L hc hok hV hw).mono le_rfl ?_
   intro m' hfr ⟨hpos, w₂, cc, qc, hw₂, hcc, hqc, hcol⟩
   obtain ⟨hQW, hQC, hWC, hQh, hWh, hCh, hht, -⟩ := id L
   have hWQ : W.1 ≠ Q.1 := hQW.symm
@@ -207,7 +207,7 @@ theorem cgs2ExtendRoutine_meets_of {M : Machine K} {dec : K → ℝ} {ed : ℕ �
       Store.readBlock_sub hws (by omega)
     have hw : m'.store.readBlock W.1 (W.2 + c * n) n = some ((ws.drop (c * n)).take n) := by
       kept
-    exact (writes_round ops (L₀.of_eqOff hfr) hc hokn hqs' hw hinv).mono (by fp_sub)
+    exact (round_writes ops (L₀.of_eqOff hfr) hc hokn hqs' hw hinv).mono (by fp_sub)
       fun m'' _ h => ⟨h.1.trans hpos, h.2⟩
   · rintro m' - ⟨hpos, qn, wd, cs, hqn, hwd, hcs, hdone⟩ s₃ hs₃ hB₃ s₄ hs₄ hB₄
     have hB := (hB₃.mono (by omega)).trans hB₄

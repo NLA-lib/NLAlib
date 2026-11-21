@@ -56,7 +56,7 @@ theorem findRitzCopy_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
   have hcLive := Store.lt_length_of_lt_len
     (show center.2 < m.store.len center.1 by omega)
   have hcopy := Writes.of_wp_eq_updBlock
-    (Hermitian.wp_copyPair_of_disj (md := .total) (τ := τ)
+    (Hermitian.copyPair_wp_of_disj (md := .total) (τ := τ)
       (x := (ss.1, ss.2 + 2 * a)) (z := center) hS hlocal hre him hCenter rfl)
   refine (hcopy.in_frame rfl rfl (by simp [Mem.Live]; omega)).mono le_rfl ?_
   rintro μ _ rfl

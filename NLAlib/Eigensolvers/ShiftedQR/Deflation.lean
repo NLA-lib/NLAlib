@@ -110,7 +110,7 @@ theorem finishRange_writes {θ : ℝ} {K : KernelRoutines θ} {I : Interp O Q �
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix (out.1, out.2 + 2 * lo)
         (Matrix.of fun i (_ : Fin 1) => K.smallEig d B i) m'.store) m := by
   unfold finishRange
-  exact writes_smallEig hK (a := w) (b := (out.1, out.2 + 2 * lo)) rfl rfl rfl
+  exact smallEig_writes hK (a := w) (b := (out.1, out.2 + 2 * lo)) rfl rfl rfl
     (by simpa [Mem.Live] using hl) hB (by dsimp only; omega)
 
 end Finished

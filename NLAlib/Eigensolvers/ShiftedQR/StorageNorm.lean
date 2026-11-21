@@ -74,7 +74,7 @@ theorem matrixNorm_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     Writes .total I τ matrixNorm (Env.frame [rows, cols] [a, z])
       (Store.inBlock z.1 z.2 1)
       (fun μ => μ.pos = m.pos ∧ μ.store.get z.1 z.2 = some (frobNorm H)) m := by
-  have hn := RoundedScalarBlas.writes_nrm2_exact (τ := τ) (xs := matrixWords H)
+  have hn := RoundedScalarBlas.nrm2_writes_exact (τ := τ) (xs := matrixWords H)
     (n := 2 * (cols * rows)) hS hE hl hH hz haz
   refine (hn.in_frame rfl rfl hl).mono le_rfl ?_
   intro μ _ ⟨hp, hout⟩

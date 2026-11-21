@@ -22,7 +22,7 @@ fixed program, operation model, and every resource bound.
 
 * `NLAlib.ShiftedQR.deflation_good_forward_error`: actual output and raw-parameter forward error.
 * `NLAlib.ShiftedQR.deflationForwardSpecification`: backward and forward output guarantees.
-* `NLAlib.ShiftedQR.exactForwardAlgorithm`: total certification of the unchanged scalar program.
+* `NLAlib.ShiftedQR.forwardDeflationAlgorithm`: total certification of the unchanged scalar program.
 -/
 
 @[expose] public section
@@ -96,11 +96,11 @@ scalar program runs under the same exact scalar/index/local-spectral operation m
 admissibility supplies every numerical premise and no successful-execution premise is added.
 [GolubVanLoan2013, Theorem 7.2.2].
 Algorithm: shifted-qr (run model) -/
-noncomputable def exactForwardAlgorithm
+noncomputable def forwardDeflationAlgorithm
     (kernelWork kernelWorkspace : EigenvalueKernelOp → List ℕ → ℕ) :
     Algorithm (model deflationProblem exactRoutines (resources kernelWork kernelWorkspace))
       (deflationForwardSpecification kernelWork kernelWorkspace) :=
-  (exactAlgorithm kernelWork kernelWorkspace).mapPost _
+  (exactDeflationAlgorithm kernelWork kernelWorkspace).mapPost _
     (fun _ _ _ _ _ _ hGood => ⟨hGood, deflation_good_forward_error hGood⟩)
 
 end NLAlib.ShiftedQR

@@ -16,7 +16,7 @@ matrix. Both outputs are retained in scratch before their exactly aliased source
 ## Main results
 
 * `NLAlib.ShiftedQR.rotateRowWithScratch`: actual scalar computation of row-vector times Givens.
-* `NLAlib.ShiftedQR.writes_rotateRowWithScratch`: total exact mathematical pair output.
+* `NLAlib.ShiftedQR.rotateRowWithScratch_writes`: total exact mathematical pair output.
 -/
 
 @[expose] public section
@@ -101,7 +101,7 @@ stores the two mathematical Givens outputs. Input/output views are exactly alias
 [GolubVanLoan2013, §5.1.8].
 A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
 (`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
-theorem writes_rotateRowWithScratch {M : Machine ℝ} {I : Interp Op Tst ℝ}
+theorem rotateRowWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hI : IsScalar M I) (hM : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {c s x y t : ℕ × ℕ} {cv sv xv yv : ℂ}
     (htc : t.1 ≠ c.1) (hts : t.1 ≠ s.1) (htx : t.1 ≠ x.1) (hty : t.1 ≠ y.1)

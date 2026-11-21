@@ -27,9 +27,15 @@ A model of a published certificate is confined (`Ops.AccessModel.Confined`), and
 names. State closed-form work and span: `Ops.Program.countPoly` computes an explicit polynomial
 in the sizes from the fixed tree and `Ops.Algorithm.withCountPoly` restates a certificate with
 it. Work defined as the weight of `staticCost` of the program is a manifest and is reported as
-such. `scripts/OpsPrograms.lean` reports these
-properties for every certificate against `scripts/ops_certificates.txt`
-([Ops README](../../NLAlib/Ops/README.md), "What the model must also satisfy").
+such. `scripts/OpsPrograms.lean` computes one line of properties for every certificate and
+compares it with `scripts/ops_certificates.txt`: the model (`uniform`, `confined`, `charged`),
+each resource field (`closed`, `manifest`, or `unknown` when the check cannot inspect it), the
+problem (`derived` from a `Routine.Domain`, or `handwritten`), its derived slots and unstored
+inputs, the `Oracles` declaration of a model that is not uniform, and the randomized claim. A
+new certificate has a confined model, closed-form work and a derived problem. Read what a
+certificate states with `OPS_CERTIFICATES_REPORT=Name lake env lean scripts/OpsPrograms.lean`
+([Ops README](../../NLAlib/Ops/README.md), "What the model must also satisfy"). What client
+code may depend on is listed there under "What client code may depend on".
 
 Programs have computable definitions [E2]. `scripts/OpsPrograms.lean` inventories fixed programs
 and algorithm certificates, checks computability, and rejects imports of the retired execution
@@ -178,7 +184,7 @@ fields are what a reader checks: the law of the tape (`Ops.TapeModel.streams` fo
 entries with stated stream laws, `Ops.TapeModel.packed` for a packed random object, or the law
 written out), the hypotheses on the input and on the interpretation, the accuracy event and the
 failure bound. A certificate whose routine has the specification `Ops.Routine.Spec.terminates`
-must have a claim; the build of `NLAlibTools/RandomizedClaims.lean` fails otherwise. The
+must have a claim; the certificate check `scripts/OpsPrograms.lean` fails otherwise. The
 headline theorem may stay as the statement the claim's proof applies.
 
 ## Names of routines, files and certificates

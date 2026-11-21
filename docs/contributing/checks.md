@@ -67,7 +67,32 @@ grouped by module. Run it on a PR's headline theorems to check that they are pro
 library's API for their topic rather than re-derived.
 
 `scripts/OpsPrograms.lean` checks computability of fixed Ops programs and inventories canonical
-algorithm certificates. It rejects imports of the retired execution core. Structural rejection
+algorithm certificates. For each certificate it computes one line and compares it with
+`scripts/ops_certificates.txt` (a recorded certificate may not get weaker; a new one needs a
+confined model, closed-form work and a derived problem, or a reviewed line):
+
+* `uniform`, `confined`, `charged`: `yes`, `no`, or `unknown` when the search for the instance
+  stopped at its limit;
+* `budget`, `work`, `scratch`: `manifest` when the field depends on a function that reads a tree;
+  `closed` when every library definition under it was opened and none does; `unknown` when the
+  search met something it cannot inspect (an axiom, an opaque constant, a non-constructive
+  choice). `unknown` counts as `manifest` wherever `closed` is required;
+* `problem`, `derived`, `unstored`: whether the problem is derived from a `Routine.Domain`, how
+  many operands hold words computed from the inputs, and whether inputs are held by no buffer;
+* `oracles`: for a model that is not uniform, whether a `Routine.Domain.Oracles` declaration
+  exists;
+* `claim`: the `RandomizedClaim`s of the certificate; a certificate whose routine specification
+  is termination only must have one.
+
+`OPS_CERTIFICATES_REPORT=1` (or `=Name`) prints what each certificate states, as written:
+admitted sizes, acceptance predicate, slots, oracles, contracts and weights of the operations,
+hypotheses, resource fields, output condition and randomized claims. It writes nothing;
+`OPS_CERTIFICATES_REPORT_FILE=path` sends the report to a file. `OPS_CERTIFICATES_WRITE=1`
+rewrites the fixture, and `OPS_CERTIFICATES_FILE=path` compares with another file. The supported
+surface of the layer is listed in the [Ops README](../../NLAlib/Ops/README.md), "What client
+code may depend on".
+
+It rejects imports of the retired execution core. Structural rejection
 and accounting regressions are kernel-checked modules in `NLAlib/Ops/Examples/Certification.lean`
 and `NLAlib/Ops/Tools/ProgramFixtures.lean`; the whole-library audit and replay cover them.
 The former E3–E6 and E8–E9 registry/syntax rules are retired, and their identifiers are not reused.

@@ -56,7 +56,7 @@ bash scripts/replay_fixtures.sh > "$tmp/replay-fixtures.log" 2>&1 || \
 echo "replay fixtures: $(grep -c ': ok' "$tmp/replay-fixtures.log") verdicts as expected"
 LEAN_NUM_THREADS=1 lake env lean -M 8000 scripts/OpsPrograms.lean > "$tmp/programs.log" 2>&1 || \
   { cat "$tmp/programs.log"; exit 1; }
-grep '^ops programs:' "$tmp/programs.log"
+grep -E '^ops (programs|certificates):' "$tmp/programs.log"
 python3 scripts/check_refs.py | tail -1
 python3 scripts/gen_rules_md.py --check
 python3 scripts/check_constants.py > "$tmp/constants.log" || { cat "$tmp/constants.log"; exit 1; }

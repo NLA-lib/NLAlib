@@ -34,8 +34,8 @@ says the tape is a stated packing of a random mathematical object with a stated 
 also state its law directly.
 
 A certificate whose routine has the specification `NLAlib.Ops.Routine.Spec.terminates` claims
-nothing of what it writes; such a certificate has a randomized claim, and the check in
-`NLAlibTools/RandomizedClaims.lean` fails otherwise.
+nothing of what it writes; such a certificate has a randomized claim, and the certificate check
+`scripts/OpsPrograms.lean` fails otherwise.
 
 ## Main definitions
 

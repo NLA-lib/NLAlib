@@ -80,12 +80,54 @@ or has zero work; a unit-cost primitive can then write the answer (`Examples/Ora
   `AccessModel.Charged.size_le_work`: work is then at least the number of instructions.
 
 `Profiles/Confined.lean` proves these for the standard collections. `scripts/OpsPrograms.lean`
-reports them for every certificate, with its number of hypotheses and whether its count
-budget, its work and span, and its scratch are closed forms or manifests, and compares the report with
-`scripts/ops_certificates.txt`: a recorded certificate may not get weaker, and a new one must be
-confined with closed-form work or be added to that file. A family of certificates indexed
-by a parameter that fixes the admitted size is not one certificate; the check lists
+computes one line for every certificate and compares it with `scripts/ops_certificates.txt`: a
+recorded certificate may not get weaker in any field, and a new one must have a confined model,
+closed-form work and a derived problem, or be added to that file. A family of certificates
+indexed by a parameter that fixes the admitted size is not one certificate; the check lists
 parametrised programs.
+
+**The line of a certificate.**
+
+| Field | Values | Meaning |
+|---|---|---|
+| `hyps` | a number | the hypotheses of the declaration |
+| `uniform`, `confined`, `charged` | `yes`, `no`, `unknown` | an instance for the model was found; none exists once the model is unfolded to the end; the search stopped at its limit |
+| `budget`, `work`, `scratch` | `closed`, `manifest`, `unknown` | see below |
+| `problem` | `derived`, `handwritten` | the problem is that of a `Routine.Domain`, or a hand-written `Problem` |
+| `derived` | a number, `?`, `-` | the operands whose buffer holds words computed from the inputs |
+| `unstored` | `yes`, `no`, `-` | the domain declares inputs that no buffer holds |
+| `oracles` | `declared`, `missing`, `none` | for a model that is not uniform, a `Routine.Domain.Oracles` declaration exists; `none` for a uniform model |
+| `claim` | names, `exempt`, `none`, `required-missing` | the `RandomizedClaim`s of the certificate |
+
+A resource field is classified by everything it depends on, through every definition of the
+library (proofs are not searched):
+
+* `manifest`: it depends on a function that reads a number or a count off a tree (`staticCost`,
+  `staticPeak`, a coefficient or a polynomial computed from the program). The bound is the
+  program's own syntax, not a statement a reader can evaluate;
+* `closed`: the search finished and found no such function and nothing it cannot inspect. Every
+  library definition under the field was opened; what is left is arithmetic and functions of
+  Mathlib and of Lean's core, which are taken to be what their names say;
+* `unknown`: the search met an axiom, an opaque constant or a non-constructive choice
+  (`Classical.choose`, `Nat.find`, a supremum over a set, …), or the specification did not unfold
+  to its fields. `unknown` counts as `manifest` wherever `closed` is required, and the reason is
+  printed.
+
+A scratch bound that adds the query reserve of the static count
+(`resources.queryReserve (staticCost program d)`) is a manifest, although it names no peak.
+
+**Reading what a certificate states.** `OPS_CERTIFICATES_REPORT=1` (or `=Name` for the
+certificates whose name contains `Name`) prints, for each certificate and without writing
+anything: its line with the reason of every `manifest` or `unknown`; the admitted sizes and the
+acceptance predicate as written; the slots, with the formulas of the derived ones; the unstored
+inputs with the operations declared to reach them; the contracts and the weights of the
+operations of the model; the hypotheses of the certificate; its resource fields and its output
+condition; and its randomized claims with their law, event and bound.
+`OPS_CERTIFICATES_REPORT_FILE=path` writes the report to a file.
+
+```
+OPS_CERTIFICATES_REPORT=HSCG.Certification.algorithm lake env lean scripts/OpsPrograms.lean
+```
 
 `OperationCount.lean` gives the closed forms. `Program.countPoly` computes from the fixed
 instrumented tree a polynomial in the sizes, one variable per size, that bounds the number of
@@ -530,12 +572,46 @@ The claims of the library:
 | `ShiftedQR.shqrSmallEigAlgorithm` | `ShiftedQR.shqrSmallEigClaim`, `shqrSmallEigGinibreClaim` | independent uniform and Gaussian streams |
 | `Schur.denseSchurAlgorithm` | `Schur.denseSchurClaim` | independent uniform and Gaussian streams |
 
-**Every termination-only certificate has a claim.** `NLAlibTools/RandomizedClaims.lean` checks
-this when the tools are built: it finds the certificates whose definition or proofs use
-`Routine.Spec.terminates`, finds the declarations whose type is `RandomizedClaim A` with `A` an
-application of that certificate, and fails if a termination-only certificate has none and is not
-listed there with its reason. The type of a claim names its certificate, so a report can pair
-them without any annotation.
+**Every termination-only certificate has a claim.** The certificate check
+`scripts/OpsPrograms.lean` finds the certificates whose definition uses
+`Routine.Spec.terminates` (through the definitions of the certificates and specifications it is
+built from), finds the declarations whose type is `RandomizedClaim A` with `A` an application
+of that certificate, records them in the field `claim`, and fails if a termination-only
+certificate has none and is not listed there (`exempt`) with its reason. The type of a claim
+names its certificate, so no annotation is needed.
+
+## What client code may depend on
+
+The supported surface, which changes only with a recorded rename or a migration note:
+
+* **Writing trees and routines**: `routine%`, `ops%`, `spec%` and their clauses and marks;
+  `Routine`, `Port` through `Port.read`/`write`/`update`/`isolated` and `every`;
+  `Routine.Spec`, `Spec.ofRel`, `Spec.terminates`.
+* **The judgment and its use**: `Routine.Meets`; in a tree `run R [dims] (operands)`; in a proof
+  `routine_intro`, `call`, `step`, `loop_inv`, `routine_exit`, `read_outputs`, `implements`,
+  `kernel_rfl`, `poly_eval`.
+* **Routines from routines**: `Routine.withData` with `Spec.onData` (stored data),
+  `Routine.link` with `Meets.of_link` (linking through a table), `Routine.Implements` and
+  `Meets.satisfies_ofRel` (a routine as the implementation of an operation).
+* **Problems and certificates**: `Routine.Domain` (`In`, `valid`, `accepts`, the slots `stored`,
+  `derived`, `blank`, `Unstored` and `Oracles`), `Codec`, `Domain.problem`, `Domain.covers`,
+  `Domain.algorithm`, `Domain.certify`, `Algorithm.withCountPoly`, `Domain.Checked` with
+  `checked_all`, `Mem.Holds`.
+* **Randomized results**: `RandomizedClaim`, `TapeModel.streams`, `TapeModel.packed`,
+  `Algorithm.FailsAtMost`.
+* **Models**: `AccessModel`, `ResourceModel`, `Interp.Satisfies`, the operation contracts of
+  `Catalog/`, the classes `Confined`, `Uniform`, `Charged`, and the standard collections of
+  `Profiles/`.
+* **The certificate check**: the fields of `scripts/ops_certificates.txt` and the report of
+  `scripts/OpsPrograms.lean`.
+
+Internal, and free to change without notice: the constructors of `Stmt` and how a tree is
+represented (including `Note`); `Mem`, `Store`, footprints (`Fp`) and views; the evaluator, its
+instrumentation and the form of `Count`; `Impl` and `Impl.Satisfies` beyond their use as table
+entries; `Routine`'s fields other than through the constructors above (`binds`, `sep`,
+`stride`); the rule set of the program logic in `Logic/` (`Wp`, `Writes`, `PWrites` and their
+lemmas). A proof about a fragment uses those rules and may need changes when they change; a
+proof that goes through `Meets`, `call` and the tactics should not.
 
 ## Notes: names that a tree carries
 

@@ -131,6 +131,8 @@ structure Implements (R : Routine Op Tst) (B : BlockRel K)
     R.writeArgs (R.operands d (port ins outs)) = outs ∧ R.writeLens d = B.outLens d
   /-- Every operand is reported: the contract of an operation states all its outputs. -/
   reported : R.allReported = true := by rfl
+  /-- Every operand is contiguous: the blocks of an operation contract are. -/
+  contiguous : R.contiguous = true := by rfl
 
 /-- A routine implements an operation contract when the seven facts of
 `NLAlib.Ops.Routine.Implements` about admitted operands hold together at every admitted operands
@@ -146,7 +148,8 @@ theorem Implements.of_shaped {R : Routine Op Tst} {B : BlockRel K}
       R.env (R.operands d (port ins outs)) = ins ++ outs ∧
       (R.readArgs (R.operands d (port ins outs)) = ins ∧ R.readLens d = B.inLens d) ∧
       (R.writeArgs (R.operands d (port ins outs)) = outs ∧ R.writeLens d = B.outLens d))
-    (hrep : R.allReported = true := by rfl) : R.Implements B adm port where
+    (hrep : R.allReported = true := by rfl) (hcontig : R.contiguous = true := by rfl) :
+    R.Implements B adm port where
   nd := hnd
   draws := hdraws
   fits d ins outs hs := (h d ins outs hs).1
@@ -157,6 +160,7 @@ theorem Implements.of_shaped {R : Routine Op Tst} {B : BlockRel K}
   reads d ins outs hs := (h d ins outs hs).2.2.2.2.2.1
   writes d ins outs hs := (h d ins outs hs).2.2.2.2.2.2
   reported := hrep
+  contiguous := hcontig
 
 /-- A routine that meets a specification meets, as an implementation, the operation contract it
 implements, when at admitted operands the domain of the contract gives the precondition and the
@@ -177,9 +181,11 @@ theorem Meets.satisfies {R : Routine Op Tst} {I : Interp Op Tst K} {S : Spec K} 
   obtain ⟨hra, hrl⟩ := hi.reads d ins outs hadm
   obtain ⟨hwa, hwl⟩ := hi.writes d ins outs hadm
   refine ⟨⟨hnd.trans hi.nd, hin, hout⟩, ?_⟩
-  have hw := h d (port ins outs) τ m xs (hnd.trans hi.nd) (hi.length d ins outs hadm)
+  have hh := h d (port ins outs) τ m xs (hnd.trans hi.nd) (hi.length d ins outs hadm)
     (fun z hz => hl z (hi.mem d ins outs hadm z hz)) (hi.separated d ins outs hadm)
-    (by rw [hra, hrl]; exact hr) (hpre d ins outs τ m.pos xs hadm hdom)
+  simp only [readAt_of_contiguous hi.contiguous, roomAt_of_contiguous hi.contiguous,
+    footprint_of_contiguous hi.contiguous, reportAt_of_contiguous hi.contiguous] at hh
+  have hw := hh (by rw [hra, hrl]; exact hr) (hpre d ins outs τ m.pos xs hadm hdom)
     (by rw [hwa, hwl]; exact hz)
   rw [hi.env d ins outs hadm, hwa, hwl] at hw
   refine hw.mono le_rfl fun m' _ ⟨hpos, ys, hys, hp⟩ =>
@@ -232,13 +238,16 @@ theorem Meets.writes_ofRel {R : Routine Op Tst} {I : Interp Op Tst K} {B : Block
     (hdom : B.dom d xs (τ.window B.stream m.pos (B.win d)))
     (hroom : m.Room (R.writeArgs (R.operands d args)) (R.writeLens d))
     (hdraws : R.draws d = some (B.win d))
-    (hrep : R.allReported = true := by rfl) :
+    (hrep : R.allReported = true := by rfl) (hcontig : R.contiguous = true := by rfl) :
     Writes .total I τ R.body (Env.frame d (R.env (R.operands d args)))
       (Fp.blocks (R.writeArgs (R.operands d args)) (R.writeLens d))
       (fun m' => m'.pos = m.pos + B.win d ∧ ∃ ys,
         m'.readBlocks (R.writeArgs (R.operands d args)) (R.writeLens d) = some ys ∧
           B.rel d xs (τ.window B.stream m.pos (B.win d)) ys) m := by
-  refine (h d args τ m xs hnd hlen hl hsep hr ⟨hok, ?_⟩ hroom).mono le_rfl
+  have hh := h d args τ m xs hnd hlen hl hsep
+  simp only [readAt_of_contiguous hcontig, roomAt_of_contiguous hcontig,
+    footprint_of_contiguous hcontig, reportAt_of_contiguous hcontig] at hh
+  refine (hh hr ⟨hok, ?_⟩ hroom).mono le_rfl
     fun m' _ ⟨hpos, ys, hys, hp⟩ => ⟨hpos.eq_of_draws hdraws, ys, ?_, ?_⟩
   · rw [Tape.window_shift]
     exact hdom
@@ -260,32 +269,33 @@ theorem Meets.runs_ofRel {R : Routine Op Tst} {I : Interp Op Tst K} {B : BlockRe
     (hdom : B.dom d xs (τ.window B.stream m.pos (B.win d)))
     (hroom : m.Room (R.writeArgs (R.operands d args)) (R.writeLens d))
     (hdraws : R.draws d = some (B.win d)) (hout : R.writeLens d = B.outLens d)
-    (hrep : R.allReported = true := by rfl) :
+    (hrep : R.allReported = true := by rfl) (hcontig : R.contiguous = true := by rfl) :
     ConditionalRuns I W τ R.body (Env.frame d (R.env (R.operands d args))) m
       (stmtCost R.body (Env.frame d (R.env (R.operands d args))).idx)
       (stmtPeak W R.body (Env.frame d (R.env (R.operands d args))).idx)
       (B.Post d xs (R.writeArgs (R.operands d args)) (τ.window B.stream m.pos (B.win d)) m) := by
-  have hw := h.writes_ofRel hnd hlen hl hsep hr hok hdom hroom hdraws hrep
+  have hw := h.writes_ofRel hnd hlen hl hsep hr hok hdom hroom hdraws hrep hcontig
   rw [hout] at hw
   exact Writes.runs_post W hw
 
-/-- The written blocks of separated operands are pairwise disjoint, for a routine in which no
-operand continues another. -/
+/-- The written blocks of separated operands are pairwise disjoint, for a routine of contiguous
+operands in which none continues another. -/
 theorem SeparatedAt.apart {R : Routine Op Tst} {d : List ℕ} {args : List (ℕ × ℕ)}
-    (h : R.SeparatedAt d args) (hflat : R.flat = true := by rfl) :
+    (h : R.SeparatedAt d args) (hflat : R.flat = true := by rfl)
+    (hcontig : R.contiguous = true := by rfl) :
     Fp.Apart (R.writeArgs args) (R.writeLens d) := by
   unfold SeparatedAt at h
   rw [Routine.regions_of_flat hflat] at h
   split at h
-  · exact (h.blocks d).1
-  · exact h.1
+  · exact ((separatedBlocks_of_contiguous hcontig d args).mp (h.blocks d)).1
+  · exact ((separatedBlocks_of_contiguous hcontig d args).mp h).1
 
 /-- A routine judgment from a run in operand form. If the routine draws the window of a
 block relation `B` and writes blocks of its output lengths, and at separated operands with the
 readable blocks in the domain the run ends in the memory of `B` in operand form
 (`NLAlib.Ops.BlockRel.Post` at the written operands), then the routine meets the specification
 read off `B`: the frame and the blocks read back follow from the separation. The routine has
-no operand that continues another. -/
+no operand that continues another, and its operands are contiguous. -/
 theorem meets_ofRel_of_post {R : Routine Op Tst} {I : Interp Op Tst K} {B : BlockRel K}
     {ok : List ℕ → Prop} (hdraws : ∀ d, R.draws d = some (B.win d))
     (hout : ∀ d, d.length = R.nd → R.writeLens d = B.outLens d)
@@ -297,9 +307,11 @@ theorem meets_ofRel_of_post {R : Routine Op Tst} {I : Interp Op Tst K} {B : Bloc
       Wp .total I τ R.body (Env.frame d (R.env args))
         (B.Post d xs (R.writeArgs args) (τ.window B.stream m.pos (B.win d)) m) m)
     (hflat : R.flat = true := by rfl)
-    (hrep : R.allReported = true := by rfl) :
+    (hrep : R.allReported = true := by rfl) (hcontig : R.contiguous = true := by rfl) :
     R.Meets I (Spec.ofRel B ok) := by
   intro d args τ m xs hnd hlen hl hsep hr hpre hroom
+  simp only [readAt_of_contiguous hcontig, roomAt_of_contiguous hcontig,
+    footprint_of_contiguous hcontig, reportAt_of_contiguous hcontig] at hr hroom ⊢
   replace hlen := hlen.trans (arity_of_flat hflat)
   rw [operands_of_flat hflat d hlen] at hr hroom ⊢
   obtain ⟨hok, hdom⟩ := hpre
@@ -318,7 +330,7 @@ theorem meets_ofRel_of_post {R : Routine Op Tst} {I : Interp Op Tst K} {B : Bloc
     change (m.updBlocks (R.writeArgs args) ys).pos + B.win d = m.pos + B.win d
     rw [Mem.pos_updBlocks]
   · have hrb := Mem.readBlocks_updBlocks (m := m) (zs := R.writeArgs args) (ys := ys)
-      (hL ▸ hsep.apart hflat) (hL ▸ hroom)
+      (hL ▸ hsep.apart hflat hcontig) (hL ▸ hroom)
     rw [hL] at hrb
     change Mem.readBlocks _ (R.outs args) (R.outs (R.lens d)) = some ys
     rw [outs_eq_sel hrep, outs_eq_sel hrep]

@@ -1232,6 +1232,7 @@ public import NLAlib.Ops.Examples.RoutineCertification
 public import NLAlib.Ops.Examples.RoutineLink
 public import NLAlib.Ops.Examples.Split
 public import NLAlib.Ops.Examples.StochRound
+public import NLAlib.Ops.Examples.Strided
 public import NLAlib.Ops.Exec
 public import NLAlib.Ops.Frame
 public import NLAlib.Ops.IndexDegrees
@@ -1284,6 +1285,7 @@ public import NLAlib.Ops.Logic.StoredOperator
 public import NLAlib.Ops.Logic.Tactic
 public import NLAlib.Ops.Logic.TapeMeas
 public import NLAlib.Ops.Logic.VectorUpdate
+public import NLAlib.Ops.Logic.View
 public import NLAlib.Ops.Logic.WeightedLoop
 public import NLAlib.Ops.Logic.While
 public import NLAlib.Ops.Logic.Writes

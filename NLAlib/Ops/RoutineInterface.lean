@@ -7,6 +7,7 @@ module
 
 public import NLAlib.Ops.Cert
 public import NLAlib.Ops.Logic.Writes
+public import NLAlib.Ops.Logic.View
 
 /-!
 # The interface of a routine
@@ -116,8 +117,16 @@ def Access.join (a b : Access) : Access :=
   | false, _, true => .isolated
   | false, _, false => .read
 
-/-- One operand of an interface: how it is used, its length at the dimensions, and whether its
-block continues that of the operand before it. -/
+/-- The runs of an operand whose block is not contiguous: how many, and one every how many
+cells, at the dimensions of the call. -/
+structure Stride where
+  /-- The number of runs. -/
+  count : List ℕ → ℕ
+  /-- The period: a run starts every `period` cells. -/
+  period : List ℕ → ℕ
+
+/-- One operand of an interface: how it is used, the cells of its block at the dimensions, and
+whether its block continues that of the operand before it. -/
 structure Port where
   /-- How the routine uses the operand. -/
   access : Access
@@ -135,8 +144,24 @@ structure Port where
   is initialized. Scratch supplied by the caller, and a matrix destroyed by a factorization, are
   such operands. The flag has no effect on an operand that is not written. -/
   reported : Bool := true
+  /-- The runs of the block. With `none` the block is the `len` cells from the position of the
+  operand. With `some s` it is `s.count` runs of `len` cells, one run every `s.period` cells
+  from that position: a vector with an increment (`len = 1`), a row of a matrix stored by
+  columns (`len = 1`, the period its leading dimension), a submatrix (`len` its number of rows,
+  `count` its number of columns, the period the leading dimension). The block read or written
+  is the cells in order, run after run. An operand with runs neither continues another operand
+  nor is continued by one. -/
+  stride : Option Stride := none
 
 namespace Port
+
+/-- **The shape of the block of an operand** at the dimensions of a call. -/
+def view (p : Port) (d : List ℕ) : View :=
+  ⟨p.len d, p.stride.map fun s => (s.count d, s.period d)⟩
+
+/-- The operand is made of `count` runs, one every `period` cells (`NLAlib.Ops.Port.stride`). -/
+@[simp] def every (p : Port) (count period : List ℕ → ℕ) : Port :=
+  { p with stride := some ⟨count, period⟩ }
 
 /-- An operand that is read and left unchanged. -/
 @[simp] protected def read (len : List ℕ → ℕ) : Port := { access := .read, len }
@@ -163,8 +188,8 @@ access is the join of the accesses. -/
   | [] => [cur]
   | p :: ps =>
     match p.cont with
-    | true => regionsFrom ⟨cur.access.join p.access, fun d => cur.len d + p.len d, cur.cont,
-        cur.reported⟩ ps
+    | true => regionsFrom { cur with access := cur.access.join p.access,
+                                     len := fun d => cur.len d + p.len d } ps
     | false => cur :: regionsFrom p ps
 
 /-- **The regions of an interface**: one per operand that a call supplies, each the operand
@@ -363,6 +388,12 @@ theorem env_of_binds_eq_none {R : Routine Op Tst} (h : R.binds = none) (args : L
   unfold env
   rw [h]
 
+/-- Every operand of the routine is one contiguous block. -/
+def contiguous (R : Routine Op Tst) : Bool := R.ports.all fun p => p.stride.isNone
+
+/-- The shapes of the blocks of the operands at the dimensions. -/
+def views (R : Routine Op Tst) (d : List ℕ) : List View := R.ports.map fun p => p.view d
+
 /-- The entries of a list aligned with the operands whose access satisfies `p`. -/
 def sel {α : Type} (R : Routine Op Tst) (p : Access → Bool) (xs : List α) : List α :=
   ((R.ports.zip xs).filter fun q => p q.1.access).map Prod.snd
@@ -539,12 +570,36 @@ disjoint from the blocks that are only read; the isolated blocks are pairwise di
 from every other block. Blocks that are only read may overlap, and operands may be blocks of one
 buffer. -/
 def SeparatedBlocks (R : Routine Op Tst) (d : List ℕ) (args : List (ℕ × ℕ)) : Prop :=
-  Fp.Apart (R.writeArgs args) (R.writeLens d) ∧
-    (Fp.blocks (R.writeArgs args) (R.writeLens d)).Disj
-      (Fp.blocks (R.roArgs args) (R.roLens d)) ∧
-    Fp.Apart (R.sel Access.isIsolated args) (R.sel Access.isIsolated (R.lens d)) ∧
-    (Fp.blocks (R.sel Access.isIsolated args) (R.sel Access.isIsolated (R.lens d))).Disj
-      (Fp.blocks (R.sel (fun c => !c.isIsolated) args) (R.sel (fun c => !c.isIsolated) (R.lens d)))
+  match R.contiguous with
+  | true =>
+    Fp.Apart (R.writeArgs args) (R.writeLens d) ∧
+      (Fp.blocks (R.writeArgs args) (R.writeLens d)).Disj
+        (Fp.blocks (R.roArgs args) (R.roLens d)) ∧
+      Fp.Apart (R.sel Access.isIsolated args) (R.sel Access.isIsolated (R.lens d)) ∧
+      (Fp.blocks (R.sel Access.isIsolated args) (R.sel Access.isIsolated (R.lens d))).Disj
+        (Fp.blocks (R.sel (fun c => !c.isIsolated) args)
+          (R.sel (fun c => !c.isIsolated) (R.lens d)))
+  | false =>
+    Fp.ApartViews (R.writeArgs args) (R.sel Access.writable (R.views d)) ∧
+      (Fp.views (R.writeArgs args) (R.sel Access.writable (R.views d))).Disj
+        (Fp.views (R.roArgs args) (R.sel Access.readOnly (R.views d))) ∧
+      Fp.ApartViews (R.sel Access.isIsolated args) (R.sel Access.isIsolated (R.views d)) ∧
+      (Fp.views (R.sel Access.isIsolated args) (R.sel Access.isIsolated (R.views d))).Disj
+        (Fp.views (R.sel (fun c => !c.isIsolated) args)
+          (R.sel (fun c => !c.isIsolated) (R.views d)))
+
+/-- For a routine whose operands are contiguous, separation by block is that of the blocks. -/
+theorem separatedBlocks_of_contiguous {R : Routine Op Tst} (h : R.contiguous = true)
+    (d : List ℕ) (args : List (ℕ × ℕ)) : R.SeparatedBlocks d args ↔
+      (Fp.Apart (R.writeArgs args) (R.writeLens d) ∧
+        (Fp.blocks (R.writeArgs args) (R.writeLens d)).Disj
+          (Fp.blocks (R.roArgs args) (R.roLens d)) ∧
+        Fp.Apart (R.sel Access.isIsolated args) (R.sel Access.isIsolated (R.lens d)) ∧
+        (Fp.blocks (R.sel Access.isIsolated args) (R.sel Access.isIsolated (R.lens d))).Disj
+          (Fp.blocks (R.sel (fun c => !c.isIsolated) args)
+            (R.sel (fun c => !c.isIsolated) (R.lens d)))) := by
+  unfold SeparatedBlocks
+  rw [h]
 
 /-- A selection by a property that no operand has is empty. -/
 theorem sel_eq_nil {α : Type} (R : Routine Op Tst) {p : Access → Bool} (xs : List α)
@@ -560,8 +615,9 @@ theorem separatedBlocks_of_noIsolated {R : Routine Op Tst} {d : List ℕ} {args 
     (hiso : ∀ q ∈ R.ports, q.access.isIsolated = false)
     (hw : Fp.Apart (R.writeArgs args) (R.writeLens d))
     (hro : (Fp.blocks (R.writeArgs args) (R.writeLens d)).Disj
-      (Fp.blocks (R.roArgs args) (R.roLens d))) : R.SeparatedBlocks d args := by
-  refine ⟨hw, hro, ?_, ?_⟩
+      (Fp.blocks (R.roArgs args) (R.roLens d)))
+    (hcontig : R.contiguous = true := by rfl) : R.SeparatedBlocks d args := by
+  refine (separatedBlocks_of_contiguous hcontig d args).mpr ⟨hw, hro, ?_, ?_⟩
   · rw [sel_eq_nil R args hiso]
     trivial
   · rw [sel_eq_nil R args hiso]
@@ -588,9 +644,13 @@ theorem separatedAt_of_blocks {R : Routine Op Tst} (h : R.sep = .blocks) {d : Li
 
 /-- Operands separated by buffer are separated by block, at any dimensions. -/
 theorem Separated.blocks {R : Routine Op Tst} {args : List (ℕ × ℕ)} (h : R.Separated args)
-    (d : List ℕ) : R.SeparatedBlocks d args :=
-  ⟨Fp.apart_of_nodup _ h.1, Fp.disj_blocks_of_ne _ _ h.2.1, Fp.apart_of_nodup _ h.2.2.1,
-    Fp.disj_blocks_of_ne _ _ h.2.2.2⟩
+    (d : List ℕ) : R.SeparatedBlocks d args := by
+  unfold SeparatedBlocks
+  split
+  · exact ⟨Fp.apart_of_nodup _ h.1, Fp.disj_blocks_of_ne _ _ h.2.1, Fp.apart_of_nodup _ h.2.2.1,
+      Fp.disj_blocks_of_ne _ _ h.2.2.2⟩
+  · exact ⟨Fp.apartViews_of_nodup _ h.1, Fp.disj_views_of_ne _ _ h.2.1,
+      Fp.apartViews_of_nodup _ h.2.2.1, Fp.disj_views_of_ne _ _ h.2.2.2⟩
 
 /-- Operands separated by buffer satisfy the separation of every routine in which no operand
 continues another. -/

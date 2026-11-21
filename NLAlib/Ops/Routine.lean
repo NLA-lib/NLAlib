@@ -137,26 +137,172 @@ theorem outs_eq_sel {α : Type} {R : Routine Op Tst} (h : R.allReported = true)
   refine List.filter_congr fun q hq => ?_
   rw [List.all_eq_true.mp h q.1 (List.of_mem_zip hq).1, Bool.and_true]
 
+/-! ### The blocks of a call
+
+The blocks that a call reads, writes and reports are those of the shapes of its operands
+(`NLAlib.Ops.Port.view`). The four definitions below are stated by cases on
+`NLAlib.Ops.Routine.contiguous` only so that, for an interface whose operands are all
+contiguous, they are by computation the reads, the room and the footprint of blocks
+(`NLAlib.Ops.Mem.readBlocks`, `NLAlib.Ops.Mem.Room`, `NLAlib.Ops.Fp.blocks`); the two cases
+agree (`NLAlib.Ops.Routine.readAt_eq_readViews` and the lemmas after it). -/
+
+/-- The shapes of the operands that are read. -/
+abbrev readViews (R : Routine Op Tst) (d : List ℕ) : List View :=
+  R.sel Access.readable (R.views d)
+
+/-- The shapes of the operands that are written. -/
+abbrev writeViews (R : Routine Op Tst) (d : List ℕ) : List View :=
+  R.sel Access.writable (R.views d)
+
+/-- The shapes of the written operands whose final blocks the judgment reports. -/
+abbrev outViews (R : Routine Op Tst) (d : List ℕ) : List View := R.outs (R.views d)
+
+/-- **The blocks that a call reads**: one per operand that is read, at the positions `ops` of
+the operands and the dimensions `d`. -/
+def readAt (R : Routine Op Tst) (m : Mem K) (d : List ℕ) (ops : List (ℕ × ℕ)) :
+    Option (List (List K)) :=
+  match R.contiguous with
+  | true => m.readBlocks (R.readArgs ops) (R.readLens d)
+  | false => m.readViews (R.readArgs ops) (R.readViews d)
+
+/-- **There is room for the blocks that a call writes.** -/
+def RoomAt (R : Routine Op Tst) (m : Mem K) (d : List ℕ) (ops : List (ℕ × ℕ)) : Prop :=
+  match R.contiguous with
+  | true => m.Room (R.writeArgs ops) (R.writeLens d)
+  | false => m.RoomViews (R.writeArgs ops) (R.writeViews d)
+
+/-- **The footprint of a call**: the cells of the operands that are written. -/
+def footprint (R : Routine Op Tst) (d : List ℕ) (ops : List (ℕ × ℕ)) : Fp :=
+  match R.contiguous with
+  | true => Fp.blocks (R.writeArgs ops) (R.writeLens d)
+  | false => Fp.views (R.writeArgs ops) (R.writeViews d)
+
+/-- **The blocks that a call reports**: one per operand that is written and reported. -/
+def reportAt (R : Routine Op Tst) (m : Mem K) (d : List ℕ) (ops : List (ℕ × ℕ)) :
+    Option (List (List K)) :=
+  match R.contiguous with
+  | true => m.readBlocks (R.outArgs ops) (R.outLens d)
+  | false => m.readViews (R.outArgs ops) (R.outViews d)
+
+theorem readAt_of_contiguous {R : Routine Op Tst} (h : R.contiguous = true) (m : Mem K)
+    (d : List ℕ) (ops : List (ℕ × ℕ)) :
+    R.readAt m d ops = m.readBlocks (R.readArgs ops) (R.readLens d) := by
+  unfold readAt
+  rw [h]
+
+theorem roomAt_of_contiguous {R : Routine Op Tst} (h : R.contiguous = true) (m : Mem K)
+    (d : List ℕ) (ops : List (ℕ × ℕ)) :
+    R.RoomAt m d ops ↔ m.Room (R.writeArgs ops) (R.writeLens d) := by
+  unfold RoomAt
+  rw [h]
+
+theorem footprint_of_contiguous {R : Routine Op Tst} (h : R.contiguous = true) (d : List ℕ)
+    (ops : List (ℕ × ℕ)) : R.footprint d ops = Fp.blocks (R.writeArgs ops) (R.writeLens d) := by
+  unfold footprint
+  rw [h]
+
+theorem reportAt_of_contiguous {R : Routine Op Tst} (h : R.contiguous = true) (m : Mem K)
+    (d : List ℕ) (ops : List (ℕ × ℕ)) :
+    R.reportAt m d ops = m.readBlocks (R.outArgs ops) (R.outLens d) := by
+  unfold reportAt
+  rw [h]
+
+/-- The shapes of the operands of an interface whose operands are contiguous are blocks of
+their lengths. -/
+theorem views_of_contiguous {R : Routine Op Tst} (h : R.contiguous = true) (d : List ℕ) :
+    R.views d = (R.lens d).map View.block := by
+  unfold views lens
+  rw [List.map_map]
+  refine List.map_congr_left fun p hp => ?_
+  have hp' : p.stride = none := by
+    have := List.all_eq_true.mp h p hp
+    simpa using this
+  simp [Port.view, hp']
+
+private theorem zip_filter_map {α β : Type} (f : α → β) (q : Port × β → Bool) :
+    ∀ (ps : List Port) (xs : List α),
+      ((ps.zip (xs.map f)).filter q).map Prod.snd =
+        (((ps.zip xs).filter fun u => q (u.1, f u.2)).map Prod.snd).map f
+  | [], _ => rfl
+  | _ :: _, [] => rfl
+  | p :: ps, x :: xs => by
+    simp only [List.map_cons, List.zip_cons_cons, List.filter_cons]
+    split <;> simp [zip_filter_map f q ps xs]
+
+/-- Selecting operands commutes with a map of the aligned list. -/
+theorem sel_map {α β : Type} (R : Routine Op Tst) (p : Access → Bool) (f : α → β)
+    (xs : List α) : R.sel p (xs.map f) = (R.sel p xs).map f :=
+  zip_filter_map f (fun q => p q.1.access) R.ports xs
+
+/-- Selecting reported operands commutes with a map of the aligned list. -/
+theorem outs_map {α β : Type} (R : Routine Op Tst) (f : α → β) (xs : List α) :
+    R.outs (xs.map f) = (R.outs xs).map f :=
+  zip_filter_map f (fun q => q.1.access.writable && q.1.reported) R.ports xs
+
+/-- The blocks a call reads are the blocks of the shapes of the operands read, whether or not
+the operands are contiguous. -/
+theorem readAt_eq_readViews (R : Routine Op Tst) (m : Mem K) (d : List ℕ)
+    (ops : List (ℕ × ℕ)) : R.readAt m d ops = m.readViews (R.readArgs ops) (R.readViews d) := by
+  unfold readAt
+  cases h : R.contiguous with
+  | false => rfl
+  | true =>
+    change _ = m.readViews _ (R.sel Access.readable (R.views d))
+    rw [views_of_contiguous h, sel_map, Mem.readViews_blocks]
+
+/-- The room of a call is that of the shapes of the operands written. -/
+theorem roomAt_iff_roomViews (R : Routine Op Tst) (m : Mem K) (d : List ℕ)
+    (ops : List (ℕ × ℕ)) : R.RoomAt m d ops ↔ m.RoomViews (R.writeArgs ops) (R.writeViews d) := by
+  unfold RoomAt
+  cases h : R.contiguous with
+  | false => exact Iff.rfl
+  | true =>
+    change _ ↔ m.RoomViews _ (R.sel Access.writable (R.views d))
+    rw [views_of_contiguous h, sel_map, Mem.roomViews_blocks]
+
+/-- The footprint of a call is that of the shapes of the operands written. -/
+theorem footprint_eq_views (R : Routine Op Tst) (d : List ℕ) (ops : List (ℕ × ℕ)) :
+    R.footprint d ops = Fp.views (R.writeArgs ops) (R.writeViews d) := by
+  unfold footprint
+  cases h : R.contiguous with
+  | false => rfl
+  | true =>
+    change _ = Fp.views _ (R.sel Access.writable (R.views d))
+    rw [views_of_contiguous h, sel_map, Fp.views_blocks]
+
+/-- The blocks a call reports are the blocks of the shapes of the operands reported. -/
+theorem reportAt_eq_readViews (R : Routine Op Tst) (m : Mem K) (d : List ℕ)
+    (ops : List (ℕ × ℕ)) : R.reportAt m d ops = m.readViews (R.outArgs ops) (R.outViews d) := by
+  unfold reportAt
+  cases h : R.contiguous with
+  | false => rfl
+  | true =>
+    change _ = m.readViews _ (R.outs (R.views d))
+    rw [views_of_contiguous h, outs_map, Mem.readViews_blocks]
+
 /-- **A routine meets a specification** over an interpretation. At every memory, on live
 operands separated as the interface requires, with the readable blocks satisfying the
 precondition and room for the written blocks, the tree terminates, changes only the written
 blocks, advances the tape position by exactly the declared number of draws (no claim when the
 routine declares none), and the written blocks that are reported satisfy the postcondition.
 The call supplies one operand per region; the blocks read, written and reported are those of
-all operands of the interface (`NLAlib.Ops.Routine.operands`).
+all operands of the interface (`NLAlib.Ops.Routine.operands`), each of the shape its operand
+declares (`NLAlib.Ops.Routine.readAt`, `NLAlib.Ops.Routine.RoomAt`,
+`NLAlib.Ops.Routine.footprint`, `NLAlib.Ops.Routine.reportAt`): for an interface of contiguous
+operands these are, by computation, the reads, the room and the footprint of blocks.
 
 This is the one judgment that the author of a routine states and that a caller uses
 (`NLAlib.Ops.Routine.Meets.call`). -/
 def Meets (R : Routine Op Tst) (I : Interp Op Tst K) (S : Spec K) : Prop :=
   ∀ (d : List ℕ) (args : List (ℕ × ℕ)) (τ : Tape K) (m : Mem K) (xs : List (List K)),
     d.length = R.nd → args.length = R.arity → m.Live args → R.SeparatedAt d args →
-    m.readBlocks (R.readArgs (R.operands d args)) (R.readLens d) = some xs →
+    R.readAt m d (R.operands d args) = some xs →
     S.pre d (τ.shift m.pos) xs →
-    m.Room (R.writeArgs (R.operands d args)) (R.writeLens d) →
+    R.RoomAt m d (R.operands d args) →
     Writes .total I τ R.body (Env.frame d (R.env (R.operands d args)))
-      (Fp.blocks (R.writeArgs (R.operands d args)) (R.writeLens d))
+      (R.footprint d (R.operands d args))
       (fun m' => R.Advances d m.pos m'.pos ∧ ∃ ys,
-        m'.readBlocks (R.outArgs (R.operands d args)) (R.outLens d) = some ys ∧
+        R.reportAt m' d (R.operands d args) = some ys ∧
           S.post d (τ.shift m.pos) xs ys) m
 
 /-- Calling a routine. A routine that meets its specification is used by framing its tree
@@ -170,13 +316,13 @@ theorem Meets.call {R : Routine Op Tst} {I : Interp Op Tst K} {S : Spec K} (h : 
     (ha : Operand.evalList ρ ops = some (R.env (R.operands d args)))
     (hnd : d.length = R.nd) (hlen : args.length = R.arity) (hl : m.Live args)
     (hsep : R.SeparatedAt d args)
-    (hr : m.readBlocks (R.readArgs (R.operands d args)) (R.readLens d) = some xs)
+    (hr : R.readAt m d (R.operands d args) = some xs)
     (hpre : S.pre d (τ.shift m.pos) xs)
-    (hroom : m.Room (R.writeArgs (R.operands d args)) (R.writeLens d)) :
+    (hroom : R.RoomAt m d (R.operands d args)) :
     Writes .total I τ (.frame ds ops R.body) ρ
-      (Fp.blocks (R.writeArgs (R.operands d args)) (R.writeLens d))
+      (R.footprint d (R.operands d args))
       (fun m' => R.Advances d m.pos m'.pos ∧ ∃ ys,
-        m'.readBlocks (R.outArgs (R.operands d args)) (R.outLens d) = some ys ∧
+        R.reportAt m' d (R.operands d args) = some ys ∧
           S.post d (τ.shift m.pos) xs ys) m :=
   (h d args τ m xs hnd hlen hl hsep hr hpre hroom).in_frame hd ha (live_env (live_operands hl))
 
@@ -273,7 +419,8 @@ for each operand, so its program is its tree. A routine with a layout (an operan
 place is two buffer variables of its tree) is called once, by a frame that lists the supplied
 buffers in the layout; the frame is part of the certified tree and is counted. A routine of
 another shape, or one with an operand that continues another (whose position is not the start of
-a buffer), has no program and elaborates to failure. -/
+a buffer), has no program and elaborates to failure. The supplied buffers are whole buffers, so
+the certificates below are for interfaces of contiguous operands. -/
 def close (R : Routine Op Tst) (r b : ℕ) : Program Op Tst r b :=
   ⟨if R.nd = r ∧ R.ports.length = b ∧ R.bindsFit b = true ∧ R.flat = true then
       match R.binds with
@@ -325,7 +472,8 @@ program of the routine terminates, changes only the written buffers, advances th
 declared and leaves reported blocks satisfying the postcondition. -/
 theorem Meets.close {R : Routine Op Tst} {I : Interp Op Tst K} {S : Spec K} (h : R.Meets I S)
     {r b : ℕ} (hshape : R.nd = r ∧ R.ports.length = b) (hfit : R.bindsFit b = true)
-    (hflat : R.flat = true) (d : Fin r → ℕ) (τ : Tape K) (m : Mem K) (xs : List (List K))
+    (hflat : R.flat = true) (hcontig : R.contiguous = true) (d : Fin r → ℕ) (τ : Tape K)
+    (m : Mem K) (xs : List (List K))
     (hl : m.Live (slots b))
     (hr : m.readBlocks (R.readArgs (slots b)) (R.readLens (List.ofFn d)) = some xs)
     (hpre : S.pre (List.ofFn d) (τ.shift m.pos) xs)
@@ -350,6 +498,8 @@ theorem Meets.close {R : Routine Op Tst} {I : Interp Op Tst K} {S : Spec K} (h :
   | none =>
     have hm := h (List.ofFn d) (slots b) τ m xs hnd harity hl hsep
     rw [hops, R.env_of_binds_eq_none hbinds] at hm
+    simp only [readAt_of_contiguous hcontig, roomAt_of_contiguous hcontig,
+      footprint_of_contiguous hcontig, reportAt_of_contiguous hcontig] at hm
     exact hm hr hpre hroom
   | some l =>
     have hfit' : ∀ i ∈ l, i < b := by
@@ -364,6 +514,8 @@ theorem Meets.close {R : Routine Op Tst} {I : Interp Op Tst K} {S : Spec K} (h :
         rw [hbinds]
         exact evalList_closeOps _ b l hfit') hnd harity hl hsep
     rw [hops] at hc
+    simp only [readAt_of_contiguous hcontig, roomAt_of_contiguous hcontig,
+      footprint_of_contiguous hcontig, reportAt_of_contiguous hcontig] at hc
     exact hc hr hpre hroom
 
 /-- **A certificate of a routine.** The program of a routine that meets `Sp` under every
@@ -414,14 +566,16 @@ def algorithm (R : Routine Op Tst) {P : Problem K r b} {M : AccessModel Op Tst P
       P.initialBytes d x + S.scratch d ≤ S.memory d)
     (hshape : R.nd = r ∧ R.ports.length = b := by exact ⟨rfl, rfl⟩)
     (ht : (R.close r b).wellTyped M.resources P.formats = true := by rfl)
-    (hfit : R.bindsFit b = true := by rfl) (hflat : R.flat = true := by rfl) : Algorithm M S :=
+    (hfit : R.bindsFit b = true := by rfl) (hflat : R.flat = true := by rfl)
+    (hcontig : R.contiguous = true := by rfl) : Algorithm M S :=
   Algorithm.ofWp (R.close r b) ht
     (fun d hd x I hI τ => by
       obtain ⟨hr, hpre, hroom⟩ := hinit d hd x
       have hτ : τ.shift (P.initial d x).pos = τ := by
         funext p s
         exact congrArg (fun q => τ q s) (Nat.zero_add p)
-      refine ((hmeets d hd x I hI).close hshape hfit hflat d τ (P.initial d x) (input d x)
+      refine ((hmeets d hd x I hI).close hshape hfit hflat hcontig d τ (P.initial d x)
+        (input d x)
         (P.live_slots d x) hr (hτ.symm ▸ hpre τ) hroom).wp ?_
       rintro m' hfr ⟨hpos, ys, hys, hpost⟩
       rw [hτ] at hpost
@@ -481,12 +635,14 @@ noncomputable def certify (R : Routine Op Tst) {P : Problem K r b}
     (hwork : ∀ d, P.valid d → CountPoly.eval (List.ofFn d) (R.close r b).countPoly ≤ work d)
     (hshape : R.nd = r ∧ R.ports.length = b := by exact ⟨rfl, rfl⟩)
     (ht : (R.close r b).wellTyped M.resources P.formats = true := by rfl)
-    (hfit : R.bindsFit b = true := by rfl) (hflat : R.flat = true := by rfl) :
+    (hfit : R.bindsFit b = true := by rfl) (hflat : R.flat = true := by rfl)
+    (hcontig : R.contiguous = true := by rfl) :
     Algorithm M (R.specification S M.resources input bytes work) :=
   (R.algorithm (S := R.manifest S M.resources input bytes) S input hmeets hinit
     (fun _ _ _ _ _ _ hpos ys hys hpost _ _ => ⟨hpos, ys, hys, hpost⟩)
     (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl)
-    (fun d hd x => Nat.add_le_add_right (hbytes d hd x) _) hshape ht hfit hflat).withCountPoly
+    (fun d hd x => Nat.add_le_add_right (hbytes d hd x) _) hshape ht hfit hflat
+    hcontig).withCountPoly
     hop hcore hq work hwork
 
 end Routine

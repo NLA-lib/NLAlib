@@ -142,6 +142,10 @@ theorem withData_lens (d : List ℕ) :
 theorem withData_flat : (R.withData lens T).flat = R.flat := by
   simp [flat, withData, Port.flat, List.all_append, Port.isolated]
 
+/-- The operands of the routine on data are contiguous if those of `R` are. -/
+theorem withData_contiguous : (R.withData lens T).contiguous = R.contiguous := by
+  simp [contiguous, withData, List.all_append, Port.isolated]
+
 private theorem filterMap_range_getElem? {α : Type} (l : List α) :
     ∀ n, n ≤ l.length → (List.range n).filterMap (fun i => l[i]?) = l.take n
   | 0, _ => by simp
@@ -194,8 +198,8 @@ specification `S₀ d raws` under `Interp.withData`, whose contracts `rel`/`adm`
 (`hsat`).
 The routine on stored data then meets `Spec.onData lens.length P S₀`.
 
-`R` is separated by buffer and has no continuing operand, as the linking of stored data needs
-the data buffers apart from every other buffer. -/
+`R` is separated by buffer, has no continuing operand and has contiguous operands, as the
+linking of stored data needs the data buffers apart from every other buffer. -/
 theorem Meets.withData {I : Interp Lo Tst K} (P : List ℕ → List (List K) → Prop)
     (S₀ : List ℕ → List (List K) → Spec K) (rel : List ℕ → List (List K) → Op → BlockRel K)
     (adm : List ℕ → Op → List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop)
@@ -207,10 +211,14 @@ theorem Meets.withData {I : Interp Lo Tst K} (P : List ℕ → List (List K) →
           ((rel d raws o).spec (adm d o)))
     (hmeets : ∀ d (ctx : List (ℕ × ℕ)) (m : Mem K) raws, ctx.length = lens.length →
       m.readBlocks ctx (lens.map (· d)) = some raws → P d raws →
-        R.Meets (I.withData T ctx m.store (rel d raws) (adm d) (fallback d raws)) (S₀ d raws)) :
+        R.Meets (I.withData T ctx m.store (rel d raws) (adm d) (fallback d raws)) (S₀ d raws))
+    (hcontig : R.contiguous = true := by rfl) :
     (R.withData lens T).Meets I (Spec.onData lens.length P S₀) := by
   intro d args τ m X hnd hlen hl hsep hr hpreS hroom
   have hflat' : (R.withData lens T).flat = true := withData_flat.trans hflat
+  have hcontig' : (R.withData lens T).contiguous = true := withData_contiguous.trans hcontig
+  simp only [readAt_of_contiguous hcontig', roomAt_of_contiguous hcontig',
+    footprint_of_contiguous hcontig', reportAt_of_contiguous hcontig'] at hr hroom ⊢
   rw [arity_of_flat hflat'] at hlen
   rw [operands_of_flat hflat' d hlen] at hr hroom ⊢
   have hlen' : args.length = lens.length + R.ports.length := by
@@ -245,9 +253,10 @@ theorem Meets.withData {I : Interp Lo Tst K} (P : List ℕ → List (List K) →
   have hW := hmeets d ctx m raws hc hraws hP d rest τ m xs hnd'
     (by rw [arity_of_flat hflat]; exact hrest) hlrest
     (by unfold SeparatedAt; rw [hsepR, Routine.regions_of_flat hflat]; exact hsepR')
-    (by rw [operands_of_flat hflat d hrest]; exact hxs)
-    hpre₀ (by rw [operands_of_flat hflat d hrest]; exact hroom)
+    (by rw [readAt_of_contiguous hcontig, operands_of_flat hflat d hrest]; exact hxs)
+    hpre₀ (by rw [roomAt_of_contiguous hcontig, operands_of_flat hflat d hrest]; exact hroom)
   rw [operands_of_flat hflat d hrest] at hW
+  simp only [footprint_of_contiguous hcontig, reportAt_of_contiguous hcontig] at hW
   have hcut : ∀ h, h ∈ ctx.map Prod.fst → h < m.store.length := by
     intro h hh
     obtain ⟨z, hz, rfl⟩ := List.mem_map.mp hh

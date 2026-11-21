@@ -38,6 +38,13 @@ An operand may be named again on the left, without its length: the tree then has
 variable on the same operand, as when a tree written for distinct operands is used with two of
 them equal (`(a : 1, x : n, x) → (x)` runs `axpy` with `x` as both vectors and the output).
 
+The block of an operand need not be contiguous. `x : n every inc` is `n` cells, one every `inc`
+cells from the position of the operand (a vector with an increment, a row of a matrix stored by
+columns); `A : m × n every lda` is `n` runs of `m` cells, one run every `lda` cells (a submatrix
+of a matrix with leading dimension `lda`). The block is the cells in order, run after run
+(`NLAlib.Ops.Port.stride`). The tree addresses the cells by index arithmetic on the operand
+(`x[inc * i]`); the blocks of an operation contract are contiguous.
+
 An operand may be marked: `isolated A : n * n` (read, and apart from every other operand),
 `unreported w : n` (written, with final contents that the judgment does not report). An operand
 whose block continues another's (`NLAlib.Ops.Port.continuing`) is not written in a header: it
@@ -93,9 +100,11 @@ syntax "↑" term:max : routineLen
 
 /-- An operand of the interface of a routine. -/
 declare_syntax_cat routinePort (behavior := both)
-/-- An operand, with its marks and, where it is declared, its length. -/
-syntax (&"isolated " <|> &"unreported ")* ident (" : " routineLen)? :
-  routinePort
+/-- An operand, with its marks and, where it is declared, its length: `x : n` (`n` cells),
+`x : n every p` (`n` cells, one every `p`), `A : m × n every p` (`n` runs of `m` cells, one run
+every `p` cells). -/
+syntax (&"isolated " <|> &"unreported ")* ident
+  (" : " routineLen (" × " routineLen)? (&" every " routineLen)?)? : routinePort
 
 /-- A clause of the interface of a routine. -/
 declare_syntax_cat routineClause (behavior := both)
@@ -167,15 +176,41 @@ structure PortDecl where
   unreported : Bool
   /-- The declared length. -/
   len : Option (TSyntax `routineLen)
+  /-- The number of runs, after `×`. -/
+  runs : Option (TSyntax `routineLen)
+  /-- The period, after `every`. -/
+  period : Option (TSyntax `routineLen)
 
 /-- Read an operand of a header. -/
 meta def portDecl (stx : TSyntax `routinePort) : MacroM PortDecl := do
   let marks := stx.raw[0].getArgs.map fun m => ((m.reprint.getD "").trimAscii).toString
   let name : Ident := ⟨stx.raw[1]⟩
+  let decl := stx.raw[2]
   let len : Option (TSyntax `routineLen) :=
-    if stx.raw[2].getNumArgs == 0 then none else some ⟨stx.raw[2][1]⟩
+    if decl.getNumArgs == 0 then none else some ⟨decl[1]⟩
+  let runs : Option (TSyntax `routineLen) :=
+    if decl.getNumArgs == 0 || decl[2].getNumArgs == 0 then none else some ⟨decl[2][1]⟩
+  let period : Option (TSyntax `routineLen) :=
+    if decl.getNumArgs == 0 || decl[3].getNumArgs == 0 then none else some ⟨decl[3][1]⟩
   return { name, isolated := marks.contains "isolated",
-           unreported := marks.contains "unreported", len }
+           unreported := marks.contains "unreported", len, runs, period }
+
+/-- The length of a run of an operand, and its runs when it is not contiguous: `x : n` is one
+run of `n` cells; `x : n every p` is `n` runs of one cell every `p`; `A : m × n every p` is `n`
+runs of `m` cells every `p`. -/
+meta def shapeE (ds : Array Ident) (p : PortDecl) (len : TSyntax `routineLen) :
+    MacroM (TSyntax `term × Option (TSyntax `term × TSyntax `term)) := do
+  match p.period, p.runs with
+  | none, none => return (← lenE ds len, none)
+  | none, some r => Macro.throwErrorAt r "routine%: `×` needs a period: `m × n every p`"
+  | some per, none => return (← `(fun _ => 1), some (← lenE ds len, ← lenE ds per))
+  | some per, some r => return (← lenE ds len, some (← lenE ds r, ← lenE ds per))
+
+/-- Give an operand its runs, when it has some. -/
+meta def everyE (base : TSyntax `term) :
+    Option (TSyntax `term × TSyntax `term) → MacroM (TSyntax `term)
+  | none => pure base
+  | some (c, per) => `(Port.every $base $c $per)
 
 open Lean in
 /-- Translate a routine from its header, its clauses and its tree, given as a function of the
@@ -202,9 +237,10 @@ meta def routineE (ds : Array Ident) (ins outs : Array (TSyntax `routinePort))
       let updated := outs.any (·.name.getId == p.name.getId)
       if updated && p.isolated then
         Macro.throwErrorAt p.name s!"routine%: `{p.name.getId}` is isolated and written"
-      let l ← lenE ds len
+      let (l, st) ← shapeE ds p len
       let base ← if updated then `(Port.update $l) else if p.isolated then `(Port.isolated $l)
         else `(Port.read $l)
+      let base ← everyE base st
       let unrep := p.unreported || outs.any fun q => q.name.getId == p.name.getId && q.unreported
       let base ← if unrep then `(Port.unreported $base) else pure base
       ports := ports.push base
@@ -225,8 +261,9 @@ meta def routineE (ds : Array Ident) (ins outs : Array (TSyntax `routinePort))
           | Macro.throwErrorAt q.name s!"routine%: `{q.name.getId}` needs a length"
         if q.isolated then
           Macro.throwErrorAt q.name s!"routine%: `{q.name.getId}` is isolated and written"
-        let l ← lenE ds len
+        let (l, st) ← shapeE ds q len
         let base ← `(Port.write $l)
+        let base ← everyE base st
         let base ← if q.unreported then `(Port.unreported $base) else pure base
         ports := ports.push base
         names := names.push q.name.getId

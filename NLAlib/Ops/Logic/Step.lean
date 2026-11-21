@@ -277,13 +277,17 @@ macro_rules
 
 
 open Lean Meta Elab Tactic in
-/-- **`reads`**: a goal `m.readBlocks as ns = some ?xs` (the blocks a call reads), with `as` and
+/-- **`reads`**: a goal `m.readBlocks as ns = some ?xs` (the blocks a call reads, also in the
+form `R.readAt m d ops = some ?xs` for a routine `R` of contiguous operands), with `as` and
 `ns` lists of known length: proves `m.store.readBlock a.1 a.2 n = some ?x` for each block by
 `kept`, and closes the goal with the list of the blocks found. -/
 elab "reads" : tactic => withMainContext do
   let g ← getMainGoal
   let t ← instantiateMVars (← g.getType)
   let some (_, lhs, _) := t.eq? | throwError "reads: not an equation"
+  -- the blocks read by a call of a routine are a read of blocks by computation
+  let lhs ← if lhs.isAppOf ``Mem.readBlocks then pure lhs else
+    (return (← whnfUntil lhs ``Mem.readBlocks).getD lhs)
   let (``Mem.readBlocks, #[_, m, as, ns]) := lhs.getAppFnArgs
     | throwError "reads: not a read of blocks"
   let as ← listElems 64 as

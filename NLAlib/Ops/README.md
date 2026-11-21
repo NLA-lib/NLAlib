@@ -339,6 +339,58 @@ convention in every family, stated in
 [Programs and certificates](../../docs/contributing/programs.md) ("Names of routines, files and
 certificates").
 
+### Operand footprints
+
+An operand is a base cell `(buffer, offset)` and a footprint: which cells after the base are its
+block. The footprint is three numbers, each an expression in the dimensions (`Port.len` and
+`Port.stride`, read as a `View` of `Logic/View.lean`): `count` runs of `len` cells, one run
+every `period` cells. Entry `k` of the block, in order, is the cell
+`offset + period * (k / len) + k % len`.
+
+| Operand | Header | `len` | `count` | `period` |
+| --- | --- | --- | --- | --- |
+| contiguous block (the default) | `x : n` | `n` | 1 | none |
+| vector with increment `inc` | `x : n every inc` | 1 | `n` | `inc` |
+| column of a matrix stored by columns | `x : m` | `m` | 1 | none |
+| row of that matrix, leading dimension `lda` | `x : n every lda` | 1 | `n` | `lda` |
+| `m × n` submatrix, leading dimension `lda` | `A : m × n every lda` | `m` | `n` | `lda` |
+
+A port without `every` has `stride := none` and is one contiguous block. For a routine all of
+whose operands are contiguous (`Routine.contiguous`, decided by `rfl`), every component of the
+judgment is, by computation, the statement on contiguous blocks: `Routine.readAt` is
+`Mem.readBlocks`, `Routine.RoomAt` is `Mem.Room`, `Routine.footprint` is `Fp.blocks`, and
+separation by block is `Fp.Apart` of the blocks. `routine_intro`, `call` and `routine_exit`
+state such goals in exactly those terms, so a proof about contiguous operands never mentions a
+view. The constructions that read a routine as contiguous blocks (`Implements`, `withData`,
+`close`, `algorithm`, `certify`) take `R.contiguous = true`, supplied by `rfl`.
+
+With a periodic operand the same components are stated on the cells: the blocks read are
+`Mem.readViews` (`Store.readView_eq_some_iff` gives each cell), room is `View.Fits`, the
+footprint is `Fp.views`. The two separation rules are those of a contiguous routine:
+
+- by buffer (the default): operands that must be apart are in different buffers;
+- `by blocks`: their *cells* are disjoint (`Fp.ApartViews`). Two operands interleaved in one
+  buffer are apart: two rows `i ≠ j` of one matrix, by `Fp.disj_inView_of_residues`, which
+  derives disjointness from the arithmetic of offsets within one period.
+
+A caller that holds a contiguous block reads a part of it as a view with
+`Store.readView_of_readBlock`, and reads the block back from the views a call reports with
+`Store.get_of_readView` and the frame.
+
+Operation contracts are unchanged: an operation takes contiguous blocks. A tree with a periodic
+operand reaches its cells by index arithmetic on the operand (`x[inc * i]`), so it applies
+operations to runs: one cell at a time for a vector with increment or a row, one column of `m`
+cells at a time for a submatrix. An operation on a whole periodic block (a level-1 operation
+with increments, a matrix product with leading dimensions) would be an operation contract
+stated on views; that is not done, and is the natural next step. Continuation (`cont`), which
+places an operand at the end of the block before it, is meant for contiguous operands only.
+
+The instruction count of a tree does not depend on the footprints of its operands.
+`Examples/Strided.lean` has a scaling of a vector with increment, the exchange of two rows of a
+matrix stored by columns (`swapRows`, `by blocks`), a caller that applies it to rows `i < j` of
+one matrix held as one block (`swapMatrixRows_meets`), and their kernel-evaluated counts
+(`34 n + 33` instructions for the caller, whatever the leading dimension).
+
 ### Three statements
 
 Three statements have three roles. `Routine.Meets` is what an author states about a routine.
@@ -472,6 +524,8 @@ source guard never becomes an omitted runtime operation. See the
 | `Static.lean` | Full `staticCost`/`staticPeak`, `Runs`, static soundness |
 | `Cert.lean` | `Algorithm`, `Impl.Satisfies` (a tree implements an operation contract), constructors |
 | `RoutineInterface.lean` | The interface of a routine: access modes, ports, regions, the two separation rules |
+| `Logic/View.lean` | Footprints of operands: `View` (runs at a period), reading, room, disjointness of views |
+| `Examples/Strided.lean` | Operands that are not contiguous: a vector with increment, two rows of one matrix |
 | `Routine.lean` | Routines: specifications, the judgment `Meets`, calls, programs and certificates |
 | `Notes.lean` | `Stmt.erase` and its invariance; `Stmt.pretty`, a tree as pseudocode with the names of its notes |
 | `RoutineSyntax.lean` | `routine%` and `spec%`: a routine and a specification on named dimensions and operands |

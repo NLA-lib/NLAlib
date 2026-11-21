@@ -31,7 +31,8 @@ Tactics for `NLAlib.Ops.Routine.Meets` and `NLAlib.Ops.Routine.Implements`.
 * `routine_nf` rewrites the operands, lengths and layout of a routine at named operands to list
   literals.
 
-`split_reads h as (xs, ys)` splits `h : m.readBlocks [x, y] [n, k] = some X` into named blocks;
+`split_reads h as (xs, ys)` splits `h : m.readBlocks [x, y] [n, k] = some X` into named blocks
+(or `h : m.readViews [x, y] [v, w] = some X`, for operands that are not contiguous);
 `read_outputs hys as (xs, ys)` does it for the reported buffers of a certificate.
 
 ## Main results
@@ -48,7 +49,11 @@ attribute [routineNF] Routine.sel Routine.lens Routine.outs Routine.operands Rou
   Routine.readArgs Routine.readLens Routine.writeArgs Routine.writeLens Routine.outArgs
   Routine.outLens Routine.roArgs Routine.roLens Routine.arity Routine.Advances
   Routine.impl Routine.nin Routine.nout Routine.regions Routine.SeparatedBlocks
+  Routine.readAt Routine.RoomAt Routine.footprint Routine.reportAt Routine.contiguous
+  Routine.views Routine.readViews Routine.writeViews Routine.outViews Port.view Port.every
   Port.read Port.write Port.update Port.isolated Port.continuing Port.unreported
+  List.all_cons List.all_nil Option.isNone_none Option.isNone_some Option.map_none
+  Option.map_some
   Port.place Port.placeFrom Port.regions Port.regionsFrom
   Access.readable Access.writable Access.readOnly Access.isIsolated Access.join
   List.zip_cons_cons List.zip_nil_left List.zip_nil_right List.filter_cons List.filter_nil
@@ -82,8 +87,12 @@ macro_rules
       let hrj := mkIdent (Name.mkSimple s!"hr_{i+1}")
       let Xj := mkIdent (Name.mkSimple s!"X_{i+1}")
       tacs := tacs.push (← `(tactic|
-        obtain ⟨$x:ident, $Xj:ident, $hx:ident, $hrj:ident, $(mkIdent `rfl):ident⟩ :=
-          Mem.readBlocks_cons_eq_some.mp $hri:ident))
+        first
+          | obtain ⟨$x:ident, $Xj:ident, $hx:ident, $hrj:ident, $(mkIdent `rfl):ident⟩ :=
+              Mem.readBlocks_cons_eq_some.mp $hri:ident
+          | (obtain ⟨$x:ident, $Xj:ident, $hx:ident, $hrj:ident, $(mkIdent `rfl):ident⟩ :=
+              Mem.readViews_cons_eq_some.mp $hri:ident
+             try simp only [Store.readView_block] at $hx:ident)))
       i := i + 1
     let hrn := mkIdent (Name.mkSimple s!"hr_{i}")
     tacs := tacs.push (← `(tactic| obtain $(mkIdent `rfl):ident := Option.some.inj $hrn:ident))
@@ -259,7 +268,8 @@ macro_rules
     tacs := tacs.push (← `(tactic|
       try simp only [Mem.live_cons, Mem.live_nil, and_true] at $(mkIdent `hl):ident))
     tacs := tacs.push (← `(tactic|
-      try simp only [Mem.room_cons, Mem.room_nil, and_true] at $(mkIdent `hroom):ident))
+      try simp only [Mem.room_cons, Mem.room_nil, Mem.roomViews_cons, Mem.roomViews_nil,
+        View.fits_block, and_true] at $(mkIdent `hroom):ident))
     -- the pairs of operands that the interface requires in different buffers
     let hbuf := mkIdent `hsep_buffers
     let mut pairs : Array (TSyntax `tactic) := #[]

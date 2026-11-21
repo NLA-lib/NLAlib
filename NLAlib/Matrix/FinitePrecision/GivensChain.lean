@@ -37,16 +37,6 @@ open Ops
 
 variable {n : ℕ}
 
-/-- $(1 + x)^n - 1 \le nx + (nx)^2$ for $x \ge 0$ and $nx \le 1$. -/
-theorem one_add_pow_sub_one_le {x : ℝ} (hx : 0 ≤ x) {n : ℕ} (hnx : n * x ≤ 1) :
-    (1 + x) ^ n - 1 ≤ n * x + (n * x) ^ 2 := by
-  have h1 : (1 + x) ^ n ≤ Real.exp (n * x) := by
-    rw [Real.exp_nat_mul]
-    exact pow_le_pow_left₀ (by linarith) (by linarith [Real.add_one_le_exp x]) n
-  have h2 := (abs_le.mp (Real.abs_exp_sub_one_sub_id_le (x := n * x)
-    (by rw [abs_of_nonneg (by positivity)]; exact hnx))).2
-  linarith
-
 /-- The geometric accumulation: $\sum_{j < n} x(1 + x)^j = (1 + x)^n - 1$. -/
 theorem sum_mul_one_add_pow (x : ℝ) (n : ℕ) :
     ∑ j ∈ Finset.range n, x * (1 + x) ^ j = (1 + x) ^ n - 1 := by
@@ -384,5 +374,44 @@ theorem exists_hasOrthonormalCols_rotateTo {η : ℝ} (hη : 0 ≤ η) (hnη : n
   refine ⟨(P n)ᴴ, c, (hPu n).conjTranspose, hc1, hcol, ?_⟩
   rw [Matrix.conjTranspose_conjTranspose]
   exact specNorm_sub_rotateTo_le hη hnη hU rfl (fun _ => rfl) hUj hA
+
+/-- **One-sided chain, right multiplications**: if $\mathbf{X}_{j+1}$ is within
+$e_j$ of $\mathbf{X}_j\mathbf{U}_j$ for unitaries $\mathbf{U}_j$, then $\mathbf{X}_k$ is within
+$\sum_j e_j$ of $\mathbf{X}_0\mathbf{P}_k$, $\mathbf{P}_k = \mathbf{U}_0\cdots\mathbf{U}_{k-1}$. -/
+theorem specNorm_sub_mul_le_sum {m : Type*} [Fintype m] [DecidableEq m]
+    {U P : ℕ → Matrix m m ℂ} (hU : ∀ j, HasOrthonormalCols (U j)) (hP0 : P 0 = 1)
+    (hP : ∀ j, P (j + 1) = P j * U j) (X : ℕ → Matrix m m ℂ) (k : ℕ) :
+    specNorm (X k - X 0 * P k) ≤
+      ∑ j ∈ Finset.range k, specNorm (X (j + 1) - X j * U j) := by
+  induction k with
+  | zero => simp [hP0]
+  | succ k ih =>
+    have he : X (k + 1) - X 0 * P (k + 1) =
+        (X (k + 1) - X k * U k) + (X k - X 0 * P k) * U k := by
+      rw [hP, Matrix.sub_mul, Matrix.mul_assoc]; abel
+    rw [he, Finset.sum_range_succ]
+    refine (specNorm_add_le _ _).trans ?_
+    rw [(hU k).specNorm_mul_right]
+    linarith
+
+/-- **One-sided chain, left multiplications**: the mirror of `NLAlib.specNorm_sub_mul_le_sum`,
+with $\mathbf{P}_{j+1} = \mathbf{U}_j\mathbf{P}_j$. -/
+theorem specNorm_sub_mul_left_le_sum {m : Type*} [Fintype m] [DecidableEq m]
+    {U P : ℕ → Matrix m m ℂ} (hU : ∀ j, HasOrthonormalCols (U j)ᴴ) (hP0 : P 0 = 1)
+    (hP : ∀ j, P (j + 1) = U j * P j) (X : ℕ → Matrix m m ℂ) (k : ℕ) :
+    specNorm (X k - P k * X 0) ≤
+      ∑ j ∈ Finset.range k, specNorm (X (j + 1) - U j * X j) := by
+  induction k with
+  | zero => simp [hP0]
+  | succ k ih =>
+    have he : X (k + 1) - P (k + 1) * X 0 =
+        (X (k + 1) - U k * X k) + U k * (X k - P k * X 0) := by
+      rw [hP, Matrix.mul_sub, Matrix.mul_assoc]; abel
+    rw [he, Finset.sum_range_succ]
+    refine (specNorm_add_le _ _).trans ?_
+    have hUk := (hU k).conjTranspose
+    rw [Matrix.conjTranspose_conjTranspose] at hUk
+    rw [hUk.specNorm_mul_left]
+    linarith
 
 end NLAlib

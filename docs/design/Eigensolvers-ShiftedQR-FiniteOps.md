@@ -10,6 +10,25 @@ on `design/sqr-fp` (83e77641). It replaces the plan of §9 of
 the maintainer (board T137). This note is a design and a sorried skeleton; no proof is written
 and no target, check, allowlist, CI file or build pin changes.
 
+**Superseded in part by SCHUR** ([Eigensolvers-DenseSchur](Eigensolvers-DenseSchur.md) §14.6,
+§15–§17). The programs of this note were rewritten in place in Schur mode: every committed
+rotation is recorded in a slotted Givens log, the backward statements name their unitary
+(`IsPerturbedUnitarySimilarBy (givensLog …)`), and the worklist `solveRoundedWith` outputs
+$(\widehat{\mathbf{U}}, \widehat{\mathbf{T}})$ with $\widehat{\mathbf{T}}$ upper triangular. The
+eigenvalue-only programs described here are **removed**: the oracle-leaf program `roundedShQR`
+and its theorems T1c, T1d, T3, T4, T5 (`roundedShQR_measureReal_not_spectrum_le`,
+`roundedShQR_terminates`, `roundedShQR_relative`, `roundedShQR_hermitian`,
+`roundedShQR_work_le`), its certificate (`shqrProgram`, `stmtWorkMono_shqrProgram` with the constant $196218$,
+`shqrAlgorithm`,
+`roundedShQR_algorithm_measureReal_not_accepts_le`), the kernel-instance decoupler
+`roundedDecouple`, the worklist `solveRounded` and its theorems, and the leaf contracts
+`RandomLeafContract`, `BackwardLeafContract` with `IsEigenvalueKernels.backwardLeafContract`
+(LB1). The headline without an oracle is `roundedShQRSmallEig_measureReal_not_spectrum_le` (and
+its relative, Hermitian and `_unconditional` forms), now a corollary of the Schur form
+`roundedShQRSchur_measureReal_not_schur_le`, at $\boldsymbol{u} \le$ `uShQRSchur`; its certificate
+is `shqrSmallEigAlgorithm` with `roundedShQRSmallEig_algorithm_measureReal_not_accepts_le`.
+The rest of this note is the design record of SQR-FP and is not rewritten.
+
 ## 0. Summary
 
 * **Gap re-check (§2).** All of G8–G17 were re-derived independently from the LaTeX. G8, G9, G10,
@@ -650,6 +669,8 @@ drafts, item 1). PL4 instead shows that a measurable interpretation meeting the 
 exists. In T1c, `0 ≤ φse` follows from `IsRandomSmallEig` at any Hessenberg input, or is added
 next to `hφse`.
 
+(Removed by SCHUR with the oracle program; see the banner at the top.)
+
 ```lean
 theorem roundedShQR_measureReal_not_spectrum_le … (hM : StdModel u id Mch)
     (hI : I.IsMeasurable) (hloc : ∀ o, I.TapeLocal o (win o))
@@ -661,7 +682,7 @@ theorem roundedShQR_measureReal_not_spectrum_le … (hM : StdModel u id Mch)
     (hk : k = shqrDegree (4 * B)) (hpar : … stored params = shqrParams n k B Γ Σ δ φ)
     (hse : βse ≤ shqrSmallEigAccuracy n k B Γ Σ δ) (hφse : φse ≤ shqrSmallEigFailure n k B Γ Σ δ φ)
     (hu : u ≤ uShQR n k B Γ Σ δ φ) … (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (roundedShQR …) env F
+    P.real {ω | ¬ Writes .total I (ξ ω) (roundedShQR …).body env F
       (fun μ' => Fl = 0 ∧ ∃ roots E, HoldsMatrix out roots μ'.store ∧ specNorm E ≤ δ ∧
         (H + E).charpoly.roots = List.ofFn roots) μ} ≤ φ
 ```
@@ -977,6 +998,9 @@ statements; every block they use is proved.
 
 ### 15.2 Statements
 
+(T1c, T1d, T3, T4, T5 are removed by SCHUR with `roundedShQR`; their `roundedShQRSmallEig_…`
+counterparts are the surviving headlines. T2 `logb_inv_uShQR_le` stays.)
+
 | id | Lean name | informal |
 |---|---|---|
 | T1c | `roundedShQR_measureReal_not_spectrum_le` | the §14.1 headline: probability $\le \varphi$ of not (footprint, `Fl = 0`, spectrum of $\mathbf{H}+\mathbf{E}$, $\|\mathbf{E}\|_2 \le \delta$) |
@@ -984,7 +1008,7 @@ statements; every block they use is proved.
 | T2 | `logb_inv_uShQR_le` | $\exists c_1, c_2$ absolute: $\log_2(1/\boldsymbol{u}_{\mathrm{ShQR}}) \le c_1 k \log_2\frac{4(n+1)B\Sigma^2}{\delta\min(\Gamma,\Sigma)\varphi} + c_2$ |
 | T3 | `roundedShQR_relative` | $0 < \Sigma$, $\|\mathbf{H}\|_2 \le \Sigma \le c\|\mathbf{H}\|_2$, $c \ge 1$, $0 < \delta \le 1$: parameters at $\delta\Sigma/c$ give $\|\mathbf{E}\|_2 \le \delta\|\mathbf{H}\|_2$ w.p. $\ge 1-\varphi$ |
 | T4 | `roundedShQR_hermitian` | Hermitian Hessenberg input, gap on `hH.eigenvalues`, no $\mathbf{V}$ supplied; $B = 1$, $k$ = `shqrDegree 4` |
-| T5 | `roundedShQR_work_le` | $\exists c$: `Count.size (stmtCost roundedShQR [n+1, k, np, F])` $\le c(n+1)^4(k+1)^4(n_p+1)(F+1)$ (static, so on every tape, `exec_within`) |
+| T5 | `roundedShQR_work_le` | $\exists c$: `Count.size (stmtCost roundedShQR.body [n+1, k, np, F])` $\le c(n+1)^4(k+1)^4(n_p+1)(F+1)$ (static, so on every tape, `exec_within`) |
 
 T1c follows §14.1's Lean text with Fable's fixes (`hI : I.IsMeasurable` with `hloc`;
 `IsPolarDiskSampler sU I` and `hU`; `k = shqrDegree (4 * B)`) and the machine hypotheses of T1
@@ -1055,7 +1079,13 @@ T1c follows §14.1's Lean text with Fable's fixes (`hI : I.IsMeasurable` with `h
 
 ### 15.5 The certificate form (audit B1, B4)
 
-File `NLAlibScaffold/Eigensolvers/ShiftedQR/RoundedCertification.lean`. T1c and T5 are about the
+(Removed by SCHUR: `shqrProgram`, `shqrSpecification`, `shqrAlgorithm` and its headline are
+deleted with the oracle program; the certificate of the algorithm is
+`shqrSmallEigAlgorithm`, work $967736\,(n+1)^3(k+1)^4(n_p+1)(F+1)(T+1)^2$, over
+`SmallEig.smallEigModel` with no oracle. The `ops_certificates.txt` line for
+`shqrAlgorithm` is stale.)
+
+File `NLAlibScaffold/Eigensolvers/ShiftedQR/RoundedCertificate.lean`. T1c and T5 are about the
 same program but not the same run; the headline is restated as a canonical certificate
 (`Ops.Algorithm`) and one `Accepts` bound, so cost and correctness hold on one event.
 

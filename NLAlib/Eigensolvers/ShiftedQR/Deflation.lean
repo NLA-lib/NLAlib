@@ -44,7 +44,7 @@ def splitPush : Stmt O Q := ops% [capacity, lo, d, i] (St) → () {
 /-- Splitting is two total stack operations on the actual stored count. The two persistent
 slots have capacity before execution; the existing stack words are retained by the frame. Only
 the literals written need to be exact.
-Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`
 and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem splitPush_writes_of_isExactNatLit {M : Machine ℝ} {I : Interp O Q ℝ}
     (hL : IsIndexLit M I) (hQ : IsToNat id I) {B : ℕ} (hN : IsExactNatLit id M B)
@@ -72,7 +72,7 @@ theorem splitPush_writes_of_isExactNatLit {M : Machine ℝ} {I : Interp O Q ℝ}
 
 /-- Splitting is two total stack operations on the actual stored count. The two persistent
 slots have capacity before execution; the existing stack words are retained by the frame.
-Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`
 and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem splitPush_writes {M : Machine ℝ} {I : Interp O Q ℝ}
     (hL : IsIndexLit M I) (hQ : IsToNat id I) (hE : ExactModel id M)

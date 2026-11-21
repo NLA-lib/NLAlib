@@ -571,6 +571,27 @@ theorem le_two_pow_decoupleSteps_mul_sqrt {κ p : ℝ} (hκ : 0 < κ) (hp : 0 < 
   calc κ / √p = 2 ^ logb 2 (κ / √p) := (rpow_logb (by norm_num) (by norm_num) (by positivity)).symm
     _ ≤ 2 ^ (decoupleSteps κ p : ℝ) := rpow_le_rpow_of_exponent_le (by norm_num) h
 
+/-- **The degree of `DistSpec` is at most twelve step caps**: for $\kappa, p > 0$,
+`NLAlib.SmallEig.distSpecDegree` $\kappa$ $p \le 12m_2$, $m_2$ = `NLAlib.SmallEig.decoupleSteps`
+$\kappa$ $p$, since $12\log_2\kappa + 6\log_2(1/p) = 12\log_2(\kappa/\sqrt p)$ and
+$\kappa \le 2^{m_2}\sqrt p$. -/
+theorem distSpecDegree_le_decoupleSteps {κ p : ℝ} (hκ : 0 < κ) (hp : 0 < p) :
+    distSpecDegree κ p ≤ 12 * decoupleSteps κ p := by
+  have hsp : 0 < √p := sqrt_pos.mpr hp
+  have hl : logb 2 κ ≤ decoupleSteps κ p + logb 2 √p := by
+    calc logb 2 κ ≤ logb 2 (2 ^ decoupleSteps κ p * √p) :=
+          logb_le_logb_of_le (by norm_num) hκ (le_two_pow_decoupleSteps_mul_sqrt hκ hp)
+      _ = _ := by
+          rw [logb_mul (by positivity) hsp.ne', logb_pow, logb_self_eq_one (by norm_num),
+            mul_one]
+  have hs : logb 2 p = 2 * logb 2 √p := by
+    rw [← sq_sqrt hp.le, logb_pow, sqrt_sq hsp.le]; norm_num
+  unfold distSpecDegree
+  refine Nat.ceil_le.mpr ?_
+  rw [logb_inv]
+  push_cast
+  linarith
+
 /-- The accuracy $\beta' = \omega/20$ is in $(0, 0.8 \cdot 2\Sigma]$. -/
 theorem smallEigAccuracy_le {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {nmax : ℕ}
     (hn : 1 ≤ nmax) {S δ φ : ℝ} (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1) :

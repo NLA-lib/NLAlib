@@ -418,8 +418,7 @@ private theorem excShiftsWithScratch_writes_word {M : Machine ℝ} {I : Interp O
 `NLAlib.ShiftedQR.excShiftWord` of the $n_0$ net points for the polar sample of radius
 $\mathrm{fl}(c_w\tilde R)$ read at the start position, and advances the position by two. The
 output is disjoint from the radius word and the net.
-Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
-`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem excShifts_writes_word {M : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar M I) {s : ℕ} (hD : IsPolarDiskSampler s I) {τ : Tape ℝ} {m : Mem ℝ}
     {c rt cw g ss : ℕ × ℕ} {r : ℂ} {R cv : ℝ} {gs : List ℂ}
@@ -702,8 +701,7 @@ $\mathrm{fl}(\varepsilon\tilde R/2)$, and its points are not intersected with a 
 paper's intersection with $\mathbb{D}(r, \tilde R)$ can drop the points covering the boundary);
 the rounding budget $0.005\,\varepsilon\tilde R$ replaces the paper's $0.1\,\varepsilon\tilde R$,
 which exceeds the covering slack, and the packing count is $11$, not $3$.
-Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
-`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem excShifts_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) {law : ℕ → Measure ℝ} {s : ℕ} (hD : IsPolarDiskSampler s I)
     (hU : law s = volume.restrict (Set.Icc 0 1)) {N : ℕ} (e : Fin N → ℂ) {r : ℂ} {R ε φ : ℝ}

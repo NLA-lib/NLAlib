@@ -32,12 +32,9 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has CmpTst Tst]
 
 /-- One round on any machine computes the coefficient words `(cv, sv)` of the actual working
 column (`NLAlib.roundedGivensCoeffs`), rotates the rows $k, k + 1$ of the working matrix
-and conjugates the output by them (`NLAlib.ShiftedQR.machineRowRotation`,
-`NLAlib.ShiftedQR.machineColRotation`). The two matrices and four coefficient words are
-separated views; output aliases are exact.
-Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`,
-`NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrRoutine`,
-`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+and conjugates the output by them (`NLAlib.machineRowRotation`,
+`NLAlib.machineColRotation`). The two matrices and four coefficient words are
+separated views; output aliases are exact. -/
 theorem round_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k : ℕ} {w z cf : ℕ × ℕ}
@@ -125,8 +122,8 @@ theorem round_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
 rotates that matrix on the left, and conjugates the output by the same rotation. The two
 matrices and four coefficient words are separated views; output aliases are exact.
 Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`,
-`NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrRoutine`,
-`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+`NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem round_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k : ℕ} {w z cf : ℕ × ℕ}

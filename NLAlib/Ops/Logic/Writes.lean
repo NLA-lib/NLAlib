@@ -576,4 +576,17 @@ theorem Writes.link {Op₁ Op₂ : Type} {md : Mode} (I : Interp Op₂ Tst K)
   rw [run_link]
   exact h
 
+/-- Sequences associate: the runs of $(a; (b; c)); d$ and $a; (b; (c; d))$ agree. -/
+theorem eval_seq_seq_seq_assoc {Op Tst K : Type} {I : Interp Op Tst K}
+    (a b c d : Stmt Op Tst) (ρ : Env) (τ : Tape K) (m : Mem K) :
+    eval I τ ((a.seq (b.seq c)).seq d) ρ m = eval I τ (a.seq (b.seq (c.seq d))) ρ m := by
+  simp only [eval, Option.bind_assoc]
+
+/-- Blocks with the same runs have the same deterministic specifications. -/
+theorem Writes.congr_eval {Op Tst K : Type} {I : Interp Op Tst K} {τ : Tape K}
+    {c c' : Stmt Op Tst} {ρ : Env} {F : Fp} {P : Mem K → Prop} {m : Mem K}
+    (he : eval I τ c ρ m = eval I τ c' ρ m) (h : Writes .total I τ c ρ F P m) :
+    Writes .total I τ c' ρ F P m := by
+  simpa only [Writes, Wp, he] using h
+
 end NLAlib.Ops

@@ -86,8 +86,8 @@ theorem StackHolds.push {b : ℕ × ℕ} {rs : List (ℕ × ℕ)} {st st' : Stor
 /-- Push executes the bounded query and three dimension-literal calls on the actual stack.
 The persistent capacity and strict count bound guarantee room before any write. Only the three
 literals written need to be exact: the machine is otherwise arbitrary (e.g. rounded).
-Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.ShiftedQR.shqrRoutine`,
-`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem rangePush_writes_of_isExactNatLit {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hL : IsIndexLit M I) (hQ : IsToNat id I) {B : ℕ} (hN : IsExactNatLit id M B)
     {τ : Tape ℝ} {m : Mem ℝ} {capacity lo size : ℕ} {b : ℕ × ℕ}
@@ -126,8 +126,8 @@ theorem rangePush_writes_of_isExactNatLit {M : Machine ℝ} {I : Interp Op Tst �
 
 /-- Push executes the bounded query and three dimension-literal calls on the actual stack.
 The persistent capacity and strict count bound guarantee room before any write.
-Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.ShiftedQR.shqrRoutine`,
-`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem rangePush_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hL : IsIndexLit M I) (hQ : IsToNat id I) (hE : ExactModel id M)
     {τ : Tape ℝ} {m : Mem ℝ} {capacity lo size : ℕ} {b : ℕ × ℕ}
@@ -147,6 +147,13 @@ theorem StackHolds.of_eqOff {b : ℕ × ℕ} {rs : List (ℕ × ℕ)} {st st' : 
       st'.get b.1 j = st.get b.1 j := hfr.get_eq fun hf => hd _ _ hf ⟨rfl, hj⟩
   exact ⟨(hget _ (by omega)).trans h.1, fun t ht =>
     ⟨(hget _ (by omega)).trans (h.2 t ht).1, (hget _ (by omega)).trans (h.2 t ht).2⟩⟩
+
+/-- A range stack survives dropping scratch buffers above its buffer. -/
+theorem StackHolds.of_below {b : ℕ × ℕ} {rs : List (ℕ × ℕ)} {st st' : Store ℝ} {L : ℕ}
+    (h : StackHolds b rs st) (hBelow : Store.Below L st st') (hb : b.1 < L) :
+    StackHolds b rs st' :=
+  ⟨((hBelow b.1 hb).2 _).trans h.1, fun t ht =>
+    ⟨((hBelow b.1 hb).2 _).trans (h.2 t ht).1, ((hBelow b.1 hb).2 _).trans (h.2 t ht).2⟩⟩
 
 /-- The top pair is an actual contiguous two-word block. -/
 theorem StackHolds.read_top {b : ℕ × ℕ} {rs : List (ℕ × ℕ)} {r : ℕ × ℕ}
@@ -178,7 +185,7 @@ private theorem StackHolds.pop_count {b : ℕ × ℕ} {rs : List (ℕ × ℕ)} {
 and writes the decremented count. The persistent stack and output capacities are raw premises;
 the earlier ranges and tape position are preserved by the same total run. Only the count
 literal needs to be exact.
-Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`
 and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem rangePop_writes_of_isExactNatLit [Has ScalarOp Op] {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hL : IsIndexLit M I) (hQ : IsToNat id I) {capacity : ℕ}
@@ -226,7 +233,7 @@ theorem rangePop_writes_of_isExactNatLit [Has ScalarOp Op] {M : Machine ℝ} {I 
 /-- Pop reads the actual bounded count, copies the last pair into a separate output view,
 and writes the decremented count. The persistent stack and output capacities are raw premises;
 the earlier ranges and tape position are preserved by the same total run.
-Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`
 and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem rangePop_writes [Has ScalarOp Op] {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hL : IsIndexLit M I) (hQ : IsToNat id I) (hE : ExactModel id M)
@@ -252,8 +259,8 @@ def stackInit : Stmt Op Tst := ops% [capacity, lo, size] () → (St) {
 
 /-- The initial stack is built from literal words, with no initialized stack premise. Only the
 literals written need to be exact.
-Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.ShiftedQR.shqrRoutine`,
-`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem stackInit_writes_of_isExactNatLit {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hL : IsIndexLit M I) (hQ : IsToNat id I) {B : ℕ} (hN : IsExactNatLit id M B)
     {τ : Tape ℝ} {m : Mem ℝ} {capacity lo size : ℕ} {b : ℕ × ℕ}
@@ -278,8 +285,8 @@ theorem stackInit_writes_of_isExactNatLit {M : Machine ℝ} {I : Interp Op Tst �
     exact ⟨hp₂.trans hp₁, by simpa only [List.nil_append] using hstack⟩
 
 /-- The initial stack is built from literal words, with no initialized stack premise.
-Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.ShiftedQR.shqrRoutine`,
-`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem stackInit_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hL : IsIndexLit M I) (hQ : IsToNat id I) (hE : ExactModel id M)
     {τ : Tape ℝ} {m : Mem ℝ} {capacity lo size : ℕ} {b : ℕ × ℕ}

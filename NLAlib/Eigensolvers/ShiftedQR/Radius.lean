@@ -40,8 +40,8 @@ def squareRoots : Stmt Op Tst :=
 
 /-- The actual in-place scalar loop returns the iterated mathematical square root. Its initial
 word is nonnegative, so every executed root meets the exact model's numerical domain.
-Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrRoutine`,
-`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem squareRoots_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {k : ℕ} {x : ℕ × ℕ} {v : ℝ} (hx : m.store.get x.1 x.2 = some v) (hv : 0 ≤ v) :

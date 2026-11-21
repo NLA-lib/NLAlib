@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Eigensolvers.ShiftedQR.Storage
+public import NLAlib.Matrix.FinitePrecision.StoredMatrix
 public import NLAlib.Ops.Blas.BlockCopy
 public import NLAlib.Matrix.QRIteration.HessenbergDeflation
 
@@ -61,7 +61,7 @@ theorem blockFp_le {N lo d : ℕ} (b : ℕ × ℕ) (hr : lo + d ≤ N) :
   · omega
 
 /-- A packed global matrix supplies the exact component words of any bounded diagonal view. -/
-private theorem HoldsMatrix.block_entries {n lo d : ℕ} {b : ℕ × ℕ}
+private theorem _root_.NLAlib.HoldsMatrix.block_entries {n lo d : ℕ} {b : ℕ × ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {st : Store ℝ}
     (hH : HoldsMatrix b H st) (hr : lo + d ≤ n + 1) :
     st.HoldsEntries (EntryCodec.pair ℝ)
@@ -84,7 +84,7 @@ private theorem HoldsMatrix.block_entries {n lo d : ℕ} {b : ℕ × ℕ}
 
 /-- Copying a bounded diagonal block uses its actual raw matrix words. Workspace capacity
 is persistent, the matrix/work views are separate, and no initialized workspace is required.
-Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`
 and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem copyToWork_writes {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {m : Mem ℝ} {n lo d : ℕ} {a w : ℕ × ℕ}
@@ -113,7 +113,7 @@ theorem copyToWork_writes {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsScal
 
 /-- Writing one bounded diagonal view replaces exactly that mathematical submatrix.
 The ordinary entry-region frame retains every global matrix entry outside the view. -/
-private theorem HoldsMatrix.of_block_write {n lo d : ℕ} {a : ℕ × ℕ}
+private theorem _root_.NLAlib.HoldsMatrix.of_block_write {n lo d : ℕ} {a : ℕ × ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {B : Matrix (Fin d) (Fin d) ℂ}
     {st st' : Store ℝ} (hH : HoldsMatrix a H st) (hr : lo + d ≤ n + 1)
     (hfr : st.EqOff ((EntryCodec.pair ℝ).regionFp a.1
@@ -172,7 +172,7 @@ private theorem HoldsMatrix.of_block_write {n lo d : ℕ} {a : ℕ × ℕ}
 
 /-- Dense workspace is copied back into exactly its bounded global diagonal block. Global
 capacity is the original matrix capacity, with no additional padding after the final column.
-Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`
 and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem copyToGlobal_writes {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {m : Mem ℝ} {n lo d : ℕ} {a w : ℕ × ℕ}

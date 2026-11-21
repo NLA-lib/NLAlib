@@ -33,7 +33,7 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has IdxTst Q]
 /-- Copying back the actual unitary-conjugate block and pushing its children advances the
 worklist invariant. The partition itself proves capacity for both new stack entries. Only the
 natural literals up to the order need to be exact.
-Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`
 and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem writeAndSplit_writes_of_isExactNatLit {M : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar M I) (hL : IsIndexLit M I) (hQ : IsToNat id I) {n : ℕ}
@@ -120,7 +120,7 @@ theorem writeAndSplit_writes_of_isExactNatLit {M : Machine ℝ} {I : Interp O Q 
 
 /-- Copying back the actual unitary-conjugate block and pushing its children advances the
 worklist invariant. The partition itself proves capacity for both new stack entries.
-Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`
 and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem writeAndSplit_writes {M : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I) (hQ : IsToNat id I)

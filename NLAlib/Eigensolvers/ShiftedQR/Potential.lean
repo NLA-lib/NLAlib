@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Eigensolvers.ShiftedQR.Storage
+public import NLAlib.Matrix.FinitePrecision.StoredMatrix
 public import NLAlib.Matrix.QRIteration.ShiftSearch
 public import NLAlib.Ops.Blas.NormSq
 public import NLAlib.Ops.Logic.Functional
@@ -58,7 +58,7 @@ def subdiagProduct : Stmt Op Tst := ops% [n, k] (A) → (P) {
 
 /-- The scalar product returns exactly the mathematical squared-potential statistic. Spatial
 separation preserves the input matrix and permits disjoint views of one underlying buffer.
-Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrRoutine` and
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple` and
 `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem subdiagProductWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
@@ -130,7 +130,7 @@ theorem subdiagProductWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst �
 
 /-- The scoped product routine returns the exact statistic and frees its three scratch words.
 Only the matrix/output separation and one output word of capacity are supplied by the caller.
-Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrRoutine` and
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple` and
 `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem subdiagProduct_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}

@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Eigensolvers.ShiftedQR.Storage
+public import NLAlib.Matrix.FinitePrecision.StoredMatrix
 public import NLAlib.Matrix.QRIteration.Ritz
 public import NLAlib.Matrix.Spectral.EigenvalueListing
 public import NLAlib.Ops.Profiles.Dense

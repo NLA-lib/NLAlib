@@ -86,7 +86,7 @@ theorem norm_rowEntryWord_sub_le {M : Machine ℝ} {u : ℝ} (hM : StdModel u id
     set A := ∑ j ∈ Finset.range l, ‖a j‖ * ‖x j‖
     have hA : 0 ≤ A := Finset.sum_nonneg fun _ _ => by positivity
     have hSA : ‖S‖ ≤ A := (norm_sum_le _ _).trans (by simp only [norm_mul]; exact le_rfl)
-    have hG := hM.norm_linearWords_sub_le hu hu' (a l) 1 (x l) c
+    have hG := hM.norm_linearWords_sub_le hu (hu'.trans (by norm_num)) (a l) 1 (x l) c
     have hpair : ((c.re, c.im) : ℝ × ℝ) = rowEntryWord M (1, 0) (0, 0) a x l := rfl
     have hone : (((1 : ℂ).re, (1 : ℂ).im) : ℝ × ℝ) = (1, 0) := by simp
     rw [hpair, hone, norm_one, one_mul, one_mul] at hG
@@ -328,8 +328,7 @@ $\mathbf{r}$ stored at `V`, the order-$(n+1)$ matrix $\mathbf{W}$ at `A`, the pa
 and the scratch pairs `T`, `Z` and the entry pair `Y[2i]` apart from each other and from the
 inputs, `rowEntry` stores at `Y[2i]` the pair `NLAlib.ShiftedQR.rowEntryPair`, and writes only
 that pair and the scratch.
-Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
-`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem rowEntry_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {n i : ℕ} {v a o t z y : ℕ × ℕ}
     {r : Fin (n + 1) → ℂ} {W : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {oo : ℝ × ℝ}
@@ -405,8 +404,7 @@ def rowMulVec (M : Machine ℝ) (o : ℝ × ℝ) {N : ℕ} (r : Fin N → ℂ)
 matrix $\mathbf{W}$ at `A`, the pair `oo` at `O`, and the output vector and the two scratch pairs
 apart from each other and from the inputs, `rowMul` stores at `Y` the vector
 `NLAlib.ShiftedQR.rowMulVec`, and writes only `Y` and the scratch.
-Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
-`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem rowMul_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {v a o t z y : ℕ × ℕ}
     {r : Fin (n + 1) → ℂ} {W : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {oo : ℝ × ℝ}
@@ -495,8 +493,7 @@ $\mathbf{H}$ at `A`, the shift $s$ at `S`, the pair `oo` at `O`, and the scratch
 `rowShiftStep` stores at `V` the row product `NLAlib.ShiftedQR.rowMulVec` of $\mathbf{r}$ and the
 machine shift `NLAlib.ShiftedQR.machineShiftedPrefix` of $\mathbf{H}$, and writes only `V` and
 the scratch.
-Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
-`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem rowShiftStep_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {v a s o w t z y : ℕ × ℕ}
     {r : Fin (n + 1) → ℂ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {sh : ℂ} {oo : ℝ × ℝ}
@@ -652,8 +649,7 @@ theorem rowInitVec_eq {M : Machine ℝ} (h0 : M.lit 0 = 0) (h1 : M.lit 1 = 1) (n
 /-- The start of the row recurrence on any scalar machine: `rowInit` stores
 `NLAlib.ShiftedQR.rowInitVec` at `V` and the literal pair $(1, 0)$ at `O`, and writes only
 these.
-Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
-`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem rowInit_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {v o : ℕ × ℕ}
     (hv : v.2 + 2 * (1 * (n + 1)) ≤ m.store.len v.1) (ho : o.2 + 2 ≤ m.store.len o.1)
@@ -793,8 +789,7 @@ def rowPolyVec (M : Machine ℝ) (o : ℝ × ℝ) {n : ℕ} (H : Matrix (Fin (n 
 `Z`, `Y` apart from each other and from the inputs, and `V` apart from the other inputs,
 `rowPolyLoop` stores at `V` the vector `NLAlib.ShiftedQR.rowPolyVec` after all the shifts, and
 writes only `V` and the scratch.
-Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
-`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem rowPolyLoop_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {v a s o w t z y : ℕ × ℕ}
     {r₀ : Fin (n + 1) → ℂ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ss : List ℂ}

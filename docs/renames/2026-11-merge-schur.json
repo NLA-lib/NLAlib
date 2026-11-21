@@ -1,0 +1,24 @@
+{
+  "date": "2026-11-21",
+  "note": "Merge of the dense Schur work (2026-11-schur.json) into the routine layer. The Schur declarations follow the names of 2026-11-routine-naming.json, 2026-11-routine-core.json, 2026-11-interp-satisfies.json and 2026-11-impl-satisfies.json where those maps rename them (operand-form statements `foo_writes`, `Interp.Satisfies`, trees as `Stmt` with `ops%`, `roundedShQRSmallEigAlgorithm` -> `shqrSmallEigAlgorithm`); a declaration that 2026-11-schur.json moves out of the namespace `NLAlib.ShiftedQR` keeps the new last component of those maps (`NLAlib.ShiftedQR.writes_rotationLoop` -> `NLAlib.rotationLoop_writes`). The entries below are the statements new on main that are renamed here. The certificates of the small-eigenvalue solver, of rounded shifted QR with it, and of the dense Schur pipeline are derived from routines (`NLAlib.SmallEig.smallEigRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`, `NLAlib.Schur.schurPipelineRoutine`) and their programs are `Routine.close` of them, with the same trees. `NLAlib.Schur.schurPipelineAlgorithm` takes the judgment of the routine (`hmeets`) in place of the statement on the program (`hwp`); `NLAlib.Schur.schurPipelineProgram_eq` gives the frame. Removed with the oracle-leaf program that main removed: `NLAlib.ShiftedQR.shqrRoutine`, `shqrSpec`, `shqrRoutine_meets`, `shqrProgram`, `shqrAlgorithm`. Removed because their trees were rewritten in Schur mode: `NLAlib.hessenbergReduceLastSpec`, `NLAlib.hessenbergReduceLast_meets` (the statements of the reduction are operand-form, with the Givens log), `NLAlib.ShiftedQR.ShQRViewsApart` (the input conditions of main take all views apart), `NLAlib.ShiftedQR.smallEigCallRoutine`, `smallEigCallSpec` (the leaf contract is `NLAlib.ShiftedQR.CompletingLeafRoutine`).",
+  "renames": [
+    {"old": "NLAlib.Schur.writes_identity_holdsMatrix_one_of_lit", "new": "NLAlib.Schur.identity_writes_holdsMatrix_one_of_lit", "rule": "N12; operand-form statement of a tree"},
+    {"old": "NLAlib.Schur.writes_identity_holdsMatrix_one", "new": "NLAlib.Schur.identity_writes_holdsMatrix_one", "rule": "N12; operand-form statement of a tree"},
+    {"old": "NLAlib.SmallEig.writes_rhessUv", "new": "NLAlib.SmallEig.rhessUv_writes", "rule": "N12; operand-form statement of a tree"},
+    {"old": "NLAlib.Ops.RoundedScalarBlas.writes_nrm2_stdModel", "new": "NLAlib.Ops.RoundedScalarBlas.nrm2_writes_stdModel", "rule": "N12; operand-form statement of a tree"},
+    {"old": "NLAlib.Ops.RoundedScalarBlas.writes_nrm2", "new": "NLAlib.Ops.RoundedScalarBlas.nrm2_writes", "rule": "N12; operand-form statement of a tree"}
+  ],
+  "statementChanged": [
+    "NLAlib.Schur.schurPipelineAlgorithm",
+    "NLAlib.Schur.schurPipelineProgram",
+    "NLAlib.SmallEig.smallEigProgram",
+    "NLAlib.SmallEig.smallEigRoutine",
+    "NLAlib.SmallEig.smallEigSpec",
+    "NLAlib.ShiftedQR.shqrSmallEigProgram",
+    "NLAlib.ShiftedQR.shqrSmallEigRoutine",
+    "NLAlib.ShiftedQR.shqrSmallEigSpec"
+  ],
+  "module_moves": {
+    "NLAlib.Eigensolvers.Schur.Certificate": "NLAlib.Eigensolvers.Schur.Certification"
+  }
+}

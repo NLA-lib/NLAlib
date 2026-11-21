@@ -269,6 +269,7 @@ Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
 `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem oneEigPoint_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hzero : M.lit 0 = 0) (hL : IsIndexLit M I) (hCmp : IsCmp id I) {n m q j L : ℕ}
+    (hNat : IsExactNatLit id M n)
     (hj : j < 6) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {τ : Tape ℝ} {μ : Mem ℝ}
     {h lam : ℕ × ℕ} (hh : h.1 < L) (hlam : lam.1 < L) (hlen : μ.store.length = L + 7)
     (h2 : μ.store.len (L + 2) = 2) (h3 : μ.store.len (L + 3) = 1)
@@ -313,7 +314,7 @@ theorem oneEigPoint_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
       (Store.readBlock_one_of_get (by kept))
   have hH₆ : HoldsMatrix h H μ₆.store := by unfold HoldsMatrix at hH ⊢; kept
   refine (distSpec_terminates (τ := τ) (μ := μ₆) (h := h) (sp := (L + 2, 0))
-    (tau := (L + 3, 0)) (m := m) (q := q) hS hzero hCmp (by room) hH₆ hsp
+    (tau := (L + 3, 0)) (m := m) (q := q) hS hL hzero hCmp hNat le_rfl (by room) hH₆ hsp
     (by room)).frame_seq_le rfl rfl (by room) (by fp_sub) ?_
   rintro μ₇ hfr₇ ⟨hp₇, t₇, ht₇⟩
   refine writes_ite (a := [(L + 3, 0), (L + 4, 2)]) rfl rfl (hCmp.test_le ht₇ (by kept)) ?_
@@ -446,7 +447,8 @@ Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
 `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem oneEigRound_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hzero : M.lit 0 = 0) (hL : IsIndexLit M I) (hCmp : IsCmp id I) {sU : ℕ}
-    (hDisk : IsPolarDiskSampler sU I) {n m q L : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hDisk : IsPolarDiskSampler sU I) {n m q L : ℕ} (hNat : IsExactNatLit id M n)
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {qs : List ℝ} (hqs : 6 ≤ qs.length) {τ : Tape ℝ} {μ : Mem ℝ} {h qw lam f : ℕ × ℕ}
     (hh : h.1 < L) (hqw : qw.1 < L) (hlam : lam.1 < L) (hf : f.1 < L)
     (hlen : μ.store.length = L + 7) (h0 : μ.store.len L = 1) (h1 : μ.store.len (L + 1) = 2)
@@ -488,7 +490,7 @@ theorem oneEigRound_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
     ⟨⟨b₂, (hfr₃.get_eq (by simp only [fpNF]; omega)).trans hb₂⟩,
       Or.inl (by rw [hk₃, Nat.cast_zero, hzero])⟩ ?_).seq_le (by fp_sub) ?_
   · rintro j hj μ' hfr' ⟨hb', hK'⟩
-    refine ((oneEigPoint_writes hS hzero hL hCmp (j := j) (L := L) hj hh hlam
+    refine ((oneEigPoint_writes hS hzero hL hCmp hNat (j := j) (L := L) hj hh hlam
       (by rw [hfr'.length_eq, hfrA.length_eq, hlen])
       (by rw [hfr'.len_eq, hfrA.len_eq, h2]) (by rw [hfr'.len_eq, hfrA.len_eq, h3])
       (by rw [hfr'.len_eq, hfrA.len_eq, h4]) (by rw [hfr'.len_eq, hfrA.len_eq, h6])
@@ -527,7 +529,8 @@ Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
 `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem oneEigStart_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hzero : M.lit 0 = 0) (hL : IsIndexLit M I) (hCmp : IsCmp id I) {sU : ℕ}
-    (hDisk : IsPolarDiskSampler sU I) {n m q L : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    (hDisk : IsPolarDiskSampler sU I) {n m q L : ℕ} (hNat : IsExactNatLit id M n)
+    {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {τ : Tape ℝ} {μ : Mem ℝ} {h qw lam f : ℕ × ℕ} {r : ℝ}
     (hh : h.1 < L) (hqw : qw.1 < L) (hlam : lam.1 < L)
     (hlen : μ.store.length = L + 7) (h0 : μ.store.len L = 1) (h5 : μ.store.len (L + 5) = 12)
@@ -551,7 +554,7 @@ theorem oneEigStart_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
   rintro μ₂ hfr₂ ⟨z₀, hz₀⟩
   have hfr₁₂ := hfr₁.trans' hfr₂
   refine (distSpec_terminates (τ := τ) (μ := μ₂) (h := h) (sp := lam) (tau := (L, 0)) (m := m)
-    (q := q) hS hzero hCmp (by simp [Mem.Live, hfr₁₂.length_eq]; omega)
+    (q := q) hS hL hzero hCmp hNat le_rfl (by simp [Mem.Live, hfr₁₂.length_eq]; omega)
     ((hH.of_eqOff hfr₁ fun _ _ h₁ h₂ => by simp only [fpNF] at h₁ h₂; omega).of_eqOff hfr₂ hlh)
     hz₀ (by rw [hfr₁₂.len_eq, h0]; omega)).frame_seq_le rfl rfl
     (by simp [Mem.Live, hfr₁₂.length_eq]; omega) (Fp.inBlock_le_sup_above le_rfl) ?_

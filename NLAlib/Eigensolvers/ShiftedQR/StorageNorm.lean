@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Eigensolvers.ShiftedQR.Storage
+public import NLAlib.Matrix.FinitePrecision.StoredMatrix
 public import NLAlib.Matrix.Norms.Frobenius
 public import NLAlib.Ops.Profiles.RoundedScalarBlas
 public import NLAlib.Ops.Logic.Builder

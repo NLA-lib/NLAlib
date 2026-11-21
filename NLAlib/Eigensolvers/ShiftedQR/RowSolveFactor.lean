@@ -5,8 +5,8 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Eigensolvers.ShiftedQR.Coefficients
-public import NLAlib.Eigensolvers.ShiftedQR.RotationLoops
+public import NLAlib.Matrix.FinitePrecision.GivensCoefficients
+public import NLAlib.Matrix.FinitePrecision.GivensPrograms
 public import NLAlib.Eigensolvers.ShiftedQR.RowSolveMath
 
 /-!

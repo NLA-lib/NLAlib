@@ -97,8 +97,7 @@ variable {O Q : Type} [Has ScalarOp O] [Has DiskSampleOp O]
 stores at `S` the rounded $\mathrm{fl}(r + w)$ (`NLAlib.ShiftedQR.excCentreWord`) of the polar
 sample $w$ of radius $R$ read at the start position, writes only `S` and the scratch pair `Z`,
 and advances the position by two.
-Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
-`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem regularizeDraw_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I) {s : ℕ}
     (hD : IsPolarDiskSampler s I) {τ : Tape ℝ} {m : Mem ℝ} {rd sp z : ℕ × ℕ} {r : ℂ} {R : ℝ}
     (hrd : m.store.get rd.1 rd.2 = some R)
@@ -233,8 +232,7 @@ def DrawsInv (u β R η : ℝ) {k N : ℕ} (Lam : (Fin k → ℂ) → Prop) (e :
 uniform on $[0, 1]$, the perturbation of pair $i$ keeps `NLAlib.ShiftedQR.DrawsInv` from $i$ to
 $i + 1$, except with probability at most $\varphi/(2k)$ (`regularize_bad_window_le`), for
 $\eta = R\sqrt{\varphi/(2k)}$ and $\lambda$'s whose distinct values are $4R$ apart.
-Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
-`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem regularizeDraw_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) {law : ℕ → Measure ℝ} {s₀ : ℕ} (hD : IsPolarDiskSampler s₀ I)
     (hU : law s₀ = volume.restrict (Set.Icc 0 1)) {k N : ℕ} (hk : 0 < k)
@@ -322,8 +320,7 @@ $\beta + R + \delta_j$ of the $\lambda_j$ and at distance at least
 $R\sqrt{\varphi/(2k)} - \delta_j$ from every $e_l$, $\delta_j =
 2\boldsymbol{u}(\lvert\lambda_j\rvert + \beta + R)$, provided the distinct $e_l$ are $4R$
 apart ([BanksGarzaVargasSrivastava2022, Lemma 3.10], one draw at a time).
-Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
-`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem regularizeDraws_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) {law : ℕ → Measure ℝ} {s₀ : ℕ}

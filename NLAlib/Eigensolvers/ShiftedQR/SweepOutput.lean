@@ -41,7 +41,7 @@ def copyLastDiagonal : Stmt Op Tst :=
 /-- On any scalar machine, copying a positive-order matrix's last diagonal entry writes its
 real and imaginary words exactly and preserves every other cell and the tape position.
 The output has capacity for two words and is disjoint from the complete input matrix.
-Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`
 and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem copyLastDiagonal_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {w d : ℕ × ℕ}
@@ -84,8 +84,8 @@ def sweepWithDiag : Stmt Op Tst :=
 extends to the wrapper with their last working diagonal entry copied into D. The output pair
 has supplied capacity and is disjoint from the sweep's entire write footprint. All numerical
 information remains in P, so exact and rounded sweep analyses use the same memory proof.
-Shared by the trees of `NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrRoutine`,
-`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem sweepWithDiag_writes_of_sweep {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {w z cf d : ℕ × ℕ}
     {P : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ →

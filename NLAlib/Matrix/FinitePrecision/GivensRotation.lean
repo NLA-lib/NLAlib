@@ -18,18 +18,18 @@ real scalar call. Input/output aliasing is exactly the in-place pair update.
 
 ## Main results
 
-* `NLAlib.ShiftedQR.decode_linearWords`: exact real arithmetic gives complex linear algebra.
-* `NLAlib.ShiftedQR.linearComplex`: the computed complex linear combination on any machine.
-* `NLAlib.ShiftedQR.rotateLeftWithScratch_writes_word`,
-  `NLAlib.ShiftedQR.rotateRightWithScratch_writes_word`: the pair updates on any machine; the
+* `NLAlib.decode_linearWords`: exact real arithmetic gives complex linear algebra.
+* `NLAlib.linearComplex`: the computed complex linear combination on any machine.
+* `NLAlib.rotateLeftWithScratch_writes_word`,
+  `NLAlib.rotateRightWithScratch_writes_word`: the pair updates on any machine; the
   exact theorems are their corollaries.
-* `NLAlib.ShiftedQR.rotateLeftWithScratch`: the left Givens pair update.
-* `NLAlib.ShiftedQR.rotateRightWithScratch`: the right adjoint Givens pair update.
+* `NLAlib.rotateLeftWithScratch`: the left Givens pair update.
+* `NLAlib.rotateRightWithScratch`: the right adjoint Givens pair update.
 -/
 
 @[expose] public section
 
-namespace NLAlib.ShiftedQR
+namespace NLAlib
 
 open Ops
 
@@ -208,7 +208,7 @@ computed versions of $c x + s y$ and $-\bar s x + \bar c y$. Conjugations use th
 negation operation. Input/output views are exactly aliased. [GolubVanLoan2013, §5.1.8].
 Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
 `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
-`NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and
 `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem rotateLeftWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hI : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
@@ -266,7 +266,7 @@ stores the two mathematical Givens outputs. Input/output views are exactly alias
 [GolubVanLoan2013, §5.1.8].
 Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
 `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
-`NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and
 `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem rotateLeftWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hI : IsScalar M I) (hM : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
@@ -304,8 +304,8 @@ theorem rotateLeftWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 two computed outputs $\bar c x + \bar s y$ and $-s x + c y$, the conjugations by exact negation
 of the words. Input/output views are exactly aliased. [GolubVanLoan2013, §5.1.8].
 Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
-`NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrRoutine`,
-`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+`NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem rotateRightWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hI : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {c s x y t : ℕ × ℕ} {cv sv xv yv : ℂ}
@@ -365,8 +365,8 @@ theorem rotateRightWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst 
 stores the two mathematical Givens outputs. Input/output views are exactly aliased.
 [GolubVanLoan2013, §5.1.8].
 Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
-`NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrRoutine`,
-`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+`NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem rotateRightWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hI : IsScalar M I) (hM : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {c s x y t : ℕ × ℕ} {cv sv xv yv : ℂ}
@@ -402,4 +402,4 @@ theorem rotateRightWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
   rw [hr]
   simp only [mul_comm, mul_neg]
 
-end NLAlib.ShiftedQR
+end NLAlib

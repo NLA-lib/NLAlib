@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Eigensolvers.ShiftedQR.Storage
+public import NLAlib.Matrix.FinitePrecision.StoredMatrix
 public import NLAlib.Ops.Blas.MapCorrect
 public import NLAlib.Ops.Logic.Tactic
 public import NLAlib.Ops.Logic.Builder
@@ -165,7 +165,7 @@ private theorem shiftEntry_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 (`NLAlib.ShiftedQR.machineShiftedPrefix`) of the actual stored matrix and preserves every word
 outside that matrix. The supplied shift occupies a disjoint word block.
 Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
-`NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and
 `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem shiftDiagonal_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
@@ -207,7 +207,7 @@ theorem shiftDiagonal_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
 /-- The scalar diagonal traversal subtracts the shift from the actual stored matrix and
 preserves every word outside that matrix. The supplied shift occupies a disjoint word block.
 Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
-`NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and
 `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem shiftDiagonal_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
@@ -241,8 +241,8 @@ theorem copyMatrix_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 subtracts the supplied shift on the machine (`NLAlib.ShiftedQR.machineShiftedPrefix`) only from
 the working matrix. The raw matrix and shift occupy disjoint views from the outputs, and the two
 output matrices are separate. No initialized output is needed.
-Shared by the trees of `NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrRoutine`,
-`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem initializeState_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {n : ℕ} {a s w z : ℕ × ℕ} {H : Matrix (Fin n) (Fin n) ℂ} {shift : ℂ}
@@ -291,8 +291,8 @@ theorem initializeState_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
 /-- Initialization copies the actual raw matrix into both state matrices and subtracts the
 supplied shift only from the working matrix. The raw matrix and shift occupy disjoint views
 from the outputs, and the two output matrices are separate. No initialized output is needed.
-Shared by the trees of `NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrRoutine`,
-`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem initializeState_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {n : ℕ} {a s w z : ℕ × ℕ} {H : Matrix (Fin n) (Fin n) ℂ} {shift : ℂ}

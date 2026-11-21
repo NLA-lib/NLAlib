@@ -22,21 +22,21 @@ divides conjugated components by the positive radius. No rotation operation is a
 
 ## Main results
 
-* `NLAlib.ShiftedQR.coefficientsWithScratch` is the scalar coefficient program.
-* `NLAlib.ShiftedQR.coefficients` scopes its seven scratch cells.
-* `NLAlib.ShiftedQR.roundedGivensCoeffs_eq_ite`: the program computes `NLAlib.roundedGivensCoeffs`
+* `NLAlib.coefficientsWithScratch` is the scalar coefficient program.
+* `NLAlib.coefficients` scopes its seven scratch cells.
+* `NLAlib.roundedGivensCoeffs_eq_ite`: the program computes `NLAlib.roundedGivensCoeffs`
   on any machine; in exact arithmetic `givensCoeffs`
-  (`NLAlib.ShiftedQR.roundedGivensCoeffs_eq_givensCoeffs`).
-* `NLAlib.ShiftedQR.coefficientsWithScratch_writes_word`,
-  `NLAlib.ShiftedQR.coefficients_writes_word`: the routines on any machine; the exact theorems
+  (`NLAlib.roundedGivensCoeffs_eq_givensCoeffs`).
+* `NLAlib.coefficientsWithScratch_writes_word`,
+  `NLAlib.coefficients_writes_word`: the routines on any machine; the exact theorems
   are their corollaries.
-* `NLAlib.ShiftedQR.coefficientsWithScratch_writes` proves the caller-scratch routine total.
-* `NLAlib.ShiftedQR.coefficients_writes` proves the scoped routine computes `givensCoeffs`.
+* `NLAlib.coefficientsWithScratch_writes` proves the caller-scratch routine total.
+* `NLAlib.coefficients_writes` proves the scoped routine computes `givensCoeffs`.
 -/
 
 @[expose] public section
 
-namespace NLAlib.ShiftedQR
+namespace NLAlib
 
 open Ops
 
@@ -99,7 +99,7 @@ def coefficientRadius (M : Machine ℝ) (u v : ℂ) : ℝ :=
     (M.add (M.mul v.re v.re) (M.mul v.im v.im)))
 
 /-- The Givens coefficients the coefficient program stores are `NLAlib.roundedGivensCoeffs`:
-unless the computed radius (`NLAlib.ShiftedQR.coefficientRadius`) is zero, the computed quotients
+unless the computed radius (`NLAlib.coefficientRadius`) is zero, the computed quotients
 of the conjugated components by it; at a zero radius the literals $(1, 0)$. -/
 theorem roundedGivensCoeffs_eq_ite (M : Machine ℝ) (u v : ℂ) :
     roundedGivensCoeffs M u v =
@@ -382,7 +382,7 @@ may share a buffer. Outputs may coincide with the original inputs because their 
 captured first. [GolubVanLoan2013, Algorithm 5.1.3].
 Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
 `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
-`NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and
 `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem coefficientsWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hCmp : IsCmp id I)
@@ -428,7 +428,7 @@ Outputs may coincide with the original inputs because their components are captu
 [GolubVanLoan2013, Algorithm 5.1.3].
 Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
 `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
-`NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and
 `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem coefficientsWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
@@ -456,7 +456,7 @@ The actual radius test covers the zero pair without a division by zero.
 [GolubVanLoan2013, Algorithm 5.1.3].
 Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
 `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
-`NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and
 `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem coefficients_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hCmp : IsCmp id I)
@@ -521,7 +521,7 @@ The actual radius test covers the zero pair without a division by zero.
 [GolubVanLoan2013, Algorithm 5.1.3].
 Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
 `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
-`NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and
 `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem coefficients_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
@@ -540,4 +540,4 @@ theorem coefficients_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
   simpa only [roundedGivensCoeffs_eq_givensCoeffs hE] using
     coefficients_writes_word (τ := τ) hS hCmp hcs hu0 hu1 hv0 hv1 hc hs
 
-end NLAlib.ShiftedQR
+end NLAlib

@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Eigensolvers.ShiftedQR.Storage
+public import NLAlib.Matrix.FinitePrecision.StoredMatrix
 public import NLAlib.Ops.Blas.NormSq
 public import NLAlib.Ops.Logic.IndexLiteral
 public import NLAlib.Matrix.QRIteration.ShiftSearch
@@ -195,8 +195,8 @@ def scan : Stmt Op Tst := ops% [N] (A, threshold) → (R) {
 word `NLAlib.ShiftedQR.subdiagonalSqWord` and, when it passes the actual comparison with the
 threshold word, writes the flag $1$ and the index $k$; otherwise the flag and index words are
 kept. The matrix and threshold have disjoint views from the five arithmetic/flag/index words.
-Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrRoutine`,
-`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem scanRound_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k : ℕ} {a t r : ℕ × ℕ} (hN : IsExactNatLit id M n)
@@ -265,8 +265,8 @@ theorem scanRound_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 /-- One visit updates exactly the last-index specification using its actual scalar comparison.
 The matrix and threshold have disjoint views from the five arithmetic/flag/index words.
-Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrRoutine`,
-`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem scanRound_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k : ℕ} {a t r : ℕ × ℕ}

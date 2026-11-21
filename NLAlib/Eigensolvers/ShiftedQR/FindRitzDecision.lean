@@ -29,7 +29,7 @@ variable {Op Tst : Type} [Has IndexOp Op] [Has CmpTst Tst]
 
 /-- The actual comparison keeps the first half on a tie and otherwise moves its start.
 [BanksGarzaVargasSrivastava2021, §4.3].
-Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrRoutine` and
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple` and
 `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem findRitzChoice_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hL : IsIndexLit M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
@@ -57,7 +57,7 @@ theorem findRitzChoice_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 /-- The comparison and actual natural-literal operations advance the start, half length and
 exponent exactly. [BanksGarzaVargasSrivastava2021, §4.3].
-Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrRoutine` and
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple` and
 `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem findRitzDecision_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hL : IsIndexLit M I) (hE : ExactModel id M) (hCmp : IsCmp id I)

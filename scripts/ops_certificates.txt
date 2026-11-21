@@ -43,12 +43,13 @@ NLAlib.Ops.Examples.Oracles.freeAlgorithm hyps=0 uniform=yes confined=yes charge
 NLAlib.Ops.Examples.Oracles.oracleAlgorithm hyps=0 uniform=no confined=no charged=no budget=closed work=closed scratch=closed
 NLAlib.Ops.Examples.Oracles.sumAlgorithm hyps=0 uniform=yes confined=no charged=no budget=closed work=closed scratch=closed
 NLAlib.Ops.Examples.Resources.mixedAlgorithm hyps=0 uniform=yes confined=yes charged=no budget=closed work=closed scratch=closed
+NLAlib.Schur.denseSchurAlgorithm hyps=1 uniform=yes confined=yes charged=yes budget=manifest work=closed scratch=manifest
+NLAlib.Schur.schurPipelineAlgorithm hyps=8 uniform=yes confined=yes charged=yes budget=manifest work=closed scratch=manifest
 NLAlib.ShiftedQR.countedDeflationAlgorithm hyps=0 uniform=yes confined=yes charged=no budget=manifest work=closed scratch=manifest
 NLAlib.ShiftedQR.deflationAlgorithm hyps=2 uniform=yes confined=yes charged=no budget=manifest work=manifest scratch=manifest
 NLAlib.ShiftedQR.exactDeflationAlgorithm hyps=0 uniform=yes confined=yes charged=no budget=manifest work=manifest scratch=manifest
 NLAlib.ShiftedQR.exactStepAlgorithm hyps=0 uniform=yes confined=yes charged=yes budget=manifest work=manifest scratch=manifest
 NLAlib.ShiftedQR.forwardDeflationAlgorithm hyps=0 uniform=yes confined=yes charged=no budget=manifest work=manifest scratch=manifest
-NLAlib.ShiftedQR.shqrAlgorithm hyps=4 uniform=yes confined=yes charged=no budget=manifest work=closed scratch=manifest
 NLAlib.ShiftedQR.shqrSmallEigAlgorithm hyps=1 uniform=yes confined=yes charged=yes budget=manifest work=closed scratch=manifest
 NLAlib.ShiftedQR.stepAlgorithm hyps=1 uniform=yes confined=yes charged=yes budget=manifest work=manifest scratch=manifest
 NLAlib.Sign.signAlgorithm hyps=2 uniform=yes confined=yes charged=no budget=manifest work=manifest scratch=manifest

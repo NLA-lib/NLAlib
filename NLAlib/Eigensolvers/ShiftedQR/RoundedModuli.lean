@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Eigensolvers.ShiftedQR.Storage
+public import NLAlib.Matrix.FinitePrecision.StoredMatrix
 public import NLAlib.Ops.Blas.NormSq
 public import NLAlib.Ops.Logic.Functional
 public import NLAlib.Ops.Logic.Loop
@@ -486,8 +486,7 @@ def pairVecNormWord (M : Machine ℝ) {N : ℕ} (r : Fin N → ℂ) : ℝ :=
 and the three scratch words and the output word apart from it and from each other,
 `pairVecNormWithScratch` stores `NLAlib.ShiftedQR.pairVecNormWord` and writes only the output
 and the scratch.
-Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
-`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem pairVecNormWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {N : ℕ} {r : Fin N → ℂ} {d t p : ℕ × ℕ}
     (hD : HoldsMatrix d (Matrix.replicateCol (Fin 1) r) m.store)

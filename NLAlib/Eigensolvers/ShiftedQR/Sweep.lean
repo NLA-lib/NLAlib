@@ -32,8 +32,8 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has CmpTst Tst]
 
 /-- The initialized scalar sweep computes the existing Givens state and conjugates the output
 by its accumulated unitary factor. This covers zero-size sweeps and zero coefficient pairs.
-Shared by the trees of `NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrRoutine`,
-`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem sweep_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {w z cf : ℕ × ℕ}

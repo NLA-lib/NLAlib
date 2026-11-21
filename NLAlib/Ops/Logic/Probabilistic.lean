@@ -519,6 +519,20 @@ theorem seq (hI : I.IsMeasurable) {win : Op → List ℕ → ℕ} (hloc : ∀ o,
     (fun _ _ _ ⟨_, ⟨e₁, _⟩, ⟨e₂, hp⟩⟩ =>
       ⟨(e₁.mono fun _ _ h => Or.inl h).trans (e₂.mono fun _ _ h => Or.inr h), hp⟩) le_rfl
 
+/-- **Reassociation**: a block of three parts has the same specification however it is
+bracketed (the runs agree on every tape). -/
+theorem seq_assoc_iff {a b c : Stmt Op Tst} :
+    PWrites law I (.seq (.seq a b) c) ρ F Pre Post φ ↔
+      PWrites law I (.seq a (.seq b c)) ρ F Pre Post φ := by
+  have e : ∀ τ m, Writes .total I τ (.seq (.seq a b) c) ρ F Post m ↔
+      Writes .total I τ (.seq a (.seq b c)) ρ F Post m := fun τ m => by
+    simp only [Writes, Wp, eval, Option.bind_assoc]
+  constructor <;> rintro ⟨G, hGm, hGd, hG⟩
+  · exact ⟨G, hGm, hGd, fun m hm =>
+      ⟨fun τ hτ => (e τ m).mp ((hG m hm).1 τ hτ), (hG m hm).2⟩⟩
+  · exact ⟨G, hGm, hGd, fun m hm =>
+      ⟨fun τ hτ => (e τ m).mpr ((hG m hm).1 τ hτ), (hG m hm).2⟩⟩
+
 /-- **Branch**: if the test succeeds from every memory of the precondition, the failure bound of
 the branch is the larger of the two. -/
 theorem ite (hI : I.IsMeasurable) {q : Tst} {ds : List IExp} {ins : List Operand}

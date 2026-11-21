@@ -8,6 +8,7 @@ module
 public import NLAlib.Eigensolvers.ShiftedQR.RoundedModuli
 public import NLAlib.Eigensolvers.HessenbergReduction
 public import NLAlib.Eigensolvers.SmallEig.Draws
+public import NLAlib.Matrix.FinitePrecision.GivensLogSlots
 public import NLAlib.Matrix.Perturbation.EigenvalueBackward
 public import NLAlib.Matrix.QRIteration.EigenvectorWeights
 public import NLAlib.Ops.Logic.Probabilistic
@@ -78,6 +79,59 @@ noncomputable def rhessWord (M : Machine ℝ) {N : ℕ} (A : Matrix (Fin N) (Fin
     (x : ℕ → ℝ) : Matrix (Fin N) (Fin N) ℂ :=
   hessenbergReduceLastWord M
     ((List.range (N - 1)).foldl (fun Ag j => rotateToStepWord M j Ag) (A, pairVector x N)).1
+
+/-- The log entry of one rotation of `NLAlib.SmallEig.rhess` on a machine: the plane $j$ and the
+inputs $(\bar g_{j+1}, -\bar g_j)$ of the coefficients, as the machine forms them; the padding
+entry $(0, 0, 0)$ when $j + 1 \ge N$. -/
+noncomputable def rotateToStepEntry (M : Machine ℝ) {N : ℕ} (j : ℕ)
+    (Ag : Matrix (Fin N) (Fin N) ℂ × (Fin N → ℂ)) : GivensEntry :=
+  if h : j + 1 < N then
+    (j, ⟨(Ag.2 ⟨j + 1, h⟩).re, M.neg (Ag.2 ⟨j + 1, h⟩).im⟩,
+      ⟨M.neg (Ag.2 ⟨j, by omega⟩).re, (Ag.2 ⟨j, by omega⟩).im⟩)
+  else (0, 0, 0)
+
+/-- The log entries of the first $k$ rotations of `NLAlib.SmallEig.rhess` from
+$(\mathbf{A}, \mathbf{g})$. -/
+noncomputable def rotateToEntries (M : Machine ℝ) {N : ℕ} (A : Matrix (Fin N) (Fin N) ℂ)
+    (g : Fin N → ℂ) (k : ℕ) : List GivensEntry :=
+  (List.range k).map fun j =>
+    rotateToStepEntry M j ((List.range j).foldl (fun Ag j => rotateToStepWord M j Ag) (A, g))
+
+/-- The slots that `NLAlib.SmallEig.rhess` records on the machine `M` from $\mathbf{A}$ and the
+drawn words $x$: the $N - 1$ rotations of the vector in one slot, then the slots of the reduction
+(`NLAlib.hessenbergReduceLastSlots`). -/
+noncomputable def rhessSlots (M : Machine ℝ) {N : ℕ} (A : Matrix (Fin N) (Fin N) ℂ)
+    (x : ℕ → ℝ) : List (List GivensEntry) :=
+  rotateToEntries M A (pairVector x N) (N - 1) :: hessenbergReduceLastSlots M
+    ((List.range (N - 1)).foldl (fun Ag j => rotateToStepWord M j Ag) (A, pairVector x N)).1
+
+/-- One more rotation appends its entry. -/
+theorem rotateToEntries_succ (M : Machine ℝ) {N : ℕ} (A : Matrix (Fin N) (Fin N) ℂ)
+    (g : Fin N → ℂ) (k : ℕ) :
+    rotateToEntries M A g (k + 1) = rotateToEntries M A g k ++
+      [rotateToStepEntry M k ((List.range k).foldl (fun Ag j => rotateToStepWord M j Ag) (A, g))] :=
+  by simp [rotateToEntries, List.range_succ]
+
+/-- The slots of `NLAlib.SmallEig.rhess`: $N - 1$ of them for $N \ge 2$, every entry with its
+plane below $N - 1$ once padded. -/
+theorem rhessSlots_spec (M : Machine ℝ) {N : ℕ} (hN : 2 ≤ N) (A : Matrix (Fin N) (Fin N) ℂ)
+    (x : ℕ → ℝ) (w : ℕ) :
+    (rhessSlots M A x).length = N - 1 ∧
+      ∀ e ∈ slotEntries w ((rhessSlots M A x).map some), e.1 + 1 < N := by
+  refine ⟨by simp [rhessSlots, length_hessenbergReduceLastSlots]; omega, fun e he => ?_⟩
+  simp only [slotEntries, List.mem_flatMap, List.mem_map] at he
+  obtain ⟨_, ⟨es, hes, rfl⟩, he⟩ := he
+  simp only [Option.map_some, Option.getD_some] at he
+  refine padEntries_planes (by omega) (fun e he => ?_) e he
+  rcases List.mem_cons.mp hes with rfl | hes
+  · simp only [rotateToEntries, List.mem_map, List.mem_range] at he
+    obtain ⟨j, hj, rfl⟩ := he
+    unfold rotateToStepEntry
+    split_ifs with h
+    · exact h
+    · change 0 + 1 < N; omega
+  · rcases hessenbergReduceLastSlots_plane M _ es hes e he with h | rfl
+    exacts [h, by change 0 + 1 < N; omega]
 
 section BackwardError
 
@@ -158,14 +212,15 @@ private theorem sqrt_norm_sq_add_le_norm_toLp {N : ℕ} {i k : Fin N} (hik : i �
     (f := fun r => ‖w r‖ ^ 2) fun _ _ _ => sq_nonneg _
   simpa [Finset.sum_pair hik] using h
 
-/-- The invariant of the rotations of `RHess` after $k$ steps from $(\mathbf{A}, \mathbf{g})$:
-a unitary $\mathbf{U}$ with $\mathbf{B}$ within $((1 + 50\boldsymbol{u})^k - 1)\|\mathbf{A}\|_2$ of
-$\mathbf{U}\mathbf{A}\mathbf{U}^{\mathsf{H}}$, $\mathbf{v}$ within
+/-- The invariant of the rotations of `RHess` after $k$ steps from $(\mathbf{A}, \mathbf{g})$
+with the unitary $\mathbf{U}$: $\mathbf{B}$ within
+$((1 + 50\boldsymbol{u})^k - 1)\|\mathbf{A}\|_2$ of $\mathbf{U}\mathbf{A}\mathbf{U}^{\mathsf{H}}$,
+$\mathbf{v}$ within
 $((1 + 12\boldsymbol{u})^k - 1)\|\mathbf{g}\|$ of $\mathbf{U}\mathbf{g}$, and the first $k$ entries
 of $\mathbf{v}$ at most $12\boldsymbol{u}(1 + 12\boldsymbol{u})^k\|\mathbf{g}\|$. -/
 def RotInv (u : ℝ) {N : ℕ} (A : Matrix (Fin N) (Fin N) ℂ) (g : Fin N → ℂ) (k : ℕ)
-    (Bv : Matrix (Fin N) (Fin N) ℂ × (Fin N → ℂ)) : Prop :=
-  ∃ U : Matrix (Fin N) (Fin N) ℂ, HasOrthonormalCols U ∧
+    (Bv : Matrix (Fin N) (Fin N) ℂ × (Fin N → ℂ)) (U : Matrix (Fin N) (Fin N) ℂ) : Prop :=
+  HasOrthonormalCols U ∧
     specNorm (Bv.1 - U * A * Uᴴ) ≤ ((1 + 50 * u) ^ k - 1) * specNorm A ∧
     ‖WithLp.toLp 2 (Bv.2 - U *ᵥ g)‖ ≤ ((1 + 12 * u) ^ k - 1) * ‖WithLp.toLp 2 g‖ ∧
     ∀ r : Fin N, (r : ℕ) < k → ‖Bv.2 r‖ ≤ 12 * u * (1 + 12 * u) ^ k * ‖WithLp.toLp 2 g‖
@@ -214,15 +269,32 @@ private theorem rotInv_matrix_step {N j : ℕ} {A B B' U G : Matrix (Fin N) (Fin
   rw [hG.specNorm_mul_conjTranspose_right, hG.specNorm_mul_left, pow_succ]
   nlinarith [mul_le_mul_of_nonneg_left hBn (by positivity : (0 : ℝ) ≤ 50 * u)]
 
-/-- One rotation of `RHess` keeps the invariant, with one more step. -/
+/-- The exact rotation of the entry of a step of `RHess` is the rotation the step rounds. -/
+private theorem givensAt_rotateToStepEntry (hM : StdModel u id M) {N j : ℕ} (hj : j + 1 < N)
+    (B : Matrix (Fin N) (Fin N) ℂ) (v : Fin N → ℂ) :
+    givensAt N (rotateToStepEntry M j (B, v)) =
+      givens (⟨j, by omega⟩ : Fin N) ⟨j + 1, hj⟩
+        (givensCoeffs (star (v ⟨j + 1, hj⟩)) (-star (v ⟨j, by omega⟩))).1
+        (givensCoeffs (star (v ⟨j + 1, hj⟩)) (-star (v ⟨j, by omega⟩))).2 := by
+  have hn (x : ℝ) : M.neg x = -x := hM.neg x
+  have e1 : (⟨(v ⟨j + 1, hj⟩).re, M.neg (v ⟨j + 1, hj⟩).im⟩ : ℂ) = star (v ⟨j + 1, hj⟩) := by
+    apply Complex.ext <;> simp [hn]
+  have e2 : (⟨M.neg (v ⟨j, by omega⟩).re, (v ⟨j, by omega⟩).im⟩ : ℂ) =
+      -star (v ⟨j, by omega⟩) := by
+    apply Complex.ext <;> simp [hn]
+  simp only [rotateToStepEntry, dif_pos hj, givensAt, e1, e2]
+
+/-- One rotation of `RHess` keeps the invariant, with one more step and the exact rotation of its
+entry. -/
 private theorem rotInv_step (hM : StdModel u id M) (hu : 0 ≤ u) (hu' : u ≤ 1 / 288) {N j : ℕ}
     (hj : j + 1 < N) {A : Matrix (Fin N) (Fin N) ℂ} {g : Fin N → ℂ}
-    {X : Matrix (Fin N) (Fin N) ℂ × (Fin N → ℂ)} (h : RotInv u A g j X) :
-    RotInv u A g (j + 1) (rotateToStepWord M j X) := by
+    {X : Matrix (Fin N) (Fin N) ℂ × (Fin N → ℂ)} {U : Matrix (Fin N) (Fin N) ℂ}
+    (h : RotInv u A g j X U) :
+    RotInv u A g (j + 1) (rotateToStepWord M j X) (givensAt N (rotateToStepEntry M j X) * U) := by
   obtain ⟨B, v⟩ := X
-  obtain ⟨U, hU, hB, hv, hz⟩ := h
+  obtain ⟨hU, hB, hv, hz⟩ := h
   dsimp only at hB hv hz
-  rw [rotateToStepWord_eq hM hj]
+  rw [givensAt_rotateToStepEntry hM hj, rotateToStepWord_eq hM hj]
   set i : Fin N := ⟨j, by omega⟩
   set k : Fin N := ⟨j + 1, hj⟩
   have hik : i ≠ k := Fin.ne_of_val_ne (by simp [i, k])
@@ -246,7 +318,7 @@ private theorem rotInv_step (hM : StdModel u id M) (hu : 0 ≤ u) (hu' : u ≤ 1
         12 * u * √(‖v i‖ ^ 2 + ‖v k‖ ^ 2) := by simpa using hpair
     exact hp'.trans (mul_le_mul_of_nonneg_left
       ((sqrt_norm_sq_add_le_norm_toLp hik v).trans hvn) (by positivity))
-  refine ⟨G * U, hasOrthonormalCols_iff.mpr ((hG.conjTranspose_mul_mul U U).trans
+  refine ⟨hasOrthonormalCols_iff.mpr ((hG.conjTranspose_mul_mul U U).trans
     (hasOrthonormalCols_iff.mp hU)), ?_, ?_, fun r hr => ?_⟩
   · dsimp only
     exact rotInv_matrix_step hU hG hB hu (specNorm_rowCol_sub_le hM hu hu' hik p q B)
@@ -284,16 +356,23 @@ private theorem rotInv_step (hM : StdModel u id M) (hu : 0 ≤ u) (hu' : u ≤ 1
       rw [this]
       exact (hz r hrj).trans hmono
 
-/-- The rotations of `RHess` keep the invariant. -/
+/-- The rotations of `RHess` keep the invariant, with the unitary of their log entries
+(`NLAlib.SmallEig.rotateToEntries`). -/
 theorem rotInv_fold (hM : StdModel u id M) (hu : 0 ≤ u) {N : ℕ}
     (hu' : 2 ≤ N → u ≤ 1 / 288) (A : Matrix (Fin N) (Fin N) ℂ) (g : Fin N → ℂ) :
     ∀ k ≤ N - 1, RotInv u A g k
       ((List.range k).foldl (fun Ag j => rotateToStepWord M j Ag) (A, g))
-  | 0, _ => ⟨1, hasOrthonormalCols_one, by simp, by simp, fun r hr => absurd hr (Nat.not_lt_zero _)⟩
+      (givensLog N (rotateToEntries M A g k))ᴴ
+  | 0, _ => by
+    have e : rotateToEntries M A g 0 = [] := rfl
+    simp only [e, givensLog_nil, Matrix.conjTranspose_one]
+    exact ⟨hasOrthonormalCols_one, by simp, by simp, fun r hr => absurd hr (Nat.not_lt_zero _)⟩
   | k + 1, hk => by
-    rw [List.range_succ, List.foldl_append, List.foldl_cons, List.foldl_nil]
-    exact rotInv_step hM hu (hu' (by omega)) (by omega)
+    have h := rotInv_step hM hu (hu' (by omega)) (by omega)
       (rotInv_fold hM hu hu' A g k (by omega))
+    rw [rotateToEntries_succ, givensLog_append, Matrix.conjTranspose_mul]
+    rw [List.range_succ, List.foldl_append, List.foldl_cons, List.foldl_nil]
+    simpa [givensLog] using h
 
 /-- **A phase for the last coordinate vector**: if $\|\mathbf{w}\| = R > 0$ and the entries of
 $\mathbf{w}$ other than the last have joint norm at most $\delta R$ with $0 \le \delta < 1$, there

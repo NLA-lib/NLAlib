@@ -36,7 +36,7 @@ The words are read with the loop rules of `NLAlib.Eigensolvers.ShiftedQR.Rounded
 and the row recurrence of `NLAlib.Eigensolvers.ShiftedQR.RoundedRowPoly`.
 
 The operand-form lemmas of this file are about trees shared by
-`NLAlib.ShiftedQR.shqrRoutine` and `NLAlib.ShiftedQR.shqrSmallEigRoutine`.
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`.
 
 ## Main definitions
 
@@ -98,7 +98,7 @@ theorem prod_range_norm_subdiagEntry_sq {n k : ℕ} (hkn : k ≤ n)
 stores the rounded product of the rounded literal $1$ and the machine squared moduli of the last
 $k \le n$ subdiagonal entries, for the matrix at `A`, three scratch words at `T` and the output
 `P`, pairwise disjoint; it writes only `P` and `T` and keeps the tape position.
-Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrRoutine` and
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple` and
 `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem subdiagProductWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
@@ -150,7 +150,7 @@ theorem subdiagProductWithScratch_writes_word {M : Machine ℝ} {I : Interp Op T
 
 /-- The scoped bottom product on any scalar machine (`NLAlib.ShiftedQR.subdiagProduct`): the
 word of `NLAlib.ShiftedQR.subdiagProductWithScratch_writes_word`, its scratch released.
-Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrRoutine` and
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple` and
 `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem subdiagProduct_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
@@ -190,8 +190,8 @@ theorem sqrtIter_eq_iterate {K : Type} (M : Machine K) (m : ℕ) (a : K) :
 
 /-- The in-place square-root loop on any scalar machine stores $m$ machine square roots
 (`NLAlib.sqrtIter`) of its word.
-Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrRoutine`,
-`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem squareRoots_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {k : ℕ} {x : ℕ × ℕ} {v : ℝ} (hx : m.store.get x.1 x.2 = some v) :
@@ -369,7 +369,7 @@ def comptauWord (M : Machine ℝ) (zs : List ℂ) : ℝ :=
 
 /-- `comptau` on any scalar machine stores `NLAlib.ShiftedQR.comptauWord` of the stored pairs
 and writes only its output word. The pairs and the output are disjoint views.
-Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`
 and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem comptau_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {zs : List ℂ} {d p : ℕ × ℕ}
@@ -452,7 +452,7 @@ $$\lvert t - \tau\rvert \le 0.001\,\tau, \qquad
 \tau = \|\mathbf{e}_n^{\mathsf T}p(\mathbf{H})^{-1}\|_2^{-1},$$
 $p(z) = \prod_\ell (z - s_\ell)$: the $0.0006$ of the exact factors plus the rounded product and
 root. The pairs and the output are disjoint views.
-Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`
 and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem comptau_writes {M : Machine ℝ} {I : Interp Op Tst ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) {τ : Tape ℝ} {μ : Mem ℝ}

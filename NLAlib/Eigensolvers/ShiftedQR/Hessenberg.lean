@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Eigensolvers.ShiftedQR.Storage
+public import NLAlib.Matrix.FinitePrecision.StoredMatrix
 public import NLAlib.Matrix.Factorizations.Hessenberg
 public import NLAlib.Ops.Logic.Builder
 public import NLAlib.Ops.Logic.EntryRows
@@ -55,8 +55,8 @@ def clearBelowSubdiagonal : Stmt Op Tst := ops% [n] () → (A) {
 
 /-- One complex entry set by `NLAlib.ShiftedQR.clearComplexEntry`: the two words are the
 literal $0$ of the machine, whatever it is.
-Shared by the trees of `NLAlib.hessenbergReduceLast`, `NLAlib.ShiftedQR.shqrRoutine`,
-`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.hessenbergReduceLast`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem clearComplexEntry_writes_lit {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {z : ℕ × ℕ}
     (hz : z.2 + 2 ≤ m.store.len z.1) :
@@ -75,8 +75,8 @@ theorem clearComplexEntry_writes_lit {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 /-- The entries below the subdiagonal written by `NLAlib.ShiftedQR.clearBelowSubdiagonal` are
 the pair of the literal $0$ of the machine, and only they are written.
-Shared by the trees of `NLAlib.hessenbergReduceLast`, `NLAlib.ShiftedQR.shqrRoutine`,
-`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.hessenbergReduceLast`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem clearBelowSubdiagonal_writes_region {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a : ℕ × ℕ}
     (hl : m.Live [a]) (ha : 0 < n → a.2 + 2 * (n * n) ≤ m.store.len a.1) :
@@ -115,8 +115,8 @@ theorem clearBelowSubdiagonal_writes_region {M : Machine ℝ} {I : Interp Op Tst
 replaces every entry $(i, j)$ with $j + 1 < i$ by the pair of the literal $0$ of the machine and
 keeps every other entry; the tape position is unchanged. With an exact zero literal this is
 `NLAlib.ShiftedQR.clearBelowSubdiagonal_writes`.
-Shared by the trees of `NLAlib.hessenbergReduceLast`, `NLAlib.ShiftedQR.shqrRoutine`,
-`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.hessenbergReduceLast`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem clearBelowSubdiagonal_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a : ℕ × ℕ}
     {A : Matrix (Fin n) (Fin n) ℂ} (hl : m.Live [a]) (hA : HoldsMatrix a A m.store) :
@@ -160,8 +160,8 @@ theorem clearBelowSubdiagonal_writes_word {M : Machine ℝ} {I : Interp Op Tst �
 /-- The stored pass removes exactly the structural fill and preserves every other entry.
 Only literal zero must be exact; all other scalar operations of the machine may be rounded.
 The position on the random tape is unchanged. Deletion error is not absorbed into a QR bound.
-Shared by the trees of `NLAlib.hessenbergReduceLast`, `NLAlib.ShiftedQR.shqrRoutine`,
-`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+Shared by the trees of `NLAlib.hessenbergReduceLast`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem clearBelowSubdiagonal_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hzero : M.lit 0 = 0) {τ : Tape ℝ} {m : Mem ℝ}
     {n : ℕ} {a : ℕ × ℕ} {A : Matrix (Fin n) (Fin n) ℂ}

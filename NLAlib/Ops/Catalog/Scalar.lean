@@ -37,8 +37,7 @@ and so does the machine that inflates every result by the factor `1 + u`
 
 * `NLAlib.Ops.exists_isScalar`: the contracts of scalar arithmetic can be met.
 * `NLAlib.Ops.MixedModel.abs_add_mul_sub_le`: guarded multiply-add with absolute error.
-* `NLAlib.Ops.StdModel.abs_le`, `NLAlib.Ops.StdModel.abs_add_mul_sub_le`: one and two rounded
-  operations.
+* `NLAlib.Ops.StdModel.abs_add_mul_sub_le`: two rounded operations.
 -/
 
 @[expose] public section
@@ -337,5 +336,34 @@ theorem exists_isScalar {u : ℝ} (hu : 0 ≤ u) :
       StdModel u dec M ∧ IsScalar M I :=
   ⟨ℝ, id, exactMachine, Interp.ofFns exactMachine.fn, stdModel_exact hu,
     isScalar_ofFns _ _ fun _ => rfl⟩
+
+/-- A rounded product with an exact zero factor is exactly zero under the standard model. -/
+theorem StdModel.dec_mul_of_eq_zero {u : ℝ} {dec : K → ℝ} {M : Machine K}
+    (h : StdModel u dec M) (a : K) {b : K} (hb : dec b = 0) : dec (M.mul a b) = 0 := by
+  have := h.mul a b
+  simp only [hb, MulZeroClass.mul_zero, abs_zero, sub_zero] at this
+  exact abs_nonpos_iff.mp this
+
+/-- Every machine has the standard model at $\boldsymbol{u} = 1$ for the zero decoding: a
+trivial model, whose laws still give the totality of the lowered programs. -/
+theorem stdModel_one_zero {K : Type} (M : Machine K) :
+    StdModel 1 (fun _ => (0 : ℝ)) M where
+  lit q := by simp
+  add _ _ := by simp
+  sub _ _ := by simp
+  mul _ _ := by simp
+  div _ _ h := absurd rfl h
+  neg _ := by simp
+  sqrt _ _ := by simp
+
+/-- $(1 + x)^n - 1 \le nx + (nx)^2$ for $x \ge 0$ and $nx \le 1$. -/
+theorem one_add_pow_sub_one_le {x : ℝ} (hx : 0 ≤ x) {n : ℕ} (hnx : n * x ≤ 1) :
+    (1 + x) ^ n - 1 ≤ n * x + (n * x) ^ 2 := by
+  have h1 : (1 + x) ^ n ≤ Real.exp (n * x) := by
+    rw [Real.exp_nat_mul]
+    exact pow_le_pow_left₀ (by linarith) (by linarith [Real.add_one_le_exp x]) n
+  have h2 := (abs_le.mp (Real.abs_exp_sub_one_sub_id_le (x := n * x)
+    (by rw [abs_of_nonneg (by positivity)]; exact hnx))).2
+  linarith
 
 end NLAlib.Ops

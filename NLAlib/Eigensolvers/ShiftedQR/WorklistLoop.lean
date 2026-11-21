@@ -112,8 +112,8 @@ def worklistLoop (round : Stmt O Q) : Stmt O Q :=
 partition and progress measure exclude active work at the cap, rather than assuming success
 or assuming that the loop has stopped.
 Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`,
-`NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrRoutine`,
-`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+`NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem worklistLoop_writes (round : Stmt O Q) {I : Interp O Q ℝ} (hC : IsCmp id I)
     {tape : Tape ℝ} {μ : Mem ℝ} {n m k F M : ℕ} {a p stack out w r : ℕ × ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {τ : ℝ}

@@ -57,7 +57,7 @@ theorem indexNat_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 /-- Actual index literal calls initialize the first window, natural half length and exponent.
 The remaining three workspace cells need not be initialized.
-Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrRoutine` and
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple` and
 `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem findRitzInitialize_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hL : IsIndexLit M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}

@@ -91,13 +91,6 @@ theorem initial_rhs (d : Fin 2 → ℕ)
   rw [hlen] at hr
   exact hr
 
-/-- Every supplied source capability is live above the protected matrix prefix. -/
-theorem initial_live (d : Fin 2 → ℕ)
-    (x : (problem coefficientLength domain admitted symmetric).Input d) :
-    ((problem coefficientLength domain admitted symmetric).initial d x).Live
-      [(1, 0), (2, 0), (3, 0)] := by
-  simp [Mem.live_cons, Mem.live_nil]
-
 /-- The supplied basis and coefficient capacities retain their original declared lengths. -/
 theorem initial_room (d : Fin 2 → ℕ)
     (x : (problem coefficientLength domain admitted symmetric).Input d) :

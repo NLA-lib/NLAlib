@@ -46,8 +46,6 @@ def operationCount (d : Fin 3 → ℕ) : ℕ :=
     d 1 * (1587 * d 0 ^ 3 + 760 * d 0 ^ 2 + 2429 * d 0 + 305) +
     1599 * d 0 ^ 3 + 818 * d 0 ^ 2 + 2509 * d 0 + 680
 
--- Kernel reduction of the instrumented tree exceeds the default recursion depth.
-set_option maxRecDepth 100000 in
 /-- The instruction polynomial of the spectral bisection program, evaluated by the kernel. -/
 theorem countPoly_program :
     (program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).countPoly =
@@ -55,7 +53,7 @@ theorem countPoly_program :
         (146, [0, 0, 2]), (362, [0, 0, 0, 2]), (222, [0, 2]), (818, [0, 0]), (2509, [0]),
         (1599, [0, 0, 0]), (305, [1]), (760, [0, 0, 1]), (2429, [0, 1]),
         (1587, [0, 0, 0, 1])] := by
-  rfl
+  kernel_rfl
 
 /-- The polynomial of the program at the sizes `d` is the operation count. -/
 theorem eval_countPoly_program (d : Fin 3 → ℕ) :

@@ -34,7 +34,8 @@ variable {K Op Tst Su Sg : Type} [Inhabited K] [Has ScalarOp Op] [Has MatrixOp O
 
 /-- The complete stopping-test program computes the actual square and a zero/one word for the
 existing matrix stopping predicate. All seven supplied word regions are pairwise disjoint,
-including scalar endpoints that may share one buffer; no output initialization is required. -/
+including scalar endpoints that may share one buffer; no output initialization is required.
+A fragment of `NLAlib.Sign.signRoutine`. -/
 theorem writes_test {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) {τ : Tape K} {n : ℕ}
     (A : Matrix (Fin n) (Fin n) (K × K)) (η : K)
@@ -49,7 +50,7 @@ theorem writes_test {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I)
     (hHi : m.store.get hi.1 hi.2 = some η)
     (hW : w.2 + 2 * (n * n) ≤ m.store.len w.1)
     (hV : v.2 + 2 * (n * n) ≤ m.store.len v.1) (hz : z.2 < m.store.len z.1) :
-    Writes .total I τ (test (Has.inj MatrixOp.mul)).body
+    Writes .total I τ (test (Has.inj MatrixOp.mul))
       (Env.frame [n] [x, one, lo, hi, w, v, z])
       (Store.inBlock w.1 w.2 (2 * (n * n)) ⊔ Store.inBlock v.1 v.2 (2 * (n * n)) ⊔
         Store.inBlock z.1 z.2 1)

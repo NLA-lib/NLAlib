@@ -29,7 +29,8 @@ open Ops
 
 /-- The two matrix products and shifted child eigenvalues are the actual four stored blocks.
 The output regions may share arena buffers with other regions; their complete spatial
-separation and capacities are explicit. No spectral or successful-execution premise is used. -/
+separation and capacities are explicit. No spectral or successful-execution premise is used.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_upSplitResult {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has MatrixOp Op]
     {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
     (mm : ∀ {l m n : ℕ}, Matrix (Fin l) (Fin m) (K × K) →
@@ -53,7 +54,7 @@ theorem writes_upSplitResult {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [
       (Fp.blocks [qp, qm, up, um, ep, em, sigma]
         [kp * k * 2, (k - kp) * k * 2, kp * kp * 2, (k - kp) * (k - kp) * 2,
           kp, k - kp, 1])) :
-    Writes .total I τ (upSplitResultImpl (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (upSplitResult (Op := Op) (Tst := Tst))
       (Env.frame [k, kp] [qp, qm, up, um, ep, em, sigma, u, e])
       (Fp.blocks [u, (u.1, u.2 + 2 * (k * kp)), e, (e.1, e.2 + kp)]
         [kp * k * 2, (k - kp) * k * 2, kp, k - kp])

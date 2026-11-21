@@ -42,7 +42,7 @@ private def levelIns : List (ScalarIns ScalarOp) :=
     ⟨.mul, [t 3, prev 0], next 0⟩, ⟨.div, [c 0, t 0], t 1⟩,
     ⟨.sub, [c 0, t 1], t 3⟩, ⟨.mul, [t 3, prev 1], next 1⟩]
 
-private def levelTail : Impl Op Tst := opsImpl% [L, d] (c, Lv, t) → (Lv, t) {
+private def levelTail : Stmt Op Tst := ops% [L, d] (c, Lv, t) → (Lv, t) {
   call (Has.inj ScalarOp.div) [] (c[1], t) → (t[2]);
   call (Has.inj ScalarOp.add) [] (c[2], t[2]) → (t[3]);
   call (Has.inj ScalarOp.mul) [] (t[3], Lv[2 * d]) → (Lv[2 * (d + 1)]);
@@ -157,7 +157,7 @@ private theorem writes_levelTail {I : Interp Op Tst K} (hS : IsScalar M I) {τ :
     (hden : m.store.get t.1 t.2 = some den)
     (hroom : lv.2 + 2 * (d + 1) + 2 ≤ m.store.len lv.1)
     (ht : t.2 + 4 ≤ m.store.len t.1) :
-    Writes .total I τ levelTail.body (Env.frame [L, d] [c, lv, t, lv, t])
+    Writes .total I τ levelTail (Env.frame [L, d] [c, lv, t, lv, t])
       (Store.inBlock lv.1 (lv.2 + 2 * (d + 1)) 2 ⊔ Store.inBlock t.1 t.2 4)
       (fun μ => μ.pos = m.pos ∧ μ.store.readBlock lv.1 (lv.2 + 2 * (d + 1)) 2 =
         some [M.mul (M.add half (M.div two den)) R,
@@ -180,7 +180,7 @@ private theorem writes_levelTail {I : Interp Op Tst K} (hS : IsScalar M I) {τ :
       List.not_mem_nil, or_false] at hz
     rcases hz with rfl | rfl | rfl | rfl | rfl | rfl <;> dsimp <;> omega
   have hw := writes_machineScalarBlock (τ := τ) hS hev hroomWs
-  change Writes .total I τ levelTail.body _ _ _ m at hw
+  change Writes .total I τ levelTail _ _ _ m at hw
   refine hw.mono ?_ ?_
   · intro b i hi
     rcases lv with ⟨lb, lo⟩; rcases t with ⟨tb, off⟩
@@ -215,7 +215,8 @@ private theorem writes_levelTail {I : Interp Op Tst K} (hS : IsScalar M I) {τ :
 /-- The level program writes the rounded next radius and tolerance from the actual stored
 constants, current parameters and dimension literal. Separation is spatial; the two adjacent
 parameter pairs occupy disjoint regions of the same level arena. No nonzero-denominator or
-successful-execution hypothesis is needed for the functional word computation. -/
+successful-execution hypothesis is needed for the functional word computation.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_levelParameters {I : Interp Op Tst K} (hS : IsScalar M I)
     (hIndex : IsIndexLit M I) {τ : Tape K} {L d : ℕ} {c lv t : ℕ × ℕ} {m : Mem K}
     (one two half R eps : K)
@@ -225,7 +226,7 @@ theorem writes_levelParameters {I : Interp Op Tst K} (hS : IsScalar M I)
     (hLv : m.store.readBlock lv.1 (lv.2 + 2 * d) 2 = some [R, eps])
     (hroom : lv.2 + 2 * (d + 1) + 2 ≤ m.store.len lv.1)
     (ht : t.2 + 4 ≤ m.store.len t.1) :
-    Writes .total I τ levelParameters.body (Env.frame [L, d] [c, lv, t, lv, t])
+    Writes .total I τ levelParameters (Env.frame [L, d] [c, lv, t, lv, t])
       (Store.inBlock lv.1 (lv.2 + 2 * (d + 1)) 2 ⊔ Store.inBlock t.1 t.2 4)
       (fun μ => μ.pos = m.pos ∧ μ.store.readBlock lv.1 (lv.2 + 2 * (d + 1)) 2 =
         some [M.mul (M.add half (M.div two (M.lit (L + d : ℕ)))) R,

@@ -30,7 +30,8 @@ open Ops
 variable {Op Tst K : Type} [Has ScalarOp Op]
 
 /-- A leaf's eigenvalues are copied from its stored real diagonal or initialized to literal
-zero. A readable source and disjoint output capacity suffice for total execution. -/
+zero. A readable source and disjoint output capacity suffice for total execution.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_leafValues {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     (diagonal : Bool) {τ : Tape K} {m : Mem K} {n : ℕ} {a e : ℕ × ℕ} {v : ℕ → K}
     (ha : m.store.HoldsVec a.1 a.2 (2 * (n * n)) v)
@@ -52,7 +53,8 @@ theorem writes_leafValues {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M
 
 /-- Every leaf writes its complete identity, its eigenvalue vector and the literal leaf kind.
 The pairwise apartness includes the source matrix and all three outputs. These are total
-functional guarantees for actual machine words, with no arithmetic-accuracy hypothesis. -/
+functional guarantees for actual machine words, with no arithmetic-accuracy hypothesis.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_leaf [Has IndexOp Op] {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     (hL : IsIndexLit M I) (diagonal : Bool) {τ : Tape K} {m : Mem K} {n : ℕ}
     {a u e kind : ℕ × ℕ} {v : ℕ → K} (hl : m.Live [a, u, e, kind])

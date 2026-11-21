@@ -29,7 +29,7 @@ The algorithm is the stochastically rounded sum `NLAlib.Ops.Examples.srsum`.
 * `NLAlib.Ops.Examples.integral_dec_srsumF`: **the stochastically rounded sum is unbiased**,
   `𝔼 ŝ = s`, by the conditional law of each window given the past; with the sure bound
   `NLAlib.Ops.Examples.abs_dec_srsumF_sub_le`. Mathematics.
-* `NLAlib.Ops.Examples.runsLaw_srsum`: the abstract theorem, for every interpretation meeting
+* `NLAlib.Ops.Examples.runsLaw_srsum`: the abstract theorem, for every interpretation satisfying
   the contract of `srAdd` and every law of the tape: `n` calls, the workspace of one, the sure
   bound for every sample and `𝔼 ŝ = s`.
 * `NLAlib.Ops.Examples.sr_certifies`: the certificate of the profile (contract by linking,
@@ -136,7 +136,8 @@ def IsSrAdd (g : K → K → K → K) (J : Interp SrOp Empty K) : Prop :=
 /-! ### The drawing implementation and its profile -/
 
 /-- **The implementation of `srAdd`**: draw into a scratch cell, then `sraddXi`. Index
-variables: the offsets of `x`, `y`, `z`. -/
+variables: the offsets of `x`, `y`, `z`. This example writes the table entry directly and proves
+its contract from its run, the linking layer on which routine judgments are built. -/
 def srAddImpl : Impl SrLo Empty where
   nd := 0
   nin := 2
@@ -148,9 +149,9 @@ def srAddImpl : Impl SrLo Empty where
 def srTable : Table SrOp SrLo Empty
   | .srAdd => .inl srAddImpl
 
-/-- **The exact certificate of the drawing program**: its run is the block function of `f` with
+/-- Exact satisfaction by the drawing program: its run is the block function of `f` with
 the window entry as random word. -/
-theorem srAdd_cert {f : K → K → K → K} {I : Interp SrLo Empty K} (hI : IsSrLo f I) {d : List ℕ}
+theorem srAdd_satisfies {f : K → K → K → K} {I : Interp SrLo Empty K} (hI : IsSrLo f I) {d : List ℕ}
     {ins outs : List (ℕ × ℕ)} {τ : Tape K} {m m' : Mem K}
     (h : (drawBin f).apply d ins outs τ m = some m') :
     srAddImpl.Fits d.length ins.length outs.length ∧
@@ -184,11 +185,11 @@ theorem srAdd_cert {f : K → K → K → K} {I : Interp SrLo Empty K} (hI : IsS
   · simp only [Mem.upd, Mem.advance]
     rw [Store.upd_append_of_lt hbz, Store.pop_append_top]
 
-/-- **The contract by linking**: the induced interpretation meets the contract of `srAdd` with
+/-- **The contract by linking**: the induced interpretation satisfies the contract of `srAdd` with
 the same function `f`. -/
 theorem isSrAdd_link {f : K → K → K → K} {I : Interp SrLo Empty K} (hI : IsSrLo f I) :
     IsSrAdd f (I.link srTable) :=
-  Interp.link_isFn rfl fun _ _ _ _ _ _ _ h => srAdd_cert hI h
+  Interp.link_isFn rfl fun _ _ _ _ _ _ _ h => srAdd_satisfies hI h
 
 /-- The tape windows of the lower operations, registered with the access model: one entry for a
 draw, none for `sraddXi`. -/
@@ -326,7 +327,7 @@ section ConditionalRuns
 
 variable [Inhabited K]
 
-/-- **The run of `srsum`**, for every interpretation meeting the contract of `srAdd` and every
+/-- **The run of `srsum`**, for every interpretation satisfying the contract of `srAdd` and every
 tape: `n` calls, and the cell `z` holds the function `srsumF` of the `n` tape entries from the
 position, which advances by `n`. -/
 theorem runs_srsum {g : K → K → K → K} {J : Interp SrOp Empty K} (hJ : IsSrAdd g J)
@@ -368,7 +369,7 @@ def SrsumPost (dec : K → ℝ) (u : ℝ) (n : ℕ) (z : ℕ × ℕ) (z₀ : K) 
     |v - (dec z₀ + ∑ k ∈ Finset.range n, dec (vec xs k))| ≤
       ((1 + 2 * u) ^ n - 1) * (|dec z₀| + ∑ k ∈ Finset.range n, |dec (vec xs k)|)
 
-/-- **The abstract theorem of `srsum`**, for every interpretation meeting the contract of
+/-- **The abstract theorem of `srsum`**, for every interpretation satisfying the contract of
 `srAdd` and every law of the tape: for every sample, `n` calls within the workspace of one and
 the sure bound; and the computed sum is unbiased, `𝔼 ŝ = s`. -/
 theorem runsLaw_srsum {g : K → K → K → K} {J : Interp SrOp Empty K} (hJ : IsSrAdd g J) {u : ℝ}
@@ -444,7 +445,7 @@ theorem srModel_srWit {u : ℝ} (hu : 0 ≤ u) (μ : Measure ℝ) [IsProbability
     simp
 
 /-- **Witness**: for every `u ≥ 0` and every law of the uniform stream there are a stochastic
-rounding function meeting `SrModel` and an interpretation meeting the lower contract with
+rounding function meeting `SrModel` and an interpretation satisfying the lower contract with
 tape-local operations; hence also the contract of `srAdd`, by linking. -/
 theorem exists_isSrLo {u : ℝ} (hu : 0 ≤ u) (μ : Measure ℝ) [IsProbabilityMeasure μ] :
     ∃ (f : ℝ → ℝ → ℝ → ℝ) (I : Interp SrLo Empty ℝ),

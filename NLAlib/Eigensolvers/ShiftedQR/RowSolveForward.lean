@@ -29,9 +29,9 @@ open Ops
 variable {Op Tst : Type} [Has ScalarOp Op] [Has CmpTst Tst]
 
 /-- Visit all columns, retaining the first singularity report and skipping later arithmetic. -/
-def substitutionLoop : Impl Op Tst := opsImpl% [n] (R, V, Acc, T, Flag) → (V, Flag) {
+def substitutionLoop : Stmt Op Tst := ops% [n] (R, V, Acc, T, Flag) → (V, Flag) {
   for j < n {
-    run checkedSubstituteColumn.body [n, j] (R, V, Acc, T, Flag, V, Flag)
+    run checkedSubstituteColumn [n, j] (R, V, Acc, T, Flag, V, Flag)
   }
 }
 
@@ -45,7 +45,9 @@ def SubstitutionState {n : ℕ} (v f : ℕ × ℕ) (R : Matrix (Fin n) (Fin n) �
 
 /-- The checked substitution loop either reports a genuine zero diagonal or returns the
 exact triangular forward substitution with every diagonal entry nonzero. No hypothesis
-excludes singular triangular inputs. [GolubVanLoan2013, §3.1.2]. -/
+excludes singular triangular inputs. [GolubVanLoan2013, §3.1.2].
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem substitutionLoop_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a v z t f : ℕ × ℕ}
@@ -57,7 +59,7 @@ theorem substitutionLoop_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hf0 : m.store.get f.1 f.2 = some 0)
     (hz : z.2 + 2 ≤ m.store.len z.1) (ht : t.2 + 4 ≤ m.store.len t.1)
     (hf : f.2 + 1 ≤ m.store.len f.1) :
-    Writes .total I τ substitutionLoop.body (Env.frame [n] [a, v, z, t, f, v, f])
+    Writes .total I τ substitutionLoop (Env.frame [n] [a, v, z, t, f, v, f])
       (Store.inBlock f.1 f.2 1 ⊔ ((Store.inBlock t.1 t.2 4 ⊔ Store.inBlock z.1 z.2 2) ⊔
         Store.inBlock v.1 v.2 (2 * n)))
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a R m'.store ∧

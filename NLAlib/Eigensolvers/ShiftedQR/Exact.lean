@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Eigensolvers.ShiftedQR.DeflationCertificate
+public import NLAlib.Eigensolvers.ShiftedQR.DeflationCertification
 public import NLAlib.Eigensolvers.ShiftedQR.IterationCorrect
 public import NLAlib.Eigensolvers.ShiftedQR.Decouple
 
@@ -37,7 +37,7 @@ open Ops
 
 /-- Fixed scalar capped decoupling with the actual promising-Ritz search substituted into
 its actual strategy iteration. Neither an iteration nor a decoupling loop is a primitive. -/
-def scalarDecouple : Impl Op Tst := decouple (iteration (O := Op) (Q := Tst))
+def scalarDecouple : Stmt Op Tst := decouple (iteration (O := Op) (Q := Tst))
 
 /-- Standard scalar/index/comparison contracts and the two declared local spectral routines
 prove total decoupling for the fixed concrete implementation under raw quantitative input

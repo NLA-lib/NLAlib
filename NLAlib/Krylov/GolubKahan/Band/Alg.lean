@@ -10,6 +10,8 @@ public import NLAlib.Matrix.Factorizations.BasisExtensionContract
 public import NLAlib.Ops.Blas.Sampling
 public import NLAlib.Ops.Catalog.OperatorPair
 public import NLAlib.Ops.Cert
+public import NLAlib.Ops.RoutineSyntax
+public import NLAlib.Ops.Routine
 
 /-!
 # Block Golub–Kahan bidiagonalization with full reorthogonalization as one fixed program
@@ -44,14 +46,13 @@ columns of `V`, at the offset `b * b * (j * (j + 3) / 2)`. The scratch block of
 ## Main definitions
 
 * `NLAlib.Krylov.GolubKahan.Band.applyColumns`, `NLAlib.Krylov.GolubKahan.Band.step`,
-  `NLAlib.Krylov.GolubKahan.Band.solve`, `NLAlib.Krylov.GolubKahan.Band.program`: the program.
+  `NLAlib.Krylov.GolubKahan.Band.solve`, `NLAlib.Krylov.GolubKahan.Band.solveRoutine`,
+  `NLAlib.Krylov.GolubKahan.Band.program`: the program.
 * `NLAlib.Krylov.GolubKahan.Band.coefOffsetR`, `NLAlib.Krylov.GolubKahan.Band.coefOffsetS`,
   `NLAlib.Krylov.GolubKahan.Band.outLens`: the packed layout.
 * `NLAlib.Krylov.GolubKahan.Band.IsStoredRun`, `NLAlib.Krylov.GolubKahan.Band.IsExactStoredRun`,
   `NLAlib.Krylov.GolubKahan.Band.IsRoundedStoredRun`, `NLAlib.Krylov.GolubKahan.Band.StoredOut`:
   the relation between the stored blocks of a run, block by block.
-* `NLAlib.Krylov.GolubKahan.Band.solveRel`, `NLAlib.Krylov.GolubKahan.Band.Rounded.solveRel`:
-  the contracts of the program.
 * `NLAlib.Krylov.GolubKahan.Band.AppliesColumns`, `NLAlib.Krylov.GolubKahan.Band.stepFp`,
   `NLAlib.Krylov.GolubKahan.Band.StoredPrefix`: the form in which the driver uses a product, the
   cells of a block step, and the loop invariant.
@@ -67,15 +68,8 @@ columns of `V`, at the offset `b * b * (j * (j + 3) / 2)`. The scratch block of
   `NLAlib.Krylov.GolubKahan.Band.writes_applyColumns_error`: a block of products.
 * `NLAlib.Krylov.GolubKahan.Band.writes_step_of`, `NLAlib.Krylov.GolubKahan.Band.writes_steps`,
   `NLAlib.Krylov.GolubKahan.Band.StoredPrefix.succ`,
-  `NLAlib.Krylov.GolubKahan.Band.StoredPrefix.exists_storedOut`,
-  `NLAlib.Krylov.GolubKahan.Band.solve_writes_of`, `NLAlib.Krylov.GolubKahan.Band.solve_spec_of`:
-  one proof of the driver for any contracts of the products and of the extension, of which the
-  exact and the rounded theorems are instances.
-* `NLAlib.Krylov.GolubKahan.Band.solve_writes`, `NLAlib.Krylov.GolubKahan.Band.solve_spec`:
-  total execution under the exact contracts; the stored blocks are exact extensions.
-* `NLAlib.Krylov.GolubKahan.Band.Rounded.solve_writes`,
-  `NLAlib.Krylov.GolubKahan.Band.Rounded.solve_spec`: total execution under the rounded
-  contracts, with the executed history.
+  `NLAlib.Krylov.GolubKahan.Band.StoredPrefix.exists_storedOut`: the rounds of the driver,
+  from which `NLAlib.Krylov.GolubKahan.Band.solveRoutine_meets_of` is proved.
 -/
 
 @[expose] public section
@@ -93,7 +87,7 @@ variable {K Op Tst : Type}
 /-- Apply the operation `o` (a product with a fixed `m × n` matrix) to each of the `b` columns
 of the column-major block `X`, writing the `b` products as the column-major block `Y`. Input
 and output are in different buffers. -/
-def applyColumns (o : Op) : Impl Op Tst := opsImpl% [m, n, b] (X) → (Y) {
+def applyColumns (o : Op) : Stmt Op Tst := ops% [m, n, b] (X) → (Y) {
   for c < b {
     call o [m, n] (X[c * n]) → (Y[c * m])
   }
@@ -106,11 +100,11 @@ variable [Has OrthOp Op] [Has OperatorPairOp Op]
 products of $\mathbf{A}^{\mathsf{H}}$ with block `j` of `U` are extended against the
 `(j + 1) * b` stored columns of `V`, giving block `j + 1` of `V` and block column `j` of `S`.
 The scratch block `W` holds the products. -/
-def step : Impl Op Tst := opsImpl% [m, n, b, j] (U, V, R, S, W) → () {
-  run (applyColumns (Has.inj OperatorPairOp.matvec)).body [m, n, b] (V[j * b * n], W);
+def step : Stmt Op Tst := ops% [m, n, b, j] (U, V, R, S, W) → () {
+  run (applyColumns (Has.inj OperatorPairOp.matvec)) [m, n, b] (V[j * b * n], W);
   call (Has.inj OrthOp.extend) [m, j * b, b] (U, W) →
     (U[j * b * m], W, R[b * b * (j * (j + 1) / 2)]);
-  run (applyColumns (Has.inj OperatorPairOp.rmatvec)).body [n, m, b] (U[j * b * m], W);
+  run (applyColumns (Has.inj OperatorPairOp.rmatvec)) [n, m, b] (U[j * b * m], W);
   call (Has.inj OrthOp.extend) [n, (j + 1) * b, b] (V, W) →
     (V[(j + 1) * b * n], W, S[b * b * (j * (j + 3) / 2)])
 }
@@ -122,20 +116,14 @@ variable [Has SampleOp Op]
 empty basis by it (block `0` of `V` and the start coefficients `G`), and run `q` block steps.
 The outputs are `U` (`q * b * m` words), `V` (`(q + 1) * b * n`), `G` (`b * b`) and the packed
 coefficients `R` and `S`. The scratch block has `max m n * b` words. -/
-def solve (stream : ℕ) : Impl Op Tst := opsImpl% [m, n, b, q] () → (U, V, G, R, S) {
+def solve (stream : ℕ) : Stmt Op Tst := ops% [m, n, b, q] () → (U, V, G, R, S) {
   let W ← alloc ((m + (n - m)) * b);
-  run (sampleVector stream).body [n * b] (W);
+  run (sampleVector stream) [n * b] (W);
   call (Has.inj OrthOp.extend) [n, 0, b] (V, W) → (V, W, G);
   for j < q {
-    run step.body [m, n, b, j] (U, V, R, S, W)
+    run step [m, n, b, j] (U, V, R, S, W)
   }
 }
-
-/-- The fixed program: four dimensions `[m, n, b, q]` and the five output buffers `U`, `V`,
-`G`, `R`, `S`. -/
-def program (stream : ℕ) : Program Op Tst 4 5 :=
-  (solve stream).program 5 []
-    [⟨0, .const 0⟩, ⟨1, .const 0⟩, ⟨2, .const 0⟩, ⟨3, .const 0⟩, ⟨4, .const 0⟩]
 
 /-! ### The packed layout -/
 
@@ -180,6 +168,17 @@ theorem coefOffsetS_mono (b : ℕ) {i j : ℕ} (h : i ≤ j) : coefOffsetS b i �
 `[m, n, b, q]`. -/
 def outLens (m n b q : ℕ) : List ℕ :=
   [q * b * m, (q + 1) * b * n, b * b, coefOffsetR b q, coefOffsetS b q]
+
+/-- The driver as a routine: five blocks `U`, `V`, `G`, `R`, `S` are written, with the lengths
+`NLAlib.Krylov.GolubKahan.Band.outLens`, and `n * b` tape positions are drawn. -/
+def solveRoutine (stream : ℕ) : Routine Op Tst :=
+  routine% [m, n, b, k] ( ) → (V : (k * b) * m, U : ((k + 1) * b) * n, R : b * b,
+      S : ↑(coefOffsetR b k), T : ↑(coefOffsetS b k))
+    draws n * b := solve stream
+
+/-- The fixed program: four dimensions `[m, n, b, q]` and the five output buffers `U`, `V`,
+`G`, `R`, `S`. -/
+def program (stream : ℕ) : Program Op Tst 4 5 := (solveRoutine stream).close 4 5
 
 /-! ### The relation between the stored blocks -/
 
@@ -286,52 +285,26 @@ def StoredOut (dec : K → ℝ) (m n b q : ℕ) (Run : RunPred m n b q)
     (fun j => decodeMatrix dec (j * b + b) b (rs.drop (coefOffsetR b j)))
     (fun j => decodeMatrix dec ((j + 1) * b + b) b (ss.drop (coefOffsetS b j)))
 
-/-- The dimensions are `[m, n, b, q]` with the row and column numbers of the matrix, there is no
-input operand, and the five outputs are in distinct buffers. -/
-@[admNF] def SolveOperands (m n : ℕ) : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop :=
-  fun d ins outs => d.headD 0 = m ∧ d.getD 1 0 = n ∧ ins = [] ∧ ∃ U V G R S,
-    outs = [U, V, G, R, S] ∧ [U.1, V.1, G.1, R.1, S.1].Nodup
-
-/-- The contract of the program for a run predicate: at the dimensions `[m, n, b, q]` the call
-reads the window of `n * b` words of the stream and writes the five output blocks, whose decoded
-matrices satisfy the run predicate with the decoded window as start block. -/
-@[simps (attr := storeNF)]
-def solveRelOf (stream : ℕ) (dec : K → ℝ) (m n : ℕ) (Run : (b q : ℕ) → RunPred m n b q) :
-    BlockRel K where
-  nd := 4
-  stream := stream
-  win d := d.getD 1 0 * d.getD 2 0
-  inLens _ := []
-  outLens d := outLens (d.headD 0) (d.getD 1 0) (d.getD 2 0) (d.getD 3 0)
-  rel d _ ω Y := match Y with
-    | [us, vs, gs, rs, ss] =>
-        StoredOut dec m n (d.getD 2 0) (d.getD 3 0) (Run _ _) ω us vs gs rs ss
-    | _ => False
-
-/-- The exact contract of the program: the stored blocks are an exact run for $\mathbf{A}$ from
-the drawn start block. -/
-def solveRel (stream : ℕ) (dec : K → ℝ) {m n : ℕ} (A : Matrix (Fin m) (Fin n) ℝ) : BlockRel K :=
-  solveRelOf stream dec m n (IsExactStoredRun A)
-
 /-! ### Products of a block -/
 
 omit [Has OrthOp Op] [Has OperatorPairOp Op] [Has SampleOp Op] in
-/-- A block of products, for any contract of one product. If the operation `o` meets a
+/-- A block of products, for any contract of one product. If the operation `o` satisfies a
 contract `Rm` with the operand shape of a product with an `r × c` matrix (one input block of
 length `c`, one output block of length `r` in another buffer, no window) whose relation gives
 `rel` of the decoded input and output vectors, the loop over the `b` columns of the readable
 block `xs` writes a block `ys` with `rel` of every pair of decoded columns. The position of the
-tape does not move. Zero dimensions are included. -/
+tape does not move. Zero dimensions are included.
+A fragment of `NLAlib.Krylov.GolubKahan.Band.solveRoutine`. -/
 theorem writes_applyColumns_of {dec : K → ℝ} {r c b : ℕ} {Rm : BlockRel K}
     {rel : (Fin c → ℝ) → (Fin r → ℝ) → Prop} {I : Interp Op Tst K} {o : Op}
-    (hA : I.Meets .total o (Rm.spec (MatvecOperands r c)))
+    (hA : I.Satisfies .total o (Rm.spec (MatvecOperands r c)))
     (hnd : Rm.nd = 2) (hwin : Rm.win [r, c] = 0) (hin : Rm.inLens [r, c] = [c])
     (hout : Rm.outLens [r, c] = [r]) (hdom : ∀ xs w, Rm.dom [r, c] xs w)
     (hrel : ∀ xs w ys, Rm.rel [r, c] [xs] w [ys] → rel (decv dec c xs) (decv dec r ys))
     {τ : Tape K} {μ : Mem K} {x y : ℕ × ℕ} {xs : List K} (hxy : x.1 ≠ y.1)
     (hl : μ.Live [x, y]) (hx : μ.store.readBlock x.1 x.2 (b * c) = some xs)
     (hy : y.2 + b * r ≤ μ.store.len y.1) :
-    Writes .total I τ (applyColumns o).body (Env.frame [r, c, b] [x, y])
+    Writes .total I τ (applyColumns o) (Env.frame [r, c, b] [x, y])
       (Store.inBlock y.1 y.2 (b * r))
       (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock y.1 y.2 (b * r) = some ys ∧
         ∀ j, rel ((decodeMatrix dec c b xs).col j) ((decodeMatrix dec r b ys).col j)) μ := by
@@ -340,7 +313,6 @@ theorem writes_applyColumns_of {dec : K → ℝ} {r c b : ℕ} {Rm : BlockRel K}
     s.readBlock y.1 (y.2 + j * r) r = some yc ∧
       rel (decv dec c ((xs.drop (j * c)).take c)) (decv dec r yc)
   unfold applyColumns
-  dsimp only
   refine (writes_loop_disjoint region result rfl (fun j hj => Fp.inBlock_le_inBlock (by omega)
     (by have := Idx.mul_add_le_mul hj r; omega)) ?_ ?_ ?_).mono le_rfl ?_
   · intro i _ j _ hne
@@ -377,17 +349,18 @@ theorem writes_applyColumns_of {dec : K → ℝ} {r c b : ℕ} {Rm : BlockRel K}
     exact hr
 
 omit [Has OrthOp Op] [Has OperatorPairOp Op] [Has SampleOp Op] in
-/-- A block of exact products: if the operation `o` meets the exact contract of the product with
+/-- A block of exact products: if the operation `o` satisfies the exact contract of the product with
 $\mathbf{A}$, the loop over the `b` columns of the readable block `xs` writes a block that
 decodes to $\mathbf{A}\mathbf{X}$, $\mathbf{X}$ the decoded input block. The output is in
-another buffer; the position of the tape does not move. Zero dimensions are included. -/
+another buffer; the position of the tape does not move. Zero dimensions are included.
+A fragment of `NLAlib.Krylov.GolubKahan.Band.solveRoutine`. -/
 theorem writes_applyColumns {dec : K → ℝ} {m n b : ℕ} {A : Matrix (Fin m) (Fin n) ℝ}
     {I : Interp Op Tst K} {o : Op}
-    (hA : I.Meets .total o ((matvecRel dec A).spec (MatvecOperands m n)))
+    (hA : I.Satisfies .total o ((matvecRel dec A).spec (MatvecOperands m n)))
     {τ : Tape K} {μ : Mem K} {x y : ℕ × ℕ} {xs : List K} (hxy : x.1 ≠ y.1)
     (hl : μ.Live [x, y]) (hx : μ.store.readBlock x.1 x.2 (b * n) = some xs)
     (hy : y.2 + b * m ≤ μ.store.len y.1) :
-    Writes .total I τ (applyColumns o).body (Env.frame [m, n, b] [x, y])
+    Writes .total I τ (applyColumns o) (Env.frame [m, n, b] [x, y])
       (Store.inBlock y.1 y.2 (b * m))
       (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock y.1 y.2 (b * m) = some ys ∧
         decodeMatrix dec m b ys = A * decodeMatrix dec n b xs) μ := by
@@ -400,19 +373,19 @@ theorem writes_applyColumns {dec : K → ℝ} {m n b : ℕ} {A : Matrix (Fin m) 
   simpa [Matrix.col_apply, Matrix.mul_apply, Matrix.mulVec, dotProduct] using h
 
 omit [Has OrthOp Op] [Has OperatorPairOp Op] [Has SampleOp Op] in
-/-- A block of rounded products: if the operation `o` meets the normwise contract of the product
+/-- A block of rounded products: if the operation `o` satisfies the normwise contract of the product
 with $\mathbf{A}$ at the allowance $\delta$, the loop over the `b` columns of the readable block
 `xs` writes a block whose decoded column $c$ satisfies
 $\|\mathbf{A}\mathbf{x}_c - \mathbf{w}_c\| \le \delta\|\mathbf{x}_c\|$ in the Euclidean norm,
 $\mathbf{x}_c$ the decoded column of the input. The output is in another buffer; the position
-of the tape does not move. -/
+of the tape does not move. A fragment of `NLAlib.Krylov.GolubKahan.Band.solveRoutine`. -/
 theorem writes_applyColumns_error {dec : K → ℝ} {m n b : ℕ} {A : Matrix (Fin m) (Fin n) ℝ}
     {δ : ℝ} {I : Interp Op Tst K} {o : Op}
-    (hA : I.Meets .total o ((matvecErrorRel dec A δ).spec (MatvecOperands m n)))
+    (hA : I.Satisfies .total o ((matvecErrorRel dec A δ).spec (MatvecOperands m n)))
     {τ : Tape K} {μ : Mem K} {x y : ℕ × ℕ} {xs : List K} (hxy : x.1 ≠ y.1)
     (hl : μ.Live [x, y]) (hx : μ.store.readBlock x.1 x.2 (b * n) = some xs)
     (hy : y.2 + b * m ≤ μ.store.len y.1) :
-    Writes .total I τ (applyColumns o).body (Env.frame [m, n, b] [x, y])
+    Writes .total I τ (applyColumns o) (Env.frame [m, n, b] [x, y])
       (Store.inBlock y.1 y.2 (b * m))
       (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock y.1 y.2 (b * m) = some ys ∧
         ∀ c, ‖WithLp.toLp 2 (A *ᵥ (decodeMatrix dec n b xs).col c -
@@ -434,7 +407,7 @@ def AppliesColumns (dec : K → ℝ) (I : Interp Op Tst K) (o : Op) (r c b : ℕ
     (Rel : Matrix (Fin c) (Fin b) ℝ → Matrix (Fin r) (Fin b) ℝ → Prop) : Prop :=
   ∀ (τ : Tape K) (μ : Mem K) (x y : ℕ × ℕ) (xs : List K), x.1 ≠ y.1 → μ.Live [x, y] →
     μ.store.readBlock x.1 x.2 (b * c) = some xs → y.2 + b * r ≤ μ.store.len y.1 →
-    Writes .total I τ (applyColumns o).body (Env.frame [r, c, b] [x, y])
+    Writes .total I τ (applyColumns o) (Env.frame [r, c, b] [x, y])
       (Store.inBlock y.1 y.2 (b * r))
       (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock y.1 y.2 (b * r) = some ys ∧
         Rel (decodeMatrix dec c b xs) (decodeMatrix dec r b ys)) μ
@@ -473,13 +446,14 @@ omit [Has SampleOp Op] in
 the step, the step writes only the cells of
 `NLAlib.Krylov.GolubKahan.Band.stepFp` and leaves block `j` of `U` as a stored extension by a
 block related by `Mv` to block `j` of `V`, and block `j + 1` of `V` as a stored extension by a
-block related by `Rmv` to block `j` of `U`. -/
+block related by `Rmv` to block `j` of `U`.
+A fragment of `NLAlib.Krylov.GolubKahan.Band.solveRoutine`. -/
 theorem writes_step_of {dec : K → ℝ} {m n b j : ℕ} {Ext : ExtendPred ℝ}
     {ok : ℕ → ℕ → ℕ → Prop} {Mv : Matrix (Fin n) (Fin b) ℝ → Matrix (Fin m) (Fin b) ℝ → Prop}
     {Rmv : Matrix (Fin m) (Fin b) ℝ → Matrix (Fin n) (Fin b) ℝ → Prop} {I : Interp Op Tst K}
     (hMv : AppliesColumns dec I (Has.inj OperatorPairOp.matvec) m n b Mv)
     (hRmv : AppliesColumns dec I (Has.inj OperatorPairOp.rmatvec) n m b Rmv)
-    (hO : I.Meets .total (Has.inj OrthOp.extend) ((extendRelOf dec ok Ext).spec ExtendOperands))
+    (hO : I.Satisfies .total (Has.inj OrthOp.extend) ((extendRelOf dec ok Ext).spec ExtendOperands))
     (hokU : ok m (j * b) b) (hokV : ok n ((j + 1) * b) b) {τ : Tape K} {μ : Mem K}
     {U V R S W : ℕ × ℕ} {us vs : List K} (hbuf : [U.1, V.1, R.1, S.1, W.1].Nodup)
     (hl : μ.Live [U, V, R, S, W]) (hu : μ.store.readBlock U.1 U.2 (j * b * m) = some us)
@@ -489,7 +463,7 @@ theorem writes_step_of {dec : K → ℝ} {m n b j : ℕ} {Ext : ExtendPred ℝ}
     (hRr : R.2 + coefOffsetR b j + (j * b + b) * b ≤ μ.store.len R.1)
     (hSr : S.2 + coefOffsetS b j + ((j + 1) * b + b) * b ≤ μ.store.len S.1)
     (hWm : W.2 + b * m ≤ μ.store.len W.1) (hWn : W.2 + b * n ≤ μ.store.len W.1) :
-    Writes .total I τ step.body (Env.frame [m, n, b, j] [U, V, R, S, W])
+    Writes .total I τ step (Env.frame [m, n, b, j] [U, V, R, S, W])
       (stepFp m n b j U V R S W)
       (fun μ' => μ'.pos = μ.pos ∧
         ProductExtAt dec Ext Mv μ'.store (j * b) (V.1, V.2 + j * b * n) U
@@ -509,7 +483,6 @@ theorem writes_step_of {dec : K → ℝ} {m n b j : ℕ} {Ext : ExtendPred ℝ}
     simp only [Mem.live_cons, Mem.live_nil, and_true]
     exact ⟨hVL, hWL⟩
   unfold step
-  dsimp only
   refine Writes.seq_le ((hMv τ μ (V.1, V.2 + j * b * n) W _ hVW hl₁ hxs hWm).in_frame rfl rfl hl₁)
     (le_sup_of_le_right (Fp.inBlock_le_inBuf _ _ _)) fun μ₁ hfr₁ ⟨hp₁, ys, hys, hrel⟩ => ?_
   have hlen₁ := hfr₁.len_eq
@@ -678,13 +651,14 @@ omit [Has SampleOp Op] in
 distinct output buffers with room for the output lengths and a scratch buffer above them with
 room for a block of either side, the `q` framed block steps write only cells of a footprint
 that contains the cells of every step, do not move the tape, and leave the stored prefix of
-`q` steps. The loop is given by its evaluated bound, dimensions and operands. -/
+`q` steps. The loop is given by its evaluated bound, dimensions and operands.
+A fragment of `NLAlib.Krylov.GolubKahan.Band.solveRoutine`. -/
 theorem writes_steps {dec : K → ℝ} {m n b q : ℕ} {Ext : ExtendPred ℝ}
     {ok : ℕ → ℕ → ℕ → Prop} {Mv : Matrix (Fin n) (Fin b) ℝ → Matrix (Fin m) (Fin b) ℝ → Prop}
     {Rmv : Matrix (Fin m) (Fin b) ℝ → Matrix (Fin n) (Fin b) ℝ → Prop} {I : Interp Op Tst K}
     (hMv : AppliesColumns dec I (Has.inj OperatorPairOp.matvec) m n b Mv)
     (hRmv : AppliesColumns dec I (Has.inj OperatorPairOp.rmatvec) n m b Rmv)
-    (hO : I.Meets .total (Has.inj OrthOp.extend) ((extendRelOf dec ok Ext).spec ExtendOperands))
+    (hO : I.Satisfies .total (Has.inj OrthOp.extend) ((extendRelOf dec ok Ext).spec ExtendOperands))
     (hokU : ∀ j < q, ok m (j * b) b) (hokV : ∀ j < q, ok n ((j + 1) * b) b) {τ : Tape K}
     {ρ : Env} {N : IExp} {ds : List IExp} {args : List Operand} {μ : Mem K}
     {U V G R S W : ℕ × ℕ} {Ω : Matrix (Fin n) (Fin b) ℝ} {F : Fp}
@@ -696,7 +670,7 @@ theorem writes_steps {dec : K → ℝ} {m n b q : ℕ} {Ext : ExtendPred ℝ}
     (hWm : W.2 + b * m ≤ μ.store.len W.1) (hWn : W.2 + b * n ≤ μ.store.len W.1)
     (h0 : StoredPrefix dec Ext Mv Rmv Ω U V G R S 0 μ.store)
     (hF : ∀ j < q, stepFp m n b j U V R S W ≤ F) :
-    Writes .total I τ (.loop N (.frame ds args step.body)) ρ F
+    Writes .total I τ (.loop N (.frame ds args step)) ρ F
       (fun μ' => μ'.pos = μ.pos ∧ StoredPrefix dec Ext Mv Rmv Ω U V G R S q μ'.store) μ := by
   have hbuf' : [U.1, V.1, R.1, S.1, W.1].Nodup := by
     have hb := hbuf
@@ -723,210 +697,5 @@ theorem writes_steps {dec : K → ℝ} {m n b q : ℕ} {Ext : ExtendPred ℝ}
     (by rw [hlen]; omega) (by rw [hlen]; omega) (by rw [hlen]; omega) (by rw [hlen]; omega)
     (by rw [hlen]; exact hWm) (by rw [hlen]; exact hWn)).in_frame (hd j) (ha j) hl').mono
     (hF j hj) fun μ'' hfr' ⟨hp', hL, hR⟩ => ⟨hp'.trans hp, hpre.succ hbuf hlt hfr' hL hR⟩
-
-/-- Total execution of the driver, for any contracts. If the loops over the columns of a
-block with `matvec` and `rmatvec` compute blocks related by `Mv` and `Rmv` to their inputs,
-`extend` meets the contract of a basis extension for the predicate `Ext` at the dimensions of
-the run, and the draws return the words of the tape, then on five live output blocks in
-distinct buffers with room for the output lengths the program terminates, writes only the
-output blocks, consumes exactly $nb$ samples and releases its scratch; the stored blocks decode
-to matrices related block by block (`NLAlib.Krylov.GolubKahan.Band.IsStoredRun`), from the
-start block decoded from the window of the tape. The exact and the rounded theorem are
-instances. -/
-theorem solve_writes_of {dec : K → ℝ} {m n b q : ℕ} {Ext : ExtendPred ℝ}
-    {ok : ℕ → ℕ → ℕ → Prop} {Mv : Matrix (Fin n) (Fin b) ℝ → Matrix (Fin m) (Fin b) ℝ → Prop}
-    {Rmv : Matrix (Fin m) (Fin b) ℝ → Matrix (Fin n) (Fin b) ℝ → Prop} {I : Interp Op Tst K}
-    (hMv : AppliesColumns dec I (Has.inj OperatorPairOp.matvec) m n b Mv)
-    (hRmv : AppliesColumns dec I (Has.inj OperatorPairOp.rmatvec) n m b Rmv)
-    (hO : I.Meets .total (Has.inj OrthOp.extend) ((extendRelOf dec ok Ext).spec ExtendOperands))
-    (hSample : IsSample I) (stream : ℕ) (hok₀ : ok n 0 b) (hokU : ∀ j < q, ok m (j * b) b)
-    (hokV : ∀ j < q, ok n ((j + 1) * b) b) {τ : Tape K} {μ : Mem K} {U V G R S : ℕ × ℕ}
-    (hbuf : [U.1, V.1, G.1, R.1, S.1].Nodup) (hl : μ.Live [U, V, G, R, S])
-    (hz : μ.Room [U, V, G, R, S] (outLens m n b q)) :
-    Writes .total I τ (solve stream).body (Env.frame [m, n, b, q] [U, V, G, R, S])
-      (Fp.blocks [U, V, G, R, S] (outLens m n b q))
-      (fun μ' => μ'.pos = μ.pos + n * b ∧ ∃ us vs gs rs ss,
-        μ'.readBlocks [U, V, G, R, S] (outLens m n b q) = some [us, vs, gs, rs, ss] ∧
-        StoredOut dec m n b q (IsStoredRun Ext Mv Rmv) (τ.window stream μ.pos (n * b))
-          us vs gs rs ss) μ := by
-  obtain ⟨hUL, hVL, hGL, hRL, hSL⟩ : U.1 < μ.store.length ∧ V.1 < μ.store.length ∧
-      G.1 < μ.store.length ∧ R.1 < μ.store.length ∧ S.1 < μ.store.length := by simpa using hl
-  refine writes_allocs_preserving_post (lens := [(.var 0 + (.var 1 - .var 0)) * .var 2])
-    (ns := [(m + (n - m)) * b]) rfl (fun hBelow hp => ⟨hp.1, ?_⟩)
-    fun s₁ hlength hlens hBelow => ?_
-  · obtain ⟨us, vs, gs, rs, ss, hr, hout⟩ := hp.2
-    exact ⟨us, vs, gs, rs, ss, (Mem.readBlocks_eq_of_below hBelow hl).trans hr, hout⟩
-  have hlen : s₁.length = μ.store.length + 1 := by simpa using hlength
-  have hW : s₁.len μ.store.length = (m + (n - m)) * b := by simpa using hlens 0 (by simp)
-  have hz₀ : (Mem.mk s₁ μ.pos).Room [U, V, G, R, S] (outLens m n b q) :=
-    (Mem.room_eq_of_below (μ := μ) (μ' := ⟨s₁, μ.pos⟩) hBelow hl).mpr hz
-  have hWm : b * m ≤ (m + (n - m)) * b := by
-    rw [Nat.mul_comm b m]
-    exact Nat.mul_le_mul_right b (by omega)
-  have hWn : b * n ≤ (m + (n - m)) * b := by
-    rw [Nat.mul_comm b n]
-    exact Nat.mul_le_mul_right b (by omega)
-  have hnb : n * b = b * n := Nat.mul_comm n b
-  have hne := hbuf
-  simp only [List.nodup_cons, List.mem_cons, List.not_mem_nil, or_false, not_or,
-    List.nodup_nil, and_true, not_false_eq_true] at hne
-  have hLive : (Mem.mk s₁ μ.pos).Live [(μ.store.length, 0)] := by
-    simp only [Mem.live_cons, Mem.live_nil, and_true]
-    omega
-  refine Writes.seq_le ((writes_sampleVector hSample stream (y := (μ.store.length, 0))
-    (n := n * b) (show 0 + n * b ≤ s₁.len μ.store.length by omega)).in_frame rfl rfl hLive)
-    (Fp.inBlock_le_sup_above le_rfl) fun μ₁ hfr₁ ⟨hω, hp₁⟩ => ?_
-  have hz₁ := hz₀.congr hfr₁.len_eq
-  have hW₁ := (hfr₁.len_eq μ.store.length).trans hW
-  have hL₁ := hfr₁.length_eq.trans hlen
-  have hb1 := block_le (show 0 < q + 1 by omega) b n
-  have hzz := hz₁
-  simp only [outLens, Mem.room_cons, Mem.room_nil, and_true] at hzz
-  refine Writes.seq_le (writes_extend hO (Q := V) (W := (μ.store.length, 0)) (C := G)
-    (qs := []) (ws := τ.window stream μ.pos (n * b)) rfl rfl (by rw [Nat.zero_mul]; rfl)
-    hVL.ne (by omega) hGL.ne' hok₀
-    (by simp only [Mem.live_cons, Mem.live_nil, and_true, hL₁]; omega)
-    (by rw [Nat.zero_mul]; rfl) (by rw [← hnb]; exact hω) (by omega)
-    (show 0 + b * n ≤ μ₁.store.len μ.store.length by omega)
-    (by rw [Nat.zero_add]; exact hzz.2.2.1)) ?_ fun μ₂ hfr₂ ⟨hp₂, hstart⟩ => ?_
-  · unfold outLens
-    refine sup_le ?_ (sup_le (Fp.inBlock_le_sup_above le_rfl) (sup_le ?_ bot_le))
-    · exact le_sup_of_le_left (le_sup_of_le_right (le_sup_of_le_left
-        (Fp.inBlock_le_inBlock (by omega) (by omega))))
-    · exact le_sup_of_le_left (le_sup_of_le_right (le_sup_of_le_right (le_sup_of_le_left
-        (Fp.inBlock_le_inBlock le_rfl (by rw [Nat.zero_add])))))
-  have hlen₂ : ∀ B, μ₂.store.len B = μ₁.store.len B := hfr₂.len_eq
-  refine (writes_steps hMv hRmv hO hokU hokV (W := (μ.store.length, 0)) rfl (fun _ => rfl)
-    (fun _ => rfl) hbuf hl
-    (by simp only [Mem.live_cons, Mem.live_nil, and_true, hfr₂.length_eq, hL₁]; omega)
-    (hz₁.congr hlen₂) (by rw [hlen₂]; change 0 + b * m ≤ μ₁.store.len μ.store.length; omega)
-    (by rw [hlen₂]; change 0 + b * n ≤ μ₁.store.len μ.store.length; omega)
-    (StoredPrefix.zero hstart)
-    fun j hj => stepFp_le hj le_rfl).mono le_rfl ?_
-  rintro μ₃ - ⟨hp₃, hpre⟩
-  exact ⟨by rw [hp₃, hp₂, hp₁], hpre.exists_storedOut⟩
-
-/-- The driver meets the contract of a run predicate from its block specification. -/
-theorem solve_spec_of {dec : K → ℝ} {m n : ℕ} {Run : (b q : ℕ) → RunPred m n b q}
-    {I : Interp Op Tst K} (stream : ℕ)
-    (h : ∀ (b q : ℕ) (τ : Tape K) (μ : Mem K) (U V G R S : ℕ × ℕ),
-      [U.1, V.1, G.1, R.1, S.1].Nodup → μ.Live [U, V, G, R, S] →
-      μ.Room [U, V, G, R, S] (outLens m n b q) →
-      Writes .total I τ (solve stream).body (Env.frame [m, n, b, q] [U, V, G, R, S])
-        (Fp.blocks [U, V, G, R, S] (outLens m n b q))
-        (fun μ' => μ'.pos = μ.pos + n * b ∧ ∃ us vs gs rs ss,
-          μ'.readBlocks [U, V, G, R, S] (outLens m n b q) = some [us, vs, gs, rs, ss] ∧
-          StoredOut dec m n b q (Run b q) (τ.window stream μ.pos (n * b)) us vs gs rs ss) μ) :
-    (solve (Op := Op) (Tst := Tst) stream).Triple I .total
-      ((solveRelOf stream dec m n Run).spec (SolveOperands m n)) := by
-  refine Impl.meets_of_writes fun d ins outs τ μ X hnd hadm hl hr hdom hz => ?_
-  obtain ⟨m', n', b, q, rfl⟩ := List.length_eq_four.mp hnd
-  obtain ⟨hm, hn, rfl, U, V, G, R, S, rfl, hbuf⟩ := hadm
-  obtain rfl : m' = m := hm
-  obtain rfl : n' = n := hn
-  refine ⟨⟨rfl, rfl, rfl⟩, (h b q τ μ U V G R S hbuf (by simpa using hl) hz).mono le_rfl ?_⟩
-  rintro μ' - ⟨hpos, us, vs, gs, rs, ss, hread, hout⟩
-  exact ⟨hpos, [us, vs, gs, rs, ss], hread, hout⟩
-
-/-! ### Exact execution -/
-
-/-- Total execution under the exact contracts. If `matvec` and `rmatvec` are the exact
-products with $\mathbf{A}$ and $\mathbf{A}^{\mathsf{H}}$, `extend` meets the exact contract of a
-basis extension and the draws return the words of the tape, then for all dimensions
-$(m, n, b, q)$, on five live output blocks in distinct buffers with room for the output lengths,
-the program terminates, writes only the output blocks, consumes exactly $nb$ samples and
-releases its scratch; the stored blocks decode to matrices that are an exact run for
-$\mathbf{A}$ from the start block $\mathbf{\Omega}$ decoded from the window of the tape: every
-stored block is an exact extension of the stored columns before it by the products of the
-previous block. No rank or nonbreakdown hypothesis is needed. -/
-theorem solve_writes {dec : K → ℝ} {m n b q : ℕ} {A : Matrix (Fin m) (Fin n) ℝ}
-    {I : Interp Op Tst K} (hA : IsExactMatvecPair dec A I)
-    (hO : I.Meets .total (Has.inj OrthOp.extend) ((exactExtendRel dec).spec ExtendOperands))
-    (hSample : IsSample I) (stream : ℕ) {τ : Tape K} {μ : Mem K} {U V G R S : ℕ × ℕ}
-    (hbuf : [U.1, V.1, G.1, R.1, S.1].Nodup) (hl : μ.Live [U, V, G, R, S])
-    (hz : μ.Room [U, V, G, R, S] (outLens m n b q)) :
-    Writes .total I τ (solve stream).body (Env.frame [m, n, b, q] [U, V, G, R, S])
-      (Fp.blocks [U, V, G, R, S] (outLens m n b q))
-      (fun μ' => μ'.pos = μ.pos + n * b ∧ ∃ us vs gs rs ss,
-        μ'.readBlocks [U, V, G, R, S] (outLens m n b q) = some [us, vs, gs, rs, ss] ∧
-        StoredOut dec m n b q (IsExactStoredRun A b q) (τ.window stream μ.pos (n * b))
-          us vs gs rs ss) μ :=
-  solve_writes_of (Ext := fun _ _ _ Q W Q' H R => IsBasisExtension Q W Q' H R)
-    (ok := fun _ _ _ => True)
-    (fun _ _ _ _ _ hxy hl hx hy => writes_applyColumns hA.matvec hxy hl hx hy)
-    (fun _ _ _ _ _ hxy hl hx hy => writes_applyColumns hA.rmatvec hxy hl hx hy)
-    hO hSample stream trivial (fun _ _ => trivial) (fun _ _ => trivial) hbuf hl hz
-
-/-- The program meets its exact contract in total mode: under the exact contracts of the
-two products with $\mathbf{A}$ and $\mathbf{A}^{\mathsf{H}}$, of the basis extension and of the
-draws, on five output blocks in distinct buffers the program writes blocks that decode to an
-exact run for $\mathbf{A}$ from the drawn start block, and advances the tape by the $nb$ words
-of that block. -/
-theorem solve_spec {dec : K → ℝ} {m n : ℕ} {A : Matrix (Fin m) (Fin n) ℝ}
-    {I : Interp Op Tst K} (hA : IsExactMatvecPair dec A I)
-    (hO : I.Meets .total (Has.inj OrthOp.extend) ((exactExtendRel dec).spec ExtendOperands))
-    (hSample : IsSample I) (stream : ℕ) :
-    (solve (Op := Op) (Tst := Tst) stream).Triple I .total
-      ((solveRel stream dec A).spec (SolveOperands m n)) :=
-  solve_spec_of stream fun _ _ _ _ _ _ _ _ _ hbuf hl hz =>
-    solve_writes hA hO hSample stream hbuf hl hz
-
-/-! ### Rounded execution -/
-
-namespace Rounded
-
-/-- The rounded contract of the program: the stored blocks are a rounded run for $\mathbf{A}$
-with product allowances $\delta$, $\delta'$ and extension parameters
-$(\eta_0, \mu, \varepsilon)$, from the drawn start block. -/
-def solveRel (stream : ℕ) (dec : K → ℝ) {m n : ℕ} (A : Matrix (Fin m) (Fin n) ℝ)
-    (δ δ' η₀ μ ε : ℝ) : BlockRel K :=
-  solveRelOf stream dec m n (IsRoundedStoredRun A δ δ' η₀ μ ε)
-
-/-- Total execution under the rounded contracts, with the executed history. If `matvec` and
-`rmatvec` meet the normwise contracts of the products with $\mathbf{A}$ and
-$\mathbf{A}^{\mathsf{H}}$ at the allowances $\delta$, $\delta'$, `extend` meets the rounded
-contract of a basis extension with parameters $(\eta_0, \mu, \varepsilon)$ at the dimensions of
-the run, and the draws return the words of the tape, then on five live output blocks in distinct
-buffers with room for the output lengths the program terminates, writes only the output blocks,
-consumes exactly $nb$ samples and releases its scratch; the stored blocks decode to a rounded
-run: every stored block is a rounded extension of the stored columns before it by a computed
-product block within the product allowance. There is no orthogonality, rank or nonbreakdown
-hypothesis. -/
-theorem solve_writes {dec : K → ℝ} {m n b q : ℕ} {A : Matrix (Fin m) (Fin n) ℝ}
-    {δ δ' η₀ μ ε : ℝ} {ok : ℕ → ℕ → ℕ → Prop} {I : Interp Op Tst K}
-    (hA : IsMatvecPair dec A δ δ' I)
-    (hO : I.Meets .total (Has.inj OrthOp.extend)
-      ((extendRel dec η₀ μ ε ok).spec ExtendOperands))
-    (hSample : IsSample I) (stream : ℕ) (hok₀ : ok n 0 b)
-    (hokU : ∀ j < q, ok m (j * b) b) (hokV : ∀ j < q, ok n ((j + 1) * b) b)
-    {τ : Tape K} {ν : Mem K} {U V G R S : ℕ × ℕ}
-    (hbuf : [U.1, V.1, G.1, R.1, S.1].Nodup) (hl : ν.Live [U, V, G, R, S])
-    (hz : ν.Room [U, V, G, R, S] (outLens m n b q)) :
-    Writes .total I τ (solve stream).body (Env.frame [m, n, b, q] [U, V, G, R, S])
-      (Fp.blocks [U, V, G, R, S] (outLens m n b q))
-      (fun ν' => ν'.pos = ν.pos + n * b ∧ ∃ us vs gs rs ss,
-        ν'.readBlocks [U, V, G, R, S] (outLens m n b q) = some [us, vs, gs, rs, ss] ∧
-        StoredOut dec m n b q (IsRoundedStoredRun A δ δ' η₀ μ ε b q)
-          (τ.window stream ν.pos (n * b)) us vs gs rs ss) ν :=
-  solve_writes_of (Ext := fun _ _ _ Q W Q' H R => IsBasisExtensionErr η₀ μ ε Q W Q' H R)
-    (fun _ _ _ _ _ hxy hl hx hy => writes_applyColumns_error hA.matvec hxy hl hx hy)
-    (fun _ _ _ _ _ hxy hl hx hy => writes_applyColumns_error hA.rmatvec hxy hl hx hy)
-    hO hSample stream hok₀ hokU hokV hbuf hl hz
-
-/-- The program meets its rounded contract in total mode, at the dimensions `[m, n, b, q]`
-at which the basis extension is admitted for every block of the run. -/
-theorem solve_spec {dec : K → ℝ} {m n : ℕ} {A : Matrix (Fin m) (Fin n) ℝ}
-    {δ δ' η₀ μ ε : ℝ} {ok : ℕ → ℕ → ℕ → Prop} {I : Interp Op Tst K}
-    (hA : IsMatvecPair dec A δ δ' I)
-    (hO : I.Meets .total (Has.inj OrthOp.extend)
-      ((extendRel dec η₀ μ ε ok).spec ExtendOperands))
-    (hSample : IsSample I) (stream : ℕ) (hok : ∀ k b, ok m k b ∧ ok n k b) :
-    (solve (Op := Op) (Tst := Tst) stream).Triple I .total
-      ((solveRel stream dec A δ δ' η₀ μ ε).spec (SolveOperands m n)) :=
-  solve_spec_of stream fun _ _ _ _ _ _ _ _ _ hbuf hl hz =>
-    solve_writes hA hO hSample stream (hok _ _).2 (fun _ _ => (hok _ _).1)
-      (fun _ _ => (hok _ _).2) hbuf hl hz
-
-end Rounded
 
 end NLAlib.Krylov.GolubKahan.Band

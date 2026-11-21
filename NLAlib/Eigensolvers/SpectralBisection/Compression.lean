@@ -35,7 +35,8 @@ open Ops
 /-- Compression succeeds on the actual readable basis, matrix and scalar words, with writable
 output capacity disjoint from the shift cell. Source matrices may overlap the output because
 all source reads finish before the final write. No numerical model or successful-run premise
-is assumed; the four scratch allocations are discharged together. -/
+is assumed; the four scratch allocations are discharged together.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_compress {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has MatrixOp Op]
     {M : Machine K} (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     (unif : K → Su → K) (normal : Sg → K × K) {I : Interp Op Tst K}
@@ -48,7 +49,7 @@ theorem writes_compress {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op] 
     (ht : μ.store.get two.1 two.2 = some t) (hs : μ.store.get sigma.1 sigma.2 = some s)
     (hy : y.2 + 2 * (r * r) ≤ μ.store.len y.1)
     (hsy : Fp.Disj (Store.inBlock sigma.1 sigma.2 1) (Store.inBlock y.1 y.2 (2 * (r * r)))) :
-    Writes .total I τ (compress (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (compress (Op := Op) (Tst := Tst))
       (Env.frame [k, r] [q, a, two, sigma, y]) (Store.inBlock y.1 y.2 (2 * (r * r)))
       (fun μ' => μ'.pos = μ.pos ∧ μ'.store.readBlock y.1 y.2 (2 * (r * r)) =
         some ((EntryCodec.pair K).packFinMatrix

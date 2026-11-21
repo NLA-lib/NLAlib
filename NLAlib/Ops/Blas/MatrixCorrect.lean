@@ -37,7 +37,7 @@ theorem wp_copy [Inhabited K] {M : Machine K} {I : Interp Op Tst K} (hI : IsScal
     (hx : m.store.readBlock x.1 x.2 (2 * (rows * cols)) = some xs)
     (hy : y.2 + 2 * (rows * cols) ≤ m.store.len y.1)
     {Q : Mem K → Prop} (hQ : Q (m.updBlock y xs)) :
-    Wp md I τ (copy (Op := Op) (Tst := Tst)).body
+    Wp md I τ (copy (Op := Op) (Tst := Tst))
       (Env.frame [rows, cols] [x, y]) Q m := by
   refine wp_frame rfl rfl hl
     (wp_unaryMap_of_disj_or_eq (hI .copy) (f := id) hxy hx hy ?_)
@@ -52,7 +52,7 @@ theorem writes_copy [Inhabited K] {M : Machine K} {I : Interp Op Tst K} (hI : Is
       (Store.inBlock y.1 y.2 (2 * (rows * cols))) ∨ x = y)
     (hx : m.store.readBlock x.1 x.2 (2 * (rows * cols)) = some xs)
     (hy : y.2 + 2 * (rows * cols) ≤ m.store.len y.1) :
-    Writes md I τ (copy (Op := Op) (Tst := Tst)).body
+    Writes md I τ (copy (Op := Op) (Tst := Tst))
       (Env.frame [rows, cols] [x, y]) (Store.inBlock y.1 y.2 (2 * (rows * cols)))
       (fun m' => m'.pos = m.pos ∧
         m'.store.readBlock y.1 y.2 (2 * (rows * cols)) = some xs) m := by
@@ -76,7 +76,7 @@ theorem writes_conjTranspose {M : Machine K} {I : Interp Op Tst K} (hI : IsScala
     (hy : y.2 + 2 * (r * c) ≤ m.store.len y.1)
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (c * r)))
       (Store.inBlock y.1 y.2 (2 * (r * c)))) :
-    Writes md I τ (conjTranspose (Op := Op) (Tst := Tst)).body
+    Writes md I τ (conjTranspose (Op := Op) (Tst := Tst))
       (Env.frame [r, c] [x, y]) (Store.inBlock y.1 y.2 (2 * (r * c)))
       (fun m' => m'.store.HoldsEntries (EntryCodec.pair K) ⟨y.1, y.2, c, r, c⟩
         (fun i j => ((A j i).1, M.neg (A j i).2)) ∧ m'.pos = m.pos) m := by
@@ -85,7 +85,7 @@ theorem writes_conjTranspose {M : Machine K} {I : Interp Op Tst K} (hI : IsScala
     fun j hj i hi => Idx.add_lt_mul hi hj
   have hfp := C.regionFp_le_inBlock y.1 y.2 c (r * c)
     (fun i j => i * c + j) (fun _ => r) hbound
-  suffices hfill : Writes md I τ (conjTranspose (Op := Op) (Tst := Tst)).body
+  suffices hfill : Writes md I τ (conjTranspose (Op := Op) (Tst := Tst))
       (Env.frame [r, c] [x, y])
       (C.regionFp y.1 y.2 c (fun i j => i * c + j) (fun _ => r))
       (fun m' => m'.store.HoldsEntryRegion C y.1 y.2 c (fun i j => i * c + j)

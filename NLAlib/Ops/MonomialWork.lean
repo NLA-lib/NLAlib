@@ -7,6 +7,7 @@ module
 
 public import Mathlib.Tactic.Ring
 public import NLAlib.Ops.Confined
+public import NLAlib.Ops.Logic.KernelRfl
 public meta import Lean.Elab.Tactic.Basic
 
 /-!
@@ -22,10 +23,11 @@ site contributes one instruction for each list of dimensions its bounds allow, c
 static count takes a pointwise supremum over the branches of an `ite`, the values of a `bindIdx`
 and the exits of a `whileFuel`, so the bound needs one count that dominates them all, and one
 exists that depends only on the bounds of the slots. The bound of a fixed program is evaluated
-by `kernel_rfl`, an equation by reflexivity left to the kernel (which evaluates it with sharing,
-where the elaborator's `rfl` does not). It keeps each base with its own exponent, unlike the
-one-base estimate `NLAlib.Ops.stmtWeightedCost_le_coefficient_mul_pow`. The bases are a list, one
-per size of the program; a monomial lists its exponents, missing ones being $0$.
+by `kernel_rfl` (`NLAlib/Ops/Logic/KernelRfl.lean`), an equation by reflexivity left to the
+kernel (which evaluates it with sharing, where the elaborator's `rfl` does not). It keeps each
+base with its own exponent, unlike the one-base estimate
+`NLAlib.Ops.stmtWeightedCost_le_coefficient_mul_pow`. The bases are a list, one per size of the
+program; a monomial lists its exponents, missing ones being $0$.
 
 ## Main definitions
 
@@ -36,7 +38,6 @@ per size of the program; a monomial lists its exponents, missing ones being $0$.
 
 * `NLAlib.Ops.size_stmtCost_le_stmtWorkMono`: the number of instructions of the static count is
   at most the monomial bound.
-* `kernel_rfl`: an equation closed by reflexivity, checked by the kernel only.
 -/
 
 @[expose] public section
@@ -506,16 +507,5 @@ theorem size_stmtCost_le_stmtWorkMono (hb : ∀ b ∈ bs, 1 ≤ b)
 
 end Soundness
 
-open Lean Elab Tactic Meta in
-/-- **`kernel_rfl`**: close an equation `a = b` by `Eq.refl a` without the elaborator's
-definitional check; the kernel checks it when the declaration is added (and fails it there if
-`a` and `b` are not definitionally equal). For closed computations, such as the monomial bound
-of a fixed program, that the kernel evaluates with sharing. -/
-elab (name := kernelRfl) "kernel_rfl" : tactic => withMainContext do
-  let g ← getMainGoal
-  let t ← instantiateMVars (← g.getType)
-  let some (_, a, _) := t.eq? | throwError "kernel_rfl: not an equation"
-  g.assign (← mkEqRefl a)
-  replaceMainGoal []
 
 end NLAlib.Ops

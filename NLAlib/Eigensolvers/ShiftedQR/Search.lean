@@ -31,15 +31,17 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op] [Has CmpTst Tst]
 
 /-- Try the stored candidate only while the actual flag is zero; an accepted matrix and flag
 are retained by the skip branch. Flag's input and output views alias exactly. -/
-def tryCandidate : Impl Op Tst := opsImpl% [n, k] (A, S, Threshold, Target, Flag) → (Z, Flag) {
+def tryCandidate : Stmt Op Tst := ops% [n, k] (A, S, Threshold, Target, Flag) → (Z, Flag) {
   if (Has.inj CmpTst.isZero) [] (Flag) {
-    run trial.body [n, k] (A, S, Threshold, Target, Z, Flag)
+    run trial [n, k] (A, S, Threshold, Target, Z, Flag)
   } else { skip }
 }
 
 open Classical in
 /-- The stored first-accepted-candidate invariant extends by one candidate. Rejected prefixes
-execute the scalar trial; accepted prefixes execute the actual skip branch. -/
+execute the scalar trial; accepted prefixes execute the actual skip branch.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem tryCandidate_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {τp : Tape ℝ} {m : Mem ℝ} {n k : ℕ} {a s t target z f : ℕ × ℕ}
@@ -59,7 +61,7 @@ theorem tryCandidate_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock s.1 s.2 2 ⊔ Store.inBlock t.1 t.2 1 ⊔
         Store.inBlock target.1 target.2 1)) :
-    Writes .total I τp tryCandidate.body (Env.frame [n + 1, k] [a, s, t, target, f, z, f])
+    Writes .total I τp tryCandidate (Env.frame [n + 1, k] [a, s, t, target, f, z, f])
       (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (fun m' => m'.pos = m.pos ∧ CandidateHolds τ γ k H (ss ++ [shift]) z f m'.store ∧
         HoldsMatrix z (multiShiftedQRStep H (List.replicate k
@@ -89,17 +91,19 @@ theorem tryCandidate_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 /-- Visit a physically stored list of candidate shifts. Two caller-owned words hold the
 current shift, and the acceptance flag may already represent an accepted earlier prefix. -/
-def searchStoredWithScratch : Impl Op Tst := opsImpl% [n, k, len]
+def searchStoredWithScratch : Stmt Op Tst := ops% [n, k, len]
     (A, SS, Threshold, Target, S, Flag) → (Z, Flag) {
   for i < len {
-    run (unaryMap (Has.inj ScalarOp.copy)).body [2] (SS[2 * i], S);
-    run tryCandidate.body [n, k] (A, S, Threshold, Target, Flag, Z, Flag)
+    run (unaryMap (Has.inj ScalarOp.copy)) [2] (SS[2 * i], S);
+    run tryCandidate [n, k] (A, S, Threshold, Target, Flag, Z, Flag)
   }
 }
 
 /-- A stored finite candidate list extends the exact ordered search state. The source matrix,
 all candidate words and scalar test inputs are retained. Every trial uses actual scalar QR.
-An already accepted earlier prefix is supported without recomputing its matrix. -/
+An already accepted earlier prefix is supported without recomputing its matrix.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem searchStoredWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {τp : Tape ℝ} {m : Mem ℝ} {n k : ℕ} {a ss t target s z f : ℕ × ℕ}
@@ -116,7 +120,7 @@ theorem searchStoredWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hapart : Fp.Apart [s, z, f] [2, 2 * ((n + 1) * (n + 1)), 1])
     (hsep : Fp.Disj (Fp.blocks [s, z, f] [2, 2 * ((n + 1) * (n + 1)), 1])
       (Fp.blocks [a, ss, t, target] [2 * ((n + 1) * (n + 1)), 2 * candidates.length, 1, 1])) :
-    Writes .total I τp searchStoredWithScratch.body
+    Writes .total I τp searchStoredWithScratch
       (Env.frame [n + 1, k, candidates.length] [a, ss, t, target, s, f, z, f])
       (Fp.blocks [s, z, f] [2, 2 * ((n + 1) * (n + 1)), 1])
       (fun m' => m'.pos = m.pos ∧

@@ -19,7 +19,7 @@ Shared read footprints retain its mathematical inputs through preparation.
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_downLevelImpl`: total caller-owned downward level.
+* `NLAlib.SpectralBisection.writes_downLevelBody`: total caller-owned downward level.
 -/
 
 @[expose] public section
@@ -29,8 +29,9 @@ namespace NLAlib.SpectralBisection
 open Ops
 
 /-- The complete level performs both sampling batches before its actual active-slot scan.
-It returns all rounded step outcomes and the next parameter pair, with an exact write frame. -/
-theorem writes_downLevelImpl {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
+It returns all rounded step outcomes and the next parameter pair, with an exact write frame.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem writes_downLevelBody {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
     [Has SampleOp Op] [Has MatrixOp Op] [Has CmpTst Tst] [Has IdxTst Tst]
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp dec I)
@@ -58,7 +59,7 @@ theorem writes_downLevelImpl {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [
       (τ.window Stream.gauss (μ.pos + n) (4 * (n * n))) (j * n + i)
     let steps := fun lo => eighStep N n fuel R0 beta (A lo) R eps (L + d)
       (storedNodeSample n lo (U lo) S)
-    Writes .total I τ (downLevelImpl (node (Op := Op) (Tst := Tst))).body
+    Writes .total I τ (downLevelBody (node (Op := Op) (Tst := Tst)))
       (Env.frame [n, L, fuel, d] [par, lv, su, sg, ma, ua, qa, ea, sz, kd, kp, c, t])
       (downPrepareFp n d lv su sg t ⊔
         (Fp.loopPrefix (fun lo => activeStepFp n d lo ma ua qa ea sz kd kp (steps lo)) n ⊔

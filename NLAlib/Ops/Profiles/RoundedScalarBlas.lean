@@ -8,6 +8,8 @@ module
 public import NLAlib.Ops.Profiles.RoundedBlas
 public import NLAlib.Ops.Blas.DotFunction
 public import NLAlib.Ops.Logic.Writes
+public import NLAlib.Ops.RoutineSyntax
+public import NLAlib.Ops.Logic.RoutineIntro
 
 /-!
 # Sequential rounded BLAS over scalar-only primitives
@@ -62,9 +64,9 @@ theorem laws {K : Type} [Inhabited K] {M : Machine K} {dec : K → ℝ} {u : ℝ
     IsScalar M (I.link table) ∧ IsBlas1 dec (Blas.seq.err u) (fun _ => True) (I.link table) := by
   have hS : IsScalar M (I.link (erase (Tst := Tst) (fun _ => .copy))) := by
     intro o
-    exact Interp.link_meets_kept rfl (hI o)
+    exact Interp.link_satisfies_kept rfl (hI o)
   have h := (Blas.seq_certifies (Op := RCLikeBlas.Operation) hM hu
-    (fun _ => True)).meets _ hS
+    (fun _ => True)).satisfies _ hS
   simpa only [Interp.link_comp, table, tableWith, Blas.seq, Profile.over,
     Blas.level1, Blas.sumSeq] using h
 
@@ -76,7 +78,7 @@ theorem isFn_dot {K : Type} [Inhabited K] {M : Machine K} {I : Interp ScalarOp T
       (OutApart (fun _ => True)) := by
   have hS : IsScalar M (I.link (erase (Tst := Tst) (fun _ => .copy))) := by
     intro o
-    exact Interp.link_meets_kept rfl (hI o)
+    exact Interp.link_satisfies_kept rfl (hI o)
   have h := isFn_dot_seq hS
   simpa only [Interp.link_comp, table, tableWith, Blas.seq, Profile.over,
     Blas.level1, Blas.sumSeq] using h
@@ -92,11 +94,13 @@ theorem exact_laws {K : Type} [Inhabited K] {M : Machine K} {dec : K → ℝ}
   simpa [Blas.seq.err, Blas.level1Err, hsum] using
     (laws hM.toStdModel_zero le_rfl hI).2
 
-/-- The existing sequential norm lowering, renamed into any scalar-operation signature.
-Its entire syntax consists of scalar calls, loops and scoped scratch allocation. -/
-def nrm2 {Op : Type} [Has ScalarOp Op] : Impl Op Tst :=
-  ⟨1, 1, 1, ((.call (Has.inj Blas1Op.nrm2) [.var 0] [⟨0, .var 1⟩] [⟨1, .var 2⟩] :
-    Stmt RCLikeBlas.Operation Tst).link table).link (fun o => .inr (Has.inj o))⟩
+/-- The sequential Euclidean norm over scalar operations, `[n] (x : n) → (z : 1)`: the call of
+`nrm2` linked through the scalar table and renamed into any scalar-operation signature. Its
+whole tree consists of scalar calls, loops and scoped scratch allocation. -/
+def nrm2 {Op : Type} [Has ScalarOp Op] : Routine Op Tst :=
+  routine% [n] (x : n) → (z : 1) :=
+    ((.call (Has.inj Blas1Op.nrm2) [.var 0] [⟨0, .var 1⟩] [⟨1, .var 2⟩] :
+      Stmt RCLikeBlas.Operation Tst).link table).link (fun o => .inr (Has.inj o))
 
 /-- The actual scalar-lowered sequential norm computes the exact nonnegative Euclidean norm
 of its supplied real words. Only scalar contracts, exact arithmetic, input reads and output
@@ -111,7 +115,7 @@ theorem writes_nrm2_exact {Op : Type} [Has ScalarOp Op] {M : Machine ℝ}
         some (Real.sqrt (∑ i ∈ Finset.range n, (vec xs i) ^ 2))) m := by
   let rename : Table ScalarOp Op Tst := fun o => .inr (Has.inj o)
   let J := I.link rename
-  have hJ : IsScalar M J := fun o => Interp.link_meets_kept rfl (hS o)
+  have hJ : IsScalar M J := fun o => Interp.link_satisfies_kept rfl (hS o)
   have hB := exact_laws hE hJ
   have hw := writes_call_cell (τ := τ) (m := m) (I := J.link table) hB.nrm2
     (ρ := Env.frame [n] [x, z]) (d := [n]) (a := [x]) (z := z) (k := 0)
@@ -129,6 +133,19 @@ theorem writes_nrm2_exact {Op : Type} [Has ScalarOp Op] {M : Machine ℝ}
     have hv : value = Real.sqrt (∑ i ∈ Finset.range n, (vec xs i) ^ 2) := by
       simpa [nrm2ExactRel] using hrel
     exact ⟨by simpa using hpos, hv ▸ hvalue⟩
+
+/-- The sequential Euclidean norm meets its specification under exact scalar arithmetic: the
+written cell is the Euclidean norm of the block read. -/
+theorem nrm2_meets {Op : Type} [Has ScalarOp Op] {M : Machine ℝ} {I : Interp Op Tst ℝ}
+    (hS : IsScalar M I) (hE : ExactModel id M) :
+    (nrm2 (Op := Op) (Tst := Tst)).Meets I
+      (spec% [n] (xs) → ([v]) ensures v = Real.sqrt (∑ i ∈ Finset.range n, (vec xs i) ^ 2)) := by
+  routine_intro [n] (x, z) reads (xs)
+  have hz : z.2 < m.store.len z.1 := by omega
+  refine (writes_nrm2_exact hS hE (by simp [Mem.Live, hl.1, hl.2]) hxs hz hxz).mono (by fp_sub) ?_
+  rintro μ - ⟨hpos, hget⟩
+  exact ⟨by simpa using hpos, [[_]],
+    Mem.readBlocks_of_cons (Store.readBlock_one_of_get hget) rfl, rfl⟩
 
 /-- Unit-work scalar cells with no hidden primitive workspace. Canonical control, addressing,
 allocation and comparison costs remain the shared nonzero charges. -/

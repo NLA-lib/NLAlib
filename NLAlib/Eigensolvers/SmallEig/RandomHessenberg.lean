@@ -60,22 +60,22 @@ of the entries $j, j + 1$ of $\mathbf{g}$ (which zeros entry $j$), and the same 
 rows and the columns $j, j + 1$ of `A`; then `NLAlib.hessenbergReduceLast`. The interface is
 `[N] (A) → (A)`; the vector, the coefficients and the scratch are scoped.
 Algorithm: small-eig -/
-def rhess (sG : ℕ) : Impl O Q := opsImpl% [N] (A) → (A) {
+def rhess (sG : ℕ) : Stmt O Q := ops% [N] (A) → (A) {
   let G ← alloc (2 * N);
   let Cf ← alloc 4;
   let Uv ← alloc 4;
   let Tm ← alloc 10;
-  run (gaussDraws (O := O) (Q := Q) sG).body [2 * N] (G);
+  run (gaussDraws (O := O) (Q := Q) sG) [2 * N] (G);
   for j < N - 1 {
     call (Has.inj ScalarOp.copy) [] (G[2 * j + 2]) → (Uv);
     call (Has.inj ScalarOp.neg) [] (G[2 * j + 3]) → (Uv[1]);
     call (Has.inj ScalarOp.neg) [] (G[2 * j]) → (Uv[2]);
     call (Has.inj ScalarOp.copy) [] (G[2 * j + 1]) → (Uv[3]);
-    run (coefficients (Op := O) (Tst := Q)).body [] (Uv, Uv[2], Cf, Cf[2]);
-    run (rotateLeftWithScratch (Op := O) (Tst := Q)).body []
+    run (coefficients (Op := O) (Tst := Q)) [] (Uv, Uv[2], Cf, Cf[2]);
+    run (rotateLeftWithScratch (Op := O) (Tst := Q)) []
       (Cf, Cf[2], G[2 * j], G[2 * j + 2], Tm, G[2 * j], G[2 * j + 2]);
-    run (rotateRows (Op := O) (Tst := Q)).body [N, j] (A, Cf, Cf[2], A);
-    run (rotateColumns (Op := O) (Tst := Q)).body [N, j] (A, Cf, Cf[2], A)
+    run (rotateRows (Op := O) (Tst := Q)) [N, j] (A, Cf, Cf[2], A);
+    run (rotateColumns (Op := O) (Tst := Q)) [N, j] (A, Cf, Cf[2], A)
   };
   run (hessenbergReduceLast (O := O) (Q := Q)).body [N] (A, A)
 }
@@ -108,9 +108,10 @@ private theorem holdsMatrix_colVec {N L : ℕ} {s : Store ℝ} {v : Fin N → �
   · have : (j : ℕ) = 0 := Nat.lt_one_iff.mp j.isLt
     simpa [this] using (h i).2
 
-/-- **The coefficients of one rotation of `RHess`**: the four words
-$(\Re g_{j+1}, -\Im g_{j+1}, -\Re g_j, \Im g_j)$ into `Uv`, then their rounded Givens
-coefficients into `Cf`; only `Cf` and `Uv` are written. -/
+/-- **The coefficients of one rotation of `RHess`**: the four words $(\Re g_{j+1}, -\Im g_{j+1},
+-\Re g_j, \Im g_j)$ into `Uv`, then their rounded Givens coefficients into `Cf`; only `Cf` and `Uv`
+are written.
+A step in the proof of `rhess_loop_writes`. -/
 private theorem writes_rhessCoeffs {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hC : IsCmp id I) {τ : Tape ℝ} {ρ : Env} {m : Mem ℝ} {F : Fp} {P : Mem ℝ → Prop}
     {L t : ℕ} {x₀ x₁ y₀ y₁ : ℝ} {i₁ u₁ i₂ u₂ i₃ u₃ i₄ u₄ : List Operand} {ds : List IExp}
@@ -143,7 +144,7 @@ private theorem writes_rhessCoeffs {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     Writes .total I τ
       (.seq (.call (Has.inj ScalarOp.copy) [] i₁ u₁) (.seq (.call (Has.inj ScalarOp.neg) [] i₂ u₂)
         (.seq (.call (Has.inj ScalarOp.neg) [] i₃ u₃) (.seq (.call (Has.inj ScalarOp.copy) [] i₄ u₄)
-          (.seq (.frame ds as (coefficients (Op := O) (Tst := Q)).body) next))))) ρ F P m := by
+          (.seq (.frame ds as (coefficients (Op := O) (Tst := Q))) next))))) ρ F P m := by
   set G := Store.inBlock (L + 1) 0 4 ⊔ Store.inBlock (L + 2) 0 4
   have hU : ∀ k < 4, Store.inBlock (L + 2) k 1 ≤ G := fun k hk =>
     le_sup_of_le_right (Fp.inBlock_le_inBlock (by pomega) (by pomega))
@@ -195,7 +196,8 @@ variable {O Q : Type} [Has ScalarOp O] [Has CmpTst Q]
 omit [Has CmpTst Q] in
 /-- **The rotations of one step of `RHess`**: with the coefficients in `Cf`, the rotation of the
 entries $j, j + 1$ of the vector at `G`, then of the rows and the columns $j, j + 1$ of the matrix
-at `a`; only `a`, `G` and the scratch `Tm` are written. -/
+at `a`; only `a`, `G` and the scratch `Tm` are written.
+A step in the proof of `rhess_loop_writes`. -/
 private theorem writes_rhessRotate {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {ρ : Env} {m : Mem ℝ} {N L j : ℕ} (hj : j + 1 < N) {a : ℕ × ℕ}
     {B : Matrix (Fin N) (Fin N) ℂ} {v : Fin N → ℂ} {cs : ℂ × ℂ} {ds₆ ds₇ ds₈ : List IExp}
@@ -212,9 +214,9 @@ private theorem writes_rhessRotate {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     (hs : m.store.readBlock (L + 1) 2 2 = some [cs.2.re, cs.2.im])
     (hB : HoldsMatrix a B m.store) (hV : HoldsMatrix (L, 0) (replicateCol (Fin 1) v) m.store) :
     Writes .total I τ
-      (.seq (.frame ds₆ as₆ (rotateLeftWithScratch (Op := O) (Tst := Q)).body)
-        (.seq (.frame ds₇ as₇ (rotateRows (Op := O) (Tst := Q)).body)
-          (.frame ds₈ as₈ (rotateColumns (Op := O) (Tst := Q)).body))) ρ
+      (.seq (.frame ds₆ as₆ (rotateLeftWithScratch (Op := O) (Tst := Q)))
+        (.seq (.frame ds₇ as₇ (rotateRows (Op := O) (Tst := Q)))
+          (.frame ds₈ as₈ (rotateColumns (Op := O) (Tst := Q))))) ρ
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Fp.above L)
       (fun m' => m'.pos = m.pos ∧
         HoldsMatrix a (machineColRotation M ⟨j, by omega⟩ ⟨j + 1, hj⟩ cs.1 cs.2
@@ -336,10 +338,10 @@ private theorem rhess_loop_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
       (.seq (.loop n (.seq (.call (Has.inj ScalarOp.copy) [] i₁ u₁)
         (.seq (.call (Has.inj ScalarOp.neg) [] i₂ u₂) (.seq (.call (Has.inj ScalarOp.neg) [] i₃ u₃)
           (.seq (.call (Has.inj ScalarOp.copy) [] i₄ u₄)
-            (.seq (.frame ds₅ as₅ (coefficients (Op := O) (Tst := Q)).body)
-              (.seq (.frame ds₆ as₆ (rotateLeftWithScratch (Op := O) (Tst := Q)).body)
-                (.seq (.frame ds₇ as₇ (rotateRows (Op := O) (Tst := Q)).body)
-                  (.frame ds₈ as₈ (rotateColumns (Op := O) (Tst := Q)).body)))))))))
+            (.seq (.frame ds₅ as₅ (coefficients (Op := O) (Tst := Q)))
+              (.seq (.frame ds₆ as₆ (rotateLeftWithScratch (Op := O) (Tst := Q)))
+                (.seq (.frame ds₇ as₇ (rotateRows (Op := O) (Tst := Q)))
+                  (.frame ds₈ as₈ (rotateColumns (Op := O) (Tst := Q)))))))))))
         (.frame dsH asH (hessenbergReduceLast (O := O) (Q := Q)).body)) ρ
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Fp.above L)
       (fun m' => m'.pos = p ∧ HoldsMatrix a (rhessWord M A x) m'.store) m := by
@@ -401,11 +403,13 @@ variable {O Q : Type} [Has ScalarOp O] [Has SampleOp O] [Has CmpTst Q]
 /-- `NLAlib.SmallEig.rhess` on a scalar machine with exact comparisons and draws that store the
 tape entry: from $\mathbf{A}$ of order $N$ at `a`, it writes only the matrix, advances the position
 by $2N$, and stores `NLAlib.SmallEig.rhessWord` of $\mathbf{A}$ and the $2N$ entries of the
-stream `sG` at the start position. -/
+stream `sG` at the start position.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem rhess_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hC : IsCmp id I) (hSmp : IsSample I) {sG N : ℕ} {τ : Tape ℝ} {μ : Mem ℝ} {a : ℕ × ℕ}
     {A : Matrix (Fin N) (Fin N) ℂ} (hl : μ.Live [a]) (hA : HoldsMatrix a A μ.store) :
-    Writes .total I τ (rhess (O := O) (Q := Q) sG).body (Env.frame [N] [a, a])
+    Writes .total I τ (rhess (O := O) (Q := Q) sG) (Env.frame [N] [a, a])
       (Store.inBlock a.1 a.2 (2 * (N * N)))
       (fun μ' => μ'.pos = μ.pos + 2 * N ∧
         HoldsMatrix a (rhessWord M A fun j => τ (μ.pos + j) sG) μ'.store) μ := by
@@ -502,7 +506,9 @@ $\mathbf{A}$ at `a`, except with probability at most $(n + 1)s^2 + \varphi'$, th
 the matrix and stores an upper Hessenberg perturbed unitary similarity $\widehat{\mathbf{H}}$ of
 $\mathbf{A}$ with backward error $200(n + 1)^2\boldsymbol{u}\Sigma$ that has a diagonalization
 $\mathbf{V}'$, $\mathbf{d}'$ with $\|\mathbf{V}'\|_2\|\mathbf{V}'^{-1}\|_2 \le 2B$, eigenvalues
-separated by $g/2$, and every last-row weight at least $s^2/(64R^2B^2)$. -/
+separated by $g/2$, and every last-row weight at least $s^2/(64R^2B^2)$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem rhess_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hzero : M.lit 0 = 0) (hC : IsCmp id I) (hSmp : IsSample I)
     {law : ℕ → Measure ℝ} {sG : ℕ} (hG : law sG = gaussianReal 0 1) {n : ℕ}
@@ -514,7 +520,7 @@ theorem rhess_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsS
     (hnu : 100 * ((n : ℝ) + 1) ^ 2 * u ≤ 1) (hus : 60 * ((n : ℝ) + 1) * u ≤ s / (2 * R))
     (huc : 200 * ((n : ℝ) + 1) ^ 2 * u * S ≤
       min (g / (32 * (n + 1) * B)) (s * g / (1024 * (n + 1) * B ^ 2 * R))) {a : ℕ × ℕ} :
-    PWrites law I (rhess (O := O) (Q := Q) sG).body (Env.frame [n + 1] [a, a])
+    PWrites law I (rhess (O := O) (Q := Q) sG) (Env.frame [n + 1] [a, a])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
       (fun μ => HoldsMatrix a A μ.store ∧ μ.Live [a])
       (fun μ' => ∃ (H V' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d' : Fin (n + 1) → ℂ),
@@ -575,7 +581,7 @@ theorem rhess_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsS
 theorem rhess_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hC : IsCmp id I) (hSmp : IsSample I) {sG N : ℕ} {τ : Tape ℝ} {μ : Mem ℝ} {a : ℕ × ℕ}
     {A : Matrix (Fin N) (Fin N) ℂ} (hl : μ.Live [a]) (hA : HoldsMatrix a A μ.store) :
-    Writes .total I τ (rhess (O := O) (Q := Q) sG).body (Env.frame [N] [a, a])
+    Writes .total I τ (rhess (O := O) (Q := Q) sG) (Env.frame [N] [a, a])
       (Store.inBlock a.1 a.2 (2 * (N * N)))
       (fun μ' => ∃ H : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix a H μ'.store) μ :=
   (rhess_writes_word hS hC hSmp hl hA).mono le_rfl fun _ _ h => ⟨_, h.2⟩

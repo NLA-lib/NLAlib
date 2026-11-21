@@ -25,7 +25,7 @@ namespace NLAlib.SpectralBisection
 open Ops
 
 private theorem upSplit_shape (n k r : ℕ) (offs : List ℕ) (hk : k ≤ n) (hr : r ≤ k) :
-    (stmtCost (upSplitResultImpl (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body
+    (stmtCost (upSplitResult (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))
       ([k, r] ++ offs)).CallsSatisfy (MatrixShape n) := by
   refine (Count.callsSatisfy_add _ _ (MatrixShape n)).mpr ⟨?_, ?_⟩
   · change (Count.one (DenseOp.matrix .mul) [k, r, r] :
@@ -40,7 +40,7 @@ private theorem upSplit_shape (n k r : ℕ) (offs : List ℕ) (hk : k ≤ n) (hr
 
 private theorem upNode_shape (n d lo k : ℕ) (offs : List ℕ)
     (hlen : offs.length = 6) (hk : k ≤ n) :
-    (stmtCost (upNodeImpl (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body
+    (stmtCost (upNode (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))
       ([n, d, lo, k] ++ offs)).CallsSatisfy (MatrixShape n) := by
   refine (Count.callsSatisfy_add _ _ (MatrixShape n)).mpr
     ⟨Count.callsSatisfy_test _ _ _, ?_⟩
@@ -63,7 +63,7 @@ private theorem upNode_shape (n d lo k : ℕ) (offs : List ℕ)
   · exact fun os => upSplit_shape n k r os hk hrk
 
 private theorem upNodes_shape (n d : ℕ) (offs : List ℕ) (hlen : offs.length = 7) :
-    (stmtCost (upNodesImpl (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body
+    (stmtCost (upNodes (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))
       ([n, d] ++ offs)).CallsSatisfy (MatrixShape n) := by
   refine (Count.callsSatisfy_sum _ _ (MatrixShape n)).mpr ?_
   intro lo hlo
@@ -96,7 +96,7 @@ private theorem upLevel_shape (n d : ℕ) (offs : List ℕ) :
 /-- Reverse reconstruction has root-bounded matrix shapes for every bounded metadata query.
 Loop depth and shared-arena offsets do not enter the matrix-workspace envelope. -/
 theorem upwardPass_matrixShapes (n L : ℕ) (offs : List ℕ) (hlen : offs.length = 8) :
-    (stmtCost (upwardPass (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body
+    (stmtCost (upwardPass (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))
       ([n, L] ++ offs)).CallsSatisfy (MatrixShape n) := by
   refine (Count.callsSatisfy_sum _ _ (MatrixShape n)).mpr ?_
   intro r hr

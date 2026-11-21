@@ -218,11 +218,11 @@ variable {Op Tst : Type} [Has ScalarOp Op]
 for a stored vector `V` and order-$n$ matrix `A`, accumulated in the pair `Y[2i]` from $0$ by
 $n$ rounded complex multiply–adds with the stored pair `O` (the number $1$); the two scratch
 pairs `T`, `Z` are caller-owned. The interface is `[n, i] (V, A, O, T, Z) → (Y)`. -/
-def rowEntry : Impl Op Tst := opsImpl% [n, i] (V, A, O, T, Z) → (Y) {
+def rowEntry : Stmt Op Tst := ops% [n, i] (V, A, O, T, Z) → (Y) {
   call (Has.inj (ScalarOp.lit 0)) [] () → (Y[2 * i]);
   call (Has.inj (ScalarOp.lit 0)) [] () → (Y[2 * i + 1]);
   for l < n {
-    run Pair.linearCombination.body [] (V[2 * l], O, A[2 * (i * n + l)], Y[2 * i], T, Z);
+    run Pair.linearCombination [] (V[2 * l], O, A[2 * (i * n + l)], Y[2 * i], T, Z);
     call (Has.inj ScalarOp.copy) [] (Z) → (Y[2 * i]);
     call (Has.inj ScalarOp.copy) [] (Z[1]) → (Y[2 * i + 1])
   }
@@ -233,8 +233,9 @@ def rowEntryPair (M : Machine ℝ) (o : ℝ × ℝ) {N : ℕ} (r : Fin N → ℂ
     (W : Matrix (Fin N) (Fin N) ℂ) (i : Fin N) : ℝ × ℝ :=
   rowEntryWord M o (M.lit 0, M.lit 0) (vecGetD r) (vecGetD fun l => W l i) N
 
-/-- One round of `NLAlib.ShiftedQR.rowEntry`: the rounded multiply–add into `Z` and the copy
-back to the entry pair. -/
+/-- One round of `NLAlib.ShiftedQR.rowEntry`: the rounded multiply–add into `Z` and the copy back to
+the entry pair.
+A step in the proof of `rowEntry_writes_word`. -/
 private theorem rowEntry_round_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {n i l : ℕ} {v a o t z y : ℕ × ℕ}
     {r : Fin (n + 1) → ℂ} {W : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {oo w : ℝ × ℝ}
@@ -256,7 +257,7 @@ private theorem rowEntry_round_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (.seq (.frame [] [⟨0, .var 2 + .const 2 * .var 8⟩, ⟨2, .var 4⟩,
           ⟨1, .var 3 + .const 2 * (.var 1 * .var 0 + .var 8)⟩,
           ⟨5, .var 7 + .const 2 * .var 1⟩, ⟨3, .var 5⟩, ⟨4, .var 6⟩]
-          (Pair.linearCombination (Op := Op) (Tst := Tst)).body)
+          (Pair.linearCombination (Op := Op) (Tst := Tst)))
         (.seq (.call (Has.inj ScalarOp.copy) [] [⟨4, .var 6⟩] [⟨5, .var 7 + .const 2 * .var 1⟩])
           (.call (Has.inj ScalarOp.copy) [] [⟨4, .var 6 + .const 1⟩]
             [⟨5, .var 7 + .const 2 * .var 1 + .const 1⟩])))
@@ -326,7 +327,9 @@ private theorem rowEntry_round_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 $\mathbf{r}$ stored at `V`, the order-$(n+1)$ matrix $\mathbf{W}$ at `A`, the pair `oo` at `O`,
 and the scratch pairs `T`, `Z` and the entry pair `Y[2i]` apart from each other and from the
 inputs, `rowEntry` stores at `Y[2i]` the pair `NLAlib.ShiftedQR.rowEntryPair`, and writes only
-that pair and the scratch. -/
+that pair and the scratch.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem rowEntry_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {n i : ℕ} {v a o t z y : ℕ × ℕ}
     {r : Fin (n + 1) → ℂ} {W : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {oo : ℝ × ℝ}
@@ -342,7 +345,7 @@ theorem rowEntry_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (htz : Fp.Disj (Store.inBlock t.1 t.2 2) (Store.inBlock z.1 z.2 2))
     (htY : Fp.Disj (Store.inBlock t.1 t.2 2) (Store.inBlock y.1 (y.2 + 2 * i) 2))
     (hzY : Fp.Disj (Store.inBlock z.1 z.2 2) (Store.inBlock y.1 (y.2 + 2 * i) 2)) :
-    Writes .total I τ (rowEntry (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (rowEntry (Op := Op) (Tst := Tst))
       (Env.frame [n + 1, i] [v, a, o, t, z, y])
       (Store.inBlock y.1 (y.2 + 2 * i) 2 ⊔ Store.inBlock t.1 t.2 2 ⊔ Store.inBlock z.1 z.2 2)
       (fun m' => m'.pos = m.pos ∧
@@ -387,9 +390,9 @@ theorem rowEntry_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
 order-$n$ matrix `A` into the vector `Y`, entry by entry (`NLAlib.ShiftedQR.rowEntry`), with the
 stored pair `O` (the number $1$) and the caller-owned scratch pairs `T`, `Z`. The interface is
 `[n] (V, A, O, T, Z) → (Y)`. -/
-def rowMul : Impl Op Tst := opsImpl% [n] (V, A, O, T, Z) → (Y) {
+def rowMul : Stmt Op Tst := ops% [n] (V, A, O, T, Z) → (Y) {
   for i < n {
-    run rowEntry.body [n, i] (V, A, O, T, Z, Y)
+    run rowEntry [n, i] (V, A, O, T, Z, Y)
   }
 }
 
@@ -401,7 +404,9 @@ def rowMulVec (M : Machine ℝ) (o : ℝ × ℝ) {N : ℕ} (r : Fin N → ℂ)
 /-- The rounded row product on any scalar machine: with the vector $\mathbf{r}$ at `V`, the
 matrix $\mathbf{W}$ at `A`, the pair `oo` at `O`, and the output vector and the two scratch pairs
 apart from each other and from the inputs, `rowMul` stores at `Y` the vector
-`NLAlib.ShiftedQR.rowMulVec`, and writes only `Y` and the scratch. -/
+`NLAlib.ShiftedQR.rowMulVec`, and writes only `Y` and the scratch.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem rowMul_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {v a o t z y : ℕ × ℕ}
     {r : Fin (n + 1) → ℂ} {W : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {oo : ℝ × ℝ}
@@ -416,7 +421,7 @@ theorem rowMul_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (htz : Fp.Disj (Store.inBlock t.1 t.2 2) (Store.inBlock z.1 z.2 2))
     (htY : Fp.Disj (Store.inBlock t.1 t.2 2) (Store.inBlock y.1 y.2 (2 * (1 * (n + 1)))))
     (hzY : Fp.Disj (Store.inBlock z.1 z.2 2) (Store.inBlock y.1 y.2 (2 * (1 * (n + 1))))) :
-    Writes .total I τ (rowMul (Op := Op) (Tst := Tst)).body (Env.frame [n + 1] [v, a, o, t, z, y])
+    Writes .total I τ (rowMul (Op := Op) (Tst := Tst)) (Env.frame [n + 1] [v, a, o, t, z, y])
       (Store.inBlock y.1 y.2 (2 * (1 * (n + 1))) ⊔ Store.inBlock t.1 t.2 2 ⊔
         Store.inBlock z.1 z.2 2)
       (fun m' => m'.pos = m.pos ∧
@@ -477,11 +482,11 @@ copied into the scratch `W`, the shift pair `S` subtracted from its diagonal
 (`NLAlib.ShiftedQR.shiftDiagonal`), the rounded row product into the scratch vector `Y`
 (`NLAlib.ShiftedQR.rowMul`, with the pair `O` and the scratch pairs `T`, `Z`), and `Y` copied
 back. The interface is `[n] (V, A, S, O, W, T, Z, Y) → (V)`. -/
-def rowShiftStep : Impl Op Tst := opsImpl% [n] (V, A, S, O, W, T, Z, Y) → (V) {
-  run (unaryMap (Has.inj ScalarOp.copy)).body [2 * (n * n)] (A, W);
-  run shiftDiagonal.body [n] (W, S, W);
-  run rowMul.body [n] (V, W, O, T, Z, Y);
-  run (unaryMap (Has.inj ScalarOp.copy)).body [2 * n] (Y, V)
+def rowShiftStep : Stmt Op Tst := ops% [n] (V, A, S, O, W, T, Z, Y) → (V) {
+  run (unaryMap (Has.inj ScalarOp.copy)) [2 * (n * n)] (A, W);
+  run shiftDiagonal [n] (W, S, W);
+  run rowMul [n] (V, W, O, T, Z, Y);
+  run (unaryMap (Has.inj ScalarOp.copy)) [2 * n] (Y, V)
 }
 
 /-- One rounded step of the row recurrence on any scalar machine: with $\mathbf{r}$ at `V`,
@@ -489,7 +494,9 @@ $\mathbf{H}$ at `A`, the shift $s$ at `S`, the pair `oo` at `O`, and the scratch
 (a matrix), `T`, `Z` (pairs), `Y` (a vector) apart from each other and from the inputs,
 `rowShiftStep` stores at `V` the row product `NLAlib.ShiftedQR.rowMulVec` of $\mathbf{r}$ and the
 machine shift `NLAlib.ShiftedQR.machineShiftedPrefix` of $\mathbf{H}$, and writes only `V` and
-the scratch. -/
+the scratch.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem rowShiftStep_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {v a s o w t z y : ℕ × ℕ}
     {r : Fin (n + 1) → ℂ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {sh : ℂ} {oo : ℝ × ℝ}
@@ -510,7 +517,7 @@ theorem rowShiftStep_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (htz : Fp.Disj (Store.inBlock t.1 t.2 2) (Store.inBlock z.1 z.2 2))
     (hty : Fp.Disj (Store.inBlock t.1 t.2 2) (Store.inBlock y.1 y.2 (2 * (1 * (n + 1)))))
     (hzy : Fp.Disj (Store.inBlock z.1 z.2 2) (Store.inBlock y.1 y.2 (2 * (1 * (n + 1))))) :
-    Writes .total I τ (rowShiftStep (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (rowShiftStep (Op := Op) (Tst := Tst))
       (Env.frame [n + 1] [v, a, s, o, w, t, z, y, v])
       (Store.inBlock v.1 v.2 (2 * (1 * (n + 1))) ⊔
         (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock t.1 t.2 2 ⊔
@@ -621,7 +628,7 @@ theorem norm_toLp_rowMulVec_sub_le {M : Machine ℝ} {u C : ℝ} (hM : StdModel 
 /-- **The start of the row recurrence**: the vector `V` of length $n$ set to
 $\mathbf{e}_{n-1}$ (zeros, then the literal $1$ in the last entry) and the pair `O` to the
 literals $(1, 0)$. The interface is `[n] () → (V, O)`. -/
-def rowInit : Impl Op Tst := opsImpl% [n] () → (V, O) {
+def rowInit : Stmt Op Tst := ops% [n] () → (V, O) {
   call (Has.inj (ScalarOp.lit 1)) [] () → (O);
   call (Has.inj (ScalarOp.lit 0)) [] () → (O[1]);
   for i < n {
@@ -644,12 +651,14 @@ theorem rowInitVec_eq {M : Machine ℝ} (h0 : M.lit 0 = 0) (h1 : M.lit 1 = 1) (n
 
 /-- The start of the row recurrence on any scalar machine: `rowInit` stores
 `NLAlib.ShiftedQR.rowInitVec` at `V` and the literal pair $(1, 0)$ at `O`, and writes only
-these. -/
+these.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem rowInit_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {v o : ℕ × ℕ}
     (hv : v.2 + 2 * (1 * (n + 1)) ≤ m.store.len v.1) (ho : o.2 + 2 ≤ m.store.len o.1)
     (hvo : Fp.Disj (Store.inBlock v.1 v.2 (2 * (1 * (n + 1)))) (Store.inBlock o.1 o.2 2)) :
-    Writes .total I τ (rowInit (Op := Op) (Tst := Tst)).body (Env.frame [n + 1] [v, o])
+    Writes .total I τ (rowInit (Op := Op) (Tst := Tst)) (Env.frame [n + 1] [v, o])
       (Store.inBlock v.1 v.2 (2 * (1 * (n + 1))) ⊔ Store.inBlock o.1 o.2 2)
       (fun m' => m'.pos = m.pos ∧
         HoldsMatrix v (Matrix.replicateCol (Fin 1) (rowInitVec M n)) m'.store ∧
@@ -763,9 +772,9 @@ theorem readBlock_pair_of_flatMap {s : Store ℝ} {b : ℕ × ℕ} {zs : List �
 
 /-- **The row recurrence**: $k$ rounded steps (`NLAlib.ShiftedQR.rowShiftStep`) in place on
 `V` with the shifts `S[2j]`, $j < k$. The interface is `[n, k] (V, A, S, O, W, T, Z, Y) → (V)`. -/
-def rowPolyLoop : Impl Op Tst := opsImpl% [n, k] (V, A, S, O, W, T, Z, Y) → (V) {
+def rowPolyLoop : Stmt Op Tst := ops% [n, k] (V, A, S, O, W, T, Z, Y) → (V) {
   for j < k {
-    run rowShiftStep.body [n] (V, A, S[2 * j], O, W, T, Z, Y, V)
+    run rowShiftStep [n] (V, A, S[2 * j], O, W, T, Z, Y, V)
   }
 }
 
@@ -783,7 +792,9 @@ def rowPolyVec (M : Machine ℝ) (o : ℝ × ℝ) {n : ℕ} (H : Matrix (Fin (n 
 `A`, the shifts `ss` stored as pairs at `S`, the pair `oo` at `O`, the scratch views `W`, `T`,
 `Z`, `Y` apart from each other and from the inputs, and `V` apart from the other inputs,
 `rowPolyLoop` stores at `V` the vector `NLAlib.ShiftedQR.rowPolyVec` after all the shifts, and
-writes only `V` and the scratch. -/
+writes only `V` and the scratch.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem rowPolyLoop_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {v a s o w t z y : ℕ × ℕ}
     {r₀ : Fin (n + 1) → ℂ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ss : List ℂ}
@@ -808,7 +819,7 @@ theorem rowPolyLoop_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (htz : Fp.Disj (Store.inBlock t.1 t.2 2) (Store.inBlock z.1 z.2 2))
     (hty : Fp.Disj (Store.inBlock t.1 t.2 2) (Store.inBlock y.1 y.2 (2 * (1 * (n + 1)))))
     (hzy : Fp.Disj (Store.inBlock z.1 z.2 2) (Store.inBlock y.1 y.2 (2 * (1 * (n + 1))))) :
-    Writes .total I τ (rowPolyLoop (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (rowPolyLoop (Op := Op) (Tst := Tst))
       (Env.frame [n + 1, ss.length] [v, a, s, o, w, t, z, y, v])
       (Store.inBlock v.1 v.2 (2 * (1 * (n + 1))) ⊔
         (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock t.1 t.2 2 ⊔

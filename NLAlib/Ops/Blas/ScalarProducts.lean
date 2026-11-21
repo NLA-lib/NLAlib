@@ -32,15 +32,15 @@ namespace NLAlib.Ops.ScalarProducts
 variable {Op Tst : Type} [Has ScalarOp Op]
 
 /-- One scalar multiplication followed by one accumulation. -/
-def step : Impl Op Tst := opsImpl% [] (X, Y, t, out) → () {
+def step : Stmt Op Tst := ops% [] (X, Y, t, out) → () {
   call (Has.inj ScalarOp.mul) [] (X, Y) → (t);
   call (Has.inj ScalarOp.add) [] (out, t) → (out)
 }
 
 /-- Stream products from two strided word views, using one caller-owned temporary. -/
-def sum : Impl Op Tst := opsImpl% [n, sx, sy] (X, Y, t, out) → () {
+def sum : Stmt Op Tst := ops% [n, sx, sy] (X, Y, t, out) → () {
   call (Has.inj (ScalarOp.lit 0)) [] () → (out);
-  for j < n { run step.body [] (X[sx * j], Y[sy * j], t, out) }
+  for j < n { run step [] (X[sx * j], Y[sy * j], t, out) }
 }
 
 /-- The actual streamed accumulator: literal zero followed by one multiplication and one
@@ -61,12 +61,11 @@ theorem writes_step_word (hS : IsScalar M I)
     (hA : m.store.readBlock out.1 out.2 1 = some [acc])
     (hTO : Fp.Disj (Store.inBlock t.1 t.2 1) (Store.inBlock out.1 out.2 1))
     (ht : t.2 + 1 ≤ m.store.len t.1) (ho : out.2 + 1 ≤ m.store.len out.1) :
-    Writes .total I tape step.body (Env.frame [] [x, y, t, out])
+    Writes .total I tape step (Env.frame [] [x, y, t, out])
       (Store.inBlock t.1 t.2 1 ⊔ Store.inBlock out.1 out.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 1 =
         some [M.add acc (M.mul a b)]) m := by
   unfold step
-  dsimp only
   refine Writes.seq_le (writes_call_fn1 (hS .mul) (xs := [[a], [b]])
     rfl rfl rfl rfl rfl trivial (by
       simp only [Mem.live_append, Mem.live_cons, Mem.live_nil]
@@ -98,12 +97,11 @@ theorem writes_sum_word (hS : IsScalar M I)
       (Store.inBlock y.1 (y.2 + sy * j) 1))
     (hTO : Fp.Disj (Store.inBlock t.1 t.2 1) (Store.inBlock out.1 out.2 1))
     (ht : t.2 + 1 ≤ m.store.len t.1) (ho : out.2 + 1 ≤ m.store.len out.1) :
-    Writes .total I tape sum.body (Env.frame [n, sx, sy] [x, y, t, out])
+    Writes .total I tape sum (Env.frame [n, sx, sy] [x, y, t, out])
       (Store.inBlock t.1 t.2 1 ⊔ Store.inBlock out.1 out.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 1 =
         some [sumWord M xs ys n]) m := by
   unfold sum
-  dsimp only
   refine Writes.seq_le (writes_call_fn1 (hS (.lit 0)) (xs := [])
     rfl rfl rfl rfl rfl trivial (by simpa [Mem.Live] using hl out (by simp))
     rfl rfl rfl ho) le_sup_right ?_
@@ -149,7 +147,7 @@ theorem writes_step (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hA : m.store.readBlock out.1 out.2 1 = some [acc])
     (hTO : Fp.Disj (Store.inBlock t.1 t.2 1) (Store.inBlock out.1 out.2 1))
     (ht : t.2 + 1 ≤ m.store.len t.1) (ho : out.2 + 1 ≤ m.store.len out.1) :
-    Writes .total I tape step.body (Env.frame [] [x, y, t, out])
+    Writes .total I tape step (Env.frame [] [x, y, t, out])
       (Store.inBlock t.1 t.2 1 ⊔ Store.inBlock out.1 out.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 1 = some [acc + a * b]) m := by
   simpa only [RCLikeBlas.machine] using
@@ -169,7 +167,7 @@ theorem writes_sum (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
       (Store.inBlock y.1 (y.2 + sy * j) 1))
     (hTO : Fp.Disj (Store.inBlock t.1 t.2 1) (Store.inBlock out.1 out.2 1))
     (ht : t.2 + 1 ≤ m.store.len t.1) (ho : out.2 + 1 ≤ m.store.len out.1) :
-    Writes .total I tape sum.body (Env.frame [n, sx, sy] [x, y, t, out])
+    Writes .total I tape sum (Env.frame [n, sx, sy] [x, y, t, out])
       (Store.inBlock t.1 t.2 1 ⊔ Store.inBlock out.1 out.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 1 =
         some [∑ j ∈ Finset.range n, xs j * ys j]) m := by

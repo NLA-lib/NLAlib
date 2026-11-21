@@ -76,7 +76,7 @@ theorem shPotentialAccept_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS 
     (hT : HoldsMatrix (L + 5, 0) H' m.store) (hA : HoldsMatrix a H m.store)
     (hpt : m.store.get (L + 2) 0 = some pv) (hg : m.store.get (L + 11) 0 = some gv)
     (hf : m.store.get f.1 f.2 = some fv) :
-    Writes .total I τ (shPotentialAccept (O := O) (Q := Q)).body
+    Writes .total I τ (shPotentialAccept (O := O) (Q := Q))
       (Env.frame [n + 1, k, q] [(L + 2, 0), (L + 5, 0), (L + 9, 0), a, (L + 11, 0), f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 11) 0 1 ⊔
         Store.inBlock f.1 f.2 1 ⊔ Store.inBlock (L + 9) 0 1)
@@ -121,7 +121,7 @@ theorem shTrial_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
     (hA : HoldsMatrix a H m.store) (hs : m.store.readBlock (L + 10) o 2 = some [r.re, r.im])
     (hthr : m.store.get thr.1 thr.2 = some tv) (hpt : m.store.get (L + 2) 0 = some pv)
     (hg : m.store.get (L + 11) 0 = some gv) (hf : m.store.get f.1 f.2 = some fv) :
-    Writes .total I τ (shTrial (O := O) (Q := Q)).body
+    Writes .total I τ (shTrial (O := O) (Q := Q))
       (Env.frame [n + 1, k, q] [a, (L + 10, o), thr, (L + 2, 0), (L + 5, 0), (L + 6, 0),
         (L + 7, 0), (L + 8, 0), (L + 9, 0), a, (L + 11, 0), f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 11) 0 1 ⊔
@@ -180,7 +180,7 @@ theorem shTrials_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScala
     (hs : m.store.readBlock (L + 10) 0 (2 * (excNet ε).length) = some xs)
     (hthr : m.store.get thr.1 thr.2 = some tv) (hpt : m.store.get (L + 2) 0 = some pv)
     (hg : m.store.get (L + 11) 0 = some gv) (hf : m.store.get f.1 f.2 = some fv) :
-    Writes .total I τ (shTrials (O := O) (Q := Q)).body
+    Writes .total I τ (shTrials (O := O) (Q := Q))
       (Env.frame [n + 1, k, q, (excNet ε).length] [a, (L + 10, 0), thr, (L + 2, 0), (L + 5, 0),
         (L + 6, 0), (L + 7, 0), (L + 8, 0), (L + 9, 0), a, (L + 11, 0), f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 11) 0 1 ⊔
@@ -223,7 +223,7 @@ theorem shExc_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M
     {ss : List ℂ} {cg cr cw cp tv : ℝ}
     (hctx : ShCtx L k ε H ss cg cr cw cp tv a s wg wr ww wp g thr f m) {z : ℂ} {p : ℝ}
     (hZ : m.store.readBlock L 0 2 = some [z.re, z.im]) (hRt : m.store.get (L + 1) 0 = some p) :
-    Writes .total I τ (shExc (O := O) (Q := Q)).body
+    Writes .total I τ (shExc (O := O) (Q := Q))
       (Env.frame [n + 1, k, q, (excNet ε).length] [a, (L, 0), wr, ww, wp, g, thr, (L + 1, 0),
         (L + 2, 0), (L + 5, 0), (L + 6, 0), (L + 7, 0), (L + 8, 0), (L + 9, 0), (L + 10, 0), a,
         (L + 11, 0), f])
@@ -291,7 +291,7 @@ theorem shDecide_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScala
     (hZ : m.store.readBlock L 0 2 = some [z.re, z.im]) (hRt : m.store.get (L + 1) 0 = some p)
     (hP0 : m.store.get (L + 3) 0 = some p0) (hP1 : m.store.get (L + 4) 0 = some p1)
     (hT : HoldsMatrix (L + 5, 0) H' m.store) :
-    Writes .total I τ (shDecide (O := O) (Q := Q)).body
+    Writes .total I τ (shDecide (O := O) (Q := Q))
       (Env.frame [n + 1, k, q, (excNet ε).length] [a, (L, 0), wr, ww, wp, g, thr, (L + 1, 0),
         (L + 2, 0), (L + 3, 0), (L + 4, 0), (L + 5, 0), (L + 6, 0), (L + 7, 0), (L + 8, 0),
         (L + 9, 0), (L + 10, 0), a, (L + 11, 0), f])
@@ -328,7 +328,7 @@ theorem shTestStep_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSca
     (hr : ShRoom L n k ε f m) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {z : ℂ} {cg : ℝ}
     (hA : HoldsMatrix a H m.store) (hZ : m.store.readBlock L 0 2 = some [z.re, z.im])
     (hcg : m.store.get wg.1 wg.2 = some cg) :
-    Writes .total I τ (shTestStep (O := O) (Q := Q)).body
+    Writes .total I τ (shTestStep (O := O) (Q := Q))
       (Env.frame [n + 1, k] [a, (L, 0), wg, (L + 5, 0), (L + 6, 0), (L + 3, 0), (L + 4, 0)])
       (Store.inBlock (L + 5) 0 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 6) 0 (2 * k) ⊔
         Store.inBlock (L + 3) 0 1 ⊔ Store.inBlock (L + 4) 0 1)
@@ -375,7 +375,7 @@ theorem shPrefix_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScala
     {ε : ℝ} {a s wg wr ww wp g thr f : ℕ × ℕ} (hv : ShViews L n k ε a s wg wr ww wp g thr f)
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ss : List ℂ} {cg cr cw cp tv : ℝ}
     (hctx : ShCtx L k ε H ss cg cr cw cp tv a s wg wr ww wp g thr f m) :
-    Writes .total I τ (shPrefix (O := O) (Q := Q)).body
+    Writes .total I τ (shPrefix (O := O) (Q := Q))
       (Env.frame [n + 1, q, k] [a, s, wg, (L, 0), (L + 1, 0), (L + 3, 0), (L + 4, 0), (L + 5, 0),
         (L + 6, 0)])
       (Store.inBlock (L + 1) 0 1 ⊔ Store.inBlock L 0 2 ⊔
@@ -424,7 +424,7 @@ theorem shStepWithScratch_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS 
     (hv : ShViews L n k ε a s wg wr ww wp g thr f) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {ss : List ℂ} {cg cr cw cp tv : ℝ}
     (hctx : ShCtx L k ε H ss cg cr cw cp tv a s wg wr ww wp g thr f m) :
-    Writes .total I τ (shStepWithScratch (O := O) (Q := Q)).body
+    Writes .total I τ (shStepWithScratch (O := O) (Q := Q))
       (Env.frame [n + 1, q, k, (excNet ε).length] [a, s, wg, wr, ww, wp, g, thr, (L, 0),
         (L + 1, 0), (L + 2, 0), (L + 3, 0), (L + 4, 0), (L + 5, 0), (L + 6, 0), (L + 7, 0),
         (L + 8, 0), (L + 9, 0), (L + 10, 0), (L + 11, 0), a, f])
@@ -467,12 +467,12 @@ theorem shStep_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar 
     (hg : m.store.readBlock g.1 g.2 (2 * (excNet ε).length) =
       some ((excNet ε).flatMap fun z => [z.re, z.im]))
     (hthr : m.store.get thr.1 thr.2 = some tv) (hrf : f.2 < m.store.len f.1) :
-    Writes .total I τ (shStep (O := O) (Q := Q)).body
+    Writes .total I τ (shStep (O := O) (Q := Q))
       (Env.frame [n + 1, q, k, (excNet ε).length] [a, s, wg, wr, ww, wp, g, thr, a, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (fun m' => (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a H' m'.store) ∧
         ∃ x, m'.store.get f.1 f.2 = some x) m := by
-  have e : (shStep (O := O) (Q := Q)).body = Stmt.allocs [.const 2, .const 1, .const 1,
+  have e : (shStep (O := O) (Q := Q)) = Stmt.allocs [.const 2, .const 1, .const 1,
       .const 1, .const 1, .const 2 * (.var 0 * .var 0), .const 2 * .var 2, .const 2 * .var 2,
       .const 5, .const 1, .const 2 * .var 3, .const 1]
       (.frame [.var 0, .var 1, .var 2, .var 3] [⟨0, .var 4⟩, ⟨1, .var 5⟩, ⟨2, .var 6⟩,
@@ -480,7 +480,7 @@ theorem shStep_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar 
         ⟨11, .const 0⟩, ⟨12, .const 0⟩, ⟨13, .const 0⟩, ⟨14, .const 0⟩, ⟨15, .const 0⟩,
         ⟨16, .const 0⟩, ⟨17, .const 0⟩, ⟨18, .const 0⟩, ⟨19, .const 0⟩, ⟨20, .const 0⟩,
         ⟨21, .const 0⟩, ⟨0, .var 4⟩, ⟨9, .var 13⟩]
-        (shStepWithScratch (O := O) (Q := Q)).body) := rfl
+        (shStepWithScratch (O := O) (Q := Q))) := rfl
   obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9⟩ : a.1 < m.store.length ∧ s.1 < m.store.length ∧
       wg.1 < m.store.length ∧ wr.1 < m.store.length ∧ ww.1 < m.store.length ∧
       wp.1 < m.store.length ∧ g.1 < m.store.length ∧ thr.1 < m.store.length ∧

@@ -78,21 +78,22 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O
   [Has CmpTst Q] [Has IdxTst Q]
 
 /-- The full worklist allocates and releases its stack, work matrix and scan registers. -/
-def solveAllocated (D : Impl O Q) : Impl O Q := opsImpl% [N, m, k, F, M] (A, Params) → (Out) {
+def solveAllocated (D : Stmt O Q) : Stmt O Q := ops% [N, m, k, F, M] (A, Params) → (Out) {
   let St ← alloc (1 + 2 * N);
   let W ← alloc (2 * (N * N));
   let R ← alloc 5;
-  run (worklistSolve D).body [N, m, k, F, M] (A, Params, St, Out, W, R)
+  run (worklistSolve D) [N, m, k, F, M] (A, Params, St, Out, W, R)
 }
 
 /-- The actual allocating exact algorithm returns a packed listing of a perturbation of the
 raw input, with error at most $n\tau$ for order $n+1$. Scratch and output need no initialized
-contents; the raw spectral and numerical parameter hypotheses guarantee total execution. -/
+contents; the raw spectral and numerical parameter hypotheses guarantee total execution.
+A fragment of `NLAlib.ShiftedQR.deflationRoutine`. -/
 theorem solveAllocated_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (hE : ExactModel id Mch) (hL : IsIndexLit Mch I)
     (hQ : IsToNat id I) (hC : IsCmp id I)
     {θ : ℝ} {K : KernelRoutines θ} (hK : IsEigenvalueKernels K I)
-    (D : Impl O Q) (hD : DecouplingContract θ D I)
+    (D : Stmt O Q) (hD : DecouplingContract θ D I)
     {tape : Tape ℝ} {μ : Mem ℝ} {n m F M : ℕ} {a p out : ℕ × ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {τ B α γ δ g : ℝ}
     (hl : μ.Live [a, p, out])
@@ -102,7 +103,7 @@ theorem solveAllocated_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hGlobal : ShiftedQRHyps H B θ α γ δ g m F) (hτ : τ = δ * frobNorm H)
     (hM : M = ⌈Real.sqrt 2 / exceptionalSpacing (2 ^ m) B θ α ((1 - γ) ^ 2)⌉₊)
     (hParams : μ.store.readBlock p.1 p.2 5 = some [τ, B, θ, α, γ]) :
-    Writes .total I tape (solveAllocated D).body
+    Writes .total I tape (solveAllocated D)
       (Env.frame [n + 1, m, 2 ^ m, F, M] [a, p, out])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock out.1 out.2 (2 * (n + 1)))

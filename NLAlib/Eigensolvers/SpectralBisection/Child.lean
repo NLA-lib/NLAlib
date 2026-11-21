@@ -31,7 +31,8 @@ open Ops
 
 /-- The single-child branch writes the shifted next-level matrix and both metadata words,
 without a successful-run or numerical-accuracy assumption. The literal values are the actual
-machine words; exact natural decoding is a separate numerical-model obligation. -/
+machine words; exact natural decoding is a separate numerical-model obligation.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_child {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
     {M : Machine K} (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     (unif : K → Su → K) (normal : Sg → K × K) {I : Interp Op Tst K}

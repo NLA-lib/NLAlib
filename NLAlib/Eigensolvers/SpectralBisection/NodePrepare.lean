@@ -29,7 +29,8 @@ namespace NLAlib.SpectralBisection
 open Ops
 
 /-- Preparation computes the existing capped-sign projectors while retaining every original
-input and the signed half-radius words needed by the selected branch. -/
+input and the signed half-radius words needed by the selected branch.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_nodePrepare {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     [Has IndexOp Op] [Has MatrixOp Op] [Has CmpTst Tst]
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))

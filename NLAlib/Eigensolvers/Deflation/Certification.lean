@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Eigensolvers.Deflation.Execution
+public import NLAlib.Eigensolvers.Deflation.Routine
 public import NLAlib.Ops.Profiles.Dense
 public import NLAlib.Ops.Certification
 
@@ -48,7 +48,7 @@ def problem (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d) : P
 
 /-- The entire sampled projection and QR implementation is one fixed dense program. -/
 def fixedProgram : Program DenseOp (CmpTst ⊕ IdxTst) 2 2 :=
-  ⟨(program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body⟩
+  (deflateRoutine (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).close 2 2
 
 variable {domain : (Fin 2 → ℕ) → Prop} {admitted : ∃ d, domain d}
 
@@ -125,20 +125,29 @@ noncomputable def certifiedAlgorithm (M : Machine K) (dec : K → ℝ)
       (Dense.functionalModel (problem (K := K) domain admitted) M dec (EntryCodec.pair K) mm qr
         (Dense.resources matrixWork matrixWorkspace))
       (wordSpecification mm qr domain admitted matrixWork matrixWorkspace) := by
-  refine Algorithm.ofWp fixedProgram (by rfl) ?_ (fun _ _ => le_rfl)
-    (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) ?_
-  · intro d hd x I hI tape
+  refine Routine.algorithm (r := 2) (b := 2) deflateRoutine
+    (fun _ _ => deflateSpec mm qr)
+    (fun d x => [(EntryCodec.pair K).packFinMatrix (inputMatrix d x)])
+    ?_ ?_ ?_ (hmemory := ?_)
+  · intro d hd x I hI
     rcases Dense.laws_functionalModel M dec (EntryCodec.pair K) mm qr
       (Dense.resources matrixWork matrixWorkspace) d x I hI with
       ⟨hS, _, hMM, hQR, hSample, _, _⟩
-    rcases initial_geometry d x with ⟨hl, hP, hRoom, hLength⟩
-    have hr := writes_program hS hSample hMM hQR (tape := tape)
-      (m := (problem (K := K) domain admitted).initial d x)
-      (p := (0, 0)) (z := (1, 0)) (inputMatrix d x) (hRank d hd) hl hP hRoom.1
-    apply hr.wp
-    intro m' hf h c _
-    refine ⟨hRank d hd, h.2, ?_, hf.length_eq.trans hLength⟩
-    simpa only [Problem.initial, Nat.zero_add] using h.1
+    exact deflateRoutine_meets hS hSample hMM hQR
+  · intro d hd x
+    rcases initial_geometry d x with ⟨-, hP, hRoom, -⟩
+    exact ⟨Mem.readBlocks_of_cons hP rfl, fun _ => hRank d hd, hRoom⟩
+  · intro d hd x tape m' hfr hpos ys hys hrel c _
+    rcases initial_geometry d x with ⟨-, -, -, hLength⟩
+    read_outputs hys as (zs)
+    obtain ⟨hrank, hval⟩ : ∃ hrank : d 1 ≤ d 0, zs = (EntryCodec.pair K).packFinMatrix
+        ((qr (mm ((EntryCodec.pair K).matrix (d 0) (d 0)
+            ((EntryCodec.pair K).packFinMatrix (inputMatrix d x)))
+          (sampleMatrix (d 0) 0 tape))).1.submatrix id (Fin.castLE hrank)) := hrel
+    rw [EntryCodec.matrix_packFinMatrix] at hval
+    refine ⟨hrank, ?_, hpos.eq_of_start rfl, hfr.length_eq.trans hLength⟩
+    rw [← hval]
+    exact hzs
   · intro d hd x
     rw [initialBytes_problem]
     exact le_rfl

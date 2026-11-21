@@ -18,7 +18,8 @@ self-product for the next round. No success premise is assumed.
 ## Main results
 
 * `NLAlib.Krylov.CG.HSCG.Carried.Rounded.RoundBounds` describes the numerical recurrence.
-* `NLAlib.Krylov.CG.HSCG.Carried.Rounded.step_spec` proves successful execution and these bounds.
+* `NLAlib.Krylov.CG.HSCG.Carried.Rounded.stepRoutine_meets` proves successful execution and
+  these bounds.
 -/
 
 @[expose] public section
@@ -69,26 +70,32 @@ noncomputable def stepRel (em u : ℝ) (ε : Blas1Err) (dec : K → ℝ) {n : �
           (decodedState dec n xs' rs' ps') (dec v) (dec v')
     | _, _ => False
 
-/-- Input/model assumptions establish total successful execution and standard local CG error
-bounds. The curvature margin is uniform over every product admitted by the matvec contract. -/
-theorem step_spec {M : Machine K} {dec : K → ℝ} {n : ℕ} {em u : ℝ} {ε : Blas1Err}
+/-- At the dimension of the matrix, a state with its error margins is advanced by one rounded
+round within the local error bounds. The routine is `NLAlib.Krylov.CG.HSCG.Carried.stepRoutine`. -/
+noncomputable def stepSpec (em u : ℝ) (ε : Blas1Err) (dec : K → ℝ) {n : ℕ}
+    (A : Matrix (Fin n) (Fin n) ℝ) : Routine.Spec K :=
+  .ofRel (stepRel em u ε dec A) (· = [n])
+
+/-- One rounded round meets its specification under the stated operation models: the run is
+total and satisfies the standard local CG error bounds. The curvature margin is uniform over
+every product admitted by the matvec contract. -/
+theorem stepRoutine_meets {M : Machine K} {dec : K → ℝ} {n : ℕ} {em u : ℝ} {ε : Blas1Err}
     {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K} {ok : ℕ → Prop}
     (hS : IsScalar M I) (hM : StdModel u dec M)
     (hB : IsBlas1 dec ε ok I) (hok : ok n) (hA : IsMatvec dec A (em * specNorm A) I) :
-    (stepImpl (Op := Op) (Tst := Tst)).Triple I .total
-      ((stepRel em u ε dec A).spec (StepOperands n)) := by
-  cert_intro [m] (x, r, p, v) → (x', r', p', v') reads (xs, rs, ps, vs)
-  obtain ⟨hd, hx, hr, hp, hv, hxr, hxp, hxv, hrp, hrv, hpv⟩ := hadm
-  subst m x' r' p' v'
+    (stepRoutine (Op := Op) (Tst := Tst)).Meets I (stepSpec em u ε dec A) := by
+  routine_intro [n'] (x, r, p, v) reads (xs, rs, ps, vs)
   obtain ⟨rr, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock hvs)
+  obtain ⟨hn, hdom⟩ := hpre
+  obtain rfl : n = n' := (List.head_eq_of_cons_eq hn).symm
   change ε.dot n < 1 ∧ decv dec n rs ≠ 0 ∧
     IsDotErr dec (ε.dot n) n (vec rs) (vec rs) rr ∧ _ at hdom
-  have hrr : μ.store.get v.1 v.2 = some rr := by
+  have hrr : m.store.get v.1 v.2 = some rr := by
     simpa using Store.get_of_readBlock hvs (j := 0) (by omega) rr
   refine writes_allocs (lens := [.var 0, .const 3]) (ns := [n, 3]) rfl
     fun s₁ hs₁ hlen hB₁ => ?_
-  have hq : s₁.len μ.store.length = n := by simpa using hlen 0 (by simp)
-  have ht : s₁.len (μ.store.length + 1) = 3 := by simpa using hlen 1 (by simp)
+  have hq : s₁.len m.store.length = n := by simpa using hlen 0 (by simp)
+  have ht : s₁.len (m.store.length + 1) = 3 := by simpa using hlen 1 (by simp)
   dsimp only [Env.frame, List.append, List.range_succ, List.range_zero, List.map,
     List.length_cons, List.length_nil, Nat.add_zero] at *
   step hA as m₁ hfr₁ ⟨hpos₁, qs, hqs, heq⟩
@@ -117,12 +124,9 @@ theorem step_spec {M : Machine K} {dec : K → ℝ} {n : ℕ} {em u : ℝ} {ε :
   have hrvec (i : Fin n) := her.decoded i
   simp only [hnad, neg_mul, ← sub_eq_add_neg, abs_neg] at hrvec
   intro s₂ hs₂ hB₂
-  refine ⟨by simp [stepRel, hpos₁₂, hpos₁₁, hpos₁₀, hpos₉, hpos₈, hpos₇, hpos₆,
-    hpos₅, hpos₄, hpos₃, hpos₂, hpos₁], [xs', zs, ps'', [rr']], ?_, ?_⟩
-  · exact Mem.readBlocks_of_cons (by kept) (Mem.readBlocks_of_cons (by kept)
-      (Mem.readBlocks_of_cons (by kept) (Mem.readBlocks_of_cons (by kept) rfl)))
-  · exact ⟨decv dec n qs, dec pq, dec a, dec b, heq, hrrpos, hpqpos, hcurv, halpha,
-      hex.decoded, hrvec, herr'.decoded, hbeta, hep.decoded⟩
+  routine_exit
+  exact ⟨decv dec n qs, dec pq, dec a, dec b, heq, hrrpos, hpqpos, hcurv, halpha,
+    hex.decoded, hrvec, herr'.decoded, hbeta, hep.decoded⟩
 
 /-- Readable input state and explicit input error margins imply a successful rounded CG
 round, its local numerical bounds and the evaluator-derived operation/workspace budget. -/
@@ -152,15 +156,10 @@ theorem runs_step {M : Machine K} {dec : K → ℝ} {n : ℕ} {em u : ℝ} {ε :
   have hrr' : IsDotErr dec (ε.dot n) n (vec rs) (vec rs) rr := by
     simpa only [IsDotErr, dotProduct_decv, decv,
       Fin.sum_univ_eq_sum_range (fun i : ℕ => |dec (vec rs i) * dec (vec rs i)|)] using hrr
-  refine ((step_spec hS hM hB hok hA).runs_rel W (τ := τ) (d := [n])
-    (ins := [x, r, p, v]) (outs := [x, r, p, v]) (xs := [xs, rs, ps, [rr]]) rfl
-    ⟨rfl, x, r, p, v, rfl, rfl, hxr, hxp, hxv, hrp, hrv, hpv⟩
-    ((μ.live_append _ _).mpr ⟨hl, hl⟩)
-    (Mem.readBlocks_of_cons hx (Mem.readBlocks_of_cons hr (Mem.readBlocks_of_cons hp
-      (Mem.readBlocks_of_cons (Store.readBlock_one_of_get hv) rfl))))
-    ⟨hed, hrne, hrr', hmargin⟩ hz).mono
-      (le_of_eq (staticCost_step ..)) (staticPeak_step_le ..) ?_
-  intro μ' hpost
-  exact hpost
+  have hv' : μ.store.readBlock v.1 v.2 1 = some [rr] := Store.readBlock_one_of_get hv
+  exact ((stepRoutine_meets hS hM hB hok hA).runs_ofRel W (d := [n]) (args := [x, r, p, v])
+    (τ := τ) (xs := [xs, rs, ps, [rr]]) rfl rfl hl (by routine_sep) (by reads) rfl
+    ⟨hed, hrne, hrr', hmargin⟩ hz rfl rfl).mono
+    (le_of_eq (staticCost_step ..)) (staticPeak_step_le ..) fun _ h => h
 
 end NLAlib.Krylov.CG.HSCG.Carried.Rounded

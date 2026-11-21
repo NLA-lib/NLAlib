@@ -27,7 +27,8 @@ namespace NLAlib.SpectralBisection
 open Ops
 
 /-- The actual child basis and pointwise shifted eigenvalues are returned together. Spatial
-separation allows input and output regions to share an arena buffer. -/
+separation allows input and output regions to share an arena buffer.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_upShiftResult {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I) {τ : Tape K}
     {m : Mem K} {k : ℕ} {uc ec sigma u e : ℕ × ℕ}
@@ -39,7 +40,7 @@ theorem writes_upShiftResult {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     (hs : m.store.get sigma.1 sigma.2 = some s)
     (hu : u.2 + 2 * (k * k) ≤ m.store.len u.1) (he : e.2 + k ≤ m.store.len e.1)
     (hap : Fp.Apart [u, e, uc, ec, sigma] [2 * (k * k), k, 2 * (k * k), k, 1]) :
-    Writes .total I τ (upShiftResultImpl (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (upShiftResult (Op := Op) (Tst := Tst))
       (Env.frame [k] [uc, ec, sigma, u, e])
       (Fp.blocks [u, e] [2 * (k * k), k])
       (fun m' => m'.pos = m.pos ∧ m'.readBlocks [u, e] [2 * (k * k), k] =

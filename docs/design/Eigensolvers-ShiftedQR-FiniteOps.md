@@ -661,7 +661,7 @@ theorem roundedShQR_measureReal_not_spectrum_le … (hM : StdModel u id Mch)
     (hk : k = shqrDegree (4 * B)) (hpar : … stored params = shqrParams n k B Γ Σ δ φ)
     (hse : βse ≤ shqrSmallEigAccuracy n k B Γ Σ δ) (hφse : φse ≤ shqrSmallEigFailure n k B Γ Σ δ φ)
     (hu : u ≤ uShQR n k B Γ Σ δ φ) … (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (roundedShQR …).body env F
+    P.real {ω | ¬ Writes .total I (ξ ω) (roundedShQR …) env F
       (fun μ' => Fl = 0 ∧ ∃ roots E, HoldsMatrix out roots μ'.store ∧ specNorm E ≤ δ ∧
         (H + E).charpoly.roots = List.ofFn roots) μ} ≤ φ
 ```
@@ -984,7 +984,7 @@ statements; every block they use is proved.
 | T2 | `logb_inv_uShQR_le` | $\exists c_1, c_2$ absolute: $\log_2(1/\boldsymbol{u}_{\mathrm{ShQR}}) \le c_1 k \log_2\frac{4(n+1)B\Sigma^2}{\delta\min(\Gamma,\Sigma)\varphi} + c_2$ |
 | T3 | `roundedShQR_relative` | $0 < \Sigma$, $\|\mathbf{H}\|_2 \le \Sigma \le c\|\mathbf{H}\|_2$, $c \ge 1$, $0 < \delta \le 1$: parameters at $\delta\Sigma/c$ give $\|\mathbf{E}\|_2 \le \delta\|\mathbf{H}\|_2$ w.p. $\ge 1-\varphi$ |
 | T4 | `roundedShQR_hermitian` | Hermitian Hessenberg input, gap on `hH.eigenvalues`, no $\mathbf{V}$ supplied; $B = 1$, $k$ = `shqrDegree 4` |
-| T5 | `roundedShQR_work_le` | $\exists c$: `Count.size (stmtCost roundedShQR.body [n+1, k, np, F])` $\le c(n+1)^4(k+1)^4(n_p+1)(F+1)$ (static, so on every tape, `exec_within`) |
+| T5 | `roundedShQR_work_le` | $\exists c$: `Count.size (stmtCost roundedShQR [n+1, k, np, F])` $\le c(n+1)^4(k+1)^4(n_p+1)(F+1)$ (static, so on every tape, `exec_within`) |
 
 T1c follows §14.1's Lean text with Fable's fixes (`hI : I.IsMeasurable` with `hloc`;
 `IsPolarDiskSampler sU I` and `hU`; `k = shqrDegree (4 * B)`) and the machine hypotheses of T1
@@ -1055,7 +1055,7 @@ T1c follows §14.1's Lean text with Fable's fixes (`hI : I.IsMeasurable` with `h
 
 ### 15.5 The certificate form (audit B1, B4)
 
-File `NLAlibScaffold/Eigensolvers/ShiftedQR/RoundedCertificate.lean`. T1c and T5 are about the
+File `NLAlibScaffold/Eigensolvers/ShiftedQR/RoundedCertification.lean`. T1c and T5 are about the
 same program but not the same run; the headline is restated as a canonical certificate
 (`Ops.Algorithm`) and one `Accepts` bound, so cost and correctness hold on one event.
 

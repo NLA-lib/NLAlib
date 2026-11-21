@@ -64,7 +64,7 @@ theorem downwardPass_kernelWeight_le_of_exec
     (W : DenseOp → List ℕ → ℕ) {a b : St DenseOp (CmpTst ⊕ IdxTst) K}
     (hmem : a.mem = μ)
     (hr : evalCounted I W τ (downwardPass (node (Op := DenseOp)
-      (Tst := CmpTst ⊕ IdxTst))).body
+      (Tst := CmpTst ⊕ IdxTst)))
       (Env.frame [n, L, fuel] [par, lv, su, sg, ma, ua, qa, ea, sz, kd, kp, c]) a = some b) :
     Dense.kernelWeight T b.cost ≤ Dense.kernelWeight T a.cost +
       (L + 1) * ((2 * fuel + 9) * T n) := by

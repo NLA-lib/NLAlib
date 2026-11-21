@@ -10,7 +10,7 @@ public import NLAlib.Ops.Logic.Builder
 /-!
 # Test case: an S2-flavoured block in the builder
 
-The proof of `cgs` in the new style is `NLAlib.Ops.Examples.cgs_spec` (`Examples/CgsQR.lean`).
+The proof of `cgs` in the new style is `NLAlib.Ops.Examples.cgs_satisfies` (`Examples/CgsQR.lean`).
 
 ## Main results
 

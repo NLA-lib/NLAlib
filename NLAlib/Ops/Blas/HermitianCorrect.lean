@@ -33,14 +33,14 @@ variable {K Op Tst : Type} [Has ScalarOp Op]
 complete matrix. The mirror's framing, buffer liveness and capacity transport are shared by
 all three entrywise transformations. -/
 theorem writes_complete {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
-    {τ : Tape K} (up : Impl Op Tst) {n : ℕ} {x c y : ℕ × ℕ} {m : Mem K}
+    {τ : Tape K} (up : Stmt Op Tst) {n : ℕ} {x c y : ℕ × ℕ} {m : Mem K}
     (U : ℕ → ℕ → K × K) (hy : y.1 < m.store.length)
     (hY : y.2 + 2 * (n * n) ≤ m.store.len y.1)
-    (hu : Writes .total I τ up.body (Env.frame [n] [x, c, y])
+    (hu : Writes .total I τ up (Env.frame [n] [x, c, y])
       (Store.inBlock y.1 y.2 (2 * (n * n)))
       (fun μ => μ.store.HoldsRowEntries (EntryCodec.pair K) ⟨y.1, y.2, n, n, n⟩
         (fun j => j + 1) U ∧ μ.pos = m.pos) m) :
-    Writes .total I τ (complete up).body (Env.frame [n] [x, c, y])
+    Writes .total I τ (complete up) (Env.frame [n] [x, c, y])
       (Store.inBlock y.1 y.2 (2 * (n * n)))
       (fun μ => μ.store.HoldsEntries (EntryCodec.pair K) ⟨y.1, y.2, n, n, n⟩
         (completeUpper M U) ∧ μ.pos = m.pos) m := by
@@ -64,7 +64,7 @@ theorem writes_shift {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     (hX : m.store.HoldsEntries (EntryCodec.pair K) ⟨x.1, x.2, n, n, n⟩ A)
     (hc : m.store.get c.1 c.2 = some d)
     (hY : y.2 + 2 * (n * n) ≤ m.store.len y.1) (hl : m.Live [x, c, y]) :
-    Writes .total I τ (shift (Op := Op) (Tst := Tst)).body (Env.frame [n] [x, c, y])
+    Writes .total I τ (shift (Op := Op) (Tst := Tst)) (Env.frame [n] [x, c, y])
       (Store.inBlock y.1 y.2 (2 * (n * n)))
       (fun μ => μ.store.HoldsEntries (EntryCodec.pair K) ⟨y.1, y.2, n, n, n⟩
         (completeUpper M (fun i j => if i = j then
@@ -83,7 +83,7 @@ theorem writes_scale {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     (hX : m.store.HoldsEntries (EntryCodec.pair K) ⟨x.1, x.2, n, n, n⟩ A)
     (hc : m.store.get c.1 c.2 = some d)
     (hY : y.2 + 2 * (n * n) ≤ m.store.len y.1) (hl : m.Live [x, c, y]) :
-    Writes .total I τ (scale (Op := Op) (Tst := Tst)).body (Env.frame [n] [x, c, y])
+    Writes .total I τ (scale (Op := Op) (Tst := Tst)) (Env.frame [n] [x, c, y])
       (Store.inBlock y.1 y.2 (2 * (n * n)))
       (fun μ => μ.store.HoldsEntries (EntryCodec.pair K) ⟨y.1, y.2, n, n, n⟩
         (completeUpper M (fun i j => if i = j then (M.div (A i i).1 d, M.lit 0)
@@ -101,7 +101,7 @@ theorem writes_average {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     (hX : m.store.HoldsEntries (EntryCodec.pair K) ⟨x.1, x.2, n, n, n⟩ A)
     (hc : m.store.get c.1 c.2 = some d)
     (hY : y.2 + 2 * (n * n) ≤ m.store.len y.1) (hl : m.Live [x, c, y]) :
-    Writes .total I τ (average (Op := Op) (Tst := Tst)).body (Env.frame [n] [x, c, y])
+    Writes .total I τ (average (Op := Op) (Tst := Tst)) (Env.frame [n] [x, c, y])
       (Store.inBlock y.1 y.2 (2 * (n * n)))
       (fun μ => μ.store.HoldsEntries (EntryCodec.pair K) ⟨y.1, y.2, n, n, n⟩
         (completeUpper M (fun i j => if i = j then

@@ -56,7 +56,7 @@ theorem stepComptau_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSc
     (has : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock s.1 s.2 (2 * k)))
     (hap : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock p.1 p.2 1)) :
-    Writes .total I τ stepComptau.body (Env.frame [n + 1, k] [a, s, a, p])
+    Writes .total I τ stepComptau (Env.frame [n + 1, k] [a, s, a, p])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock p.1 p.2 1)
       (fun m' => m'.pos = m.pos ∧
         (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a H' m'.store) ∧
@@ -94,13 +94,13 @@ theorem stepComptau_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSc
 every window start $a$, half length $h$ and exponent $e$ with $a + h \le k$ and $2he = k$, from
 any matrix at `A` and any $2h$ shift words at `S`, on every tape, the run is total, writes only
 the word `P` (in a buffer apart from `A` and `S`) and leaves it stored. -/
-def TerminatingHalfTau (n k : ℕ) (Tau : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+def TerminatingHalfTau (n k : ℕ) (Tau : Stmt O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ (a h e : ℕ), a + h ≤ k → 2 * (h * e) = k →
     ∀ (τ : Tape ℝ) (μ : Mem ℝ) (A S P : ℕ × ℕ) (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
       (xs : List ℝ), μ.Live [A, S, P] → HoldsMatrix A H μ.store →
       μ.store.readBlock S.1 S.2 (2 * h) = some xs →
       P.2 < μ.store.len P.1 → P.1 ≠ A.1 → P.1 ≠ S.1 →
-      Writes .total I τ Tau.body (Env.frame [n + 1, h, e] [A, S, P]) (Store.inBlock P.1 P.2 1)
+      Writes .total I τ Tau (Env.frame [n + 1, h, e] [A, S, P]) (Store.inBlock P.1 P.2 1)
         (fun μ' => ∃ t, μ'.store.get P.1 P.2 = some t) μ
 
 omit [Has IndexOp O] [Has IdxTst Q] in
@@ -114,7 +114,7 @@ theorem comptauHalf_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSc
     {A S P : ℕ × ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {xs : List ℝ}
     (hl : μ.Live [A, S, P]) (hA : HoldsMatrix A H μ.store)
     (hSh : μ.store.readBlock S.1 S.2 (2 * h) = some xs) (hP : P.2 < μ.store.len P.1) :
-    Writes .total I τ comptauHalf.body (Env.frame [n + 1, h, e] [A, S, P])
+    Writes .total I τ comptauHalf (Env.frame [n + 1, h, e] [A, S, P])
       (Store.inBlock P.1 P.2 1) (fun μ' => μ'.pos = μ.pos ∧ ∃ t, μ'.store.get P.1 P.2 = some t)
       μ := by
   have hlive : A.1 < μ.store.length ∧ S.1 < μ.store.length ∧ P.1 < μ.store.length := by
@@ -170,14 +170,14 @@ theorem comptauHalf_terminatingHalfTau {M : Machine ℝ} {I : Interp O Q ℝ} (h
 
 omit [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- The two comparison values of a level with a terminating routine are stored. -/
-private theorem findRoundedNorms_terminates {I : Interp O Q ℝ} {Tau : Impl O Q} {n k : ℕ}
+private theorem findRoundedNorms_terminates {I : Interp O Q ℝ} {Tau : Stmt O Q} {n k : ℕ}
     (hTau : TerminatingHalfTau n k Tau I) {τ : Tape ℝ} {m : Mem ℝ} {a h e : ℕ}
     {b ss r : ℕ × ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {xs : List ℝ}
     (hB : HoldsMatrix b H m.store) (hSS : m.store.readBlock ss.1 ss.2 (2 * k) = some xs)
     (hah : a + 2 * h ≤ k) (hhe : 2 * (h * e) = k)
     (hrb : r.1 ≠ b.1) (hrs : r.1 ≠ ss.1) (hl : m.Live [b, ss, r, r])
     (hr : r.2 + 6 ≤ m.store.len r.1) :
-    Writes .total I τ (findRoundedNorms Tau).body (Env.frame [n + 1, k, a, h, e] [b, ss, r, r])
+    Writes .total I τ (findRoundedNorms Tau) (Env.frame [n + 1, k, a, h, e] [b, ss, r, r])
       (Store.inBlock r.1 (r.2 + 3) 2)
       (fun m' => (∃ tA, m'.store.get r.1 (r.2 + 4) = some tA) ∧
         ∃ tB, m'.store.get r.1 (r.2 + 3) = some tB) m := by
@@ -211,7 +211,7 @@ def FindStoredState (k m j : ℕ) (r : ℕ × ℕ) (s : Store ℝ) : Prop :=
 
 omit [Has ScalarOp O] in
 /-- One level of `Find` with a terminating routine advances the search words. -/
-private theorem findRoundedLevel_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {Tau : Impl O Q}
+private theorem findRoundedLevel_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {Tau : Stmt O Q}
     (hL : IsIndexLit M I) (hCmp : IsCmp id I) (hQ : IsToNat id I) {n m k j : ℕ}
     (hTau : TerminatingHalfTau n k Tau I) (hNat : IsExactNatLit id M k) {τ : Tape ℝ}
     {μ : Mem ℝ} {b ss r : ℕ × ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {xs : List ℝ}
@@ -220,7 +220,7 @@ private theorem findRoundedLevel_terminates {M : Machine ℝ} {I : Interp O Q �
     (hst : FindStoredState k m j r μ.store)
     (hrb : r.1 ≠ b.1) (hrs : r.1 ≠ ss.1) (hl : μ.Live [b, ss, r, r])
     (hr : r.2 + 6 ≤ μ.store.len r.1) :
-    Writes .total I τ (findRoundedLevel Tau).body (Env.frame [n + 1, k] [b, ss, r, r])
+    Writes .total I τ (findRoundedLevel Tau) (Env.frame [n + 1, k] [b, ss, r, r])
       (Store.inBlock r.1 r.2 6) (fun μ' => FindStoredState k m (j + 1) r μ'.store) μ := by
   obtain ⟨a, hw, ha⟩ := hst
   obtain ⟨p, hp⟩ : ∃ p, m - j = p + 1 := ⟨m - j - 1, by omega⟩
@@ -264,7 +264,7 @@ machine whose natural literals up to $k = 2^m$ are exact, with exact comparisons
 conversion, a comparison routine `Tau` meeting `NLAlib.ShiftedQR.TerminatingHalfTau`, any matrix
 at `A` and any $2k$ shift words at `SS`, `NLAlib.ShiftedQR.findRounded` writes only the pair
 `Center` and leaves it stored. The shifts and `Center` are disjoint views. -/
-theorem findRounded_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {Tau : Impl O Q}
+theorem findRounded_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {Tau : Stmt O Q}
     (hS : IsScalar M I) (hL : IsIndexLit M I) (hCmp : IsCmp id I) (hQ : IsToNat id I)
     {n m k : ℕ} (hTau : TerminatingHalfTau n k Tau I) (hNat : IsExactNatLit id M k)
     {τ : Tape ℝ} {μ : Mem ℝ} {b ss z : ℕ × ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
@@ -272,7 +272,7 @@ theorem findRounded_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {Tau : Imp
     (hSS : μ.store.readBlock ss.1 ss.2 (2 * k) = some xs) (hl : μ.Live [b, ss, z])
     (hsep : Fp.Disj (Store.inBlock ss.1 ss.2 (2 * k)) (Store.inBlock z.1 z.2 2))
     (hz : z.2 + 2 ≤ μ.store.len z.1) :
-    Writes .total I τ (findRounded Tau).body (Env.frame [n + 1, m, k] [b, ss, z])
+    Writes .total I τ (findRounded Tau) (Env.frame [n + 1, m, k] [b, ss, z])
       (Store.inBlock z.1 z.2 2)
       (fun μ' => ∃ c : ℂ, μ'.store.readBlock z.1 z.2 2 = some [c.re, c.im]) μ := by
   obtain ⟨hbl, hsl, hzl⟩ : b.1 < μ.store.length ∧ ss.1 < μ.store.length ∧

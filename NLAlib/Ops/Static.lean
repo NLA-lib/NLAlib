@@ -84,13 +84,13 @@ def stmtPeak (W : Op → List ℕ → ℕ) : Stmt Op Tst → List ℕ → ℕ
       | some d, some o => stmtPeak W body (d ++ o)
       | _, _ => 0
 
-/-- A legacy one-unit allocation adds no primitive calls to its body. Structural allocation
+/-- An allocation of one-byte cells adds no primitive calls to its body. Structural allocation
 instructions are included separately by canonical program instrumentation. -/
 theorem stmtCost_alloc (len : IExp) (body : Stmt Op Tst) (idx : List ℕ) :
     stmtCost (.alloc len body) idx = stmtCost body idx := rfl
 
-/-- The legacy allocation helper reserves one abstract unit per cell. Explicit storage
-formats instead use `Stmt.allocAs` and its format-dependent byte width. -/
+/-- An allocation of one-byte cells reserves one unit per cell. An allocation in an explicit
+storage format uses `Stmt.allocAs` and the byte width of the format. -/
 theorem stmtPeak_alloc (W : Op → List ℕ → ℕ) (len : IExp)
     (body : Stmt Op Tst) (idx : List ℕ) :
     stmtPeak W (.alloc len body) idx = (len.eval idx).getD 0 + stmtPeak W body idx := by

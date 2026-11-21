@@ -1,0 +1,267 @@
+{
+ "date": "2026-11-20",
+ "note": "\"Meets\" now names only the routine judgment NLAlib.Ops.Routine.Meets. An interpretation satisfies the contract of a primitive operation: Interp.Meets and Interp.MeetsQuery are renamed Interp.Satisfies and Interp.SatisfiesQuery, and every declaration named for that statement follows (meets -> satisfies in the same position), including the field Profile.Refines.meets. Profile lemmas named meets_* that conclude an Impl.Triple are renamed triple_*. Two private lemmas follow the same pattern (meets_real in Ops/Logic/RCLikeBlasReal, meets_replace_rel in Ops/Catalog/Blas1). No statement changed; no compatibility aliases (before v0.1).",
+ "renames": [
+  {
+   "old": "NLAlib.CGS2.meets_axpyRel_zero",
+   "new": "NLAlib.CGS2.satisfies_axpyRel_zero",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.CGS2.meets_nrm2RelOf",
+   "new": "NLAlib.CGS2.satisfies_nrm2RelOf",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.CGS2.meets_nrm2RelOf_exact",
+   "new": "NLAlib.CGS2.satisfies_nrm2RelOf_exact",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.CGS2.meets_scalRelOf",
+   "new": "NLAlib.CGS2.satisfies_scalRelOf",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.CGS2.meets_scalRelOf_exact",
+   "new": "NLAlib.CGS2.satisfies_scalRelOf_exact",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.StoredContext.fallback_meets",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.StoredContext.fallback_satisfies",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.StoredContext.guardedProtected_meets",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.StoredContext.guardedProtected_satisfies",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.dot_function_meets",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.dot_function_satisfies",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.dot_trivial_meets",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.dot_trivial_satisfies",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.meets_preconditioner_oracle",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.satisfies_preconditioner_oracle",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.StoredContext.fallback_meets",
+   "new": "NLAlib.Krylov.CG.HSPCG.StoredContext.fallback_satisfies",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.StoredContext.guardedProtected_meets",
+   "new": "NLAlib.Krylov.CG.HSPCG.StoredContext.guardedProtected_satisfies",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.Certification.meets_exactExtendFn",
+   "new": "NLAlib.Krylov.GolubKahan.Band.Certification.satisfies_exactExtendFn",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.meets_extend_link",
+   "new": "NLAlib.Krylov.GolubKahan.Band.satisfies_extend_link",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.ContextLinear.fallback_meets",
+   "new": "NLAlib.Ops.ContextLinear.fallback_satisfies",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.ContextLinear.guardedProtected_meets",
+   "new": "NLAlib.Ops.ContextLinear.guardedProtected_satisfies",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.ContextLinear.meets_blas",
+   "new": "NLAlib.Ops.ContextLinear.satisfies_blas",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.ContextLinear.meets_guardedProtected",
+   "new": "NLAlib.Ops.ContextLinear.satisfies_guardedProtected",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.ContextLinear.meets_relation",
+   "new": "NLAlib.Ops.ContextLinear.satisfies_relation",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.ContextLinearRounded.fallback_meets",
+   "new": "NLAlib.Ops.ContextLinearRounded.fallback_satisfies",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.ContextLinearRounded.meets_guardedProtected",
+   "new": "NLAlib.Ops.ContextLinearRounded.satisfies_guardedProtected",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.IsFn.meets_drawRel",
+   "new": "NLAlib.Ops.Interp.IsFn.satisfies_drawRel",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.IsFn.meets_matvec",
+   "new": "NLAlib.Ops.Interp.IsFn.satisfies_matvec",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.IsFn.meets_matvec_error",
+   "new": "NLAlib.Ops.Interp.IsFn.satisfies_matvec_error",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.IsFn.meets_matvec_error_of_admission",
+   "new": "NLAlib.Ops.Interp.IsFn.satisfies_matvec_error_of_admission",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.IsFn.meets_rel",
+   "new": "NLAlib.Ops.Interp.IsFn.satisfies_rel",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.IsFn.meets_rel_of_pre",
+   "new": "NLAlib.Ops.Interp.IsFn.satisfies_rel_of_pre",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.Meets",
+   "new": "NLAlib.Ops.Interp.Satisfies",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.Meets.and_rel",
+   "new": "NLAlib.Ops.Interp.Satisfies.and_rel",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.Meets.extendRelOf_mono",
+   "new": "NLAlib.Ops.Interp.Satisfies.extendRelOf_mono",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.Meets.extendRel_mono",
+   "new": "NLAlib.Ops.Interp.Satisfies.extendRel_mono",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.Meets.matvecErrorRel_mono",
+   "new": "NLAlib.Ops.Interp.Satisfies.matvecErrorRel_mono",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.Meets.matvecErrorRel_of_matvecRel",
+   "new": "NLAlib.Ops.Interp.Satisfies.matvecErrorRel_of_matvecRel",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.Meets.mono",
+   "new": "NLAlib.Ops.Interp.Satisfies.mono",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.MeetsQuery",
+   "new": "NLAlib.Ops.Interp.SatisfiesQuery",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.link_meets",
+   "new": "NLAlib.Ops.Interp.link_satisfies",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.link_meets_kept",
+   "new": "NLAlib.Ops.Interp.link_satisfies_kept",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.link_meets_liberal_of_abort",
+   "new": "NLAlib.Ops.Interp.link_satisfies_liberal_of_abort",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.meets_guardProtected",
+   "new": "NLAlib.Ops.Interp.satisfies_guardProtected",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Profile.Refines.meets",
+   "new": "NLAlib.Ops.Profile.Refines.satisfies",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.RCLikeScalar.meets_axpy",
+   "new": "NLAlib.Ops.RCLikeScalar.triple_axpy",
+   "rule": "N12; concludes Impl.Triple"
+  },
+  {
+   "old": "NLAlib.Ops.RCLikeScalar.meets_copy",
+   "new": "NLAlib.Ops.RCLikeScalar.triple_copy",
+   "rule": "N12; concludes Impl.Triple"
+  },
+  {
+   "old": "NLAlib.Ops.RCLikeScalar.meets_dot",
+   "new": "NLAlib.Ops.RCLikeScalar.triple_dot",
+   "rule": "N12; concludes Impl.Triple"
+  },
+  {
+   "old": "NLAlib.Ops.RCLikeScalar.meets_nrm2",
+   "new": "NLAlib.Ops.RCLikeScalar.triple_nrm2",
+   "rule": "N12; concludes Impl.Triple"
+  },
+  {
+   "old": "NLAlib.Ops.RCLikeScalar.meets_scal",
+   "new": "NLAlib.Ops.RCLikeScalar.triple_scal",
+   "rule": "N12; concludes Impl.Triple"
+  },
+  {
+   "old": "NLAlib.Ops.RCLikeScalar.meets_sum",
+   "new": "NLAlib.Ops.RCLikeScalar.triple_sum",
+   "rule": "N12; concludes Impl.Triple"
+  },
+  {
+   "old": "NLAlib.Ops.RCLikeScalar.meets_table",
+   "new": "NLAlib.Ops.RCLikeScalar.triple_table",
+   "rule": "N12; concludes Impl.Triple"
+  },
+  {
+   "old": "NLAlib.Ops.RealStar.meets_impl",
+   "new": "NLAlib.Ops.RealStar.triple_impl",
+   "rule": "N12; concludes Impl.Triple"
+  },
+  {
+   "old": "NLAlib.Ops.StoredCOO.meets_matvec",
+   "new": "NLAlib.Ops.StoredCOO.triple_matvec",
+   "rule": "N12; concludes Impl.Triple"
+  },
+  {
+   "old": "NLAlib.Ops.StoredDense.meets_impl",
+   "new": "NLAlib.Ops.StoredDense.triple_impl",
+   "rule": "N12; concludes Impl.Triple"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.polarDisk_meets",
+   "new": "NLAlib.ShiftedQR.polarDisk_satisfies",
+   "rule": "N12; states Interp.Satisfies"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.windowedSmallEig_meets",
+   "new": "NLAlib.ShiftedQR.windowedSmallEig_satisfies",
+   "rule": "N12; states Interp.Satisfies"
+  }
+ ],
+ "statementChanged": []
+}

@@ -39,7 +39,7 @@ theorem writes_conjTranspose_packed {I : Interp Op Tst K} (hI : IsScalar M I) {�
       (Store.inBlock y.1 y.2 (2 * (k * r))))
     (hQ : μ.store.readBlock x.1 x.2 (2 * (k * r)) = some ((EntryCodec.pair K).packFinMatrix Q))
     (hY : y.2 + 2 * (k * r) ≤ μ.store.len y.1) (hl : μ.Live [x, y]) :
-    Writes .total I τ (conjTranspose (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (conjTranspose (Op := Op) (Tst := Tst))
       (Env.frame [k, r] [x, y]) (Store.inBlock y.1 y.2 (2 * (k * r)))
       (fun μ' => μ'.pos = μ.pos ∧ μ'.store.readBlock y.1 y.2 (2 * (k * r)) =
         some ((EntryCodec.pair K).packFinMatrix
@@ -95,7 +95,7 @@ theorem writes_traceRe_packed {I : Interp Op Tst K} (hI : IsScalar M I) {τ : Ta
     (hA : μ.store.readBlock x.1 x.2 (2 * (n * n)) = some ((EntryCodec.pair K).packFinMatrix A))
     (hy : y.2 < μ.store.len y.1)
     (hdisj : Fp.Disj (Store.inBlock y.1 y.2 1) (Store.inBlock x.1 x.2 (2 * (n * n)))) :
-    Writes .total I τ (traceRe (Op := Op) (Tst := Tst)).body (Env.frame [n] [x, y])
+    Writes .total I τ (traceRe (Op := Op) (Tst := Tst)) (Env.frame [n] [x, y])
       (Store.inBlock y.1 y.2 1)
       (fun μ' => μ'.pos = μ.pos ∧ μ'.store.get y.1 y.2 =
         some ((M.toFloatMachine dec mm qr unif normal).traceRe A)) μ := by

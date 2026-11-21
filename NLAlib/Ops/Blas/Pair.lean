@@ -33,7 +33,7 @@ variable {K Op Tst : Type} [Has ScalarOp Op]
 
 /-- Multiply the real and imaginary component words by a stored scalar, one rounding per
 component. All effects remain explicit scalar multiplication calls. -/
-def multiply : Impl Op Tst := opsImpl% [] (x, c) → (z) {
+def multiply : Stmt Op Tst := ops% [] (x, c) → (z) {
   call (Has.inj ScalarOp.mul) [] (x, c) → (z);
   call (Has.inj ScalarOp.mul) [] (x[1], c) → (z[1])
 }
@@ -48,7 +48,7 @@ theorem wp_multiply {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     (hxi : m.store.get x.1 (x.2 + 1) = some ai)
     (hc : m.store.get c.1 c.2 = some a) (hz : z.2 + 2 ≤ m.store.len z.1)
     {Q : Mem K → Prop} (hQ : Q (m.updBlock z [M.mul ar a, M.mul ai a])) :
-    Wp md I τ (multiply (Op := Op) (Tst := Tst)).body (Env.frame [] [x, c, z]) Q m := by
+    Wp md I τ (multiply (Op := Op) (Tst := Tst)) (Env.frame [] [x, c, z]) Q m := by
   have hxne := hxz.ne_cells
     (show Store.inBlock x.1 x.2 2 x.1 (x.2 + 1) from ⟨rfl, by omega, by omega⟩)
     (show Store.inBlock z.1 z.2 2 z.1 z.2 from ⟨rfl, le_rfl, by omega⟩)
@@ -72,7 +72,7 @@ theorem writes_multiply {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I
     (hxr : m.store.get x.1 x.2 = some ar)
     (hxi : m.store.get x.1 (x.2 + 1) = some ai)
     (hc : m.store.get c.1 c.2 = some a) (hz : z.2 + 2 ≤ m.store.len z.1) :
-    Writes md I τ (multiply (Op := Op) (Tst := Tst)).body (Env.frame [] [x, c, z])
+    Writes md I τ (multiply (Op := Op) (Tst := Tst)) (Env.frame [] [x, c, z])
       (Store.inBlock z.1 z.2 2)
       (fun m' => m' = m.updBlock z [M.mul ar a, M.mul ai a]) m :=
   Writes.of_wp_eq_updBlock (wp_multiply hI hxz hcz hxr hxi hc hz rfl)
@@ -88,7 +88,7 @@ def linearWords (M : Machine K) (a b x y : K × K) : K × K :=
 
 /-- Fourteen scalar operations for a complex linear combination. The scratch pair is
 caller-owned and the output is separate from the input pairs. -/
-def linearCombination : Impl Op Tst := opsImpl% [] (a, b, x, y, t) → (z) {
+def linearCombination : Stmt Op Tst := ops% [] (a, b, x, y, t) → (z) {
   call (Has.inj ScalarOp.mul) [] (a, x) → (t);
   call (Has.inj ScalarOp.mul) [] (a[1], x[1]) → (t[1]);
   call (Has.inj ScalarOp.sub) [] (t, t[1]) → (z);
@@ -225,7 +225,7 @@ theorem writes_linearCombination {M : Machine K} {I : Interp Op Tst K}
     (hy₀ : m.store.get y.1 y.2 = some yv.1)
     (hy₁ : m.store.get y.1 (y.2 + 1) = some yv.2)
     (htroom : t.2 + 2 ≤ m.store.len t.1) (hzroom : z.2 + 2 ≤ m.store.len z.1) :
-    Writes .total I τ linearCombination.body (Env.frame [] [a, b, x, y, t, z])
+    Writes .total I τ linearCombination (Env.frame [] [a, b, x, y, t, z])
       (Store.inBlock t.1 t.2 2 ⊔ Store.inBlock z.1 z.2 2)
       (fun μ => μ.pos = m.pos ∧ μ.store.readBlock z.1 z.2 2 =
         some [(linearWords M av bv xv yv).1, (linearWords M av bv xv yv).2]) m := by
@@ -239,7 +239,7 @@ theorem writes_linearCombination {M : Machine K} {I : Interp Op Tst K}
     rcases hw with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
       rfl | rfl | rfl | rfl <;> dsimp <;> omega
   have h := writes_machineScalarBlock (τ := τ) hI hev hroom
-  change Writes .total I τ linearCombination.body _ _ _ m at h
+  change Writes .total I τ linearCombination _ _ _ m at h
   refine h.mono ?_ ?_
   · intro b i hi
     simp only [linearTrace, List.map_cons, List.map_nil, Fp.cells, List.mem_cons,

@@ -97,7 +97,9 @@ variable [Has ScalarOp Op] [Has Blas1Op Op] [Has CmpTst Tst]
   {I : Interp Op Tst 𝕜} {τ : Tape 𝕜} {m : Mem 𝕜}
 
 /-- One full column step produces its Gram–Schmidt column at every rank, using
-readable preceding columns and a disjoint two-cell scalar workspace. -/
+readable preceding columns and a disjoint two-cell scalar workspace.
+A fragment of `NLAlib.MGS.factorRoutine`: run only inside its tree, on its operands
+and the buffers it allocates. -/
 theorem writes_factorColumn (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hB : RCLikeBlas.IsExact I) (hC : IsCmp RCLike.re I)
     {n k j : ℕ} (A : Matrix (Fin n) (Fin k) 𝕜) (hj : j < k) {y t : ℕ × ℕ}
@@ -111,7 +113,7 @@ theorem writes_factorColumn (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I
     (htv : Fp.Disj (Store.inBlock t.1 t.2 2) (Store.inBlock y.1 (y.2 + n * j) n))
     (ht : t.2 + 2 ≤ m.store.len t.1)
     (hz : y.2 + n * j + n ≤ m.store.len y.1) :
-    Writes .total I τ factorColumn.body (Env.frame [n, j] [y, t])
+    Writes .total I τ factorColumn (Env.frame [n, j] [y, t])
       (Store.inBlock y.1 (y.2 + n * j) n ⊔ Store.inBlock t.1 t.2 2)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock y.1 (y.2 + n * j) n =
         some (List.ofFn ((gramSchmidtQ A).col ⟨j, hj⟩))) m := by
@@ -129,7 +131,6 @@ theorem writes_factorColumn (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I
     simpa only [Mem.live_cons, Mem.live_nil] using
       And.intro (hl y (by simp)) ⟨hl y (by simp), hl t (by simp), trivial⟩
   unfold factorColumn
-  dsimp only
   refine Writes.seq_le ((writes_sweep hS hB Q (A.col ⟨j, hj⟩) hl₃ hQ' hv hdis
     (htv.mono ht₀ le_rfl) (by omega) hz).in_frame rfl rfl hl₃)
     (sup_le (ht₀.trans le_sup_right) le_sup_left) ?_
@@ -150,7 +151,9 @@ theorem writes_factorColumn (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I
   exact ⟨hp₂.trans hp, hv₂⟩
 
 /-- The full rank-revealing column loop computes the existing mathematical
-`gramSchmidtQ` for every matrix, using caller-owned disjoint scalar workspace. -/
+`gramSchmidtQ` for every matrix, using caller-owned disjoint scalar workspace.
+A fragment of `NLAlib.MGS.factorRoutine`: run only inside its tree, on its operands
+and the buffers it allocates. -/
 theorem writes_factorWithScratch (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hB : RCLikeBlas.IsExact I) (hC : IsCmp RCLike.re I)
     {n k : ℕ} (A : Matrix (Fin n) (Fin k) 𝕜) {y t : ℕ × ℕ}
@@ -159,7 +162,7 @@ theorem writes_factorWithScratch (hS : IsScalar (RCLikeBlas.machine : Machine �
       some ((EntryCodec.scalar 𝕜).packFinMatrix A))
     (hty : Fp.Disj (Store.inBlock t.1 t.2 2) (Store.inBlock y.1 y.2 (k * n)))
     (ht : t.2 + 2 ≤ m.store.len t.1) (hy : y.2 + k * n ≤ m.store.len y.1) :
-    Writes .total I τ factorWithScratch.body (Env.frame [n, k] [y, t])
+    Writes .total I τ factorWithScratch (Env.frame [n, k] [y, t])
       (Store.inBlock y.1 y.2 (k * n) ⊔ Store.inBlock t.1 t.2 2)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock y.1 y.2 (k * n) =
         some ((EntryCodec.scalar 𝕜).packFinMatrix (gramSchmidtQ A))) m := by
@@ -173,7 +176,6 @@ theorem writes_factorWithScratch (hS : IsScalar (RCLikeBlas.machine : Machine �
       (stage A 0) := Store.holdsEntries_of_readBlock_packMatrix rfl
         (by simpa [EntryCodec.scalar, stage_zero_pack] using hA)
   unfold factorWithScratch
-  dsimp only
   refine (writes_loop rfl (fun _ => Store.inBlock y.1 y.2 (k * n) ⊔
     Store.inBlock t.1 t.2 2) (fun _ _ => le_rfl)
     (fun j m' => m'.pos = m.pos ∧ m'.store.HoldsEntries (EntryCodec.scalar 𝕜)
@@ -209,33 +211,5 @@ theorem writes_factorWithScratch (hS : IsScalar (RCLikeBlas.machine : Machine �
     exact ⟨hp'.trans hp, stage_update hj hs' hty hfr' hc⟩
   · intro m' _ ⟨hp, hs'⟩
     exact ⟨hp, by simpa [EntryCodec.scalar, stage_final_pack] using hs'.readBlock rfl⟩
-
-/-- Full rank-revealing MGS is total on every readable matrix. Its two scalar scratch
-cells are scoped, the caller's storage shape is preserved, and no rank assumption is needed. -/
-theorem writes_factor (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
-    (hB : RCLikeBlas.IsExact I) (hC : IsCmp RCLike.re I)
-    {n k : ℕ} (A : Matrix (Fin n) (Fin k) 𝕜) {y : ℕ × ℕ}
-    (hl : m.Live [y])
-    (hA : m.store.readBlock y.1 y.2 (k * n) =
-      some ((EntryCodec.scalar 𝕜).packFinMatrix A))
-    (hy : y.2 + k * n ≤ m.store.len y.1) :
-    Writes .total I τ factor.body (Env.frame [n, k] [y])
-      (Store.inBlock y.1 y.2 (k * n))
-      (fun m' => m'.pos = m.pos ∧ m'.store.readBlock y.1 y.2 (k * n) =
-        some ((EntryCodec.scalar 𝕜).packFinMatrix (gramSchmidtQ A))) m := by
-  apply writes_allocs_readBlock (lens := [.const 2]) (ns := [2]) rfl (hl y (by simp))
-  intro store hlength hlens hBelow
-  have hyLive : y.1 < m.store.length := hl y (by simp)
-  have ht : store.len m.store.length = 2 := by simpa using hlens 0 (by simp)
-  have hNew : m.store.length < store.length :=
-    Store.lt_length_of_lt_len (show 0 < store.len m.store.length by rw [ht]; omega)
-  have hLive : (Mem.mk store m.pos).Live [y, (m.store.length, 0)] := by
-    simp only [Mem.live_cons, Mem.live_nil]
-    exact ⟨by omega,
-      hNew, trivial⟩
-  refine ((writes_factorWithScratch hS hB hC A hLive (by kept)
-    (Fp.disj_inBlock_of_ne (Ne.symm (Nat.ne_of_lt hyLive)))
-    (by simpa using ht.ge) (by simpa only [(hBelow y.1 hyLive).1] using hy)).in_frame
-      rfl rfl hLive).mono (by fp_sub) (fun _ _ h => h)
 
 end NLAlib.MGS

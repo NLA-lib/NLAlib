@@ -40,7 +40,7 @@ theorem writes_boxTest {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     (hXz : Fp.Disj (Store.inBlock x.1 x.2 (2 * (rows * cols))) (Store.inBlock z.1 z.2 1))
     (hloz : Fp.Disj (Store.inBlock lo.1 lo.2 1) (Store.inBlock z.1 z.2 1))
     (hhiz : Fp.Disj (Store.inBlock hi.1 hi.2 1) (Store.inBlock z.1 z.2 1)) :
-    Writes md I τ (boxTest (Op := Op) (Tst := Tst)).body
+    Writes md I τ (boxTest (Op := Op) (Tst := Tst))
       (Env.frame [rows, cols] [x, lo, hi, z]) (Store.inBlock z.1 z.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.get z.1 z.2 =
         some (M.lit (if InInterval dec a b (vec xs) (2 * (rows * cols)) then 0 else 1))) m :=
@@ -63,7 +63,7 @@ theorem wp_boxTest {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     {Q : Mem K → Prop}
     (hQ : Q (m.upd z (M.lit
       (if InInterval dec a b (vec xs) (2 * (rows * cols)) then 0 else 1)))) :
-    Wp md I τ (boxTest (Op := Op) (Tst := Tst)).body
+    Wp md I τ (boxTest (Op := Op) (Tst := Tst))
       (Env.frame [rows, cols] [x, lo, hi, z]) Q m :=
   ((writes_boxTest hS hC hl hx hlo hhi hz hXz hloz hhiz).wp_eq_upd).mono
     (fun _ he => he.symm ▸ hQ)

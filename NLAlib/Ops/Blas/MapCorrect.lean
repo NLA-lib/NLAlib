@@ -30,7 +30,7 @@ theorem writes_unaryMap_of_disj_or_eq {K Op Tst : Type} [Inhabited K] {o : Op} {
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 n) (Store.inBlock y.1 y.2 n) ∨ x = y)
     (hx : m.store.readBlock x.1 x.2 n = some xs)
     (hy : y.2 + n ≤ m.store.len y.1) :
-    Writes md I τ (unaryMap o).body (Env.frame [n] [x, y]) (Store.inBlock y.1 y.2 n)
+    Writes md I τ (unaryMap o) (Env.frame [n] [x, y]) (Store.inBlock y.1 y.2 n)
       (fun m' => m'.pos = m.pos ∧
         m'.store.readBlock y.1 y.2 n = some (xs.map f)) m := by
   have hw := Writes.of_wp_eq_updBlock (wp_unaryMap_of_disj_or_eq (md := md) (τ := τ) hI hxy hx hy

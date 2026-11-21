@@ -16,14 +16,14 @@ intermediates. No orthogonality, matrix symmetry, successful-execution premise, 
 nonbreakdown assumption is required for execution of one initialized round.
 
 Mathlib was searched for reorthogonalized Lanczos execution; none. NLAlib's
-`Reorth.preNorm_writes`, `Reorth.cgs2_writes`, ordinary rounded `update_writes` and
-`normalize_rounded_writes` already prove all primitive safety. The existing
+`Reorth.preNorm_writes`, `Reorth.cgs2Routine_meets`, ordinary rounded `update_writes` and
+`normalizeRoutine_meets_rounded` already prove all primitive safety. The existing
 `TwoPassOut.norm_sub_sub_sum_le` gives the representation defect of the actual
 sequential axpy passes. These are reused instead of old Computation execution proofs.
 
 ## Statement shapes and consumers
 
-New `NLAlib/Krylov/Lanczos/Reorth/RoundedAdvance.lean` contains in order:
+New `NLAlib/Krylov/Lanczos/Reorth/Rounded/Advance.lean` contains in order:
 
 - `Rounded.updateAndSweep_writes`, preserving the exact round buffer/capacity arguments,
   takes the models above and `errors.dot n < 1`, and returns `Writes .total` with
@@ -68,7 +68,7 @@ full reorthogonalization uses `3*cap+2`. The shared initial read/liveness/room/b
 are consumed by both canonical certificates. No input preprocessing is added.
 The object is a library-specific buffer representation; its bridge is the existing
 `Ops.Problem.initial` memory and its shared read/length theorems. No Mathlib analogue exists.
-`Reorth/Certificate.lean` specializes the shared problem and `Algorithm.ofWp`, applying
+`Reorth/Certification.lean` specializes the shared problem and `Algorithm.ofWp`, applying
 the total rounded model theorem for actual History and the reorthogonalized full static
 manifest and peak. All original/query/core work and sequential span, initial output
 capacity and query/scratch reserve remain explicit.

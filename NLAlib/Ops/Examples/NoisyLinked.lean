@@ -6,8 +6,10 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Logic.Count
+public import NLAlib.Ops.RoutineSyntax
 public import NLAlib.Ops.Examples.Noisy
 public import NLAlib.Ops.Profiles.Random
+public import NLAlib.Ops.Logic.RoutineIntro
 
 /-!
 # The noisy product implemented with a drawn probe, and the linked iteration
@@ -19,7 +21,9 @@ left with `y` and a tape position `n` further, and nothing that holds the noise.
 
 ## Main results
 
-* `NLAlib.Ops.Examples.nmvImpl_spec`: the implementation meets the contract of `nmv` with the
+* `NLAlib.Ops.Examples.nmvRoutine_satisfies`: the implementation satisfies the contract of `nmv`
+  with
+  the
   noise function `noiseFn`, whose conditional law is that of `A v + σ ‖v‖ g`
   (`isNoisyMv_noiseFn`).
 * `NLAlib.Ops.Examples.noisy_certifies`: the certificate of the profile: contract, counts,
@@ -39,11 +43,8 @@ variable {K Tst : Type} [Inhabited K] {n : ℕ}
 
 /-- **The implementation of the noisy product.** Index variables: `n`, the offsets of `x`, `y`;
 buffer variables: `x`, `y`, then the scratch block `g` and the scratch cell `t`. -/
-def nmvImpl (σ : ℚ) : Impl ROp Tst where
-  nd := 1
-  nin := 1
-  nout := 1
-  body := .alloc (.var 0) (.alloc (.const 1)
+def nmvTree (σ : ℚ) : Stmt ROp Tst :=
+  .alloc (.var 0) (.alloc (.const 1)
     (.seq (.call (.operator .matvec) [.var 0, .var 0] [⟨0, .var 1⟩] [⟨1, .var 2⟩])
       (.seq (.call .gauss [.var 0] [] [⟨2, .const 0⟩])
         (.seq (.call .nrm2 [.var 0] [⟨0, .var 1⟩] [⟨3, .const 0⟩])
@@ -51,21 +52,36 @@ def nmvImpl (σ : ℚ) : Impl ROp Tst where
             (.call .axpy [.var 0] [⟨3, .const 0⟩, ⟨2, .const 0⟩, ⟨1, .var 2⟩]
               [⟨1, .var 2⟩]))))))
 
-/-- **The implementation meets the contract of the noisy product**, over the exact operations
+omit [Inhabited K] in
+/-- The noisy product as a routine: `[n] (x : read n) → (y : write n)`, drawing `n` positions. -/
+def nmvRoutine (σ : ℚ) : Routine ROp Tst :=
+  routine% [n] (x : n) → (y : n) draws n := nmvTree σ
+
+/-- The noisy product meets the specification read off its relation, over the exact operations
 and the vector draw: the output decodes to `A v + σ ‖v‖ dec w` for the window `w` it drew. -/
-theorem nmvImpl_spec {dec : K → ℝ} {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp ROp Tst K}
+theorem nmvRoutine_meets {dec : K → ℝ} {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp ROp Tst K}
     (hI : IsRandLin dec A I) (σ : ℚ) :
-    (nmvImpl (Tst := Tst) σ).Triple I .total
-      ((nmvRel dec (noiseFn dec A σ)).spec (OutApart (· = n))) := by
-  refine Impl.meets_rel fun d ins outs τ m X hnd hadm hl hr _ hz => ?_
+    (nmvRoutine (Tst := Tst) σ).Meets I
+      (Routine.Spec.ofRel (nmvRel dec (noiseFn dec A σ)) fun d => d.headD 0 = n) := by
+  refine Routine.meets_ofRel_of_post (fun d => by cases d <;> rfl)
+    (fun d _ => by cases d <;> rfl)
+    fun d args τ m X hnd hlen hl hsep hr hok _ hz => ?_
   obtain ⟨n', rfl⟩ := List.length_eq_one_iff.mp hnd
-  obtain rfl : n' = n := hadm.1
-  obtain ⟨x, xs, rfl, hx, rfl⟩ := Mem.readBlocks_one hr
-  obtain ⟨z, rfl, hz'⟩ := Mem.room_one hz
-  have hxz : x.1 ≠ z.1 := hadm.2 x (by simp) z (by simp)
+  obtain rfl : n' = n := hok
+  obtain ⟨x, z, rfl⟩ : ∃ x z, args = [x, z] := by
+    match args, hlen with
+    | [x, z], _ => exact ⟨x, z, rfl⟩
+  have hxz : x.1 ≠ z.1 := (hsep.2.1 z (by simp [nmvRoutine, Routine.sel, Access.writable])
+    x (by simp [nmvRoutine, Routine.sel, Access.readOnly])).symm
+  change m.readBlocks [x] [n'] = some X at hr
+  change m.Room [z] [n'] at hz
+  obtain ⟨x', xs, he, hx, rfl⟩ := Mem.readBlocks_one hr
+  obtain rfl : x = x' := by simpa using he
+  change Wp .total I τ (nmvTree (Tst := Tst) σ) (Env.frame [n'] [x, z])
+    ((nmvRel dec (noiseFn dec A σ)).Post [n'] [xs] [z] (τ.window Stream.gauss m.pos n') m) m
   obtain ⟨s, p⟩ := m
   obtain ⟨hlx, hlz⟩ : x.1 < s.length ∧ z.1 < s.length := by simpa using hl
-  replace hz : z.2 + n' ≤ s.len z.1 := hz'
+  replace hz : z.2 + n' ≤ s.len z.1 := hz.1
   replace hx : s.readBlock x.1 x.2 n' = some xs := hx
   have hl1 : (s.push n').length = s.length + 1 := Store.length_push _ _
   have hlt : ((s.push n').push 1).len (s.length + 1) = 1 := by rw [← hl1, Store.len_push_top]
@@ -73,7 +89,7 @@ theorem nmvImpl_spec {dec : K → ℝ} {A : Matrix (Fin n) (Fin n) ℝ} {I : Int
     rw [Store.len_push_of_lt (by simp), Store.len_push_top]
   have hlz' : ((s.push n').push 1).len z.1 = s.len z.1 := by
     rw [Store.len_push_of_lt (by simp; omega), Store.len_push_of_lt hlz]
-  refine ⟨⟨rfl, rfl, rfl⟩, wp_alloc rfl (wp_alloc rfl ?_)⟩
+  refine wp_alloc rfl (wp_alloc rfl ?_)
   -- the exact product into `y`, the probe into the scratch block, the norm of `x` and its
   -- multiple by `σ` in the scratch cell, the update of `y`
   wp_call hI.matvec [List.getD_cons_succ, List.getD_cons_zero] with ws hwl hws
@@ -107,10 +123,26 @@ theorem nmvImpl_spec {dec : K → ℝ} {A : Matrix (Fin n) (Fin n) ℝ} {I : Int
     rw [← hrd]
     rfl
 
+/-- The routine of the noisy product implements the contract of `nmv`. -/
+theorem nmvRoutine_implements (dec : K → ℝ) (N : (Fin n → ℝ) → (Fin n → K) → Fin n → ℝ)
+    (σ : ℚ) (ok : ℕ → Prop) :
+    (nmvRoutine (Tst := Tst) σ).Implements (nmvRel dec N) (OutApart ok)
+      (fun ins outs => ins ++ outs) := by
+  implements [n] (x) → (z) with hadm
+
+/-- The implementation satisfies the contract of the noisy product, over the exact operations
+and the vector draw: the output decodes to `A v + σ ‖v‖ dec w` for the window `w` it drew. A
+consequence of the judgment of its routine. -/
+theorem nmvRoutine_satisfies {dec : K → ℝ} {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp ROp Tst K}
+    (hI : IsRandLin dec A I) (σ : ℚ) :
+    (nmvRoutine (Tst := Tst) σ).impl.Satisfies I .total
+      ((nmvRel dec (noiseFn dec A σ)).spec (OutApart (· = n))) :=
+  (nmvRoutine_meets hI σ).satisfies_ofRel (nmvRoutine_implements dec _ σ _) fun _ _ _ h => h.2.1.1
+
 /-- **The profile of the noisy product by a drawn probe**: one product, one vector draw, one
 norm, one product by `σ` and one `axpy` per call; `n + 1` scratch cells; a window of `n`. -/
 noncomputable def noisy (σ : ℚ) : Profile NOp ROp Tst where
-  table _ := .inl (nmvImpl σ)
+  table _ := .inl (nmvRoutine σ).impl
   cost _ d := Count.one (.operator .matvec) [d.headD 0, d.headD 0] +
     (Count.one .gauss d + (Count.one .nrm2 d + (Count.one (.mulc σ) [] + Count.one .axpy d)))
   ws _ d := d.headD 0 + 1
@@ -122,19 +154,23 @@ noncomputable def noisy (σ : ℚ) : Profile NOp ROp Tst where
 that the law of the tape assigns to the call, by the window lemma. -/
 theorem noisy_certifies (dec : K → ℝ) (A : Matrix (Fin n) (Fin n) ℝ) (σ : ℚ) :
     (noisy (Tst := Tst) σ).Refines (IsRandLin dec A) (IsNoisy dec (noiseFn dec A σ)) := by
-  refine .of_accounts (fun I hI => Interp.link_meets (o := NOp.nmv) rfl (nmvImpl_spec hI σ))
+  refine .of_accounts
+    (fun I hI => Interp.link_satisfies (o := NOp.nmv) rfl (nmvRoutine_satisfies hI σ))
     (fun I => Table.accounts_of_static ?_ (fun o o' hT => by cases hT) I) fun I _ hloc o => ?_
   · intro o R hT d offs hd ho
     cases hT
     obtain ⟨k, rfl⟩ := List.length_eq_one_iff.mp hd
     obtain ⟨a, b, rfl⟩ := List.length_eq_two.mp ho
-    simp [noisy, nmvImpl, stmtCost, stmtPeak, useCost]
+    simp [noisy, nmvRoutine, Routine.impl, Routine.nin, Routine.nout, routineNF, nmvTree, stmtCost,
+      stmtPeak, useCost]
   · cases o
-    exact Interp.TapeLocal.link hloc (o := NOp.nmv) rfl (by simp [Stmt.Straight, nmvImpl])
+    exact Interp.TapeLocal.link hloc (o := NOp.nmv) rfl (by simp [Stmt.Straight, nmvRoutine,
+      Routine.impl, Routine.nin, Routine.nout, routineNF, nmvTree])
       fun d offs hd ho => by
         obtain ⟨k, rfl⟩ := List.length_eq_one_iff.mp hd
         obtain ⟨a, b, rfl⟩ := List.length_eq_two.mp ho
-        simp [staticWindow, nmvImpl, noisy, randWindow]
+        simp [staticWindow, nmvRoutine, Routine.impl, Routine.nin, Routine.nout, routineNF,
+          nmvTree, noisy, randWindow]
 
 /-- The noisy product by a drawn probe, with the probe drawn entry by entry. -/
 noncomputable def noisyDraws (σ : ℚ) : Profile NOp ROp Tst := (noisy σ).over Rand.gaussLoop

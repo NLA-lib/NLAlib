@@ -35,7 +35,8 @@ variable {K Op Tst Su Sg : Type} [Inhabited K] [Has ScalarOp Op] [Has MatrixOp O
 /-- From an actual initialized matrix/cache/flag representation, the capped loop terminates
 with the existing mathematical capped Newton–Schulz result. It requires only functional
 scalar/multiplication contracts, exact comparison queries, distinct zero/one decodings and
-workspace capacities. No numerical convergence or successful-execution premise is assumed. -/
+workspace capacities. No numerical convergence or successful-execution premise is assumed.
+A fragment of `NLAlib.Sign.signRoutine`. -/
 theorem writes_loop {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) {τ : Tape K} {n cap : ℕ}
     (A : Matrix (Fin n) (Fin n) (K × K)) (η : K) {x w v t : ℕ × ℕ} {m : Mem K}
@@ -45,7 +46,7 @@ theorem writes_loop {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I)
     (hx : x.2 + 2 * (n * n) ≤ m.store.len x.1)
     (hw : w.2 + 2 * (n * n) ≤ m.store.len w.1)
     (hv : v.2 + 2 * (n * n) ≤ m.store.len v.1) (ht : t.2 + 5 ≤ m.store.len t.1) :
-    Writes .total I τ (loop (Has.inj MatrixOp.mul)).body
+    Writes .total I τ (loop (Has.inj MatrixOp.mul))
       (Env.frame [n, cap] [x, w, v, t, x, w, v, t]) (loopFootprint n x w v t)
       (fun μ => LoopState (M.toFloatMachine dec mm qr unif normal) x w t η
         (newtonSchulzLoop (M.toFloatMachine dec mm qr unif normal) η cap A) μ.store ∧

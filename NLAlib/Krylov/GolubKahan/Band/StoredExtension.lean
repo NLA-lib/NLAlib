@@ -181,13 +181,13 @@ theorem ExtAt.keep {dec : K → ℝ} {Ext : ExtendPred ℝ} {s s' : Store K} {F 
 
 /-- The call rule of a basis extension. On a readable basis `qs` of `k` columns at `Q` and a
 readable block `ws` of `b` columns at `W`, in three distinct buffers with room for the new block
-directly after the basis and for the coefficients at `C`, a call of an operation that meets the
+directly after the basis and for the coefficients at `C`, a call of an operation that satisfies the
 contract of a basis extension for the predicate `Ext` at admitted dimensions `[r, k, b]` writes
 only its three output blocks, does not move the tape, and leaves a stored extension by the
 decoded block `ws`. -/
 theorem writes_extend {dec : K → ℝ} {Ext : ExtendPred ℝ} {ok : ℕ → ℕ → ℕ → Prop}
     {I : Interp Op Tst K} {o : Op}
-    (hO : I.Meets .total o ((extendRelOf dec ok Ext).spec ExtendOperands))
+    (hO : I.Satisfies .total o ((extendRelOf dec ok Ext).spec ExtendOperands))
     {τ : Tape K} {ρ : Env} {ds : List IExp} {ins outs : List Operand} {r k b : ℕ}
     {Q W C : ℕ × ℕ} {μ : Mem K} {qs ws : List K}
     (hd : IExp.evalList ρ.idx ds = some [r, k, b]) (ha : Operand.evalList ρ ins = some [Q, W])
@@ -317,12 +317,12 @@ theorem ProductExtAt.keep {dec : K → ℝ} {Ext : ExtendPred ℝ} {r c b : ℕ}
 columns at `Q` and a readable block `ws` of `b` columns at `W`, in three distinct buffers with
 room for the new block directly after the basis and for the coefficients at `C`, let the decoded
 `ws` be related by `Rel` to the decoded readable block `xs` at `X`, no cell of which is an output
-cell of the call. Then a call of an operation that meets the contract of a basis extension for
+cell of the call. Then a call of an operation that satisfies the contract of a basis extension for
 the predicate `Ext` at admitted dimensions `[r, k, b]` writes only its three output blocks, does
 not move the tape, and leaves a stored extension by a block related to the block at `X`. -/
 theorem writes_extend_product {dec : K → ℝ} {Ext : ExtendPred ℝ} {ok : ℕ → ℕ → ℕ → Prop}
     {I : Interp Op Tst K} {o : Op}
-    (hO : I.Meets .total o ((extendRelOf dec ok Ext).spec ExtendOperands))
+    (hO : I.Satisfies .total o ((extendRelOf dec ok Ext).spec ExtendOperands))
     {τ : Tape K} {ρ : Env} {ds : List IExp} {ins outs : List Operand} {r c k b : ℕ}
     {Rel : Matrix (Fin c) (Fin b) ℝ → Matrix (Fin r) (Fin b) ℝ → Prop}
     {X Q W C : ℕ × ℕ} {μ : Mem K} {xs qs ws : List K}

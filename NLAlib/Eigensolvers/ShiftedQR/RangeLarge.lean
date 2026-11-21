@@ -43,12 +43,13 @@ private theorem block_rapidDecouplingHyps {n d lo : ℕ}
   rw [hτ]
   exact hInv.rapidDecouplingHyps hGlobal (by rw [hε, he, hτ])
 
-/-- The actual large-range program decouples its raw block, binds the returned small-entry
-index, and commits the resulting two children. The global assumptions concern the input
-matrix and parameters; the decoupling proof is local to one fixed scalar implementation. -/
+/-- The actual large-range program decouples its raw block, binds the returned small-entry index,
+and commits the resulting two children. The global assumptions concern the input matrix and
+parameters; the decoupling proof is local to one fixed scalar implementation. A fragment: its tree
+runs only inside the tree of `NLAlib.ShiftedQR.processRange`. -/
 theorem processLarge_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (hE : ExactModel id Mch) (hL : IsIndexLit Mch I) (hQ : IsToNat id I)
-    {θ : ℝ} (D : Impl O Q) (hD : DecouplingContract θ D I)
+    {θ : ℝ} (D : Stmt O Q) (hD : DecouplingContract θ D I)
     {tape : Tape ℝ} {μ : Mem ℝ} {n d lo j m F M : ℕ} {a p stack out w r : ℕ × ℕ}
     {H A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {roots : Fin (n + 1) → ℂ}
     {τ ε B α γ δ g : ℝ} {rest done : List (ℕ × ℕ)}
@@ -62,7 +63,7 @@ theorem processLarge_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hOut : FinishedHolds out done roots μ.store) (hSt : StackHolds stack rest.reverse μ.store)
     (hε : ε = (((((lo, d + 1) :: rest) ++ done).length - 1 : ℕ) : ℝ) * τ)
     (hj : 2 * done.length + ((lo, d + 1) :: rest).length = j + 1) :
-    Writes .total I tape (processLarge D).body
+    Writes .total I tape (processLarge D)
       (Env.frame [n + 1, m, 2 ^ m, F, M, lo, d + 1] [a, p, stack, out, w, r])
       (worklistFp (n + 1) a stack out w r)
       (fun μ' => μ'.pos = μ.pos ∧ WorklistInv H τ a stack out (j + 1) μ') μ := by

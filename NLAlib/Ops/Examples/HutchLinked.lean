@@ -29,7 +29,7 @@ namespace NLAlib.Ops.Examples
 
 variable {K Tst : Type} [Inhabited K] [MeasurableSpace K]
 
-/-- **The corollary for the program with scalar draws**: over every interpretation meeting the
+/-- **The corollary for the program with scalar draws**: over every interpretation satisfying the
 base contracts whose operations read the tape only in their windows, for every sample `N n`
 scalar draws and `N` products, dot products and additions within `2 n + 1` scratch cells; the
 estimate is unbiased with the variance of one quadratic form divided by `N`. -/

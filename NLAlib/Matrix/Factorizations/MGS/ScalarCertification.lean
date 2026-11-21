@@ -72,15 +72,15 @@ theorem contracts_link {work : RCLikeStar.Operation → List ℕ → ℕ}
   refine ⟨?_, ?_⟩
   · intro o
     cases o with
-    | inl s => exact Interp.link_meets_kept rfl (hS s)
+    | inl s => exact Interp.link_satisfies_kept rfl (hS s)
     | inr b =>
       cases b
-      · exact Interp.link_meets rfl (RCLikeScalar.meets_sum hS)
-      · exact Interp.link_meets rfl (RCLikeScalar.meets_dot hS hStar)
-      · exact Interp.link_meets rfl (RCLikeScalar.meets_axpy hS)
-      · exact Interp.link_meets rfl (RCLikeScalar.meets_nrm2 hS hStar)
-      · exact Interp.link_meets rfl (RCLikeScalar.meets_scal hS)
-      · exact Interp.link_meets rfl (RCLikeScalar.meets_copy hS)
+      · exact Interp.link_satisfies rfl (RCLikeScalar.satisfies_sum hS)
+      · exact Interp.link_satisfies rfl (RCLikeScalar.satisfies_dot hS hStar)
+      · exact Interp.link_satisfies rfl (RCLikeScalar.satisfies_axpy hS)
+      · exact Interp.link_satisfies rfl (RCLikeScalar.satisfies_nrm2 hS hStar)
+      · exact Interp.link_satisfies rfl (RCLikeScalar.satisfies_scal hS)
+      · exact Interp.link_satisfies rfl (RCLikeScalar.satisfies_copy hS)
   · intro q
     exact hI.2 q
 

@@ -56,7 +56,7 @@ theorem reconstructResult_kernelWeight_le_of_arenas
     (T : ℕ → ℕ) (hT : Monotone T) (hadd : ∀ i j, T i + T j ≤ T (i + j))
     (W : DenseOp → List ℕ → ℕ) {a b : St DenseOp (CmpTst ⊕ IdxTst) K}
     (hmem : a.mem = μ)
-    (hrun : evalCounted I W τ (reconstructResult (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body
+    (hrun : evalCounted I W τ (reconstructResult (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))
       (Env.frame [n, L] [c, ua, qa, ea, sz, kd, kp, lv, u, dv]) a = some b) :
     Dense.kernelWeight T b.cost ≤ Dense.kernelWeight T a.cost + (L + 1) * (2 * T n) := by
   subst μ

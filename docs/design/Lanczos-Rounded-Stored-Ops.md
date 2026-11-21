@@ -24,7 +24,7 @@ executing the existing proved BLAS implementation over the specified machine.
 The proof-side guarded interpreter protects the immutable raw matrix snapshot. Its fallback
 forwards scalar and vector calls to their globally valid target interpretation and supplies
 an exact matrix product only outside the protected regime. The runtime tree contains neither
-that guard nor a fallback product. `Wp.linkContext_of_guarded` transfers the total source
+that guard nor a fallback product. `Wp.linkContext_of_isolated` transfers the total source
 numerical proof to the actual context-linked tree.
 
 The shared theorem `StdModel.norm_mulVec_sub_rowWord_le` derives the dense product's absolute
@@ -78,20 +78,22 @@ fallback affects the lowered tree.
 * `Ops/Profiles/ContextLinearRounded.lean`: exhaustive local rounded source contracts,
   fallback realization and guarded matrix-context transfer.
 * `Ops/Profiles/RoundedBlas.lean`: jointly realized rounded scalar/vector model.
-* `Krylov/Lanczos/RoundedStoredWords.lean`: total ordinary and reorthogonalized word theorems
-  consuming the shared local dense/context contracts.
-* `Krylov/Lanczos/RoundedStoredCertificate.lean`: ordinary canonical endpoints.
-* `Krylov/Lanczos/Reorth/RoundedStoredCertificate.lean`: reorthogonalized canonical endpoints.
+* `Krylov/Lanczos/Rounded/StoredSolve.lean`, `Krylov/Lanczos/Reorth/Rounded/StoredSolve.lean`:
+  the ordinary and reorthogonalized stored routines, consuming the shared local dense/context
+  contracts.
+* `Krylov/Lanczos/Rounded/StoredCertification.lean`: ordinary canonical endpoints.
+* `Krylov/Lanczos/Reorth/Rounded/StoredCertification.lean`: reorthogonalized canonical endpoints.
 
-Shared machinery is `Wp.linkContext_of_guarded`, `Mem.ContextSnapshot`, the dense row-loop
-word theorem and rounding bound, `Rounded.solve_writes`, `Algorithm.ofWp` and `Algorithm.link`.
+Shared machinery is `Wp.linkContext_of_isolated`, `Mem.Isolated`, the dense row-loop
+word theorem and rounding bound, `Rounded.solveRoutine_meets`, `Routine.algorithm` and
+`Algorithm.link`.
 No algorithm-local alternative to these core mechanisms is needed. The shared scalar-only
 lowering lives in `Ops/Profiles/RoundedScalarBlas.lean`; dense numerical analysis lives in
 `Matrix/FinitePrecision/StoredDense.lean`, above the self-contained operation core.
 
 Mathlib was searched for stored-program, rounded machine and guarded context interfaces;
 none exist there. Existing Mathlib matrices, symmetry and norms are reused through the
-library's established bridges, without a parallel mathematical object. Existing `StoredWords`
-and `StoredCertificate` supply layout/context and resource proof material; `RoundedSolve`
+library's established bridges, without a parallel mathematical object. Existing `StoredRoutine`
+and `StoredCertification` supply layout/context and resource proof material; `RoundedSolve`
 owns the numerical execution reasoning. Downstream Ritz and backward-error theorems consume
 the existing rounded output directly, preserving its tie to the actual stored values.

@@ -96,9 +96,9 @@ theorem runs_solve_seq {M : Machine K} {dec : K → ℝ} {n cap : ℕ}
         decv dec n ys = cgIterate A (decv dec n bs) (decv dec n xs)
           (min cap (krylovGrade A (decv dec n bs - A *ᵥ decv dec n xs)))) := by
   have hcert := Blas.seq_certifies_exact (Op := Op) (Tst := Tst) hM (fun _ => True)
-  obtain ⟨hS', hB⟩ := hcert.meets I hS
+  obtain ⟨hS', hB⟩ := hcert.satisfies I hS
   have hA' : IsExactMatvec dec A (I.link (Blas.seq (Op := Op) (Tst := Tst)).table) :=
-    Interp.link_meets_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
+    Interp.link_satisfies_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
   have hrun := runs_solve hS' hM hB hA' hCmp hPos (Blas.ws 0) (cap := cap) (τ := τ)
     hbx hbr hbp hxr hxp hrp hl hbs hxs hz
   exact (hcert.transfer I τ _ _ _ _ _ _ hrun).mono

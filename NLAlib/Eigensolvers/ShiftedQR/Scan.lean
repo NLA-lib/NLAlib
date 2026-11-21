@@ -168,8 +168,8 @@ theorem ScanHolds.index_of_isDecoupledAbs {n : ℕ}
 variable {Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op] [Has CmpTst Tst]
 
 /-- One scan visit computes an actual squared modulus and records its index when small. -/
-def scanRound : Impl Op Tst := opsImpl% [N, i] (A, threshold) → (R) {
-  run (PairScalar.normSq (Op := Op) (Tst := Tst)).body []
+def scanRound : Stmt Op Tst := ops% [N, i] (A, threshold) → (R) {
+  run (PairScalar.normSq (Op := Op) (Tst := Tst)) []
     (A[2 * (i * N + i + 1)], R);
   if (Has.inj CmpTst.le) [] (R[2], threshold) {
     call (Has.inj IndexOp.lit) [1] () → (R[3]);
@@ -178,23 +178,25 @@ def scanRound : Impl Op Tst := opsImpl% [N, i] (A, threshold) → (R) {
 }
 
 /-- Inspect every subdiagonal entry, starting from a supplied flag/index state. -/
-def scanLoop : Impl Op Tst := opsImpl% [N] (A, threshold) → (R) {
+def scanLoop : Stmt Op Tst := ops% [N] (A, threshold) → (R) {
   for i < N - 1 {
-    run (scanRound (Op := Op) (Tst := Tst)).body [N, i] (A, threshold, R)
+    run (scanRound (Op := Op) (Tst := Tst)) [N, i] (A, threshold, R)
   }
 }
 
 /-- Initialize flag/index and inspect every actual subdiagonal entry. -/
-def scan : Impl Op Tst := opsImpl% [N] (A, threshold) → (R) {
+def scan : Stmt Op Tst := ops% [N] (A, threshold) → (R) {
   call (Has.inj IndexOp.lit) [0] () → (R[3]);
   call (Has.inj IndexOp.lit) [0] () → (R[4]);
-  run (scanLoop (Op := Op) (Tst := Tst)).body [N] (A, threshold, R)
+  run (scanLoop (Op := Op) (Tst := Tst)) [N] (A, threshold, R)
 }
 
 /-- One visit on any scalar machine whose natural literals up to `n` are exact: it computes the
 word `NLAlib.ShiftedQR.subdiagonalSqWord` and, when it passes the actual comparison with the
 threshold word, writes the flag $1$ and the index $k$; otherwise the flag and index words are
-kept. The matrix and threshold have disjoint views from the five arithmetic/flag/index words. -/
+kept. The matrix and threshold have disjoint views from the five arithmetic/flag/index words.
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrRoutine`,
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem scanRound_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k : ℕ} {a t r : ℕ × ℕ} (hN : IsExactNatLit id M n)
@@ -207,7 +209,7 @@ theorem scanRound_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hA : Fp.Disj (Store.inBlock r.1 r.2 5)
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))))
     (hT : Fp.Disj (Store.inBlock r.1 r.2 5) (Store.inBlock t.1 t.2 1)) :
-    Writes .total I τ (scanRound (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (scanRound (Op := Op) (Tst := Tst))
       (Env.frame [n + 1, k] [a, t, r]) (Store.inBlock r.1 r.2 5)
       (fun m' => m'.pos = m.pos ∧
         m'.store.get r.1 (r.2 + 3) =
@@ -262,7 +264,9 @@ theorem scanRound_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     exact ⟨hp₁, by simpa [z, hsmall] using hflag₁, by simpa [z, hsmall] using hindex₁⟩
 
 /-- One visit updates exactly the last-index specification using its actual scalar comparison.
-The matrix and threshold have disjoint views from the five arithmetic/flag/index words. -/
+The matrix and threshold have disjoint views from the five arithmetic/flag/index words.
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrRoutine`,
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem scanRound_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k : ℕ} {a t r : ℕ × ℕ}
@@ -273,7 +277,7 @@ theorem scanRound_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hA : Fp.Disj (Store.inBlock r.1 r.2 5)
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))))
     (hT : Fp.Disj (Store.inBlock r.1 r.2 5) (Store.inBlock t.1 t.2 1)) :
-    Writes .total I τ (scanRound (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (scanRound (Op := Op) (Tst := Tst))
       (Env.frame [n + 1, k] [a, t, r]) (Store.inBlock r.1 r.2 5)
       (fun m' => m'.pos = m.pos ∧ ScanHolds H threshold (k + 1) r m'.store) m := by
   classical
@@ -292,7 +296,8 @@ theorem scanRound_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
   · rw [if_neg hs] at hF hI
     simpa only [ScanHolds, scanPrefix, if_neg hs] using And.intro hF hI
 
-/-- The actual scan loop implements the mathematical prefix recurrence on every visit. -/
+/-- The actual scan loop implements the mathematical prefix recurrence on every visit. A fragment:
+its tree runs only inside the tree of `NLAlib.ShiftedQR.scan`. -/
 private theorem scanLoop_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a t r : ℕ × ℕ}
@@ -303,7 +308,7 @@ private theorem scanLoop_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hA : Fp.Disj (Store.inBlock r.1 r.2 5)
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))))
     (hT : Fp.Disj (Store.inBlock r.1 r.2 5) (Store.inBlock t.1 t.2 1)) :
-    Writes .total I τ (scanLoop (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (scanLoop (Op := Op) (Tst := Tst))
       (Env.frame [n + 1] [a, t, r]) (Store.inBlock r.1 r.2 5)
       (fun m' => m'.pos = m.pos ∧ ScanHolds H threshold n r m'.store) m := by
   unfold scanLoop
@@ -320,7 +325,9 @@ private theorem scanLoop_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
   exact ⟨hp'.trans hp, hs'⟩
 
 /-- The full scalar scan initializes its own outputs and inspects every subdiagonal entry.
-Its actual flag/index words equal the exact prefix specification; outputs need only capacity. -/
+Its actual flag/index words equal the exact prefix specification; outputs need only capacity.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem scan_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a t r : ℕ × ℕ}
@@ -330,7 +337,7 @@ theorem scan_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hA : Fp.Disj (Store.inBlock r.1 r.2 5)
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))))
     (hT : Fp.Disj (Store.inBlock r.1 r.2 5) (Store.inBlock t.1 t.2 1)) :
-    Writes .total I τ (scan (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (scan (Op := Op) (Tst := Tst))
       (Env.frame [n + 1] [a, t, r]) (Store.inBlock r.1 r.2 5)
       (fun m' => m'.pos = m.pos ∧ ScanHolds H threshold n r m'.store) m := by
   have hlit : M.lit (0 : ℚ) = (0 : ℝ) := by simpa using hE.lit 0

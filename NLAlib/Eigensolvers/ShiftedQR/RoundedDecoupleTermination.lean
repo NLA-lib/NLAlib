@@ -68,12 +68,12 @@ theorem shIterationWith_terminates_at {M : Machine ℝ} {I : Interp O Q ℝ} (hS
     (hwp : m.store.get wp.1 wp.2 = some cp)
     (hg : m.store.readBlock g.1 g.2 (2 * (excNet ε).length) =
       some ((excNet ε).flatMap fun z => [z.re, z.im])) (hrf : f.2 < m.store.len f.1)
-    {nq T : ℕ} {qs : List ℝ} {SE : Impl O Q} (hSE : TerminatingSmallEigAt k nq T qs SE I)
+    {nq T : ℕ} {qs : List ℝ} {SE : Stmt O Q} (hSE : TerminatingSmallEigAt k nq T qs SE I)
     {qw : ℕ × ℕ} (hlq : qw.1 < m.store.length)
     (hq : m.store.readBlock qw.1 qw.2 qs.length = some qs)
     (hqw : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (Store.inBlock qw.1 qw.2 qs.length)) :
-    Writes .total I τ (shIterationWith SE).body
+    Writes .total I τ (shIterationWith SE)
       (Env.frame [n + 1, q, k, (excNet ε).length, nq, T]
         [a, rd, c, thr, wg, wr, ww, wp, g, qw, a, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
@@ -169,7 +169,7 @@ theorem shIteration_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSc
     (hwp : m.store.get wp.1 wp.2 = some cp)
     (hg : m.store.readBlock g.1 g.2 (2 * (excNet ε).length) =
       some ((excNet ε).flatMap fun z => [z.re, z.im])) (hrf : f.2 < m.store.len f.1) :
-    Writes .total I τ (shIteration (O := O) (Q := Q)).body
+    Writes .total I τ (shIteration (O := O) (Q := Q))
       (Env.frame [n + 1, q, k, (excNet ε).length] [a, rd, c, thr, wg, wr, ww, wp, g, a, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (fun m' => (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a H' m'.store) ∧
@@ -191,7 +191,7 @@ theorem roundedDecoupleScan_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (h
     {μ : Mem ℝ} {k L : ℕ} (hk : k ≤ n) {w q f : ℕ × ℕ} {ps : List ℝ} (hps0 : 0 < ps.length)
     (hctx : DecoupleLoopCtx n L w q f ps μ) (hW : ∃ H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
       HoldsMatrix w H μ.store) :
-    Writes .total I τ (bottomScan (O := O) (Q := Q)).body (Env.frame [n + 1, k] [w, q, (L, 0)])
+    Writes .total I τ (bottomScan (O := O) (Q := Q)) (Env.frame [n + 1, k] [w, q, (L, 0)])
       (Store.inBlock L 0 5)
       (fun μ' => DecoupleLoopCtx n L w q f ps μ' ∧
         (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix w H' μ'.store) ∧
@@ -216,7 +216,7 @@ theorem roundedDecoupleExit_terminates {M : Machine ℝ} {I : Interp O Q ℝ}
     {ps : List ℝ} (hctx : DecoupleLoopCtx n L w p f ps μ)
     (hW : ∃ H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix w H μ.store) {x : ℝ}
     (hx : μ.store.get L 3 = some x) :
-    Writes .total I τ (roundedDecoupleExit (O := O) (Q := Q)).body (Env.frame [] [(L, 0), f])
+    Writes .total I τ (roundedDecoupleExit (O := O) (Q := Q)) (Env.frame [] [(L, 0), f])
       (Store.inBlock f.1 f.2 1)
       (fun μ' => (∃ x, μ'.store.get f.1 f.2 = some x) ∧
         ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix w H' μ'.store) μ := by
@@ -244,13 +244,13 @@ theorem roundedDecoupleLoopWith_terminates {M : Machine ℝ} {I : Interp O Q ℝ
     (hL : IsIndexLit M I) (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I)
     (hQ : IsToNat id I) {s₀ : ℕ} (hD : IsPolarDiskSampler s₀ I) {τ : Tape ℝ}
     {μ : Mem ℝ} {k q F L T : ℕ} (hkq : k = 2 ^ q) (hkn : k ≤ n) {ε : ℝ} {w p f : ℕ × ℕ}
-    {ps qs : List ℝ} {SE : Impl O Q} (hSE : TerminatingSmallEigAt k 12 T qs SE I)
+    {ps qs : List ℝ} {SE : Stmt O Q} (hSE : TerminatingSmallEigAt k 12 T qs SE I)
     (hq12 : qs = [] ∨ qs.length = 12)
     (hlen : ps.length = 10 + 2 * (excNet ε).length + qs.length)
     (hnet : ps.drop 10 = ((excNet ε).flatMap fun z => [z.re, z.im]) ++ qs)
     (hctx : DecoupleLoopCtx n L w p f ps μ) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     (hW : HoldsMatrix w H μ.store) :
-    Writes .total I τ (roundedDecoupleLoopWith SE).body
+    Writes .total I τ (roundedDecoupleLoopWith SE)
       (Env.frame [n + 1, k, ps.length, F, T, q, (excNet ε).length] [w, p, (L, 0), w, f])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
         Store.inBlock L 0 5)
@@ -342,7 +342,7 @@ theorem roundedDecoupleLoop_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (h
     (hnet : ps.drop 10 = (excNet ε).flatMap fun z => [z.re, z.im])
     (hctx : DecoupleLoopCtx n L w p f ps μ) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     (hW : HoldsMatrix w H μ.store) :
-    Writes .total I τ (roundedDecoupleLoop (O := O) (Q := Q)).body
+    Writes .total I τ (roundedDecoupleLoop (O := O) (Q := Q))
       (Env.frame [n + 1, k, ps.length, F, q, (excNet ε).length] [w, p, (L, 0), w, f])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
         Store.inBlock L 0 5)
@@ -373,7 +373,7 @@ operands, and the two index words $q \le k$ and $\lvert\mathrm{net}\rvert \le n_
 theorem roundedDecoupleWith_terminatingDecouplerRoutine_at {M : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar M I) (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M (nmax + 1))
     (hC : IsCmp id I) (hQ : IsToNat id I) {s₀ : ℕ} (hD : IsPolarDiskSampler s₀ I)
-    {k q F : ℕ} (hkq : k = 2 ^ q) (tL R tv γ B α ε : ℝ) {T : ℕ} {qs : List ℝ} {SE : Impl O Q}
+    {k q F : ℕ} (hkq : k = 2 ^ q) (tL R tv γ B α ε : ℝ) {T : ℕ} {qs : List ℝ} {SE : Stmt O Q}
     (hSE : TerminatingSmallEigAt k 12 T qs SE I) (hq12 : qs = [] ∨ qs.length = 12)
     {ps : List ℝ} (hps : ps = roundedDecoupleParams tL R tv γ B α ε k q ++ qs) :
     TerminatingDecouplerRoutine nmax k F T ps (roundedDecoupleWith SE) I := by

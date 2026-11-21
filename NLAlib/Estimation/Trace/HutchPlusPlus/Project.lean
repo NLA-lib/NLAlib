@@ -31,7 +31,9 @@ variable {𝕜 Op Tst : Type} [RCLike 𝕜] [Has ScalarOp Op] [Has Blas1Op Op]
   {I : Interp Op Tst 𝕜} {τ : Tape 𝕜} {m : Mem 𝕜}
 
 /-- A batch of probes is reduced in place against the retained prefix. The exact footprint
-contains only the probe tail and scalar workspace, so the basis remains readable. -/
+contains only the probe tail and scalar workspace, so the basis remains readable.
+A fragment of `NLAlib.HutchPlusPlus.estimateRoutine`: run only inside its tree, on its
+operands and the buffers it allocates. -/
 theorem writes_projectProbes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hB : RCLikeBlas.IsExact I) {n k ell : ℕ} {b t : ℕ × ℕ}
     (Q G : ℕ → Fin n → 𝕜) (hl : m.Live [b, t])
@@ -40,7 +42,7 @@ theorem writes_projectProbes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) 
       some (List.ofFn (G j)))
     (hTB : Fp.Disj (Store.inBlock t.1 t.2 2) (Store.inBlock b.1 b.2 ((k + ell) * n)))
     (ht : t.2 + 2 ≤ m.store.len t.1) (hb : b.2 + (k + ell) * n ≤ m.store.len b.1) :
-    Writes .total I τ projectProbes.body (Env.frame [n, k, ell] [b, t])
+    Writes .total I τ projectProbes (Env.frame [n, k, ell] [b, t])
       (Store.inBlock b.1 (b.2 + n * k) (ell * n) ⊔ Store.inBlock t.1 t.2 2)
       (fun m' => m'.pos = m.pos ∧ ∀ j < ell,
         m'.store.readBlock b.1 (b.2 + n * (k + j)) n =
@@ -60,7 +62,6 @@ theorem writes_projectProbes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) 
     intro j hj
     exact hTB.mono le_rfl (hcol (k + j) (by omega))
   unfold projectProbes
-  dsimp only
   refine writes_loop_disjoint_prefix_scratch region
     (fun j s => s.readBlock b.1 (b.2 + n * (k + j)) n =
       some (List.ofFn (mgsSweep Q (G j) k))) rfl ?_ le_sup_right

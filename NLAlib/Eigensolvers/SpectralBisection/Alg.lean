@@ -50,20 +50,20 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op] [Has SampleOp Op]
 /-- The eigenvalues of a leaf: real diagonal words for a one-dimensional node, or literal zeros
 when the stopping window has already reached the requested accuracy. -/
 def leafValues (diagonal : Bool) : Stmt Op Tst :=
-  if diagonal then (PairMatrix.diagonalReal).body else ops% [k] (A) → (E) {
+  if diagonal then (PairMatrix.diagonalReal) else ops% [k] (A) → (E) {
     for i < k { call (Has.inj (ScalarOp.lit 0)) [] () → (E[i]) }
   }
 
 /-- A terminal node writes its complete identity, eigenvalue block and the stored leaf kind. -/
 def leaf (diagonal : Bool) : Stmt Op Tst := ops% [k] (A) → (U, E, Kind) {
-  run (PairMatrix.identity).body [k] (U);
+  run (PairMatrix.identity) [k] (U);
   run (leafValues diagonal) [k] (A, E);
   call (Has.inj IndexOp.lit) [1] () → (Kind)
 }
 
 /-- Compute the next radius and tolerance using the same explicit rounded scalar operations.
 The caller supplies the five-word workspace used later by the level's node dispatch. -/
-def levelParameters : Impl Op Tst := opsImpl% [L, d] (c, Lv, t) → (Lv, t) {
+def levelParameters : Stmt Op Tst := ops% [L, d] (c, Lv, t) → (Lv, t) {
   call (Has.inj IndexOp.lit) [L + d] () → (t);
   call (Has.inj ScalarOp.div) [] (c[1], t) → (t[2]);
   call (Has.inj ScalarOp.add) [] (c[2], t[2]) → (t[3]);
@@ -74,8 +74,8 @@ def levelParameters : Impl Op Tst := opsImpl% [L, d] (c, Lv, t) → (Lv, t) {
 }
 
 /-- Dispatch a slot of size at least two using the actual rounded tolerance comparison. -/
-def downLargeImpl (node : Stmt Op Tst) : Impl Op Tst :=
-    opsImpl% [n, L, F, d, lo, k] (par, Lv, Su, Sg, Ma, Ua, Qa, Ea, Sz, Kd, Kp, c, t) → () {
+def downLarge (node : Stmt Op Tst) : Stmt Op Tst :=
+    ops% [n, L, F, d, lo, k] (par, Lv, Su, Sg, Ma, Ua, Qa, Ea, Sz, Kd, Kp, c, t) → () {
   call (Has.inj ScalarOp.mul) [] (Lv[2 * d + 1], par) → (t[4]);
   if (Has.inj CmpTst.le) [] (Lv[2 * d], t[4]) {
     run (leaf false) [k]
@@ -88,43 +88,43 @@ def downLargeImpl (node : Stmt Op Tst) : Impl Op Tst :=
 
 /-- Dispatch an active slot to a diagonal leaf, a tolerance leaf or the explicit node body.
 The scalar threshold product and comparison use the actual stored level words. -/
-def downNodeImpl (node : Stmt Op Tst) : Impl Op Tst :=
-    opsImpl% [n, L, F, d, lo, k] (par, Lv, Su, Sg, Ma, Ua, Qa, Ea, Sz, Kd, Kp, c, t) → () {
+def downNode (node : Stmt Op Tst) : Stmt Op Tst :=
+    ops% [n, L, F, d, lo, k] (par, Lv, Su, Sg, Ma, Ua, Qa, Ea, Sz, Kd, Kp, c, t) → () {
   ifPos (1 - (k - 1)) {
     run (leaf true) [k]
       (Ma[2 * (n * n) * d + 2 * n * lo], Ua[2 * (n * n) * d + 2 * n * lo],
         Ea[n * d + lo], Kd[n * d + lo])
   };
   ifPos (k - 1) {
-    run (downLargeImpl node).body [n, L, F, d, lo, k]
+    run (downLarge node) [n, L, F, d, lo, k]
       (par, Lv, Su, Sg, Ma, Ua, Qa, Ea, Sz, Kd, Kp, c, t)
   }
 }
 
 /-- Visit each stored size slot using its actual bounded index query and active-node dispatch. -/
-def downNodesImpl (node : Stmt Op Tst) : Impl Op Tst :=
-    opsImpl% [n, L, F, d] (par, Lv, Su, Sg, Ma, Ua, Qa, Ea, Sz, Kd, Kp, c, t) → () {
+def downNodes (node : Stmt Op Tst) : Stmt Op Tst :=
+    ops% [n, L, F, d] (par, Lv, Su, Sg, Ma, Ua, Qa, Ea, Sz, Kd, Kp, c, t) → () {
   for lo < n {
     let k ← index (Has.inj IdxTst.toNat) (Sz[n * d + lo]) ≤ n - lo;
     ifPos k {
-      run (downNodeImpl node).body [n, L, F, d, lo, k]
+      run (downNode node) [n, L, F, d, lo, k]
         (par, Lv, Su, Sg, Ma, Ua, Qa, Ea, Sz, Kd, Kp, c, t)
     }
   }
 }
 
 /-- Compute the next parameters and store the two complete sampling batches in order. -/
-def downPrepareImpl : Impl Op Tst := opsImpl% [n, L, d] (c, Lv, Su, Sg, t) → () {
-  run levelParameters.body [L, d] (c, Lv, t, Lv, t);
-  run (sampleVector Stream.unif).body [n] (Su);
-  run (sampleVector Stream.gauss).body [4 * (n * n)] (Sg)
+def downPrepare : Stmt Op Tst := ops% [n, L, d] (c, Lv, Su, Sg, t) → () {
+  run levelParameters [L, d] (c, Lv, t, Lv, t);
+  run (sampleVector Stream.unif) [n] (Su);
+  run (sampleVector Stream.gauss) [4 * (n * n)] (Sg)
 }
 
 /-- Prepare and visit a downward level using caller-owned scalar scratch storage. -/
-def downLevelImpl (node : Stmt Op Tst) : Impl Op Tst :=
-  opsImpl% [n, L, F, d] (par, Lv, Su, Sg, Ma, Ua, Qa, Ea, Sz, Kd, Kp, c, t) → () {
-    run downPrepareImpl.body [n, L, d] (c, Lv, Su, Sg, t);
-    run (downNodesImpl node).body [n, L, F, d]
+def downLevelBody (node : Stmt Op Tst) : Stmt Op Tst :=
+  ops% [n, L, F, d] (par, Lv, Su, Sg, Ma, Ua, Qa, Ea, Sz, Kd, Kp, c, t) → () {
+    run downPrepare [n, L, d] (c, Lv, Su, Sg, t);
+    run (downNodes node) [n, L, F, d]
       (par, Lv, Su, Sg, Ma, Ua, Qa, Ea, Sz, Kd, Kp, c, t)
   }
 
@@ -133,13 +133,13 @@ slot using its stored bounded size. The explicit node body has the frame in the 
 def downLevel (node : Stmt Op Tst) : Stmt Op Tst :=
   ops% [n, L, F, d] (par, Lv, Su, Sg, Ma, Ua, Qa, Ea, Sz, Kd, Kp, c) → () {
     let t ← alloc 5;
-    run (downLevelImpl node).body [n, L, F, d]
+    run (downLevelBody node) [n, L, F, d]
       (par, Lv, Su, Sg, Ma, Ua, Qa, Ea, Sz, Kd, Kp, c, t)
   }
 
 /-- Initialize the mathematical recursion-boundary result with actual machine literals. -/
-def bottomResultImpl : Impl Op Tst := opsImpl% [k] () → (U, E) {
-  run (PairMatrix.identity).body [k] (U);
+def bottomResult : Stmt Op Tst := ops% [k] () → (U, E) {
+  run (PairMatrix.identity) [k] (U);
   for i < k { call (Has.inj (ScalarOp.lit 0)) [] () → (E[i]) }
 }
 
@@ -149,44 +149,44 @@ def bottomLevel : Stmt Op Tst := ops% [n, D] (Sz) → (Ua, Ea) {
   for lo < n {
     let k ← index (Has.inj IdxTst.toNat) (Sz[n * D + lo]) ≤ n - lo;
     ifPos k {
-      run bottomResultImpl.body [k]
+      run bottomResult [k]
         (Ua[2 * (n * n) * D + 2 * n * lo], Ea[n * D + lo])
     }
   }
 }
 
 /-- Reconstruct a one-child node from its complete child output and stored signed shift. -/
-def upShiftResultImpl : Impl Op Tst := opsImpl% [k] (Uc, ec, sigma) → (U, E) {
-  run (PairMatrix.copy).body [k, k] (Uc, U);
-  run (scalarBroadcast (Has.inj ScalarOp.add)).body [k] (ec, sigma, E)
+def upShiftResult : Stmt Op Tst := ops% [k] (Uc, ec, sigma) → (U, E) {
+  run (PairMatrix.copy) [k, k] (Uc, U);
+  run (scalarBroadcast (Has.inj ScalarOp.add)) [k] (ec, sigma, E)
 }
 
 /-- Reconstruct a split from the two child outputs and the stored half-radius. -/
-def upSplitResultImpl : Impl Op Tst :=
-    opsImpl% [k, kp] (Qp, Qm, Up, Um, ep, em, sigma) → (U, E) {
+def upSplitResult : Stmt Op Tst :=
+    ops% [k, kp] (Qp, Qm, Up, Um, ep, em, sigma) → (U, E) {
   call (Has.inj MatrixOp.mul) [k, kp, kp] (Qp, Up) → (U);
   call (Has.inj MatrixOp.mul) [k, k - kp, k - kp] (Qm, Um) → (U[2 * (k * kp)]);
-  run (scalarBroadcast (Has.inj ScalarOp.add)).body [kp] (ep, sigma, E);
-  run (scalarBroadcast (Has.inj ScalarOp.sub)).body [k - kp] (em, sigma, E[kp])
+  run (scalarBroadcast (Has.inj ScalarOp.add)) [kp] (ep, sigma, E);
+  run (scalarBroadcast (Has.inj ScalarOp.sub)) [k - kp] (em, sigma, E[kp])
 }
 
 /-- Reconstruct one node from its actual stored kind and split size. The signed half-radius
 words are supplied by the enclosing upward level. -/
-def upNodeImpl : Impl Op Tst := opsImpl% [n, d, lo, k] (Ua, Qa, Ea, Kd, Kp, t) → () {
+def upNode : Stmt Op Tst := ops% [n, d, lo, k] (Ua, Qa, Ea, Kd, Kp, t) → () {
   let kind ← index (Has.inj IdxTst.toNat) (Kd[n * d + lo]) ≤ 4;
   ifZero ((kind - 2) + (2 - kind)) {
-    run upShiftResultImpl.body [k]
+    run upShiftResult [k]
       (Ua[2 * (n * n) * (d + 1) + 2 * n * lo], Ea[n * (d + 1) + lo], t,
         Ua[2 * (n * n) * d + 2 * n * lo], Ea[n * d + lo])
   };
   ifZero ((kind - 3) + (3 - kind)) {
-    run upShiftResultImpl.body [k]
+    run upShiftResult [k]
       (Ua[2 * (n * n) * (d + 1) + 2 * n * lo], Ea[n * (d + 1) + lo], t[1],
         Ua[2 * (n * n) * d + 2 * n * lo], Ea[n * d + lo])
   };
   ifZero ((kind - 4) + (4 - kind)) {
     let kp ← index (Has.inj IdxTst.toNat) (Kp[n * d + lo]) ≤ k;
-    run upSplitResultImpl.body [k, kp]
+    run upSplitResult [k, kp]
       (Qa[2 * (n * n) * d + 2 * n * lo],
         Qa[2 * (n * n) * d + 2 * n * lo + 2 * (k * kp)],
         Ua[2 * (n * n) * (d + 1) + 2 * n * lo],
@@ -197,11 +197,11 @@ def upNodeImpl : Impl Op Tst := opsImpl% [n, d, lo, k] (Ua, Qa, Ea, Kd, Kp, t) �
 }
 
 /-- Visit every stored node size and reconstruct the occupied nodes using shared shifts. -/
-def upNodesImpl : Impl Op Tst := opsImpl% [n, d] (Ua, Qa, Ea, Sz, Kd, Kp, t) → () {
+def upNodes : Stmt Op Tst := ops% [n, d] (Ua, Qa, Ea, Sz, Kd, Kp, t) → () {
   for lo < n {
     let k ← index (Has.inj IdxTst.toNat) (Sz[n * d + lo]) ≤ n - lo;
     ifPos k {
-      run upNodeImpl.body [n, d, lo, k] (Ua, Qa, Ea, Kd, Kp, t)
+      run upNode [n, d, lo, k] (Ua, Qa, Ea, Kd, Kp, t)
     }
   }
 }
@@ -212,11 +212,11 @@ def upLevel : Stmt Op Tst := ops% [n, d] (Lv, Ua, Qa, Ea, Sz, Kd, Kp, c) → () 
   let t ← alloc 2;
   call (Has.inj ScalarOp.div) [] (Lv[2 * d], c[1]) → (t);
   call (Has.inj ScalarOp.neg) [] (t) → (t[1]);
-  run upNodesImpl.body [n, d] (Ua, Qa, Ea, Sz, Kd, Kp, t)
+  run upNodes [n, d] (Ua, Qa, Ea, Sz, Kd, Kp, t)
 }
 
 /-- Compute the five actual rounded constants shared by all nodes. -/
-def initialConstants : Impl Op Tst := opsImpl% [] () → (c) {
+def initialConstants : Stmt Op Tst := ops% [] () → (c) {
   call (Has.inj (ScalarOp.lit 1)) [] () → (c);
   call (Has.inj IndexOp.lit) [2] () → (c[1]);
   call (Has.inj ScalarOp.div) [] (c, c[1]) → (c[2]);
@@ -225,61 +225,61 @@ def initialConstants : Impl Op Tst := opsImpl% [] () → (c) {
 }
 
 /-- Initialize every size slot, then store the actual root size literal in the first slot. -/
-def initialSizes : Impl Op Tst := opsImpl% [n, L] () → (Sz) {
+def initialSizes : Stmt Op Tst := ops% [n, L] () → (Sz) {
   for w < n * (L + 2) + 1 { call (Has.inj IndexOp.lit) [0] () → (Sz[w]) };
   call (Has.inj IndexOp.lit) [n] () → (Sz)
 }
 
 /-- Copy the supplied root radius and tolerance into the level arena. -/
-def initialParameters : Impl Op Tst := opsImpl% [] (par) → (Lv) {
+def initialParameters : Stmt Op Tst := ops% [] (par) → (Lv) {
   call (Has.inj ScalarOp.copy) [] (par) → (Lv);
   call (Has.inj ScalarOp.copy) [] (par[1]) → (Lv[1])
 }
 
 /-- Initialize the actual shared constants, root matrix, size slots and root level parameters.
 All arena storage is caller-owned; the helpers preserve the order of the primitive calls. -/
-def initializeArenas : Impl Op Tst := opsImpl% [n, L] (A, par) → (c, Ma, Sz, Lv) {
-  run initialConstants.body [] (c);
-  run initialSizes.body [n, L] (Sz);
-  run (PairMatrix.copy).body [n, n] (A, Ma);
-  run initialParameters.body [] (par, Lv)
+def initializeArenas : Stmt Op Tst := ops% [n, L] (A, par) → (c, Ma, Sz, Lv) {
+  run initialConstants [] (c);
+  run initialSizes [n, L] (Sz);
+  run (PairMatrix.copy) [n, n] (A, Ma);
+  run initialParameters [] (par, Lv)
 }
 
 /-- Reconstruct every level in reverse depth order from the initialized bottom results.
 The frame preserves the scalar calls and node iteration of each upward level. -/
-def upwardPass : Impl Op Tst := opsImpl% [n, L] (Lv, Ua, Qa, Ea, Sz, Kd, Kp, c) → () {
+def upwardPass : Stmt Op Tst := ops% [n, L] (Lv, Ua, Qa, Ea, Sz, Kd, Kp, c) → () {
   for r < L + 1 { run upLevel [n, L - r] (Lv, Ua, Qa, Ea, Sz, Kd, Kp, c) }
 }
 
 /-- Visit all downward levels in increasing depth, with the fixed actual node tree. -/
-def downwardPass (node : Stmt Op Tst) : Impl Op Tst :=
-  opsImpl% [n, L, F] (par, Lv, Su, Sg, Ma, Ua, Qa, Ea, Sz, Kd, Kp, c) → () {
+def downwardPass (node : Stmt Op Tst) : Stmt Op Tst :=
+  ops% [n, L, F] (par, Lv, Su, Sg, Ma, Ua, Qa, Ea, Sz, Kd, Kp, c) → () {
     for d < L + 1 {
       run (downLevel node) [n, L, F, d] (par, Lv, Su, Sg, Ma, Ua, Qa, Ea, Sz, Kd, Kp, c)
     }
   }
 
 /-- Copy the reconstructed root basis and eigenvalues into the supplied output views. -/
-def rootResultCopy : Impl Op Tst := opsImpl% [n] (Ua, Ea) → (U, dv) {
-  run (PairMatrix.copy).body [n, n] (Ua, U);
-  run (unaryMap (Has.inj ScalarOp.copy)).body [n] (Ea, dv)
+def rootResultCopy : Stmt Op Tst := ops% [n] (Ua, Ea) → (U, dv) {
+  run (PairMatrix.copy) [n, n] (Ua, U);
+  run (unaryMap (Has.inj ScalarOp.copy)) [n] (Ea, dv)
 }
 
 /-- Initialize the bottom results and reconstruct the supplied root outputs. -/
-def reconstructResult : Impl Op Tst :=
-    opsImpl% [n, L] (c, Ua, Qa, Ea, Sz, Kd, Kp, Lv) → (U, dv) {
+def reconstructResult : Stmt Op Tst :=
+    ops% [n, L] (c, Ua, Qa, Ea, Sz, Kd, Kp, Lv) → (U, dv) {
   run bottomLevel [n, L + 1] (Sz, Ua, Ea);
-  run upwardPass.body [n, L] (Lv, Ua, Qa, Ea, Sz, Kd, Kp, c);
-  run rootResultCopy.body [n] (Ua, Ea, U, dv)
+  run upwardPass [n, L] (Lv, Ua, Qa, Ea, Sz, Kd, Kp, c);
+  run rootResultCopy [n] (Ua, Ea, U, dv)
 }
 
 /-- Execute initialization, the two traversals and the final result copies on caller-owned
 arenas. The node argument is an explicit statement tree passed through counted frames. -/
 def solveBody (node : Stmt Op Tst) : Stmt Op Tst :=
     ops% [n, L, F] (A, par, U, dv, c, Ma, Ua, Qa, Ea, Sz, Kd, Kp, Lv, Su, Sg) → () {
-  run initializeArenas.body [n, L] (A, par, c, Ma, Sz, Lv);
-  run (downwardPass node).body [n, L, F] (par, Lv, Su, Sg, Ma, Ua, Qa, Ea, Sz, Kd, Kp, c);
-  run reconstructResult.body [n, L] (c, Ua, Qa, Ea, Sz, Kd, Kp, Lv, U, dv)
+  run initializeArenas [n, L] (A, par, c, Ma, Sz, Lv);
+  run (downwardPass node) [n, L, F] (par, Lv, Su, Sg, Ma, Ua, Qa, Ea, Sz, Kd, Kp, c);
+  run reconstructResult [n, L] (c, Ua, Qa, Ea, Sz, Kd, Kp, Lv, U, dv)
 }
 
 /-- The fixed spectral-bisection traversal around an explicit node subprogram. All supplied
@@ -300,8 +300,6 @@ def solve (node : Stmt Op Tst) : Stmt Op Tst := ops% [n, L, F] (A, par) → (U, 
   run (solveBody node) [n, L, F] (A, par, U, dv, c, Ma, Ua, Qa, Ea, Sz, Kd, Kp, Lv, Su, Sg)
 }
 
-/-- The traversal has three dimensions, two input blocks and two output blocks. -/
-def solveImpl (node : Stmt Op Tst) : Impl Op Tst := ⟨3, 2, 2, solve node⟩
 
 /-- The complete fixed first-order program: the explicit node tree is substituted before any
 size or input is supplied. Numerical and resource certification are separate theorems. -/

@@ -6,10 +6,13 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Blas.Decoded
+public import NLAlib.Ops.RoutineSyntax
 public import NLAlib.Ops.Logic.Builder
 public import NLAlib.Ops.Logic.Count
 public import NLAlib.Ops.Logic.Tactic
 public import NLAlib.Ops.Profiles.BlasCert
+public import NLAlib.Ops.RoutineLink
+public import NLAlib.Ops.Logic.RoutineIntro
 
 /-!
 # A bilinear form through an operator and a BLAS profile
@@ -20,7 +23,8 @@ standard-model results use the same certificate.
 
 ## Main results
 
-* `NLAlib.Ops.Examples.bilinear_spec`: the reusable certificate over the two operation contracts.
+* `NLAlib.Ops.Examples.bilinear_satisfies`: the reusable certificate over the two operation
+  contracts.
 * `NLAlib.Ops.Examples.runs_bilinear_rounded`: the abstract componentwise forward bound.
 -/
 
@@ -36,9 +40,6 @@ def bilinear : Stmt Op Tst := ops% [m, n] (x, y) → (z) {
   call (Has.inj OperatorOp.matvec) [m, n] (y) → (v);
   call (Has.inj Blas1Op.dot) [m] (x, v) → (z)
 }
-
-/-- The bilinear-form implementation has two dimensions, two input blocks, and one output cell. -/
-def bilinearImpl : Impl Op Tst := ⟨2, 2, 1, bilinear⟩
 
 /-- One matrix-vector call and one dot-product call. -/
 noncomputable def bilinearCount (m n : ℕ) : Count Op Tst :=
@@ -90,21 +91,48 @@ theorem isBilinearErr_of_isDotErr {dec : K → ℝ} {m n : ℕ}
     (hv : decv dec m vs = A.mulVec (decv dec n ys)) : IsBilinearErr dec A e xs ys v := by
   simpa only [IsBilinearErr, hv] using h.decoded
 
-/-- One program certificate composes the exact operator with any admitted rounded dot product. -/
-theorem bilinear_spec {dec : K → ℝ} {m n : ℕ} {A : Matrix (Fin m) (Fin n) ℝ}
+/-- The bilinear form as a routine: `[m, n] (x : read m, y : read n) → (z : write 1)`. -/
+def bilinearRoutine (m n : ℕ) : Routine Op Tst :=
+  routine% [m', n'] (x : ↑m, y : ↑n) → (z : 1) := bilinear
+
+/-- The bilinear form meets the specification read off its relation: one judgment composes the
+exact operator with any admitted rounded dot product. -/
+theorem bilinearRoutine_meets {dec : K → ℝ} {m n : ℕ} {A : Matrix (Fin m) (Fin n) ℝ}
     {e : ℕ → ℝ} {ok : ℕ → Prop} {J : Interp Op Tst K} (hA : IsExactMatvec dec A J)
-    (hD : J.Meets .total (Has.inj Blas1Op.dot) ((dotRel dec e).spec (OutApart ok)))
+    (hD : J.Satisfies .total (Has.inj Blas1Op.dot) ((dotRel dec e).spec (OutApart ok)))
     (hok : ok m) :
-    (bilinearImpl (Op := Op) (Tst := Tst)).Triple J .total
-      ((bilinearRel dec A (e m)).spec (BilinearOperands m n)) := by
-  cert_intro [r, c] (x, y) → (z) reads (xs, ys)
-  obtain ⟨rfl, rfl, hxz, hyz⟩ := hadm
+    (bilinearRoutine (Op := Op) (Tst := Tst) m n).Meets J
+      (Routine.Spec.ofRel (bilinearRel dec A (e m)) fun d => d = [m, n]) := by
+  routine_intro [m', n'] (x, y, z) reads (xs, ys) memory μ
+  obtain ⟨rfl, rfl⟩ : m = m' ∧ n = n' := by simpa [eq_comm] using hpre.1
+  have hz := hroom
+  change Writes .total J τ bilinear (Env.frame [m, n] [x, y, z]) (Fp.blocks [z] [1])
+    (fun μ' => μ'.pos = μ.pos + 0 ∧ ∃ ys', μ'.readBlocks [z] [1] = some ys' ∧
+      (bilinearRel dec A (e m)).rel [m, n] [xs, ys] [] ys') μ
   refine writes_alloc rfl fun s₁ hs₁ hv hB => ?_
   step hA as μ₁ hfr₁ ⟨hpos₁, vs, hvs, hrel⟩
   step hD as μ₂ hfr₂ ⟨hpos₂, v, hvout, hdot⟩
   intro s₂ _ hB₂
   exact ⟨by simp [hpos₂, hpos₁], [[v]], BlockFn.readBlocks_cells_one.mpr
     ⟨v, by kept, rfl⟩, isBilinearErr_of_isDotErr hdot hrel⟩
+
+/-- The routine of the bilinear form implements its contract. -/
+theorem bilinearRoutine_implements (dec : K → ℝ) {m n : ℕ} (A : Matrix (Fin m) (Fin n) ℝ)
+    (e : ℝ) :
+    (bilinearRoutine (Op := Op) (Tst := Tst) m n).Implements (bilinearRel dec A e)
+      (BilinearOperands m n) (fun ins outs => ins ++ outs) := by
+  implements [m, n] (x, y) → (z) with hadm
+
+/-- One program certificate composes the exact operator with any admitted rounded dot product:
+a consequence of the judgment of the routine. -/
+theorem bilinear_satisfies {dec : K → ℝ} {m n : ℕ} {A : Matrix (Fin m) (Fin n) ℝ}
+    {e : ℕ → ℝ} {ok : ℕ → Prop} {J : Interp Op Tst K} (hA : IsExactMatvec dec A J)
+    (hD : J.Satisfies .total (Has.inj Blas1Op.dot) ((dotRel dec e).spec (OutApart ok)))
+    (hok : ok m) :
+    (bilinearRoutine (Op := Op) (Tst := Tst) m n).impl.Satisfies J .total
+      ((bilinearRel dec A (e m)).spec (BilinearOperands m n)) :=
+  (bilinearRoutine_meets hA hD hok).satisfies_ofRel (bilinearRoutine_implements dec A _)
+    fun _ _ _ h => h.2.1.1
 
 /-- The output is the only changed cell and it satisfies the bilinear-form error bound. -/
 def BilinearRounded (dec : K → ℝ) {m n : ℕ} (A : Matrix (Fin m) (Fin n) ℝ) (e : ℝ)
@@ -127,16 +155,16 @@ theorem BilinearRounded.exact {dec : K → ℝ} {m n : ℕ} {A : Matrix (Fin m) 
 their two call counts and the declared scratch bound. -/
 theorem runs_bilinear_rounded {dec : K → ℝ} {m n : ℕ} {A : Matrix (Fin m) (Fin n) ℝ}
     {e : ℕ → ℝ} {ok : ℕ → Prop} {J : Interp Op Tst K} (hA : IsExactMatvec dec A J)
-    (hD : J.Meets .total (Has.inj Blas1Op.dot) ((dotRel dec e).spec (OutApart ok)))
+    (hD : J.Satisfies .total (Has.inj Blas1Op.dot) ((dotRel dec e).spec (OutApart ok)))
     (hok : ok m) (W : Op → List ℕ → ℕ) {τ : Tape K} {x y z : ℕ × ℕ} {μ : Mem K}
     {xs ys : List K} (hxz : x.1 ≠ z.1) (hyz : y.1 ≠ z.1) (hl : μ.Live [x, y, z])
     (hx : μ.store.readBlock x.1 x.2 m = some xs)
     (hy : μ.store.readBlock y.1 y.2 n = some ys) (hz : z.2 < μ.store.len z.1) :
     ConditionalRuns J W τ bilinear (Env.frame [m, n] [x, y, z]) μ (bilinearCount m n)
       (bilinearPeak W m n) (BilinearRounded dec A (e m) z xs ys μ) := by
-  refine ((bilinear_spec hA hD hok).runs_rel W (d := [m, n]) (ins := [x, y]) (outs := [z])
-    (τ := τ) (xs := [xs, ys]) rfl ⟨rfl, by simp [hxz, hyz]⟩ hl
-    (by simp [bilinearRel, Mem.readBlocks, hx, hy]) trivial ⟨by omega, trivial⟩).mono
+  refine ((bilinearRoutine_meets hA hD hok).runs_ofRel W (d := [m, n]) (args := [x, y, z])
+    (τ := τ) (xs := [xs, ys]) rfl rfl hl (by routine_sep) (by reads) rfl trivial
+    (show μ.Room [z] [1] from ⟨by omega, trivial⟩) rfl rfl).mono
     (le_of_eq (stmtCost_bilinear ..)) (le_of_eq (stmtPeak_bilinear ..)) ?_
   rintro μ' ⟨Y, hlen, hrel, rfl⟩
   obtain ⟨vs, rfl, hvs⟩ := map_length_eq_one hlen
@@ -174,10 +202,10 @@ theorem runs_bilinear_link_seq {M : Machine K} {u : ℝ} {dec : K → ℝ}
       (BilinearRounded dec A ((1 + u) ^ m - 1) z xs ys μ) := by
   have hcert := Blas.seq_certifies (Op := Op) (Tst := Tst) hM hu (fun _ => True)
   have hkept := Apart.proj_inj (G := Blas1Op) (H := OperatorOp) (Op := Op) .matvec
-  have hmat := Interp.link_meets_kept (Blas.seq_table_kept hkept) hA
+  have hmat := Interp.link_satisfies_kept (Blas.seq_table_kept hkept) hA
   have hr := hcert.transfer I τ bilinear _ μ _ _
     (BilinearRounded dec A ((Blas.seq.err u).dot m) z xs ys μ)
-    (runs_bilinear_rounded hmat (hcert.meets I hI).2.dot trivial _ hxz hyz hl hx hy hz)
+    (runs_bilinear_rounded hmat (hcert.satisfies I hI).2.dot trivial _ hxz hyz hl hx hy hz)
   refine hr.mono ?_ ?_ ?_
   · simp [bilinearCount, Blas.seq_cost_kept hkept, Blas.seq_cost_dot]
   · simp [bilinearPeak, Blas.seq, Profile.over, Blas.level1, Blas.ws, hkept, two_mul]
@@ -204,10 +232,10 @@ theorem runs_bilinear_link_pairwise {M : Machine K} {u : ℝ} {dec : K → ℝ}
       (BilinearRounded dec A ((1 + u) ^ (Nat.clog 2 m + 1) - 1) z xs ys μ) := by
   have hcert := Blas.pairwise_certifies (Op := Op) (Tst := Tst) hM hu k
   have hkept := Apart.proj_inj (G := Blas1Op) (H := OperatorOp) (Op := Op) .matvec
-  have hmat := Interp.link_meets_kept (Blas.pairwise_table_kept k hkept) hA
+  have hmat := Interp.link_satisfies_kept (Blas.pairwise_table_kept k hkept) hA
   have hr := hcert.transfer I τ bilinear _ μ _ _
     (BilinearRounded dec A ((Blas.pairwise.err u).dot m) z xs ys μ)
-    (runs_bilinear_rounded hmat (hcert.meets I hI).2.dot hk _ hxz hyz hl hx hy hz)
+    (runs_bilinear_rounded hmat (hcert.satisfies I hI).2.dot hk _ hxz hyz hl hx hy hz)
   rw [Blas.pairwise_wsLo, Blas.pairwise.err_dot] at hr
   refine hr.mono ?_ ?_ fun _ h => h
   · simp [bilinearCount, Blas.pairwise_cost_kept k hkept, Blas.pairwise_cost_dot k m hk]
@@ -262,8 +290,8 @@ theorem exists_isBlas1_isExactMatvec {u : ℝ} (hu : 0 ≤ u) {m n : ℕ}
     ∃ J : Interp Op Tst ℝ, StdModel u id exactMachine ∧ IsScalar exactMachine J ∧
       IsBlas1 id (Blas.seq.err u) (fun _ => True) J ∧ IsExactMatvec id A J := by
   obtain ⟨I, hS, hA⟩ := exists_isScalar_isExactMatvec (Op := Op) (Tst := Tst) A
-  have hB := (Blas.seq_certifies (stdModel_exact hu) hu (fun _ => True)).meets I hS
-  exact ⟨_, stdModel_exact hu, hB.1, hB.2, Interp.link_meets_kept
+  have hB := (Blas.seq_certifies (stdModel_exact hu) hu (fun _ => True)).satisfies I hS
+  exact ⟨_, stdModel_exact hu, hB.1, hB.2, Interp.link_satisfies_kept
     (Blas.seq_table_kept (Apart.proj_inj (G := Blas1Op) (H := OperatorOp) .matvec)) hA⟩
 
 omit [Inhabited K] in
@@ -274,8 +302,8 @@ theorem exists_isBlas1_isExactMatvec_pairwise {u : ℝ} (hu : 0 ≤ u) (k : ℕ)
     ∃ J : Interp Op Tst ℝ, StdModel u id exactMachine ∧ IsScalar exactMachine J ∧
       IsBlas1 id (Blas.pairwise.err u) (fun r => Nat.clog 2 r < k) J ∧ IsExactMatvec id A J := by
   obtain ⟨I, hS, hA⟩ := exists_isScalar_isExactMatvec (Op := Op) (Tst := Tst) A
-  have hB := (Blas.pairwise_certifies (stdModel_exact hu) hu k).meets I hS
-  exact ⟨_, stdModel_exact hu, hB.1, hB.2, Interp.link_meets_kept
+  have hB := (Blas.pairwise_certifies (stdModel_exact hu) hu k).satisfies I hS
+  exact ⟨_, stdModel_exact hu, hB.1, hB.2, Interp.link_satisfies_kept
     (Blas.pairwise_table_kept k
       (Apart.proj_inj (G := Blas1Op) (H := OperatorOp) .matvec)) hA⟩
 
@@ -287,8 +315,8 @@ theorem exists_isExactBlas1_isExactMatvec (ok : ℕ → Prop) {m n : ℕ}
     ∃ J : Interp Op Tst ℝ, ExactModel id exactMachine ∧ IsScalar exactMachine J ∧
       IsExactBlas1 id ok J ∧ IsExactMatvec id A J := by
   obtain ⟨I, hS, hA⟩ := exists_isScalar_isExactMatvec (Op := Op) (Tst := Tst) A
-  have hB := (Blas.seq_certifies_exact exactModel_exactMachine ok).meets I hS
-  exact ⟨_, exactModel_exactMachine, hB.1, hB.2, Interp.link_meets_kept
+  have hB := (Blas.seq_certifies_exact exactModel_exactMachine ok).satisfies I hS
+  exact ⟨_, exactModel_exactMachine, hB.1, hB.2, Interp.link_satisfies_kept
     (Blas.seq_table_kept (Apart.proj_inj (G := Blas1Op) (H := OperatorOp) .matvec)) hA⟩
 
 end NLAlib.Ops.Examples

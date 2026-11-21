@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Krylov.Orthogonalization.CGS2.Extend
-public import NLAlib.Krylov.Lanczos.Reorth.SweepInterface
+public import NLAlib.Krylov.Lanczos.Reorth.Sweep
 
 /-!
 # One column of the column-wise two-pass Gram–Schmidt extension
@@ -83,17 +83,17 @@ structure ColOps (M : Machine K) (dec : K → ℝ) (ed : ℕ → ℝ) (ea : ℝ)
   /-- Scalar arithmetic is the machine `M`. -/
   scalar : IsScalar M I
   /-- `dot`. -/
-  dot : I.Meets .total (Has.inj Blas1Op.dot) ((dotRel dec ed).spec (OutApart ok))
+  dot : I.Satisfies .total (Has.inj Blas1Op.dot) ((dotRel dec ed).spec (OutApart ok))
   /-- `axpy`. -/
-  axpy : I.Meets .total (Has.inj Blas1Op.axpy) ((axpyRel dec ea).spec (InPlace ok))
+  axpy : I.Satisfies .total (Has.inj Blas1Op.axpy) ((axpyRel dec ea).spec (InPlace ok))
   /-- Negation is exact. -/
   neg : ∀ a, dec (M.neg a) = -dec a
   /-- `nrm2`, with the relation `N`. -/
-  nrm2 : I.Meets .total (Has.inj Blas1Op.nrm2) ((nrm2RelOf N).spec (OutApart ok))
+  nrm2 : I.Satisfies .total (Has.inj Blas1Op.nrm2) ((nrm2RelOf N).spec (OutApart ok))
   /-- `scal`, with the relation `S`. -/
-  scal : I.Meets .total (Has.inj Blas1Op.scal) ((scalRelOf S).spec (InPlace ok))
+  scal : I.Satisfies .total (Has.inj Blas1Op.scal) ((scalRelOf S).spec (InPlace ok))
   /-- `copy`. -/
-  copy : I.Meets .total (Has.inj Blas1Op.copy) ((copyRel (K := K)).spec (OutApart ok))
+  copy : I.Satisfies .total (Has.inj Blas1Op.copy) ((copyRel (K := K)).spec (OutApart ok))
   /-- The comparisons. -/
   cmp : IsCmp dec I
 
@@ -201,7 +201,7 @@ theorem ColMem.of_eqOff {n k b : ℕ} {Q W C : ℕ × ℕ} {hb tb : ℕ} {m m' :
 
 omit [Inhabited K] [Has Blas1Op Op] [Has CmpTst Tst] in
 /-- The loop that sets the rows `k, …, k + b - 1` of column `c` of the coefficient block to the
-zero literal writes those cells only. -/
+zero literal writes those cells only. A fragment of `NLAlib.CGS2.cgs2ExtendRoutine`. -/
 theorem writes_zeroRows {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I) {τ' : Tape K}
     {n k b c : ℕ} {Q W C : ℕ × ℕ} {hb tb : ℕ} {m : Mem K} (hC : C.1 < m.store.length)
     (hroom : C.2 + c * (k + b) + k + b ≤ m.store.len C.1) :
@@ -217,7 +217,7 @@ theorem writes_zeroRows {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I
 
 omit [Inhabited K] [Has Blas1Op Op] [Has CmpTst Tst] in
 /-- The loop that sets column `c` of the new block to the zero literal writes that column
-only. -/
+only. A fragment of `NLAlib.CGS2.cgs2ExtendRoutine`. -/
 theorem writes_zeroCol {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I) {τ' : Tape K}
     {n k b c : ℕ} {Q W C : ℕ × ℕ} {hb tb : ℕ} {m : Mem K} (hQ : Q.1 < m.store.length)
     (hroom : Q.2 + k * n + c * n + n ≤ m.store.len Q.1) :
@@ -234,7 +234,8 @@ theorem writes_zeroCol {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
 omit [Has Blas1Op Op] [Has CmpTst Tst] in
 /-- The loop that adds the coefficients `h₂` of the second pass, in the scratch, to the
 coefficients `h₁` of the first, in column `c` of the coefficient block: the first `k + c` rows
-of that column then hold the machine sums, and nothing else is written. -/
+of that column then hold the machine sums, and nothing else is written.
+A fragment of `NLAlib.CGS2.cgs2ExtendRoutine`. -/
 theorem writes_addRows {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I) {τ' : Tape K}
     {n k b c : ℕ} {Q W C : ℕ × ℕ} {hb tb : ℕ} {m : Mem K} {h₁ h₂ : List K}
     (hC : C.1 < m.store.length) (hh : hb < m.store.length) (hCh : C.1 < hb)
@@ -259,7 +260,8 @@ theorem writes_addRows {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
 norm `ν₀` and whose column `c` of the block holds the reduced column `w₂`, the test computes a
 norm `β` of `w₂` and writes column `c` of the new block: if `β` is at most the machine product
 of the threshold literal and `ν₀`, the column is zero and the diagonal coefficient is not
-written; otherwise the column is `w₂` scaled by `β` and the diagonal coefficient is `β`. -/
+written; otherwise the column is `w₂` scaled by `β` and the diagonal coefficient is `β`.
+A fragment of `NLAlib.CGS2.cgs2ExtendRoutine`. -/
 theorem writes_finish {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea : ℝ}
     {N : ℕ → (ℕ → K) → K → Prop} {S : ℕ → K → (ℕ → K) → (ℕ → K) → Prop} {ok : ℕ → Prop}
     {I : Interp Op Tst K} (ops : ColOps M dec ed ea N S ok I) {τ' : Tape K} {τ : ℚ}
@@ -407,7 +409,8 @@ theorem exists_colOut {M : Machine K} {dec : K → ℝ} {ed ea : ℝ} {N : (ℕ 
 which the `k + c` stored columns (the basis followed by the new columns before `c`) are read as
 one block `vs` and column `c` of the block is `wc`, the round writes only column `c` of the
 block, of the coefficients and of the new block and the scratch, keeps the position, and the
-three columns written satisfy `NLAlib.CGS2.ColOut`. -/
+three columns written satisfy `NLAlib.CGS2.ColOut`.
+A fragment of `NLAlib.CGS2.cgs2ExtendRoutine`. -/
 theorem writes_column {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea : ℝ}
     {N : ℕ → (ℕ → K) → K → Prop} {S : ℕ → K → (ℕ → K) → (ℕ → K) → Prop} {ok : ℕ → Prop}
     {I : Interp Op Tst K} (ops : ColOps M dec ed ea N S ok I) {τ' : Tape K} {τ : ℚ}
@@ -441,21 +444,18 @@ theorem writes_column {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea :
   have hl₂ : m₂.Live [Q, (W.1, W.2 + c * n), (C.1, C.2 + c * (k + b))] := by room
   have hV₂ : m₂.store.readBlock Q.1 Q.2 ((k + c) * n) = some vs := by kept
   have hw₂ : m₂.store.readBlock W.1 (W.2 + c * n) n = some wc := by kept
-  refine Writes.seq_le (writes_frame rfl rfl (by room)
-    (cgsPass_writes (Q := Q) (w := (W.1, W.2 + c * n)) (H := (C.1, C.2 + c * (k + b)))
-      ops.scalar ops.dot ops.axpy ops.neg hok hQW hQC hWC hl₂ hV₂ hw₂
-      ⟨by room, by room, trivial⟩)) (by fp_sub)
-    fun m₃ hfr₃ ⟨hpos₃, mid, h₁, hmid, hh₁, hp₁⟩ => ?_
+  have hpass := cgsPassRoutine_meets (Op := Op) (Tst := Tst) ops.scalar ops.dot ops.axpy ops.neg
+  call hpass [n, k + c] (Q, (W.1, W.2 + c * n), (C.1, C.2 + c * (k + b))) (pre := hok)
+    as m₃ hfr₃ hpos₃ (mid, h₁) hp₁
   have hh₁' : m₃.store.readBlock C.1 (C.2 + c * (k + b)) (k + c) = some h₁ := hh₁
   have hmid' : m₃.store.readBlock W.1 (W.2 + c * n) n = some mid := hmid
   have hl₃ : m₃.Live [Q, (W.1, W.2 + c * n), (hb, 0)] := by room
   have hV₃ : m₃.store.readBlock Q.1 Q.2 ((k + c) * n) = some vs := by kept
-  refine Writes.seq_le (writes_frame rfl rfl (by room)
-    (cgsPass_writes (Q := Q) (w := (W.1, W.2 + c * n)) (H := (hb, 0))
-      ops.scalar ops.dot ops.axpy ops.neg hok hQW (Nat.ne_of_lt hQh) (Nat.ne_of_lt hWh) hl₃ hV₃
-      hmid' ⟨by room, by room, trivial⟩)) (by fp_sub)
-    fun m₄ hfr₄ ⟨hpos₄, w₂, h₂, hw₂', hh₂, hp₂⟩ => ?_
-  have hw₄ : m₄.store.readBlock W.1 (W.2 + c * n) n = some w₂ := hw₂'
+  have hQh' : Q.1 ≠ hb := Nat.ne_of_lt hQh
+  have hWh' : W.1 ≠ hb := Nat.ne_of_lt hWh
+  call hpass [n, k + c] (Q, (W.1, W.2 + c * n), (hb, 0)) (pre := hok)
+    as m₄ hfr₄ hpos₄ (w₂, h₂) hp₂
+  have hw₄ : m₄.store.readBlock W.1 (W.2 + c * n) n = some w₂ := hw₂
   have hh₁₄ : m₄.store.readBlock C.1 (C.2 + c * (k + b)) (k + c) = some h₁ := by kept
   have hh₂' : m₄.store.readBlock hb 0 (k + c) = some h₂ := hh₂
   refine Writes.seq_le (writes_addRows ops.scalar (m := m₄) (by room) (by room) hCh (by room)

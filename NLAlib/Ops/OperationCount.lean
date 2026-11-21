@@ -9,6 +9,7 @@ public import NLAlib.Ops.Cert
 public import NLAlib.Ops.WeightedCost
 public import Mathlib.Algebra.BigOperators.Group.List.Basic
 public import Mathlib.Tactic.Ring
+public import NLAlib.Ops.Logic.KernelRfl
 
 /-!
 # An explicit polynomial for the number of instructions of a program
@@ -159,6 +160,20 @@ theorem monoEval_sortMono (x : List ℕ) (m : List ℕ) : monoEval x (sortMono m
     rw [h, eval_insert, ih, monoEval_sortMono, eval_cons]
 
 end CountPoly
+
+/-- **`poly_eval [f]`**: close `CountPoly.eval (List.ofFn d) p = f d` for a literal polynomial
+`p` (usually after `rw [countPoly_program]`) and a closed form `f` given by a definition, which
+is unfolded. The polynomial is evaluated at the sizes and the two sides are compared by `ring`. -/
+syntax "poly_eval" (" [" Lean.Parser.Tactic.simpLemma,* "]")? : tactic
+
+macro_rules
+  | `(tactic| poly_eval) => `(tactic| poly_eval [])
+  | `(tactic| poly_eval [$ts,*]) => `(tactic|
+      (simp only [CountPoly.eval, CountPoly.monoEval, List.ofFn_succ, List.ofFn_zero,
+         List.map_cons, List.map_nil, List.sum_cons, List.sum_nil, List.prod_cons, List.prod_nil,
+         List.getD_cons_zero, List.getD_cons_succ, Fin.succ_zero_eq_one, Fin.succ_one_eq_two,
+         $ts,*]
+       ring))
 
 /-- An upper bound of an index expression, as a polynomial in the sizes: each index variable is
 replaced by its bound in `env`, a truncated difference and a quotient by their first argument. -/

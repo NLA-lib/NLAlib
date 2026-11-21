@@ -44,7 +44,8 @@ local notation "PRE" => (fun r => Fp.loopPrefix (fun j => REG (L - j)) r)
 
 /-- The actual upward loop reconstructs the recursive root output. Read stability is stated
 under the exact completed-level prefix; capacity and spatial arena conditions are explicit.
-Every iteration uses the actual total upward-level theorem, with no successful-run premise. -/
+Every iteration uses the actual total upward-level theorem, with no successful-run premise.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_upwardPass (unif : K → Su → K) (normal : Sg → K × K)
     {I : Interp Op Tst K} (hS : IsScalar M I) (hQ : IsToNat dec I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) {m : Mem K}
@@ -83,7 +84,7 @@ theorem writes_upwardPass (unif : K → Su → K) (normal : Sg → K × K)
       Fp.Disj (REG d)
         (Fp.blocks (resultOperands n (d + 1) ((ST d lo).childSlot lo side) ua ea)
           (resultLengths ((ST d lo).childSize side)))) :
-    Writes .total I τ (upwardPass (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (upwardPass (Op := Op) (Tst := Tst))
       (Env.frame [n, L] [lv, ua, qa, ea, sz, kd, kp, c]) (PRE (L + 1))
       (fun m' => m'.pos = m.pos ∧ StoresResult n 0 0 ua ea
         (eighAux F n fuel R0 beta (L + 1) A R0 eps ell

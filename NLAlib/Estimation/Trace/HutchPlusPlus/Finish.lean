@@ -52,7 +52,7 @@ private theorem writes_evaluation_workspace
       (.alloc (.var 0 * (.var 1 + .var 2))
         (.frame [.var 0, .var 1, .var 2]
           [⟨0, .var 3⟩, ⟨1, .var 4⟩, ⟨3, .const 0⟩, ⟨4, .const 0⟩, ⟨2, .var 5⟩]
-          evaluate.body))
+          evaluate))
       ⟨[n, k, ell, data.2, b.2, out.2], [data.1, b.1, out.1, t]⟩
       (Store.inBlock t 0 2 ⊔ Store.inBlock out.1 out.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 1 =
@@ -87,7 +87,9 @@ private theorem writes_evaluation_workspace
     (sup_le (Fp.inBlock_le_sup_above le_rfl) le_sup_left) (fun _ _ h => h)
 
 /-- Finish the estimator from its actual prepared basis and probe matrix. Both workspaces
-are allocated at their source positions and released; no rank assumption is needed. -/
+are allocated at their source positions and released; no rank assumption is needed.
+A fragment of `NLAlib.HutchPlusPlus.estimateRoutine`: run only inside its tree, on its
+operands and the buffers it allocates. -/
 theorem writes_finish
     (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) (hB : RCLikeBlas.IsExact I)
     (hLit : IsIndexLit (RCLikeBlas.machine : Machine 𝕜) I)
@@ -102,7 +104,7 @@ theorem writes_finish
         (basisProbes (gramSchmidtQ (matrix n n as * S)) G)))
     (hb : b.2 + (k + ell) * n ≤ m.store.len b.1)
     (ho : out.2 + 1 ≤ m.store.len out.1) :
-    Writes .total I τ finish.body (Env.frame [n, k, ell] [data, b, out])
+    Writes .total I τ finish (Env.frame [n, k, ell] [data, b, out])
       (Store.inBlock b.1 b.2 ((k + ell) * n) ⊔ Store.inBlock out.1 out.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 1 =
         some [hutchpp (matrix n n as) S G]) m := by
@@ -116,7 +118,6 @@ theorem writes_finish
       (Store.inBlock b.1 b.2 ((k + ell) * n)) := by
     simpa using hAP.disj_getD (i := 0) (j := 1) (by simp) (by simp) (by omega)
   unfold finish
-  dsimp only
   apply writes_allocs_preserving_post (lens := [.const 2]) (ns := [2]) rfl
     (fun hBelow hp => ⟨hp.1, (hBelow.readBlock hol out.2 1).trans hp.2⟩)
   intro store hlength hlens hBelow

@@ -47,7 +47,8 @@ local notation "rawStep" => (fun lo => eighStep
 local notation "scanRegion" => (Fp.loopPrefix
   (fun lo => activeStepFp n d lo ma ua qa ea sz kd kp (rawStep lo)) n)
 /-- A complete allocated level returns its records and successor inputs, then frees scratch.
-The geometry premise describes arbitrary fresh storage, independently of all numeric words. -/
+The geometry premise describes arbitrary fresh storage, independently of all numeric words.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_downLevel (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp dec I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) (hQR : IsMatrixQR (EntryCodec.pair K) qr I)
     (hQ : IsToNat dec I) (hSample : IsSample I)

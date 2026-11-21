@@ -38,7 +38,8 @@ def bottomFootprint (n D : ℕ) (ks : ℕ → ℕ) (u e : ℕ × ℕ) : Fp :=
 
 /-- Every slot returns its actual machine identity and zero eigenvalues. Size words decode
 within the explicit runtime bound; readable sizes, disjoint outputs and their capacities
-suffice for total execution. The conclusion imposes no obligation on unused gaps or kinds. -/
+suffice for total execution. The conclusion imposes no obligation on unused gaps or kinds.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_bottomLevel {K Op Tst : Type} [Has ScalarOp Op] [Has IdxTst Tst]
     {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hQ : IsToNat dec I) {τ : Tape K} {m : Mem K}

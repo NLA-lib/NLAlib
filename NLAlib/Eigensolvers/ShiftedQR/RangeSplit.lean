@@ -32,7 +32,9 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has IdxTst Q]
 
 /-- Copying back the actual unitary-conjugate block and pushing its children advances the
 worklist invariant. The partition itself proves capacity for both new stack entries. Only the
-natural literals up to the order need to be exact. -/
+natural literals up to the order need to be exact.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem writeAndSplit_writes_of_isExactNatLit {M : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar M I) (hL : IsIndexLit M I) (hQ : IsToNat id I) {n : ℕ}
     (hN : IsExactNatLit id M (n + 1))
@@ -48,7 +50,7 @@ theorem writeAndSplit_writes_of_isExactNatLit {M : Machine ℝ} {I : Interp O Q 
     (hHess : IsUpperHessenberg B) (hsmall : ‖B i.succ i.castSucc‖ ≤ τ)
     (hε : ε = (((((lo, d + 1) :: rest) ++ done).length - 1 : ℕ) : ℝ) * τ)
     (hj : 2 * done.length + ((lo, d + 1) :: rest).length = j + 1) :
-    Writes .total I tape (writeAndSplit (O := O) (Q := Q)).body
+    Writes .total I tape (writeAndSplit (O := O) (Q := Q))
       (Env.frame [n + 1, lo, d + 1, i] [a, stack, w])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock stack.1 stack.2 (1 + 2 * (n + 1)))
@@ -117,7 +119,9 @@ theorem writeAndSplit_writes_of_isExactNatLit {M : Machine ℝ} {I : Interp O Q 
     omega
 
 /-- Copying back the actual unitary-conjugate block and pushing its children advances the
-worklist invariant. The partition itself proves capacity for both new stack entries. -/
+worklist invariant. The partition itself proves capacity for both new stack entries.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem writeAndSplit_writes {M : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I) (hQ : IsToNat id I)
     {tape : Tape ℝ} {μ : Mem ℝ} {n d lo j : ℕ} {i : Fin d}
@@ -132,7 +136,7 @@ theorem writeAndSplit_writes {M : Machine ℝ} {I : Interp O Q ℝ}
     (hHess : IsUpperHessenberg B) (hsmall : ‖B i.succ i.castSucc‖ ≤ τ)
     (hε : ε = (((((lo, d + 1) :: rest) ++ done).length - 1 : ℕ) : ℝ) * τ)
     (hj : 2 * done.length + ((lo, d + 1) :: rest).length = j + 1) :
-    Writes .total I tape (writeAndSplit (O := O) (Q := Q)).body
+    Writes .total I tape (writeAndSplit (O := O) (Q := Q))
       (Env.frame [n + 1, lo, d + 1, i] [a, stack, w])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock stack.1 stack.2 (1 + 2 * (n + 1)))

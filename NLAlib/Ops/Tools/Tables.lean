@@ -57,7 +57,7 @@ def gaussTable : Table ROp ROp Tst := Rand.gaussTable
 theorem gaussTable_eq : (Rand.gaussLoop (Tst := Tst)).table = gaussTable := rfl
 
 /-- The table of the noisy product by a drawn probe. -/
-def noisyTable (σ : ℚ) : Table NOp ROp Tst := fun _ => .inl (nmvImpl σ)
+def noisyTable (σ : ℚ) : Table NOp ROp Tst := fun _ => .inl (nmvRoutine σ).impl
 
 theorem noisyTable_eq (σ : ℚ) : (noisy (Tst := Tst) σ).table = noisyTable σ := rfl
 

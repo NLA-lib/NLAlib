@@ -60,7 +60,7 @@ $\mathbf H=\mathbf A^{\mathsf H}\mathbf A$, $\lambda_i=\sigma_i^2$, $b$ is the b
   factors satisfy
   $\mathbf U\mathbf S^{\mathsf H}\mathbf V_+^{\mathsf H}=\mathsf{rbki}(\mathbf A,\mathbf\Omega,q)$
   for every input, including rank-deficient blocks and breakdown. The first concrete scheme,
-  substituted by linking, is column-wise CGS2 (the certified `cgs2Impl`) with a threshold
+  substituted by linking, is column-wise CGS2 (the certified `cgs2Routine`) with a threshold
   deflation test (§3.5); the rank decision belongs to the scheme, so the rounded guarantees
   cover all returned columns and not only a prefix.
 * **Guarantee ladder** (§4). G1 exact certificate plus Gaussian tape: every exact theorem,
@@ -93,8 +93,8 @@ $\mathbf H=\mathbf A^{\mathsf H}\mathbf A$, $\lambda_i=\sigma_i^2$, $b$ is the b
 | `singularValues_one_sub_rangeProjector_mul_le_of_range_le` and its gauge, spectral and Frobenius forms | `Matrix/Spectral/SingularValueInequalities.lean:465`, `Matrix/Norms/Projector.lean` | monotonicity in the range (A3, G4) |
 | Operation core: `Ops.Program`, `Algorithm`, `AccessModel`, `Specification`, `Algorithm.ofWp`, `Algorithm.link`, `Writes`, loop and allocation rules | `NLAlib/Ops/` | the program and its certificate |
 | `OperatorOp.matvec` with `IsExactMatvec` and normwise `IsMatvec dec A delta I`; stored rectangular `StoredOperatorOp.matvec` with dense and COO lowerings | `Ops/Catalog/{Operator,StoredOperator}.lean`, `Ops/Profiles/Stored*.lean` | products with $\mathbf A$; **no adjoint operation exists** (§3.2) |
-| `cgs2Impl`, `cgs2_spec`, `TwoPassOut`, `twoPassRel`: two classical passes against the stored columns, sequential dot/axpy error envelope | `Krylov/Lanczos/Reorth/TwoPass*.lean` | every orthogonalization of the program, unchanged |
-| `Lanczos.Reorth.solve`, `runs_solve`, `Rounded.History`, admissible prefix `reorthSteps`, `Output.exists_run_prefix`, `Output.exists_spectral_prefix`, canonical certificates (`Reorth/Certificate.lean`, `RoundedStoredCertificate.lean`) | `Krylov/Lanczos/Reorth/` | the template for G2–G3; guarded normalization, saved raw norms, prefix selection |
+| `cgs2Routine`, `cgs2Routine_meets`, `TwoPassOut`, `cgs2Spec`: two classical passes against the stored columns, sequential dot/axpy error envelope | `Krylov/Lanczos/Reorth/TwoPass*.lean` | every orthogonalization of the program, unchanged |
+| `Lanczos.Reorth.solve`, `runs_solve`, `Rounded.History`, admissible prefix `reorthSteps`, `Output.exists_run_prefix`, `Output.exists_spectral_prefix`, canonical certificates (`Reorth/Certification.lean`, `Rounded/StoredCertification.lean`) | `Krylov/Lanczos/Reorth/` | the template for G2–G3; guarded normalization, saved raw norms, prefix selection |
 | `IsOrthErr`, `frobNorm_transpose_mul_self_sub_one_le_of_columns` ($\|\mathbf V^{\mathsf T}\mathbf V-\mathbf I\|_{\mathsf F}\le\sqrt{3m}\,\mu$ from per-column bounds), `hasOrthonormalCols_polarFactor`, `frobNorm_polarFactor_sub_le`, `HasOrthonormalCols.exists_transpose_eq_mul_eq_neg` | `Matrix/Perturbation/{OrthErr,SymmetricBackward}.lean` | G3 orthogonality (verbatim), G4 backward construction |
 | Rank-revealing MGS and Hutch++: Gaussian block from the tape (`HutchPlusPlus/Samples.lean`), batches of operator applications, `Algorithm.measureReal_failure_le`, `measureReal_not_accepts_le_of_hasLaw_gaussianMatrix` | `Matrix/Factorizations/MGS/`, `Estimation/Trace/HutchPlusPlus/` | the template for the Gaussian start block and the probability transfer (G1) |
 
@@ -481,7 +481,7 @@ $\mathbf R=\mathbf Q'^{\mathsf H}\mathbf W$ under `gramDefect Q = 0`),
 `card_filter_col_ne_zero_le`.
 
 The operation and how a scheme is substituted, in the core's existing mechanism (compare
-`passRel`, `twoPassRel`, `cgs2_spec` in `Krylov/Lanczos/Reorth/`):
+`cgsPassSpec`, `cgs2Spec`, `cgs2Routine_meets` in `Krylov/Lanczos/Reorth/`):
 
 ```lean
 inductive OrthOp where
@@ -497,17 +497,17 @@ def extendRel (dec : K → ℝ) (η₀ μ ε : ℝ) (ok : ℕ → ℕ → ℕ �
 def exactExtendRel (dec : K → 𝕜) : BlockRel K
 
 -- every driver theorem takes the contract as a hypothesis on the interpretation:
---   (hO : I.Meets .total (Has.inj OrthOp.extend) ((extendRel dec η₀ μ ε ok).spec ExtendOperands))
+--   (hO : I.Satisfies .total (Has.inj OrthOp.extend) ((extendRel dec η₀ μ ε ok).spec ExtendOperands))
 -- a scheme is an implementation proved against it:
---   (cgs2ExtendImpl τ).Triple I .total ((extendRel dec η₀ (cgs2Mu …) (cgs2Eps … τ) ok).spec ExtendOperands)
+--   (cgs2ExtendRoutine τ).Meets I (extendSpec dec η₀ (cgs2Mu …) (cgs2Eps … τ) ok)
 -- and the concrete certified algorithm is `Algorithm.link` with the table sending
--- `OrthOp.extend` to `.inl (cgs2ExtendImpl τ)` and every other operation to `.inr`.
+-- `OrthOp.extend` to `.inl ((cgs2ExtendRoutine τ).impl 2 3)` and every other operation to `.inr`.
 ```
 
 Points fixed by the review of the mechanics:
 
 * The new block is written **directly after the stored basis in the same buffer**, so that
-  the columns a later column is reduced against form one contiguous block, as `passRel`
+  the columns a later column is reduced against form one contiguous block, as `cgsPassSpec`
   requires; no copy. $\mathbf S$ and $\mathbf R$ are stored packed by block column so that
   $\mathbf C$ is written in place. Whether the admission can express
   "$\mathbf Q'$ starts at $\mathbf Q$'s end in the same buffer" under the frame rules, and
@@ -520,7 +520,7 @@ Points fixed by the review of the mechanics:
   expectation transfer is available for that product only; the individual factors are not
   measurable functions of the tape under a relational contract.
 * The abstract `AccessModel` needs a joint realization, that is at least one scheme: it comes
-  from the realized exact BLAS model through `Interp.link_meets` and the exact CGS2 triple (E4),
+  from the realized exact BLAS model through `Interp.link_satisfies` and the exact CGS2 triple (E4),
   which therefore must prove the unconditional clauses for an arbitrary $\mathbf Q$.
 * The test signature is fixed across a link, so the abstract driver's signature already
   contains the comparison test the instance uses.
@@ -538,7 +538,7 @@ Why the remaining choices, against the alternatives:
   result needs $O(u)\kappa(\mathbf X)<1$ for the block being orthogonalized, and Krylov blocks
   lose rank routinely, so a block instance needs its own rank-revealing step before it can meet
   the contract. Column by column, the rank decision is one scalar test per column (§3.5), and
-  `cgs2Impl`, `TwoPassOut` and the `IsOrthErr` facts of
+  `cgs2Routine`, `TwoPassOut` and the `IsOrthErr` facts of
   `Matrix/FinitePrecision/ClassicalGramSchmidt.lean` are reused. With the contract in place a
   block instance is an addition, not a redesign.
 * **Full coefficient columns are stored** (BL5), not only the band. In exact arithmetic the
@@ -564,7 +564,7 @@ is a later stage; it needs a small solve with $\mathbf T$ for the Nyström form.
 | stored adjoint: `StoredOperatorOp` lowering of `rmatvec` for dense (transposed traversal of the same words) and COO | profile | `Ops/Profiles/StoredDense.lean`, `StoredCOO.lean` | none |
 | `IsBasisExtension`, `IsBasisExtensionErr` (§3.1a) | pure predicates | `Matrix/Perturbation/BasisExtension.lean` | none; `IsOrthErr` is the single-vector, caller-admissibility relative |
 | `OrthOp.extend`, `extendRel`, `exactExtendRel` | operation and contracts | `Ops/Catalog/Orth.lean` | none |
-| `cgs2ExtendImpl τ`: column-wise `cgs2Impl`, saved raw norm, threshold test, normalization (§3.5) | `Impl`, the first instance | `Matrix/Factorizations/CGS2/Extend.lean` | none |
+| `cgs2ExtendRoutine τ`: column-wise `cgs2Routine`, saved raw norm, threshold test, normalization (§3.5) | `Impl`, the first instance | `Matrix/Factorizations/CGS2/Extend.lean` | none |
 | `BandGolubKahan.solve`: the fixed program over `OrthOp`, `OperatorPairOp`, sampling | `Ops.Program` | `Krylov/GolubKahan/Band/Alg.lean` | none |
 
 Shapes, to be fixed against the Ops API in the skeleton (the contracts follow
@@ -638,9 +638,9 @@ cgs2Extend τ (Q, W):                   -- for each column c of W, in order
     if β ≤ τ·ν₀ then q'_c := 0, R[c, c] := 0 else q'_c := w'/β, R[c, c] := β
 ```
 
-It is built from two `cgsPass` calls, not from `cgs2Impl`: `cgs2Impl` on main overwrites and
+It is built from two `cgsPass` calls, not from `cgs2Routine`: `cgs2Routine` on main overwrites and
 releases its coefficient buffer (`TwoPassOut` keeps $h_1,h_2$ only as witnesses), while the
-contract returns the coefficients. `passRel` already outputs them, and
+contract returns the coefficients. `cgsPassSpec` already outputs them, and
 `isOrthErr_of_two_passes` has the hypothesis for the rounded sum. The two blocks $\mathbf Q$
 and $\mathbf Q'_{<c}$ must be swept as one basis; sweeping them one after the other is not
 CGS2 and puts a first-order $\eta_0$ term into the orthogonality. $\tau$ is a rational literal
@@ -827,7 +827,7 @@ $(\mathbf A+\mathbf E,\tilde{\mathbf\Omega})$. Three routes:
 | A13 | necessity: multiplicity above $b$ at some $\sigma_i>\sigma_r$ gives error $\ge\sigma_i$ for every $q$ (§2.6) | planned | M (S if the eigenspace projection lemma exists) | `blockKrylovSpace_eq_iSup_krylovSpace`, grade |
 | E1 | `IsBasisExtension`, `IsBasisExtensionErr`: monotonicity in the parameters, the exact one implies the rounded one at $(\eta_0,0,0)$ | planned | S | — |
 | E2 | composition: a sequence of extensions meeting the rounded contract has $\|\mathbf G-\mathbf I\|_{\mathsf F}\le\sqrt{3N}\mu$ on the nonzero columns, under $\sqrt{3N}\mu\le\eta_0$ | planned | S | `frobNorm_transpose_mul_self_sub_one_le_of_columns` |
-| E3 | `cgs2Extend_spec`: column-wise CGS2 with threshold $\tau$ meets `extendRel` at the constants of §3.5 | planned | M | `cgs2_spec`, `IsOrthErr` at the CGS2 constants, `Lanczos.Reorth` normalization proofs |
+| E3 | `cgs2ExtendRoutine_meets`: column-wise CGS2 with threshold $\tau$ meets `extendRel` at the constants of §3.5 | planned | M | `cgs2Routine_meets`, `IsOrthErr` at the CGS2 constants, `Lanczos.Reorth` normalization proofs |
 | E4 | the same implementation at $\tau=0$ in the exact model meets `exactExtendRel` | planned | M | rank-revealing MGS facts |
 | E5 | linking: the abstract certificates composed with E3/E4 through `Algorithm.link`, costs and storage recomputed | planned | M | `Algorithm.link`, `Profile.Refines` |
 | P1 | `bandGolubKahanState`, for any exact extension: ranges are the block Krylov spaces, nonzero columns orthonormal | planned | M | `blockKrylovSpace_succ`, E1 |
@@ -841,7 +841,7 @@ $(\mathbf A+\mathbf E,\tilde{\mathbf\Omega})$. Three routes:
 | R2 | orthogonality of both bases on the nonzero columns (G3), in $(\eta_0,\mu)$ | planned | M | E2 |
 | R3 | residual relations (G3), in $(\varepsilon,\varepsilon_{\rm mv})$ | planned | M | residual clause |
 | R4 | forward bound for the returned factors (G3) | planned | M | R2, R3 |
-| R5 | rounded canonical certificate for the CGS2 instance, scalar-linked and stored | planned | L | E3, E5, `RoundedStoredCertificate` pattern |
+| R5 | rounded canonical certificate for the CGS2 instance, scalar-linked and stored | planned | L | E3, E5, `RoundedStoredCertification` pattern |
 
 Totals: 32 rows, twins counted with their row (S 12, M 17, L 3). Order: E1, E2 and the generic
 P, Q2–Q3, R1–R4 first (everything in the contract's parameters), then the instance E3–E5 and
@@ -880,7 +880,7 @@ model (L), G5 (BL8), truncation (BL6), block-size-aware probability (§2.5), Her
 | P1–P3 | Q2 (specification of the program), G4 (shape of the backward relation) |
 | `OperatorPairOp`, adjoint lowerings | this program; RSVD, generalized Nyström, LSQR, any two-sided method |
 | `IsBasisExtension(Err)`, `OrthOp.extend`, E2 | this program at three call sites; the Hermitian twin; later range finders, block Arnoldi; optionally `Lanczos.Reorth` |
-| `cgs2ExtendImpl`, E3–E5 | the concrete certificates Q4, R5; any consumer of the contract that wants CGS2 |
+| `cgs2ExtendRoutine`, E3–E5 | the concrete certificates Q4, R5; any consumer of the contract that wants CGS2 |
 | Q2–Q4, R1–R5 | the algorithm page for RBKI; G4–G5; the truncation stage |
 
 ## 7. Files and placement
@@ -972,7 +972,7 @@ The original options, for the record:
 | BL4 | which process | **a two-sided column-queue Golub–Kahan, full reorthogonalization on both bases** / b block Lanczos on $\mathbf A^{\mathsf H}\mathbf A$ plus a projection step / c Hermitian block Lanczos and `nystromBKI` first | a | returns `rbki` exactly with $2qb$ products and both bases; (c) is the twin and shares the append step |
 | BL5 | coefficients | **a store full coefficient columns** / b band only, corrections bounded by induction | a | residual relations without symmetry or induction; $N(N+b)$ words |
 | BL6 | output | **a untruncated factors $(\mathbf U,\mathbf S,\mathbf V_+)$ now, truncation when a small-SVD endpoint exists** / b add a small-SVD primitive with a contract now / c return $(\mathbf U,\mathbf A^{\mathsf H}\mathbf U)$ | a | the untruncated theorems apply at once; the SVD endpoint is a shared item with its own design |
-| BL7 | intra-block orthogonalization | **a column by column with `cgs2Impl`** / b a BCGS2 block routine with a new contract | a | reuses the certified routine and the column lemma; the rank decision is one scalar test per column (BL11) instead of a block condition |
+| BL7 | intra-block orthogonalization | **a column by column with `cgs2Routine`** / b a BCGS2 block routine with a new contract | a | reuses the certified routine and the column lemma; the rank decision is one scalar test per column (BL11) instead of a block condition |
 | BL11 | deflation | **a threshold test $\beta\le\tau\nu_0$ in the fixed program, $\tau$ an input; rounded guarantees over all nonzero columns with a $\tau\sqrt D\|\mathbf A\|$ term; exact identity at $\tau=0$** / b exact zero guard only, as `Lanczos.Reorth`; rounded guarantees end at the first inadmissible column | a | for $b>1$ one nearly dependent column would otherwise void the guarantee for everything after it; the cost is that the rounded output is no longer analyzed as a prefix of one fixed process |
 | BL8 | route to the rounded end-to-end theorem | **a backward model (G4) then gap-based uniform bounds, single vector first** / b filter perturbation / c a posteriori only / d stop at G4 for now | a, as a research branch | $\mathbf E$ depends on the start block; (a) uses the gap the small-block theorems already assume |
 | BL9 | adjoint product | **a new `OperatorPairOp` signature** / b add `rmatvec` to `OperatorOp` | a | no existing model or certificate changes |
@@ -1004,7 +1004,7 @@ recheck of `OperatorPair.lean` and `Band/Alg.lean`.
 | `Krylov/GolubKahan/Band/Alg.lean` | driver `solve`, `program`, stored-run predicates, Q2, R1 | definitions complete; specifications sorry |
 | `Krylov/GolubKahan/Band/Run.lean` | assembly of packed coefficients, bridges to the pure relations, consequences | all proved |
 | `Krylov/GolubKahan/Band/Certification.lean`, `Linked.lean` | canonical exact certificate (Q3), scheme-generic linking (E5) | certificates proved from the driver specification; 6 accounting lemmas sorry |
-| `Matrix/Factorizations/CGS2/*.lean`, `Krylov/Orthogonalization/CGS2/*.lean` | the CGS2 instance: pure lemmas, `cgs2ExtendImpl`, E3, E4 | definitions complete; 12 sorry |
+| `Matrix/Factorizations/CGS2/*.lean`, `Krylov/Orthogonalization/CGS2/*.lean` | the CGS2 instance: pure lemmas, `cgs2ExtendRoutine`, E3, E4 | definitions complete; 12 sorry |
 | `LowRank/BlockKrylov/{Factored,Samples,Probability}.lean` | output equals `rbki`; Gaussian tape; generic transfer and two corollaries (Q4) | all proved |
 | `Krylov/Basic/BlockSpace.lean`, `LowRank/Structural/BlockKrylov.lean` | A1–A4 | all proved |
 | `ForMathlib/LinearAlgebra/Vandermonde.lean`, `Krylov/Basic/KrylovVandermonde.lean`, `Polynomial/Interpolation/LagrangeBound.lean` | A5, A6 | 8 / 2 |
@@ -1017,7 +1017,7 @@ Where the skeleton departs from the text above (the Lean files are authoritative
 * **Layering of the contract.** `Ops` is the bottom layer and cannot import `Matrix`, so
   `Ops/Catalog/Orth.lean` holds a contract generic in a predicate on the decoded matrices, and
   the two concrete contracts are in `Matrix/Factorizations/BasisExtensionContract.lean`.
-* **Placement of the CGS2 program files.** `cgsPass`, `passRel`, `PassOut` are in
+* **Placement of the CGS2 program files.** `cgsPass`, `cgsPassSpec`, `PassOut` are in
   `Krylov/Lanczos/Reorth/Sweep*.lean`, a layer above `Matrix`, so the instance's program files
   are in `Krylov/Orthogonalization/CGS2/`. Their intended home is
   `Matrix/Factorizations/CGS2/` once the two sweep files move down (they import only `Ops`).
@@ -1086,15 +1086,15 @@ What is certified:
   under the rounded contracts the stored run satisfies the orthogonality, residual and forward
   bounds of §4.3. Any statement about `rbki` under a Gaussian law transfers to the stored
   output, failure probabilities and expectations alike.
-* **CGS2 instance** (§3.5): `cgs2ExtendImpl 0` meets the exact contract for an arbitrary
-  basis, and `cgs2ExtendImpl τ` meets the rounded contract at
+* **CGS2 instance** (§3.5): `cgs2ExtendRoutine 0` meets the exact contract for an arbitrary
+  basis, and `cgs2ExtendRoutine τ` meets the rounded contract at
   $\mu=4c+8(\eta_0+c)^2/\tau+5E$, $\varepsilon=3c+2E+2\tau$.
 * **Linking** is proved generically in the scheme (`linked_certifies`, `linkedAlgorithm`).
 
 Not yet stated, so not proved:
 
 * the **concrete** linked certificates, that is `linkedAlgorithm` instantiated at
-  `cgs2ExtendImpl` over the exact BLAS model and over the rounded model (the generic theorem
+  `cgs2ExtendRoutine` over the exact BLAS model and over the rounded model (the generic theorem
   and both instance `Triple`s exist; the instantiation, with its `wellTyped` side condition
   and the recomputed costs, is not written);
 * the rounded canonical `Algorithm` (R5), the clean corollaries (A12), G4, G5;
@@ -1106,7 +1106,7 @@ two of them duplicated (the S5 warnings), and belong as public lemmas in
 `Matrix/Perturbation/BasisExtension.lean`, with the generic Gram-defect lemmas of the run
 file; `LowRank/Gaussian/SmallBlock.lean` is 1104 lines and its deterministic helpers belong in
 `LowRank/Structural/SmallBlock.lean`; `Krylov/Orthogonalization/CGS2/PassSupport.lean` restates
-three bounds of `Lanczos/Reorth/RoundedOrthogonality.lean` under a weaker hypothesis and
+three bounds of `Lanczos/Reorth/Rounded/Orthogonality.lean` under a weaker hypothesis and
 should replace them there; the sweep files should move to the Matrix layer (§9a); seven
 linter warnings (three long docstring lines, three unused hypotheses, one unused instance
 argument).
@@ -1193,7 +1193,7 @@ contract, link and certificate files; nothing compiled). Findings applied in a t
   and $\mathbf R=\mathbf S^{\mathsf H}$ restricted (`coef_zero_left/right`), and "a zero column
   has zero descendants" (`zero_col`); plus `span` to stop the range growing;
 * the window for $b>1$ must cover the columns added inside the block (`ExtensionWindow`);
-* `cgs2Impl` discards the coefficients, so the instance is built from two `cgsPass` calls; the
+* `cgs2Routine` discards the coefficients, so the instance is built from two `cgsPass` calls; the
   operand layout puts the new block directly after the stored basis;
 * constants of §3.5 corrected for the rounded test.
 

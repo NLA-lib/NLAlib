@@ -41,7 +41,8 @@ theorem readsOnly_searchWords (r : ℕ × ℕ) (a h e : ℕ) :
 
 variable {Op Tst : Type} [Has IndexOp Op]
 
-/-- An actual dimension-literal operation stores the natural as an exact real word. -/
+/-- An actual dimension-literal operation stores the natural as an exact real word.
+The rule for one call of the operation. -/
 theorem writes_indexNat {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hL : IsIndexLit M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ} {ρ : Env}
     {e : IExp} {out : Operand} {n : ℕ} {z : ℕ × ℕ}
@@ -55,11 +56,13 @@ theorem writes_indexNat {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (fun _ _ h => ⟨h.1, by simpa only [hlit] using h.2⟩)
 
 /-- Actual index literal calls initialize the first window, natural half length and exponent.
-The remaining three workspace cells need not be initialized. -/
+The remaining three workspace cells need not be initialized.
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem findRitzInitialize_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hL : IsIndexLit M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {k : ℕ} {r : ℕ × ℕ} (hr : r.2 + 3 ≤ m.store.len r.1) :
-    Writes .total I τ findRitzInitialize.body (Env.frame [k] [r, r])
+    Writes .total I τ findRitzInitialize (Env.frame [k] [r, r])
       (Store.inBlock r.1 r.2 3)
       (fun m' => m'.pos = m.pos ∧ SearchWords r 0 (k / 2) 1 m'.store) m := by
   change Writes .total I τ (.seq _ _) _ _ _ m

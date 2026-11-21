@@ -8,7 +8,7 @@ module
 public import NLAlib.Krylov.Lanczos.Reorth.PreNorm
 public import NLAlib.Krylov.Lanczos.Reorth.StepMath
 public import NLAlib.Krylov.Lanczos.Update
-public import NLAlib.Krylov.Lanczos.NormalizationInterface
+public import NLAlib.Krylov.Lanczos.Normalization
 
 /-!
 # Composing a full exact reorthogonalized Lanczos round
@@ -32,7 +32,10 @@ open scoped Matrix
 variable {K Op Tst : Type} [Inhabited K]
 variable [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op] [Has CmpTst Tst]
 
-/-- The raw update and both classical passes execute without a nonbreakdown premise. -/
+/-- The raw update and both classical passes execute without a nonbreakdown premise.
+
+A fragment of `NLAlib.Krylov.Lanczos.Reorth.solveRoutine`: the update and reorthogonalization
+sweep of one round, on the scratch the solver allocates. -/
 theorem updateAndSweep_writes {M : Machine K} {dec : K → ℝ} {n cap j L B V C bo vo co : ℕ}
     {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K} {ok : ℕ → Prop}
     (hS : IsScalar M I) (hM : ExactModel dec M) (hB : IsExactBlas1 dec ok I)
@@ -65,19 +68,19 @@ theorem updateAndSweep_writes {M : Machine K} {dec : K → ℝ} {n cap j L B V C
     (by simpa only [hfr₁.len_eq] using ht) (by simp only [hfr₁.len_eq]; omega)
     (by kept) (by kept) hνzero) (by fp_sub) ?_
   rintro μ₂ hfr₂ ⟨hpos₂, σ₀, ν, hσ₀, hν, hdot₀, hnormν⟩
-  refine Writes.mono (writes_frame rfl rfl (by
-    simp only [Mem.live_cons, Mem.live_nil, and_true, hfr₂.length_eq, hfr₁.length_eq]; omega)
-    (cgs2_writes_exact (qs := basis) (ws := raw) hS hM hB hok (by omega)
-      (by simp only [Mem.live_cons, Mem.live_nil, and_true, hfr₂.length_eq, hfr₁.length_eq]; omega)
-      (by kept) (by kept) (by
-        simp only [Mem.room_cons, Mem.room_nil, and_true, Nat.zero_add,
-          hfr₂.len_eq, hfr₁.len_eq, hw]; exact le_rfl))) (by fp_sub) ?_
-  rintro μ₃ hfr₃ ⟨hpos₃, reduced, hreduced, hpasses⟩
+  have hVW : V ≠ L + 1 := by omega
+  have hbasis₂ : μ₂.store.readBlock V vo ((j + 1) * n) = some basis := by kept
+  have hraw₂ : μ₂.store.readBlock (L + 1) 0 n = some raw := by kept
+  call (cgs2Routine_meets_exact (Op := Op) (Tst := Tst) hS hM hB) [n, j + 1]
+    ((V, vo), (L + 1, 0)) (pre := hok) as μ₃ hfr₃ hpos₃ (reduced) hpasses
   exact ⟨by simp [hpos₃, hpos₂, hpos₁], raw, reduced, α, ν,
     hreduced, by kept, by kept, hαdec, hrawdec, hnormν.eq_norm, hpasses⟩
 
 omit [Has OperatorOp Op] in
-/-- Saving the previous vector and guarded normalization are total, including zero residual. -/
+/-- Saving the previous vector and guarded normalization are total, including zero residual.
+
+A fragment of `NLAlib.Krylov.Lanczos.Reorth.solveRoutine`: the save and normalization of one
+round, on the scratch the solver allocates and the columns at the round index. -/
 theorem saveAndNormalize_writes {M : Machine K} {dec : K → ℝ} {n cap j L B V C bo vo co : ℕ}
     {I : Interp Op Tst K} {ok : ℕ → Prop}
     (hS : IsScalar M I) (hM : ExactModel dec M) (hB : IsExactBlas1 dec ok I)
@@ -106,21 +109,29 @@ theorem saveAndNormalize_writes {M : Machine K} {dec : K → ℝ} {n cap j L B V
   step hB.dot as μ₁ hfr₁ ⟨hpos₁, σ, hσ, hdot⟩
   step hB.copy as μ₂ hfr₂ ⟨hpos₂, copied, hcopied, hcopy⟩
   subst copied
-  refine Writes.mono (writes_frame rfl rfl (by
-    simp only [Mem.live_cons, Mem.live_nil, and_true, hfr₂.length_eq, hfr₁.length_eq]; omega)
-    (normalize_writes hS hM hB hok hCmp (by omega) (by omega) (by omega) (by omega)
-      (by omega) hVC (by
-        simp only [Mem.live_cons, Mem.live_nil, and_true, hfr₂.length_eq, hfr₁.length_eq]; omega)
-      (by kept) (by kept) (by kept) (by kept) (dotExactRel_decoded hdot)
-      hnextzero hβzero (by
-        simp only [Mem.room_cons, Mem.room_nil, and_true, hfr₂.len_eq, hfr₁.len_eq]
-        exact ⟨hnroom, by omega⟩))) (by fp_sub) ?_
-  rintro μ₃ hfr₃ ⟨hpos₃, ys, β', hys, hβ', hnormalized, hnormβ⟩
+  have hWV : L + 1 ≠ V := by omega
+  have hWC : L + 1 ≠ C := by omega
+  have hTV : L + 2 ≠ V := by omega
+  have hTC : L + 2 ≠ C := by omega
+  have hred₂ : μ₂.store.readBlock (L + 1) 0 n = some reduced := by kept
+  have hσ₂ : μ₂.store.readBlock (L + 2) 0 1 = some [σ] := Store.readBlock_one_of_get (by kept)
+  have hnext₂ : μ₂.store.readBlock V (vo + (j + 1) * n) n = some next := by kept
+  have hβ₂ : μ₂.store.readBlock C (co + cap + j + 1) 1 = some [β₀] :=
+    Store.readBlock_one_of_get (by kept)
+  call (normalizeRoutine_meets (Op := Op) (Tst := Tst) hS hM hB hok hCmp) [n]
+    ((L + 1, 0), (L + 2, 0), (V, vo + (j + 1) * n), (C, co + cap + j + 1))
+    (pre := ⟨rfl, dotExactRel_decoded hdot, hnextzero, hβzero⟩)
+    as μ₃ hfr₃ hpos₃ (ys, bs) hpost
+  obtain ⟨β', hβ', rfl⟩ := Store.readBlock_one_eq_some.mp hbs
+  obtain ⟨hnormalized, hnormβ⟩ := hpost
   exact ⟨by simp [hpos₃, hpos₂, hpos₁], ys, β', by kept, hys, hβ', hnormalized, hnormβ,
     σ, by kept, dotExactRel_decoded hdot⟩
 
 /-- A full round executes for every initialized output column, including exact breakdown.
-The output records the raw residual, both classical passes, and the final normalization. -/
+The output records the raw residual, both classical passes, and the final normalization.
+
+A fragment of `NLAlib.Krylov.Lanczos.Reorth.solveRoutine`: one round of its loop, on the scratch
+the solver allocates and the columns of `V` and `C` at the round index. -/
 theorem advance_writes {M : Machine K} {dec : K → ℝ} {n cap j L B V C bo vo co : ℕ}
     {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K} {ok : ℕ → Prop}
     (hS : IsScalar M I) (hM : ExactModel dec M) (hB : IsExactBlas1 dec ok I)

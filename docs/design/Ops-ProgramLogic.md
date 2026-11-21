@@ -1,5 +1,10 @@
 # The program-logic layer of the new core (`NLAlib/Ops/Logic`)
 
+> **Earlier design.** This note records an earlier design of the operations core and keeps its
+> vocabulary (`Impl.Meets`, `Impl.Triple`, `Impl.program`, `opsImpl%`, `cert_intro`,
+> `Interp.Meets`), much of which has since been replaced. The current vocabulary is described in
+> `NLAlib/Ops/README.md`.
+
 Status: **phase A** (design and statement skeleton), 2026-11-10, branch `feat/ops-logic` (from
 `feat/ops-core` at `16cf312a`). Owner: the logic-layer lane (tooling plan §1 tactics, §2 builder,
 notation, named states, templates). Nothing here is proved yet: every theorem of
@@ -37,7 +42,7 @@ they state a signature; where they are not, this list wins):
 * **Syntax.** `as` and `reads` are non-reserved in the tactics (`&" as "`, `&" reads "`).
 * **Root.** No module of `Logic/` is imported by `NLAlib.lean` until `Logic/` is sorry-free;
   it is built by explicit targets.
-* **M1.** `Mem.eq_updBlocks_of_eqOff` and `Impl.meets_of_writes` no longer ask `Fp.Apart`
+* **M1.** `Mem.eq_updBlocks_of_eqOff` and `Impl.satisfies_of_writes` no longer ask `Fp.Apart`
   (overlapping outputs read back the same cells); apartness only for reading back a call.
 * **M2/M3. Facts across an allocation.** `Store.ReadsOnly` reads cells only (no shape);
   `Store.Below L s s'` (same lengths and cells below `L`) with `Below.keep`, `Below.readBlock`,
@@ -89,14 +94,14 @@ they state a signature; where they are not, this list wins):
 * **Examples re-proved; the old `wp` proofs are deleted** (approved by the core lane, no
   backwards compatibility). The certificates keep their names and statements (checked
   syntactically equal to the old ones before the deletion) and live in the files of their
-  algorithms: `Examples/Gemm.lean` (`gemm_spec`, 18 lines, relational 2-D fill),
-  `Examples/GramSchmidt.lean` (`mgs_spec`, 28 lines), `Examples/Cgs.lean` (the column
-  `cgsCol_writes`, 52 lines) and `Examples/CgsQR.lean` (`cgs_spec`, 47 lines); the transitional
+  algorithms: `Examples/Gemm.lean` (`gemm_satisfies`, 18 lines, relational 2-D fill),
+  `Examples/GramSchmidt.lean` (`mgs_satisfies`, 28 lines), `Examples/Cgs.lean` (the column
+  `cgsCol_writes`, 52 lines) and `Examples/CgsQR.lean` (`cgs_satisfies`, 47 lines); the transitional
   files `GemmW`, `MgsW`, `CgsW` are gone. Deleted, line for line: gemm `GemmEntry`, `GemmInv`,
-  `div_mod_of_lt`, `wp_gemm`, `GemmInv.rounded` and the old `gemm_spec` (69 lines); MGS
-  `MgsInv`, `wp_mgs_step`, `wp_mgs` and the old `mgs_spec` (96); CGS `CgsBuf`, `cgsEnv`,
+  `div_mod_of_lt`, `wp_gemm`, `GemmInv.rounded` and the old `gemm_satisfies` (69 lines); MGS
+  `MgsInv`, `wp_mgs_step`, `wp_mgs` and the old `mgs_satisfies` (96); CGS `CgsBuf`, `cgsEnv`,
   `wp_cgsDots`, `wp_cgsProj`, `cgsColFp`, `wp_cgsCol`, `cgsH`, `cgsH_injective`, `CgsRounded`,
-  `wp_cgs`, `injective_handles` and the old `cgs_spec` (289). The abstract theorems and linked
+  `wp_cgs`, `injective_handles` and the old `cgs_satisfies` (289). The abstract theorems and linked
   corollaries (`runs_*_rounded`, `runs_*_link_*`) are unchanged and go through the new
   certificates. Totals in the README's count (run proofs + contract and certificate): gemm
   134 → 83, MGS 172 → 104, CGS 410 → 220; files: `Gemm` 275 → 208 lines, `GramSchmidt`
@@ -105,7 +110,7 @@ they state a signature; where they are not, this list wins):
 * **Linked corollaries**: the nine findings of `#ops_lint` rule (d) are closed (closed-form
   counts by `count_eval`). The tools of the core lane (`feat/ops-tools` @3512f807:
   `NLAlib/Ops/Tools/`, `scripts/ops/`) are merged; their scan skips `NLAlib.Ops.Logic.*`, so
-  `Impl.meets_of_writes` is no longer reported.
+  `Impl.satisfies_of_writes` is no longer reported.
 
 ---
 
@@ -139,7 +144,7 @@ writes programs with names and elaborates to the same `Stmt` term as the positio
 | `Logic/Builder.lean` | `ops%`, `opsImpl%` (implemented) | |
 | `Logic/Footprint.lean` | `Fp`, `Fp.blocks`, `Fp.Disj`, `Fp.Apart`, `Store.ReadsOnly`, `EqOff.keep`, `EqOff.trans'`, `Mem.eq_updBlocks_of_eqOff`; `fp_mem`, `disjoint` | 33 |
 | `Logic/Index.lean` | `Idx.*` lemmas; `idx` | 7 |
-| `Logic/Writes.lean` | `Writes` and its rules; `writes_call*`, `writes_alloc(s)`, `writes_ite`, `writes_bindIdx*`, `Wp.named`, `Impl.meets_of_writes` | 20 |
+| `Logic/Writes.lean` | `Writes` and its rules; `writes_call*`, `writes_alloc(s)`, `writes_ite`, `writes_bindIdx*`, `Wp.named`, `Impl.satisfies_of_writes` | 20 |
 | `Logic/Layout.lean` | `HoldsVec`, `MatLayout`, `HoldsMat`, `HoldsMatUpto`, decoding | 18 |
 | `Logic/Loop.lean` | `writes_loop`, `writes_loop₂`, `writes_fill(₂)`, `writes_fillRel(₂)`, `writes_whileFuel`, `writes_ifPos/ifZero` | 9 |
 | `Logic/Scalar.lean` | `ScalarIns`, `Stmt.scalarBlock`, `ScalarIns.evalBlock`, `writes_scalarBlock` | 3 |
@@ -147,7 +152,7 @@ writes programs with names and elaborates to the same `Stmt` term as the positio
 | `Logic/TapeMeas.lean` | `Tape.PastAt`, `pastEntry`, `pastWindow`, `fun_prop` leaves | 3 |
 | `Logic/Tactic.lean` | `step`, `frame`, `fp_sub`, `checkpoint`, `alloc as`, `loop_inv`, `keep`, `cert_intro`, `decode` | (syntax) |
 | `Examples/Built.lean` | builder = hand-written trees for `mgs`, `mgsImpl`, `gemm`, `cgs`, and the other constructs, by `rfl` | 5 examples |
-| `Examples/CgsWrites.lean` | `cgsCol_writes`, `cgs_spec_writes` (statements; phase B proved them as `cgsCol_writes` in `Examples/Cgs.lean` and `cgs_spec` in `Examples/CgsQR.lean`), `splitB` (S2 block in the builder, `rfl`) | 2 + 1 example |
+| `Examples/CgsWrites.lean` | `cgsCol_writes`, `cgs_spec_writes` (statements; phase B proved them as `cgsCol_writes` in `Examples/Cgs.lean` and `cgs_satisfies` in `Examples/CgsQR.lean`), `splitB` (S2 block in the builder, `rfl`) | 2 + 1 example |
 
 102 theorem statements in `Logic/` (76 with `sorry`, 26 proved by one line), 2 in
 `Examples/CgsWrites.lean`; about 30 definitions; 9 tactic syntaxes besides `fp_mem`, `disjoint`,
@@ -170,7 +175,7 @@ before). These are targets to be measured in phase B, not measurements.
 | Invariant shape `∃ s', m' = ⟨s', pos⟩ ∧ EqOff …` | every `wp_loop` | the standard invariant form of `writes_loop` and the fill rules: the rule carries the frame, the invariant is only the mathematics (§6) |
 | Scratch lengths after alloc | `hlen`, `hlR`, `hlt`, `hlw` (4 lines × 2 per proof) | `writes_alloc(s)`: the body is proved for every store with the declared lengths; `alloc as t` names the handle; the running frame gives `len_eq` once (§5) |
 | Index facts | `i * n + n ≤ k * n` ten times, `div_mod_of_lt`, tape positions | `idx` (discharger of every side goal), `Idx.*`; the 2-D loop rules index by `(i, j)`, so no quotient/remainder (§4, §6) |
-| Certificate destructuring | 4–6 lines per certificate, and the final `eq_updBlock₂`/`peel` | `Impl.meets_of_writes` (the equation is built once in the core lemma) and `cert_intro` with the builder's header (§9) |
+| Certificate destructuring | 4–6 lines per certificate, and the final `eq_updBlock₂`/`peel` | `Impl.satisfies_of_writes` (the equation is built once in the core lemma) and `cert_intro` with the builder's header (§9) |
 | Named states | stores pushed through 5–40 updates by `store_simp` | every step is named (`Writes.then_`); `Wp.named`/`checkpoint` for chain-mode proofs (§2, §5) |
 | Positional trees | `.var 5 + .var 6 * .var 1 + .var 7` | the builder (§12) |
 | Counts | `RunsFromW` has no tactic, no partial-correctness form | `count_eval`, `RunsFromWL`, `RunsFromW.of_writes` (§10) |
@@ -339,7 +344,7 @@ acceptance test.
 **The call rule with a footprint** (mode-generic, any number of outputs):
 
 ```lean
-theorem writes_call (hI : I.Meets md o (R.spec adm)) (hd : IExp.evalList ρ.idx ds = some d)
+theorem writes_call (hI : I.Satisfies md o (R.spec adm)) (hd : IExp.evalList ρ.idx ds = some d)
     (ha : Operand.evalList ρ ins = some a) (hb : Operand.evalList ρ outs = some b)
     (hnd : d.length = R.nd) (hk : R.win d = k) (hls : R.outLens d = ls) (hadm : adm d a b)
     (hap : Fp.Apart b ls)
@@ -520,7 +525,7 @@ stored values; leaves the mathematical goal, fails if nothing rewrites. Complex 
 ## 9. Certificates and templates
 
 ```lean
-theorem Impl.meets_of_writes {R : Impl Op Tst} {B : BlockRel K}
+theorem Impl.satisfies_of_writes {R : Impl Op Tst} {B : BlockRel K}
     (h : ∀ d ins outs τ m xs, d.length = B.nd → adm d ins outs → m.Live (ins ++ outs) →
       m.readBlocks ins (B.inLens d) = some xs → B.dom d xs (τ.window B.stream m.pos (B.win d)) →
       m.Room outs (B.outLens d) →
@@ -756,10 +761,10 @@ What is gone: the two loop lemmas with their `∃ s', …` invariants, `hin : i 
 against the running frame), `Store.readBlock_upd_concat` (the fill rule).
 
 **The algorithm and its certificate** (replaces `wp_cgs`, `CgsCols.succ`, `cgsH`,
-`cgsH_injective`, `cgs_spec`, about 190 lines):
+`cgsH_injective`, `cgs_satisfies`, about 190 lines):
 
 ```lean
-theorem cgs_spec … : cgsImpl.Meets J .total ((cgsRel dec ε).spec (CgsOperands ok)) := by
+theorem cgs_satisfies … : cgsImpl.Meets J .total ((cgsRel dec ε).spec (CgsOperands ok)) := by
   cert_intro [n, p] (A, R₀) → (Q, R) reads (as, r₀)
   alloc as t v
   loop_inv (fun j => inBlock Q.1 Q.2 (j * n) ⊔ inBlock R.1 R.2 (j * p) ⊔ inBuf t ⊔ inBuf v)
@@ -789,7 +794,7 @@ recurrence; three `step`s and a three-line `exact` in the round; one `step` and 
 **gemm** (96 today): `cert_intro [m, n, p] (A, B) → (C) reads (as, bs)`; `loop_inv fillRel₂`
 on the layout `⟨C.1, C.2, p, m, p⟩` (rows of `C` are columns of `Cᵀ`) with `R j i x :=
 GemmEntry … i j x`; one `step hJ.dot` and one `exact` in the round. `GemmInv`, `div_mod_of_lt`,
-`wp_gemm` and the destructuring of `gemm_spec` disappear.
+`wp_gemm` and the destructuring of `gemm_satisfies` disappear.
 
 **Projected program-logic lines** (same count as the README: declarations of the program-logic
 part, docstrings included; now *including* the contract and the certificate, which today are an

@@ -76,7 +76,7 @@ theorem trialStep_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScal
     (hsd : Fp.Disj (Store.inBlock sr.1 sr.2 (2 * k)) (Store.inBlock ds.1 ds.2 (2 * k)))
     (hrg : Fp.Disj (Store.inBlock rg.1 rg.2 5)
       (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))) :
-    Writes .total I τ (trialStep (O := O) (Q := Q)).body
+    Writes .total I τ (trialStep (O := O) (Q := Q))
       (Env.frame [n + 1, k] [a, sp, thr, t, sr, ds, rg])
       (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock sr.1 sr.2 (2 * k) ⊔
         Store.inBlock ds.1 ds.2 (2 * k) ⊔ Store.inBlock rg.1 rg.2 5)
@@ -130,7 +130,7 @@ theorem trialAccept_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSc
     (hga : Fp.Disj (Store.inBlock g.1 g.2 1 ⊔ Store.inBlock f.1 f.2 1)
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))))
     (hgf : Fp.Disj (Store.inBlock g.1 g.2 1) (Store.inBlock f.1 f.2 1)) :
-    Writes .total I τ (trialAccept (O := O) (Q := Q)).body (Env.frame [n + 1] [t, a, g, f])
+    Writes .total I τ (trialAccept (O := O) (Q := Q)) (Env.frame [n + 1] [t, a, g, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
         Store.inBlock f.1 f.2 1)
       (fun m' => HoldsMatrix a H' m'.store ∧ (∃ x, m'.store.get g.1 g.2 = some x) ∧
@@ -183,7 +183,7 @@ theorem regularizeTrial_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
         Store.inBlock ds.1 ds.2 (2 * k) ⊔ Store.inBlock rg.1 rg.2 5 ⊔
         Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))))
     (hgf : Fp.Disj (Store.inBlock g.1 g.2 1) (Store.inBlock f.1 f.2 1)) :
-    Writes .total I τ (regularizeTrial (O := O) (Q := Q)).body
+    Writes .total I τ (regularizeTrial (O := O) (Q := Q))
       (Env.frame [n + 1, k] [a, sp, thr, t, sr, ds, rg, a, g, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
         Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
@@ -252,7 +252,7 @@ theorem regularizeTrials_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
     (hgf : Fp.Disj (Store.inBlock g.1 g.2 1) (Store.inBlock f.1 f.2 1))
     (hAS : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
       Store.inBlock f.1 f.2 1) (Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock thr.1 thr.2 1)) :
-    Writes .total I τ (regularizeTrials (O := O) (Q := Q)).body
+    Writes .total I τ (regularizeTrials (O := O) (Q := Q))
       (Env.frame [n + 1, k] [a, s, thr, t, sr, ds, rg, a, g, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
         Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
@@ -300,7 +300,7 @@ theorem regularizeDecide_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
     (hv : RegularizeViews L n k a rd c thr s f) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {R cw tv : ℝ} (hctx : RegularizeCtx L k H R cw tv a rd c thr s f m) {xs : List ℝ}
     (hs : m.store.readBlock s.1 s.2 (2 * k) = some xs) :
-    Writes .total I τ (regularizeDecide (O := O) (Q := Q)).body
+    Writes .total I τ (regularizeDecide (O := O) (Q := Q))
       (Env.frame [n + 1, k] [a, s, c, thr, (L + 3, 0), (L + 4, 0), (L + 5, 0), (L + 6, 0), a,
         (L + 2, 0), f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 2) 0 1 ⊔
@@ -383,7 +383,7 @@ theorem IsRandomSmallEig.smallEigLeaf_terminates {law : ℕ → MeasureTheory.Me
     {β φ : ℝ} {I : Interp O Q ℝ} (h : IsRandomSmallEig law s β φ I) {d : ℕ} {w o : ℕ × ℕ}
     {τ : Tape ℝ} {μ : Mem ℝ} {B : Matrix (Fin d) (Fin d) ℂ} (hH : HoldsMatrix w B μ.store)
     (hl : μ.Live [w, o]) (hroom : o.2 + 2 * d ≤ μ.store.len o.1) :
-    Writes .total I τ (smallEigLeaf (O := O) (Q := Q)).body (Env.frame [d] [w, o])
+    Writes .total I τ (smallEigLeaf (O := O) (Q := Q)) (Env.frame [d] [w, o])
       (Store.inBlock o.1 o.2 (2 * d))
       (fun μ' => ∃ ys, μ'.store.readBlock o.1 o.2 (2 * d) = some ys) μ := by
   obtain ⟨W, Bad, -, -, hI⟩ := h
@@ -412,7 +412,7 @@ theorem regularizeDraws_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     (hzs : Fp.Disj (Store.inBlock z.1 z.2 2) (Store.inBlock s.1 s.2 (2 * k)))
     (hzr : Fp.Disj (Store.inBlock z.1 z.2 2) (Store.inBlock rd.1 rd.2 1))
     (hsr : Fp.Disj (Store.inBlock s.1 s.2 (2 * k)) (Store.inBlock rd.1 rd.2 1)) :
-    Writes .total I τ (regularizeDraws (O := O) (Q := Q)).body (Env.frame [k] [rd, z, s])
+    Writes .total I τ (regularizeDraws (O := O) (Q := Q)) (Env.frame [k] [rd, z, s])
       (Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock z.1 z.2 2)
       (fun m' => ∃ ys, m'.store.readBlock s.1 s.2 (2 * k) = some ys) m := by
   unfold regularizeDraws
@@ -454,10 +454,10 @@ theorem regularizeWithScratchWith_terminates {M : Machine ℝ} {I : Interp O Q �
     {m : Mem ℝ} {k L : ℕ} (hk : k ≤ n) {a rd c thr s f : ℕ × ℕ}
     (hv : RegularizeViews L n k a rd c thr s f) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {R cw tv : ℝ} (hctx : RegularizeCtx L k H R cw tv a rd c thr s f m) {nq T : ℕ}
-    {qs : List ℝ} {SE : Impl O Q} (hSE : TerminatingSmallEigAt k nq T qs SE I) {qw : ℕ × ℕ}
+    {qs : List ℝ} {SE : Stmt O Q} (hSE : TerminatingSmallEigAt k nq T qs SE I) {qw : ℕ × ℕ}
     (hqL : qw.1 < L) (hq : m.store.readBlock qw.1 qw.2 qs.length = some qs)
     (hqw : Fp.Disj (Store.inBlock s.1 s.2 (2 * k)) (Store.inBlock qw.1 qw.2 qs.length)) :
-    Writes .total I τ (regularizeWithScratchWith SE).body
+    Writes .total I τ (regularizeWithScratchWith SE)
       (Env.frame [n + 1, k, nq, T] [a, rd, c, thr, qw, (L, 0), (L + 1, 0), (L + 2, 0),
         (L + 3, 0), (L + 4, 0), (L + 5, 0), (L + 6, 0), a, s, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
@@ -536,25 +536,25 @@ theorem regularizeWith_terminates_at {M : Machine ℝ} {I : Interp O Q ℝ} (hS 
     (hl : m.Live [a, rd, c, thr, s, f]) (hA : HoldsMatrix a H m.store)
     (hrd : m.store.get rd.1 rd.2 = some R) (hc : m.store.get c.1 c.2 = some cw)
     (hthr : m.store.get thr.1 thr.2 = some tv) (hrs : s.2 + 2 * k ≤ m.store.len s.1)
-    (hrf : f.2 < m.store.len f.1) {nq T : ℕ} {qs : List ℝ} {SE : Impl O Q}
+    (hrf : f.2 < m.store.len f.1) {nq T : ℕ} {qs : List ℝ} {SE : Stmt O Q}
     (hSE : TerminatingSmallEigAt k nq T qs SE I) {qw : ℕ × ℕ} (hlq : qw.1 < m.store.length)
     (hq : m.store.readBlock qw.1 qw.2 qs.length = some qs)
     (hqw : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
       Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock f.1 f.2 1)
         (Store.inBlock qw.1 qw.2 qs.length)) :
-    Writes .total I τ (regularizeWith SE).body
+    Writes .total I τ (regularizeWith SE)
       (Env.frame [n + 1, k, nq, T] [a, rd, c, thr, qw, a, s, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
         Store.inBlock f.1 f.2 1)
       (fun m' => (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a H' m'.store) ∧
         (∃ ys, m'.store.readBlock s.1 s.2 (2 * k) = some ys) ∧
         ∃ x, m'.store.get f.1 f.2 = some x) m := by
-  have e : (regularizeWith SE).body = Stmt.allocs [.const 2 * (.var 1 * .var 1),
+  have e : (regularizeWith SE) = Stmt.allocs [.const 2 * (.var 1 * .var 1),
       .const 2, .const 1, .const 2 * (.var 0 * .var 0), .const 2 * .var 1, .const 2 * .var 1,
       .const 5] (.frame [.var 0, .var 1, .var 2, .var 3] [⟨0, .var 4⟩, ⟨1, .var 5⟩, ⟨2, .var 6⟩,
         ⟨3, .var 7⟩, ⟨4, .var 8⟩, ⟨8, .const 0⟩, ⟨9, .const 0⟩, ⟨10, .const 0⟩, ⟨11, .const 0⟩,
         ⟨12, .const 0⟩, ⟨13, .const 0⟩, ⟨14, .const 0⟩, ⟨0, .var 4⟩, ⟨6, .var 10⟩, ⟨7, .var 11⟩]
-        (regularizeWithScratchWith SE).body) := rfl
+        (regularizeWithScratchWith SE)) := rfl
   have hlv : a.1 < m.store.length ∧ rd.1 < m.store.length ∧ c.1 < m.store.length ∧
       thr.1 < m.store.length ∧ s.1 < m.store.length ∧ f.1 < m.store.length := by
     simpa [Mem.Live] using hl
@@ -604,7 +604,7 @@ theorem regularize_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSca
     (hrd : m.store.get rd.1 rd.2 = some R) (hc : m.store.get c.1 c.2 = some cw)
     (hthr : m.store.get thr.1 thr.2 = some tv) (hrs : s.2 + 2 * k ≤ m.store.len s.1)
     (hrf : f.2 < m.store.len f.1) :
-    Writes .total I τ (regularize (O := O) (Q := Q)).body
+    Writes .total I τ (regularize (O := O) (Q := Q))
       (Env.frame [n + 1, k] [a, rd, c, thr, a, s, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
         Store.inBlock f.1 f.2 1)

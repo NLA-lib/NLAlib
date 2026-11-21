@@ -63,28 +63,28 @@ initialize a working copy $\mathbf{H} - s$ and the output $\mathbf{H}$, run the 
 also copies the last working diagonal entry to `Dg`, and zero the output below its subdiagonal.
 The interface is `[n] (A, S) → (Z, Dg)`; the working matrix and the four coefficient words are
 scoped. -/
-def stepWithDiag : Impl Op Tst := opsImpl% [n] (A, S) → (Z, Dg) {
+def stepWithDiag : Stmt Op Tst := ops% [n] (A, S) → (Z, Dg) {
   let W ← alloc (2 * (n * n));
   let Cf ← alloc 4;
-  run (initializeState (Op := Op) (Tst := Tst)).body [n] (A, S, W, Z);
-  run (sweepWithDiag (Op := Op) (Tst := Tst)).body [n] (W, Z, Cf, W, Z, Dg);
-  run (clearBelowSubdiagonal (Op := Op) (Tst := Tst)).body [n] (Z)
+  run (initializeState (Op := Op) (Tst := Tst)) [n] (A, S, W, Z);
+  run (sweepWithDiag (Op := Op) (Tst := Tst)) [n] (W, Z, Cf, W, Z, Dg);
+  run (clearBelowSubdiagonal (Op := Op) (Tst := Tst)) [n] (Z)
 }
 
 /-- The step in place: run `NLAlib.ShiftedQR.stepWithDiag` into the scratch matrix `T`, then copy
 it back to `A`. The interface is `[n] (A, S, T) → (A, Dg)`. -/
-def stepWithDiagInPlace : Impl Op Tst := opsImpl% [n] (A, S, T) → (A, Dg) {
-  run (stepWithDiag (Op := Op) (Tst := Tst)).body [n] (A, S, T, Dg);
-  run (unaryMap (Has.inj ScalarOp.copy)).body [2 * (n * n)] (T, A)
+def stepWithDiagInPlace : Stmt Op Tst := ops% [n] (A, S, T) → (A, Dg) {
+  run (stepWithDiag (Op := Op) (Tst := Tst)) [n] (A, S, T, Dg);
+  run (unaryMap (Has.inj ScalarOp.copy)) [2 * (n * n)] (T, A)
 }
 
 /-- **The degree $k$ rounded step**: $k$ steps in place with the shifts `S[2j]`, the last
 triangular diagonal entry of step $j$ written to `Ds[2j]`. The interface is
 `[n, k] (A, S) → (A, Ds)`; the scratch matrix is scoped. -/
-def multiStepStable : Impl Op Tst := opsImpl% [n, k] (A, S) → (A, Ds) {
+def multiStepStable : Stmt Op Tst := ops% [n, k] (A, S) → (A, Ds) {
   let T ← alloc (2 * (n * n));
   for j < k {
-    run (stepWithDiagInPlace (Op := Op) (Tst := Tst)).body [n] (A, S[2 * j], T, A, Ds[2 * j])
+    run (stepWithDiagInPlace (Op := Op) (Tst := Tst)) [n] (A, S[2 * j], T, A, Ds[2 * j])
   }
 }
 
@@ -450,7 +450,8 @@ end SweepMath
 /-- **The rounded sweep keeps its invariant**: on a machine with the standard model at
 $\boldsymbol{u} \ge 0$ with $(n+1)\boldsymbol{u} \le 1/2500$, the $n$ rounds of the sweep from an
 upper Hessenberg working matrix $\mathbf{W}_0$ and an output $\mathbf{H}$ end in the invariant of
-$n$ rounds. -/
+$n$ rounds. Shared by the trees of `NLAlib.ShiftedQR.multiStepStable`,
+`NLAlib.ShiftedQR.shiftedStep`, `NLAlib.MGS.sweepRoutine` and `NLAlib.ShiftedQR.sweepWithDiag`. -/
 private theorem sweep_writes_roundedSweepInv {M : Machine ℝ} {I : Interp Op Tst ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {w z cf : ℕ × ℕ}
@@ -464,7 +465,7 @@ private theorem sweep_writes_roundedSweepInv {M : Machine ℝ} {I : Interp Op Ts
     (hzc : Fp.Disj (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock cf.1 cf.2 4))
     (hl : m.Live [w, z, cf, w, z]) :
-    Writes .total I τ sweep.body (Env.frame [n + 1] [w, z, cf, w, z])
+    Writes .total I τ sweep (Env.frame [n + 1] [w, z, cf, w, z])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock cf.1 cf.2 4)
       (fun m' => m'.pos = m.pos ∧ ∃ W Z, RoundedSweepInv u n H W₀ W Z ∧
@@ -491,7 +492,9 @@ private theorem sweep_writes_roundedSweepInv {M : Machine ℝ} {I : Interp Op Ts
 output; if every run of the sweep from such a state ends with a working matrix and an output
 related by `P`, the step ends with such a pair, the output with its fill deleted
 (`NLAlib.upperHessenbergPart`) and the last working diagonal entry stored. The working matrix
-and the coefficient words are scoped; the output and the diagonal pair are given capacity. -/
+and the coefficient words are scoped; the output and the diagonal pair are given capacity.
+Shared by the trees of `NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrRoutine`,
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem stepWithDiag_writes_of_sweep {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hzero : M.lit 0 = 0) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ}
     {a s z dg : ℕ × ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {shift : ℂ}
@@ -514,12 +517,12 @@ theorem stepWithDiag_writes_of_sweep {M : Machine ℝ} {I : Interp Op Tst ℝ}
       Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock cf.1 cf.2 4) →
       Fp.Disj (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock cf.1 cf.2 4) →
       m₁.Live [w, z, cf, w, z] →
-      Writes .total I τ sweep.body (Env.frame [n + 1] [w, z, cf, w, z])
+      Writes .total I τ sweep (Env.frame [n + 1] [w, z, cf, w, z])
         (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
           Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock cf.1 cf.2 4)
         (fun m' => m'.pos = m₁.pos ∧ ∃ W Z, P W Z ∧
           HoldsMatrix w W m'.store ∧ HoldsMatrix z Z m'.store) m₁) :
-    Writes .total I τ stepWithDiag.body (Env.frame [n + 1] [a, s, z, dg])
+    Writes .total I τ stepWithDiag (Env.frame [n + 1] [a, s, z, dg])
       (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock dg.1 dg.2 2)
       (fun m' => m'.pos = m.pos ∧ ∃ W Z, P W Z ∧
         HoldsMatrix z (upperHessenbergPart Z) m'.store ∧
@@ -615,7 +618,7 @@ theorem stepWithDiag_isStableQRStep {M : Machine ℝ} {I : Interp Op Tst ℝ} {u
       (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1)))))
     (hzd : Fp.Disj (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock dg.1 dg.2 2)) :
-    Writes .total I τ stepWithDiag.body (Env.frame [n + 1] [a, s, z, dg])
+    Writes .total I τ stepWithDiag (Env.frame [n + 1] [a, s, z, dg])
       (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock dg.1 dg.2 2)
       (fun m' => m'.pos = m.pos ∧ ∃ H' R : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
         IsStableQRStep (300 * (n + 1) ^ 2 * u * (specNorm H + ‖shift‖)) H shift H' R ∧
@@ -659,7 +662,7 @@ theorem stepWithDiagInPlace_isStableQRStep {M : Machine ℝ} {I : Interp Op Tst 
       (Store.inBlock dg.1 dg.2 2))
     (had : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock dg.1 dg.2 2)) :
-    Writes .total I τ stepWithDiagInPlace.body (Env.frame [n + 1] [a, s, t, a, dg])
+    Writes .total I τ stepWithDiagInPlace (Env.frame [n + 1] [a, s, t, a, dg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock dg.1 dg.2 2)
       (fun m' => m'.pos = m.pos ∧ ∃ H' R : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
@@ -714,7 +717,7 @@ theorem multiStepStable_isStableQRChain {M : Machine ℝ} {I : Interp Op Tst ℝ
       (Store.inBlock ds.1 ds.2 (2 * ss.length)))
     (hsd : Fp.Disj (Store.inBlock s.1 s.2 (2 * ss.length))
       (Store.inBlock ds.1 ds.2 (2 * ss.length))) :
-    Writes .total I τ multiStepStable.body (Env.frame [n + 1, ss.length] [a, s, a, ds])
+    Writes .total I τ multiStepStable (Env.frame [n + 1, ss.length] [a, s, a, ds])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock ds.1 ds.2 (2 * ss.length))
       (fun m' => m'.pos = m.pos ∧ ∃ (H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)

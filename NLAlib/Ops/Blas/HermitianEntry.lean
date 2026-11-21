@@ -48,7 +48,7 @@ theorem writes_pair_of_wp {md : Mode} {I : Interp Op Tst K} {τ : Tape K}
 
 /-- Add the real words, subtract the imaginary words, and divide both results by a stored
 scalar. Inputs are two word pairs and one scalar cell; output is one word pair. -/
-def averagePair : Impl Op Tst := opsImpl% [] (x, y, c) → (z) {
+def averagePair : Stmt Op Tst := ops% [] (x, y, c) → (z) {
   call (Has.inj ScalarOp.add) [] (x, y) → (z);
   call (Has.inj ScalarOp.div) [] (z, c) → (z);
   call (Has.inj ScalarOp.sub) [] (x[1], y[1]) → (z[1]);
@@ -71,7 +71,7 @@ theorem wp_averagePair {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     (hc : m.store.get c.1 c.2 = some a) (hz : z.2 + 2 ≤ m.store.len z.1)
     {Q : Mem K → Prop}
     (hQ : Q (m.updBlock z [M.div (M.add ar br) a, M.div (M.sub ai bi) a])) :
-    Wp md I τ (averagePair (Op := Op) (Tst := Tst)).body
+    Wp md I τ (averagePair (Op := Op) (Tst := Tst))
       (Env.frame [] [x, y, c, z]) Q m := by
   have hx1z0 := hxz.ne_cells
     (show Store.inBlock x.1 x.2 2 x.1 (x.2 + 1) from ⟨rfl, by omega, by omega⟩)
@@ -105,7 +105,7 @@ theorem wp_averagePair {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
   simpa [Mem.updBlock, Store.updBlock, Mem.upd, Store.upd_upd] using hQ
 
 /-- Copy a complete stored word pair without arithmetic or scratch. -/
-def copyPair : Impl Op Tst := opsImpl% [] (x) → (z) {
+def copyPair : Stmt Op Tst := ops% [] (x) → (z) {
   call (Has.inj ScalarOp.copy) [] (x) → (z);
   call (Has.inj ScalarOp.copy) [] (x[1]) → (z[1])
 }
@@ -118,7 +118,7 @@ theorem wp_copyPair_of_disj {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar
     (hxr : m.store.get x.1 x.2 = some ar)
     (hxi : m.store.get x.1 (x.2 + 1) = some ai) (hz : z.2 + 2 ≤ m.store.len z.1)
     {Q : Mem K → Prop} (hQ : Q (m.updBlock z [ar, ai])) :
-    Wp md I τ (copyPair (Op := Op) (Tst := Tst)).body (Env.frame [] [x, z]) Q m := by
+    Wp md I τ (copyPair (Op := Op) (Tst := Tst)) (Env.frame [] [x, z]) Q m := by
   refine wp_seq (wp_call_un (hI .copy) rfl rfl rfl trivial hxr rfl
     (by simpa using (show z.2 < m.store.len z.1 from by omega)) ?_)
   refine wp_call_un (hI .copy) rfl rfl rfl trivial (a := ai) ?_ rfl ?_ ?_
@@ -135,11 +135,11 @@ theorem wp_copyPair {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     (hxz : x.1 ≠ z.1) (hxr : m.store.get x.1 x.2 = some ar)
     (hxi : m.store.get x.1 (x.2 + 1) = some ai) (hz : z.2 + 2 ≤ m.store.len z.1)
     {Q : Mem K → Prop} (hQ : Q (m.updBlock z [ar, ai])) :
-    Wp md I τ (copyPair (Op := Op) (Tst := Tst)).body (Env.frame [] [x, z]) Q m :=
+    Wp md I τ (copyPair (Op := Op) (Tst := Tst)) (Env.frame [] [x, z]) Q m :=
   wp_copyPair_of_disj hI (Fp.disj_inBlock_of_ne hxz) hxr hxi hz hQ
 
 /-- Divide both component words by a stored scalar. -/
-def scalePair : Impl Op Tst := opsImpl% [] (x, c) → (z) {
+def scalePair : Stmt Op Tst := ops% [] (x, c) → (z) {
   call (Has.inj ScalarOp.div) [] (x, c) → (z);
   call (Has.inj ScalarOp.div) [] (x[1], c) → (z[1])
 }
@@ -153,7 +153,7 @@ theorem wp_scalePair {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     (hxi : m.store.get x.1 (x.2 + 1) = some ai)
     (hc : m.store.get c.1 c.2 = some a) (hz : z.2 + 2 ≤ m.store.len z.1)
     {Q : Mem K → Prop} (hQ : Q (m.updBlock z [M.div ar a, M.div ai a])) :
-    Wp md I τ (scalePair (Op := Op) (Tst := Tst)).body (Env.frame [] [x, c, z]) Q m := by
+    Wp md I τ (scalePair (Op := Op) (Tst := Tst)) (Env.frame [] [x, c, z]) Q m := by
   have hx1z0 := hxz.ne_cells
     (show Store.inBlock x.1 x.2 2 x.1 (x.2 + 1) from ⟨rfl, by omega, by omega⟩)
     (show Store.inBlock z.1 z.2 2 z.1 z.2 from ⟨rfl, le_rfl, by omega⟩)
@@ -169,7 +169,7 @@ theorem wp_scalePair {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
   simpa [Mem.updBlock, Store.updBlock, Mem.upd] using hQ
 
 /-- Copy the real word and negate the imaginary word. -/
-def conjugatePair : Impl Op Tst := opsImpl% [] (x) → (z) {
+def conjugatePair : Stmt Op Tst := ops% [] (x) → (z) {
   call (Has.inj ScalarOp.copy) [] (x) → (z);
   call (Has.inj ScalarOp.neg) [] (x[1]) → (z[1])
 }
@@ -182,7 +182,7 @@ theorem wp_conjugatePair {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M 
     (hz : z.2 + 2 ≤ m.store.len z.1)
     (hprotect : x.1 ≠ z.1 ∨ x.2 + 1 ≠ z.2)
     {Q : Mem K → Prop} (hQ : Q (m.updBlock z [ar, M.neg ai])) :
-    Wp md I τ (conjugatePair (Op := Op) (Tst := Tst)).body (Env.frame [] [x, z]) Q m := by
+    Wp md I τ (conjugatePair (Op := Op) (Tst := Tst)) (Env.frame [] [x, z]) Q m := by
   refine wp_seq (wp_call_un (hI .copy) rfl rfl rfl trivial hxr rfl
     (by simpa using (show z.2 < m.store.len z.1 from by omega)) ?_)
   refine wp_call_un (hI .neg) rfl rfl rfl trivial (a := ai) ?_ rfl ?_ ?_
@@ -192,7 +192,7 @@ theorem wp_conjugatePair {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M 
 
 /-- Subtract a stored scalar from a diagonal real word and write literal zero to its
 imaginary word. -/
-def shiftDiagonal : Impl Op Tst := opsImpl% [] (x, c) → (z) {
+def shiftDiagonal : Stmt Op Tst := ops% [] (x, c) → (z) {
   call (Has.inj ScalarOp.sub) [] (x, c) → (z);
   call (Has.inj (ScalarOp.lit 0)) [] () → (z[1])
 }
@@ -203,7 +203,7 @@ theorem wp_shiftDiagonal {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M 
     (hxr : m.store.get x.1 x.2 = some ar) (hc : m.store.get c.1 c.2 = some a)
     (hz : z.2 + 2 ≤ m.store.len z.1) {Q : Mem K → Prop}
     (hQ : Q (m.updBlock z [M.sub ar a, M.lit 0])) :
-    Wp md I τ (shiftDiagonal (Op := Op) (Tst := Tst)).body
+    Wp md I τ (shiftDiagonal (Op := Op) (Tst := Tst))
       (Env.frame [] [x, c, z]) Q m := by
   refine wp_seq (wp_call_bin (hI .sub) rfl rfl rfl trivial hxr hc rfl
     (by simpa using (show z.2 < m.store.len z.1 from by omega)) ?_)
@@ -213,7 +213,7 @@ theorem wp_shiftDiagonal {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M 
 
 /-- Divide a diagonal real word by a stored scalar and write literal zero to its imaginary
 word. -/
-def scaleDiagonal : Impl Op Tst := opsImpl% [] (x, c) → (z) {
+def scaleDiagonal : Stmt Op Tst := ops% [] (x, c) → (z) {
   call (Has.inj ScalarOp.div) [] (x, c) → (z);
   call (Has.inj (ScalarOp.lit 0)) [] () → (z[1])
 }
@@ -224,7 +224,7 @@ theorem wp_scaleDiagonal {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M 
     (hxr : m.store.get x.1 x.2 = some ar) (hc : m.store.get c.1 c.2 = some a)
     (hz : z.2 + 2 ≤ m.store.len z.1) {Q : Mem K → Prop}
     (hQ : Q (m.updBlock z [M.div ar a, M.lit 0])) :
-    Wp md I τ (scaleDiagonal (Op := Op) (Tst := Tst)).body
+    Wp md I τ (scaleDiagonal (Op := Op) (Tst := Tst))
       (Env.frame [] [x, c, z]) Q m := by
   refine wp_seq (wp_call_bin (hI .div) rfl rfl rfl trivial hxr hc rfl
     (by simpa using (show z.2 < m.store.len z.1 from by omega)) ?_)
@@ -233,7 +233,7 @@ theorem wp_scaleDiagonal {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M 
   simpa [Mem.updBlock, Store.updBlock, Mem.upd] using hQ
 
 /-- Add the diagonal real word to itself, divide by a stored scalar, and write imaginary zero. -/
-def averageDiagonal : Impl Op Tst := opsImpl% [] (x, c) → (z) {
+def averageDiagonal : Stmt Op Tst := ops% [] (x, c) → (z) {
   call (Has.inj ScalarOp.add) [] (x, x) → (z);
   call (Has.inj ScalarOp.div) [] (z, c) → (z);
   call (Has.inj (ScalarOp.lit 0)) [] () → (z[1])
@@ -246,7 +246,7 @@ theorem wp_averageDiagonal {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar 
     (hxr : m.store.get x.1 x.2 = some ar)
     (hc : m.store.get c.1 c.2 = some a) (hz : z.2 + 2 ≤ m.store.len z.1)
     {Q : Mem K → Prop} (hQ : Q (m.updBlock z [M.div (M.add ar ar) a, M.lit 0])) :
-    Wp md I τ (averageDiagonal (Op := Op) (Tst := Tst)).body
+    Wp md I τ (averageDiagonal (Op := Op) (Tst := Tst))
       (Env.frame [] [x, c, z]) Q m := by
   have hc0 := hcz.ne_cells
     (show Store.inBlock c.1 c.2 1 c.1 c.2 from ⟨rfl, le_rfl, by omega⟩)

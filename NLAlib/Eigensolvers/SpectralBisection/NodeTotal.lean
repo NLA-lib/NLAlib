@@ -76,7 +76,8 @@ private theorem indexCells_disjoint_prepared {n d lo k : ℕ}
 
 /-- A nonleaf node executes totally and stores exactly the existing mathematical step on its
 actual inputs. All bounded split cases have sufficient separated output capacity. No scratch
-initialization, numerical-accuracy or successful-run premise is assumed. -/
+initialization, numerical-accuracy or successful-run premise is assumed.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_nodeBody {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
     [Has MatrixOp Op] [Has CmpTst Tst] [Has IdxTst Tst]
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))

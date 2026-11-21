@@ -36,21 +36,18 @@ open scoped Matrix
 variable {Op Tst : Type} [Has ScalarOp Op]
 
 /-- Subtract both component words of the complex shift from each diagonal entry in place. -/
-def shiftDiagonal : Impl Op Tst where
-  nd := 1
-  nin := 2
-  nout := 1
-  body := .loop (.var 0) (.frame [.const 2]
+def shiftDiagonal : Stmt Op Tst :=
+  .loop (.var 0) (.frame [.const 2]
     [⟨0, .var 1 + .const 2 * (.var 4 * .var 0 + .var 4)⟩, ⟨1, .var 2⟩,
       ⟨2, .var 3 + .const 2 * (.var 4 * .var 0 + .var 4)⟩]
-    (binaryMap (Has.inj ScalarOp.sub)).body)
+    (binaryMap (Has.inj ScalarOp.sub)))
 
 /-- Copy the raw matrix into the two state matrices and shift only the working matrix.
 The interface is `[n] (A,S) -> (W,Z)`, with all matrix blocks of size `2*n*n`. -/
-def initializeState : Impl Op Tst := opsImpl% [n] (A, S) → (W, Z) {
-  run (unaryMap (Has.inj ScalarOp.copy)).body [2 * (n * n)] (A, W);
-  run (unaryMap (Has.inj ScalarOp.copy)).body [2 * (n * n)] (A, Z);
-  run shiftDiagonal.body [n] (W, S, W)
+def initializeState : Stmt Op Tst := ops% [n] (A, S) → (W, Z) {
+  run (unaryMap (Has.inj ScalarOp.copy)) [2 * (n * n)] (A, W);
+  run (unaryMap (Has.inj ScalarOp.copy)) [2 * (n * n)] (A, Z);
+  run shiftDiagonal [n] (W, S, W)
 }
 
 /-- The mathematical matrix after shifting the first `k` diagonal entries. Entries outside
@@ -128,15 +125,16 @@ theorem machineShiftedPrefix_eq {n : ℕ} {M : Machine ℝ} (hE : ExactModel id 
   simp only [machineShiftedPrefix, shiftedPrefix, Matrix.of_apply, hsub]
   split_ifs <;> rfl
 
-/-- Subtract a complex shift from one stored matrix entry, using exactly two scalar
-subtractions and the generic binary-map frame. -/
+/-- Subtract a complex shift from one stored matrix entry, using exactly two scalar subtractions and
+the generic binary-map frame.
+A step in the proof of `shiftDiagonal_writes_word`. -/
 private theorem shiftEntry_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {n : ℕ} {b a : ℕ × ℕ} {H : Matrix (Fin n) (Fin n) ℂ} {s : ℂ}
     (hH : HoldsMatrix b H m.store) (hs : m.store.readBlock a.1 a.2 2 = some [s.re, s.im])
     (hd : Fp.Disj (Store.inBlock b.1 b.2 (2 * (n * n))) (Store.inBlock a.1 a.2 2))
     (i : Fin n) :
-    Writes .total I τ (binaryMap (Has.inj ScalarOp.sub)).body
+    Writes .total I τ (binaryMap (Has.inj ScalarOp.sub))
       (Env.frame [2] [(b.1, b.2 + 2 * (i * n + i)), a,
         (b.1, b.2 + 2 * (i * n + i))])
       (Store.inBlock b.1 (b.2 + 2 * (i * n + i)) 2)
@@ -165,14 +163,17 @@ private theorem shiftEntry_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 /-- The scalar diagonal traversal on any machine stores the machine shift
 (`NLAlib.ShiftedQR.machineShiftedPrefix`) of the actual stored matrix and preserves every word
-outside that matrix. The supplied shift occupies a disjoint word block. -/
+outside that matrix. The supplied shift occupies a disjoint word block.
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
+`NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem shiftDiagonal_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {n : ℕ} {b a : ℕ × ℕ} {H : Matrix (Fin n) (Fin n) ℂ} {s : ℂ}
     (hl : m.Live [b, a, b]) (hH : HoldsMatrix b H m.store)
     (hs : m.store.readBlock a.1 a.2 2 = some [s.re, s.im])
     (hd : Fp.Disj (Store.inBlock b.1 b.2 (2 * (n * n))) (Store.inBlock a.1 a.2 2)) :
-    Writes .total I τ (shiftDiagonal (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (shiftDiagonal (Op := Op) (Tst := Tst))
       (Env.frame [n] [b, a, b]) (Store.inBlock b.1 b.2 (2 * (n * n)))
       (fun m' => m'.pos = m.pos ∧
         HoldsMatrix b (machineShiftedPrefix M H s n) m'.store) m := by
@@ -204,28 +205,33 @@ theorem shiftDiagonal_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
   simpa only [he] using hmat
 
 /-- The scalar diagonal traversal subtracts the shift from the actual stored matrix and
-preserves every word outside that matrix. The supplied shift occupies a disjoint word block. -/
+preserves every word outside that matrix. The supplied shift occupies a disjoint word block.
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
+`NLAlib.ShiftedQR.shqrRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem shiftDiagonal_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {n : ℕ} {b a : ℕ × ℕ} {H : Matrix (Fin n) (Fin n) ℂ} {s : ℂ}
     (hl : m.Live [b, a, b]) (hH : HoldsMatrix b H m.store)
     (hs : m.store.readBlock a.1 a.2 2 = some [s.re, s.im])
     (hd : Fp.Disj (Store.inBlock b.1 b.2 (2 * (n * n))) (Store.inBlock a.1 a.2 2)) :
-    Writes .total I τ (shiftDiagonal (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (shiftDiagonal (Op := Op) (Tst := Tst))
       (Env.frame [n] [b, a, b]) (Store.inBlock b.1 b.2 (2 * (n * n)))
       (fun m' => m'.pos = m.pos ∧
         HoldsMatrix b (H - s • (1 : Matrix (Fin n) (Fin n) ℂ)) m'.store) m := by
   simpa only [machineShiftedPrefix_eq hE, shiftedPrefix_all] using
     shiftDiagonal_writes_word (τ := τ) hS hl hH hs hd
 
-/-- Copy the actual interleaved words of a matrix using the scalar copy map. -/
+/-- Copy the actual interleaved words of a matrix using the scalar copy map.
+A step in the proof of `smallEigProg_copy_pwrites`, `smallEigProg_terminates_of_two_le`,
+`trialStep_writes` and others. -/
 theorem copyMatrix_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a b : ℕ × ℕ}
     {H : Matrix (Fin n) (Fin n) ℂ} (hH : HoldsMatrix a H m.store)
     (hB : b.2 + 2 * (n * n) ≤ m.store.len b.1)
     (hd : Fp.Disj (Store.inBlock a.1 a.2 (2 * (n * n)))
       (Store.inBlock b.1 b.2 (2 * (n * n)))) :
-    Writes .total I τ (unaryMap (Has.inj ScalarOp.copy)).body
+    Writes .total I τ (unaryMap (Has.inj ScalarOp.copy))
       (Env.frame [2 * (n * n)] [a, b]) (Store.inBlock b.1 b.2 (2 * (n * n)))
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix b H m'.store) m := by
   simpa only [HoldsMatrix, List.map_id] using
@@ -234,7 +240,9 @@ theorem copyMatrix_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 /-- Initialization on any machine copies the actual raw matrix into both state matrices and
 subtracts the supplied shift on the machine (`NLAlib.ShiftedQR.machineShiftedPrefix`) only from
 the working matrix. The raw matrix and shift occupy disjoint views from the outputs, and the two
-output matrices are separate. No initialized output is needed. -/
+output matrices are separate. No initialized output is needed.
+Shared by the trees of `NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrRoutine`,
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem initializeState_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {n : ℕ} {a s w z : ℕ × ℕ} {H : Matrix (Fin n) (Fin n) ℂ} {shift : ℂ}
@@ -250,7 +258,7 @@ theorem initializeState_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hsz : Fp.Disj (Store.inBlock s.1 s.2 2) (Store.inBlock z.1 z.2 (2 * (n * n))))
     (hwz : Fp.Disj (Store.inBlock w.1 w.2 (2 * (n * n)))
       (Store.inBlock z.1 z.2 (2 * (n * n)))) :
-    Writes .total I τ (initializeState (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (initializeState (Op := Op) (Tst := Tst))
       (Env.frame [n] [a, s, w, z])
       (Store.inBlock w.1 w.2 (2 * (n * n)) ⊔ Store.inBlock z.1 z.2 (2 * (n * n)))
       (fun m' => m'.pos = m.pos ∧
@@ -282,7 +290,9 @@ theorem initializeState_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 /-- Initialization copies the actual raw matrix into both state matrices and subtracts the
 supplied shift only from the working matrix. The raw matrix and shift occupy disjoint views
-from the outputs, and the two output matrices are separate. No initialized output is needed. -/
+from the outputs, and the two output matrices are separate. No initialized output is needed.
+Shared by the trees of `NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrRoutine`,
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem initializeState_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {n : ℕ} {a s w z : ℕ × ℕ} {H : Matrix (Fin n) (Fin n) ℂ} {shift : ℂ}
@@ -298,7 +308,7 @@ theorem initializeState_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hsz : Fp.Disj (Store.inBlock s.1 s.2 2) (Store.inBlock z.1 z.2 (2 * (n * n))))
     (hwz : Fp.Disj (Store.inBlock w.1 w.2 (2 * (n * n)))
       (Store.inBlock z.1 z.2 (2 * (n * n)))) :
-    Writes .total I τ (initializeState (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (initializeState (Op := Op) (Tst := Tst))
       (Env.frame [n] [a, s, w, z])
       (Store.inBlock w.1 w.2 (2 * (n * n)) ⊔ Store.inBlock z.1 z.2 (2 * (n * n)))
       (fun m' => m'.pos = m.pos ∧

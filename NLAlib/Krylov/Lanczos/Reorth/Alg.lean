@@ -78,8 +78,6 @@ def solve : Stmt Op Tst :=
       [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩, ⟨3, .const 0⟩, ⟨5, .const 0⟩]
       Lanczos.initializeState) rounds)))
 
-/-- Two dimensions, one input and two packed outputs. -/
-def solveImpl : Impl Op Tst := ⟨2, 1, 2, solve⟩
 
 /-- The extra preorthogonalization norm has a self-dot, a test and a possible square root. -/
 noncomputable def preNormCount (n : ℕ) : Count Op Tst :=
@@ -117,8 +115,8 @@ theorem stmtCost_solve (n cap b v c : ℕ) :
   have hsup : (Finset.range (cap + 1)).sup (fun _ => (0 : Count Op Tst)) = 0 :=
     le_antisymm (Finset.sup_le fun _ _ => le_rfl) zero_le
   simp [solve, rounds, Lanczos.initializeState, stmtCost, useCost, testCost,
-    Lanczos.stmtCost_zero,
-    Lanczos.stmtCost_normalize, stmtCost_advance, advanceCount, solveCount,
+    fillRoutine, stmtCost_fillMap, Lanczos.zeroCount, Lanczos.stmtCost_normalize,
+    stmtCost_advance, advanceCount, solveCount,
     cgs2Count, cgsPassCount, ← mul_nsmul, Finset.sum_add_distrib,
     Finset.sum_nsmul_assoc, hsum, hsup]
   module
@@ -157,11 +155,11 @@ theorem stmtPeak_solve_le (W : Op → List ℕ → ℕ) (n cap b v c : ℕ) :
     intro j hj
     have hj' := Finset.mem_range.mp hj
     exact (stmtPeak_advance_le W n cap b v c j).trans (by omega)
-  have hz₁ := Lanczos.stmtPeak_zero_le (Op := Op) (Tst := Tst) W ((cap+1)*n) v
-  have hz₂ := Lanczos.stmtPeak_zero_le (Op := Op) (Tst := Tst) W (3*cap+2) c
-  have hz₃ := Lanczos.stmtPeak_zero_le (Op := Op) (Tst := Tst) W n 0
+  have hz₁ := stmtPeak_fillMap_le (Tst := Tst) (Has.inj (ScalarOp.lit 0) : Op) W ((cap+1)*n) v
+  have hz₂ := stmtPeak_fillMap_le (Tst := Tst) (Has.inj (ScalarOp.lit 0) : Op) W (3*cap+2) c
+  have hz₃ := stmtPeak_fillMap_le (Tst := Tst) (Has.inj (ScalarOp.lit 0) : Op) W n 0
   simp only [solvePeak, primitivePeak] at hrounds ⊢
-  simp [solve, rounds, Lanczos.initializeState, Lanczos.normalize, stmtPeak]
+  simp [solve, rounds, Lanczos.initializeState, Lanczos.normalize, stmtPeak, fillRoutine]
   omega
 
 end NLAlib.Krylov.Lanczos.Reorth

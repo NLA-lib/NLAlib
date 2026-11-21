@@ -92,7 +92,7 @@ theorem upwardPass_weight_le_of_levels (unif : K → Su → K) (normal : Sg → 
         (Env.frame [n, L - r] [lv, ua, qa, ea, sz, kd, kp, c]) a = some b →
       weight b.cost ≤ weight a.cost + levelCost)
     {a b : St Op Tst K} (ha : a.mem = m)
-    (hrun : evalCounted I W τ (upwardPass (Op := Op) (Tst := Tst)).body
+    (hrun : evalCounted I W τ (upwardPass (Op := Op) (Tst := Tst))
       (Env.frame [n, L] [lv, ua, qa, ea, sz, kd, kp, c]) a = some b) :
     weight b.cost ≤ weight a.cost + (L + 1) * levelCost := by
   let ρ := Env.frame [n, L] [lv, ua, qa, ea, sz, kd, kp, c]

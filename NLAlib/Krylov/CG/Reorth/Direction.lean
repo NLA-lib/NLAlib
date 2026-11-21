@@ -29,7 +29,10 @@ variable {K Op Tst : Type} [Inhabited K]
 variable [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op]
 
 omit [Has OperatorOp Op] in
-/-- The direction uses the new swept residual norm and the saved nonzero old squared norm. -/
+/-- The direction uses the new swept residual norm and the saved nonzero old squared norm.
+
+A fragment of `NLAlib.Krylov.CG.Reorth.solveRoutine`, not a routine: it runs on the scratch of
+`round` and reads the old squared norm that `update` left in the scalar cell `t[0]`. -/
 theorem direction_writes {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hM : ExactModel dec M) (hB : IsExactBlas1 dec (fun _ => True) I)
     {n L : ℕ} {τ : Tape K} {μ : Mem K} {r p : ℕ × ℕ} {rs ps : List K} {rr : K}

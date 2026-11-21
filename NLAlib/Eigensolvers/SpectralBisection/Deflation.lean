@@ -43,7 +43,8 @@ def sampledGaussian (M : Machine K) (k lo side : ℕ) (S : ℕ → ℕ → K × 
 omit [Inhabited K] [Has MatrixOp Op] in
 /-- The sample stage writes exactly the selected, machine-scaled Gaussian matrix. The sample
 span and scale cell are spatially disjoint from its output span; shared buffers are permitted.
-Explicit side and slot bounds ensure every stored sample used by the program exists. -/
+Explicit side and slot bounds ensure every stored sample used by the program exists.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_deflateSamples {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {n k lo side : ℕ} {sg sq g : ℕ × ℕ}
     (S : ℕ → ℕ → K × K) (a : K) (hside : side < 2) (hslot : lo + k ≤ n)
@@ -54,7 +55,7 @@ theorem writes_deflateSamples {M : Machine K} {I : Interp Op Tst K} (hS : IsScal
     (hsgg : Fp.Disj (Store.inBlock sg.1 sg.2 (2 * ((2 * n) * n)))
       (Store.inBlock g.1 g.2 (2 * (k * k))))
     (hsqg : Fp.Disj (Store.inBlock sq.1 sq.2 1) (Store.inBlock g.1 g.2 (2 * (k * k)))) :
-    Writes md I τ (deflateSamples (Op := Op) (Tst := Tst)).body
+    Writes md I τ (deflateSamples (Op := Op) (Tst := Tst))
       (Env.frame [n, k, lo, side] [sg, sq, g]) (Store.inBlock g.1 g.2 (2 * (k * k)))
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock g.1 g.2 (2 * (k * k)) =
         some ((EntryCodec.pair K).packFinMatrix (sampledGaussian M k lo side S a))) m := by
@@ -63,7 +64,7 @@ theorem writes_deflateSamples {M : Machine K} {I : Interp Op Tst K} (hS : IsScal
     (M.mul (S i (2 * (lo + j) + side)).1 a, M.mul (S i (2 * (lo + j) + side)).2 a)
   have hfp := C.regionFp_le_inBlock g.1 g.2 k (k * k)
     (fun i j => j * k + i) (fun _ => k) (fun j hj i hi => Idx.add_lt_mul hj hi)
-  suffices hw : Writes md I τ (deflateSamples (Op := Op) (Tst := Tst)).body
+  suffices hw : Writes md I τ (deflateSamples (Op := Op) (Tst := Tst))
       (Env.frame [n, k, lo, side] [sg, sq, g])
       (C.regionFp g.1 g.2 k (fun i j => j * k + i) (fun _ => k))
       (fun m' => m'.store.HoldsEntryRegion C g.1 g.2 k (fun i j => j * k + i)
@@ -116,7 +117,8 @@ theorem writes_deflateSamples {M : Machine K} {I : Interp Op Tst K} (hS : IsScal
 
 /-- Deflation executes sample scaling, the supplied multiplication and QR routines, and
 copies the first requested QR columns. All four scratch matrices are scoped. The output may
-alias an original input: its copy occurs after every input-dependent computation. -/
+alias an original input: its copy occurs after every input-dependent computation.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_deflate {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
     {mm : ∀ {l m n : ℕ}, Matrix (Fin l) (Fin m) (K × K) →
       Matrix (Fin m) (Fin n) (K × K) → Matrix (Fin l) (Fin n) (K × K)}
@@ -132,7 +134,7 @@ theorem writes_deflate {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
     (hP : μ.store.readBlock p.1 p.2 (2 * (k * k)) =
       some ((EntryCodec.pair K).packFinMatrix P))
     (hz : z.2 + 2 * (k * r) ≤ μ.store.len z.1) :
-    Writes .total I τ (deflate (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (deflate (Op := Op) (Tst := Tst))
       (Env.frame [n, k, r, lo, side] [sg, sq, p, z])
       (Store.inBlock z.1 z.2 (2 * (k * r)))
       (fun μ' => μ'.pos = μ.pos ∧ μ'.store.readBlock z.1 z.2 (2 * (k * r)) =

@@ -80,7 +80,7 @@ theorem staticPeak_program_le (work workspace : ExactLinear.Operation → List �
       2 * d 0 * (d 1 + d 2) + 2 + w := by
   rw [staticPeak_eq,
     (ExactLinear.resources work workspace).queryReserve_of_zero (fun _ _ => rfl), Nat.add_zero]
-  change stmtPeak workspace (estimate stream).body [d 0, d 1, d 2, 0, 0] ≤ _
+  change stmtPeak workspace (estimate stream) [d 0, d 1, d 2, 0, 0] ≤ _
   exact estimate_peak_le workspace w hW stream (d 0) (d 1) (d 2) 0 0
 
 /-- Actual sample windows, exact estimator readback, and full execution resources.

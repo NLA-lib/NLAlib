@@ -32,7 +32,7 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has Blas1Op Op] [Has CmpTst Tst]
 
 /-- The factorization uses exactly two stored scratch cells with zero primitive workspace. -/
 theorem factor_peak_zero (idx : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (factor (Tst := Tst)).body idx = 2 := by
+    stmtPeak (fun (_ : Op) _ => 0) (factor (Tst := Tst)) idx = 2 := by
   unfold factor
   rw [stmtPeak_alloc]
   change 2 + stmtPeak (fun (_ : Op) _ => 0) _ idx = 2
@@ -41,8 +41,8 @@ theorem factor_peak_zero (idx : List ℕ) :
 /-- A uniform primitive-workspace ceiling is reserved once above the two stored cells. -/
 theorem factor_peak_le (W : Op → List ℕ → ℕ) (w : ℕ)
     (hW : ∀ o d, W o d ≤ w) (idx : List ℕ) :
-    stmtPeak W (factor (Tst := Tst)).body idx ≤ 2 + w := by
+    stmtPeak W (factor (Tst := Tst)) idx ≤ 2 + w := by
   simpa only [factor_peak_zero] using
-    stmtPeak_le_zero_add W w hW (factor (Tst := Tst)).body idx
+    stmtPeak_le_zero_add W w hW (factor (Tst := Tst)) idx
 
 end NLAlib.MGS

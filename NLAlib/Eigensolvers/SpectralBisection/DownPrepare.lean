@@ -28,7 +28,8 @@ namespace NLAlib.SpectralBisection
 open Ops
 
 /-- The level preparation writes the actual rounded parameters and both actual tape windows.
-It draws exactly `levelSampleSize n` words, including for empty matrices. -/
+It draws exactly `levelSampleSize n` words, including for empty matrices.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_downPrepare {K Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op]
     [Has SampleOp Op] {M : Machine K} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hIndex : IsIndexLit M I) (hSample : IsSample I)
@@ -42,7 +43,7 @@ theorem writes_downPrepare {K Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op]
     (hu : su.2 + n ≤ m.store.len su.1)
     (hg : sg.2 + 4 * (n * n) ≤ m.store.len sg.1)
     (ht : t.2 + 4 ≤ m.store.len t.1) :
-    Writes .total I τ downPrepareImpl.body (Env.frame [n, L, d] [c, lv, su, sg, t])
+    Writes .total I τ downPrepare (Env.frame [n, L, d] [c, lv, su, sg, t])
       ((Store.inBlock lv.1 (lv.2 + 2 * (d + 1)) 2 ⊔ Store.inBlock t.1 t.2 4) ⊔
         (Store.inBlock su.1 su.2 n ⊔ Store.inBlock sg.1 sg.2 (4 * (n * n))))
       (fun μ => μ.pos = m.pos + levelSampleSize n ∧

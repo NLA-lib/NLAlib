@@ -33,23 +33,23 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has MatrixOp Op] [Has SampleOp Op]
 
 /-- Deflation with caller-owned workspace. Dimensions are the matrix size and requested
 rank. The sampled matrix uses two scalar words per complex entry, in column order. -/
-def apply : Impl Op Tst := opsImpl% [n, r] (P, G, Y, Q, R) → (Qout) {
-  run (sampleVector Stream.gauss).body [2 * (n * n)] (G);
+def apply : Stmt Op Tst := ops% [n, r] (P, G, Y, Q, R) → (Qout) {
+  run (sampleVector Stream.gauss) [2 * (n * n)] (G);
   call (Has.inj MatrixOp.mul) [n, n, n] (P, G) → (Y);
   call (Has.inj MatrixOp.qr) [n, n] (Y) → (Q, R);
-  run PairMatrix.copy.body [n, r] (Q, Qout)
+  run PairMatrix.copy [n, r] (Q, Qout)
 }
 
 /-- A fixed standalone deflation implementation with explicit scalar draws and four scoped
 square workspaces. Numerical subspace guarantees follow from the accuracy of its actual
 matrix routines and the distribution of these same sample words.
 [Shah2024, Algorithm 2]. -/
-def program : Impl Op Tst := opsImpl% [n, r] (P) → (Qout) {
+def program : Stmt Op Tst := ops% [n, r] (P) → (Qout) {
   let G ← alloc (2 * (n * n));
   let Y ← alloc (2 * (n * n));
   let Q ← alloc (2 * (n * n));
   let R ← alloc (2 * (n * n));
-  run apply.body [n, r] (P, G, Y, Q, R, Qout)
+  run apply [n, r] (P, G, Y, Q, R, Qout)
 }
 
 end NLAlib.Deflation

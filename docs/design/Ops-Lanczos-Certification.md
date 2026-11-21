@@ -44,7 +44,7 @@ There is no registered target or native hardware/IEEE claim.
 `ConditionalRuns.wp`, and the original-operation projection of full instrumented static counts.
 These facts concern the core problem/evaluator interfaces and are not copied into solvers.
 `Krylov/Lanczos/BufferProblem.lean` shares the explicit input/output layout with reorthogonalized
-Lanczos, parameterized by coefficient length. `Krylov/Lanczos/Certificate.lean` specializes it
+Lanczos, parameterized by coefficient length. `Krylov/Lanczos/Certification.lean` specializes it
 to the ordinary coefficient length and defines the solver certificate.
 No existing algorithm is changed. Existing `Rounded.runs_solve_of_model`, `stmtCost_solve`,
 `stmtPeak_solve_le`, `staticPeak_eq`, `Algorithm.ofWp` provide the program mathematics and
@@ -64,7 +64,7 @@ No open design question blocks implementation.
 
 ## Canonical scalar lowering
 
-`Lanczos/LinkedCertificate.lean` certifies the actual fixed sequential scalar lowering, rather
+`Lanczos/LinkedCertification.lean` certifies the actual fixed sequential scalar lowering, rather
 than relabeling the abstract-BLAS certificate. Its computable `sequentialTable` is the table
 composition underlying `Blas.seq`, and `program` is the existing ordinary tree linked with that
 table. The canonical complete static manifest, work/span and scratch are recomputed on this

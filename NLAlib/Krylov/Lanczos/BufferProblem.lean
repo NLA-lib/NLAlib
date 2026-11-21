@@ -82,13 +82,6 @@ theorem initial_readBlock (d : Fin 2 → ℕ)
   rw [length_input d x] at h
   exact h
 
-/-- All three supplied handles are live in the canonical initial memory. -/
-theorem initial_live (d : Fin 2 → ℕ)
-    (x : (problem (K := K) coefficientLength domain admitted).Input d) :
-    ((problem (K := K) coefficientLength domain admitted).initial d x).Live
-      [(0, 0), (1, 0), (2, 0)] := by
-  simp [Mem.live_cons, Mem.live_nil]
-
 /-- The public output capacities are supplied before execution; they are not hidden scratch. -/
 theorem initial_room (d : Fin 2 → ℕ)
     (x : (problem (K := K) coefficientLength domain admitted).Input d) :

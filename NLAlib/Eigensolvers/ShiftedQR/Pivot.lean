@@ -31,7 +31,7 @@ open Ops
 variable {Op Tst : Type} [Has ScalarOp Op] [Has CmpTst Tst]
 
 /-- Set a previously zero flag to one exactly when both stored pivot components are zero. -/
-def checkComplexPivot : Impl Op Tst := opsImpl% [] (Y, Flag) → (Flag) {
+def checkComplexPivot : Stmt Op Tst := ops% [] (Y, Flag) → (Flag) {
   if (Has.inj CmpTst.isZero) [] (Y) {
     if (Has.inj CmpTst.isZero) [] (Y[1]) {
       call (Has.inj (ScalarOp.lit 1)) [] () → (Flag)
@@ -44,6 +44,7 @@ def checkComplexPivot : Impl Op Tst := opsImpl% [] (Y, Flag) → (Flag) {
 }
 
 omit [Has CmpTst Tst] in
+/-- A step in the proof of `checkComplexPivot_writes`. -/
 private theorem writes_setFlag {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {y f : ℕ × ℕ} (hf : f.2 + 1 ≤ m.store.len f.1) :
@@ -62,14 +63,16 @@ private theorem writes_setFlag {M : Machine ℝ} {I : Interp Op Tst ℝ}
     Store.get_upd_self (s := m.store) (b := f.1) (i := f.2) (by omega) (1 : ℝ)
 
 /-- Actual component tests report either a nonzero pivot with flag zero or a zero pivot with
-flag one. No assumption rules out singular inputs. Only the flag cell may be written. -/
+flag one. No assumption rules out singular inputs. Only the flag cell may be written.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem checkComplexPivot_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {y f : ℕ × ℕ} {yv : ℂ}
     (hy0 : m.store.get y.1 y.2 = some yv.re)
     (hy1 : m.store.get y.1 (y.2 + 1) = some yv.im)
     (hf0 : m.store.get f.1 f.2 = some 0) (hf : f.2 + 1 ≤ m.store.len f.1) :
-    Writes .total I τ checkComplexPivot.body (Env.frame [] [y, f, f])
+    Writes .total I τ checkComplexPivot (Env.frame [] [y, f, f])
       (Store.inBlock f.1 f.2 1)
       (fun μ => μ.pos = m.pos ∧
         ((μ.store.get f.1 f.2 = some 0 ∧ yv ≠ 0) ∨

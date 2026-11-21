@@ -33,13 +33,13 @@ variable {K Op Tst : Type} [Has SampleOp Op]
 
 /-- Draw `n` stored words from a named stream into an output vector. The stream is fixed in
 the program, while the batch length is an evaluated dimension. -/
-def sampleVector (stream : ℕ) : Impl Op Tst := opsImpl% [n] () → (Y) {
+def sampleVector (stream : ℕ) : Stmt Op Tst := ops% [n] () → (Y) {
   for i < n { call (Has.inj (SampleOp.draw stream)) [] () → (Y[i]) }
 }
 
 /-- A batch executes exactly one primitive draw per stored word. -/
 theorem stmtCost_sampleVector (stream n y : ℕ) :
-    stmtCost (sampleVector (Op := Op) (Tst := Tst) stream).body [n, y] =
+    stmtCost (sampleVector (Op := Op) (Tst := Tst) stream) [n, y] =
       n • Count.one (Has.inj (SampleOp.draw stream)) [] := by
   simp [sampleVector, stmtCost, useCost]
 
@@ -49,7 +49,7 @@ This is total correctness under the scalar sample contracts, without a tape-law 
 theorem writes_sampleVector {I : Interp Op Tst K} (hI : IsSample I) {τ : Tape K}
     (stream : ℕ) {n : ℕ} {y : ℕ × ℕ} {m : Mem K}
     (hroom : y.2 + n ≤ m.store.len y.1) :
-    Writes .total I τ (sampleVector stream).body (Env.frame [n] [y])
+    Writes .total I τ (sampleVector stream) (Env.frame [n] [y])
       (Store.inBlock y.1 y.2 n)
       (fun m' => m'.store.readBlock y.1 y.2 n = some (τ.window stream m.pos n) ∧
         m'.pos = m.pos + n) m := by

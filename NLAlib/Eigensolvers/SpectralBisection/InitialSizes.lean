@@ -29,11 +29,12 @@ open Ops
 variable {K Op Tst : Type} [Has IndexOp Op] {M : Machine K}
 
 /-- The root dimension and zero literals are the actual stored words. Numerical exactness
-of decoding them is not needed to execute initialization. -/
+of decoding them is not needed to execute initialization.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_initialSizes {I : Interp Op Tst K} (hIndex : IsIndexLit M I)
     {τ : Tape K} {n L b off : ℕ} {m : Mem K}
     (hroom : off + (n * (L + 2) + 1) ≤ m.store.len b) :
-    Writes .total I τ initialSizes.body (Env.frame [n, L] [(b, off)])
+    Writes .total I τ initialSizes (Env.frame [n, L] [(b, off)])
       (Store.inBlock b off (n * (L + 2) + 1))
       (fun μ => μ.pos = m.pos ∧ μ.store.readBlock b off (n * (L + 2) + 1) =
         some ((List.range (n * (L + 2) + 1)).map

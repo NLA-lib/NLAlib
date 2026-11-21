@@ -33,14 +33,14 @@ namespace NLAlib.Ops
 variable {K Op Tst : Type} [Has ScalarOp Op]
 
 /-- Initialize one output word to the machine literal one and multiply it by `X` `n` times. -/
-def scalarPower : Impl Op Tst := opsImpl% [n] (X) → (Z) {
+def scalarPower : Stmt Op Tst := ops% [n] (X) → (Z) {
   call (Has.inj (ScalarOp.lit 1)) [] () → (Z);
   for i < n { call (Has.inj ScalarOp.mul) [] (Z, X) → (Z) }
 }
 
 /-- The scalar syntax performs one literal call and exactly `n` multiplication calls. -/
 theorem stmtCost_scalarPower (n x z : ℕ) :
-    stmtCost (scalarPower (Op := Op) (Tst := Tst)).body [n, x, z] =
+    stmtCost (scalarPower (Op := Op) (Tst := Tst)) [n, x, z] =
       Count.one (Has.inj (ScalarOp.lit 1)) [] + n • Count.one (Has.inj ScalarOp.mul) [] := by
   simp [scalarPower, stmtCost, useCost]
 
@@ -50,7 +50,7 @@ theorem writes_scalarPower {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar 
     {τ : Tape K} {m : Mem K} {n : ℕ} {x z : ℕ × ℕ} {v : K}
     (hx : m.store.get x.1 x.2 = some v) (hz : z.2 < m.store.len z.1)
     (hsep : Fp.Disj (Store.inBlock x.1 x.2 1) (Store.inBlock z.1 z.2 1)) :
-    Writes .total I τ scalarPower.body (Env.frame [n] [x, z]) (Store.inBlock z.1 z.2 1)
+    Writes .total I τ scalarPower (Env.frame [n] [x, z]) (Store.inBlock z.1 z.2 1)
       (fun m' => m'.pos = m.pos ∧
         m'.store.get z.1 z.2 = some ((fun y => M.mul y v)^[n] (M.lit 1))) m := by
   have hxl := Store.lt_length_of_get hx
@@ -80,7 +80,7 @@ theorem writes_scalarPower_exact {M : Machine ℝ} {I : Interp Op Tst ℝ}
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {x z : ℕ × ℕ} {v : ℝ}
     (hx : m.store.get x.1 x.2 = some v) (hz : z.2 < m.store.len z.1)
     (hsep : Fp.Disj (Store.inBlock x.1 x.2 1) (Store.inBlock z.1 z.2 1)) :
-    Writes .total I τ scalarPower.body (Env.frame [n] [x, z]) (Store.inBlock z.1 z.2 1)
+    Writes .total I τ scalarPower (Env.frame [n] [x, z]) (Store.inBlock z.1 z.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.get z.1 z.2 = some (v ^ n)) m := by
   have he : (fun y => M.mul y v)^[n] (M.lit 1) = v ^ n := by
     have hmul (a b : ℝ) : M.mul a b = a * b := hE.mul a b

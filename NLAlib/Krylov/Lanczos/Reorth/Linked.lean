@@ -84,9 +84,9 @@ theorem exists_exactContracts [Apart ScalarOp OperatorOp Op] {n : ℕ}
   have hAJ : IsExactMatvec id A J := hA
   have hcert := Blas.seq_certifies_exact (Op := Op) (Tst := Tst)
     exactModel_exactMachine (fun _ => True)
-  obtain ⟨hS', hB⟩ := hcert.meets J hSJ
+  obtain ⟨hS', hB⟩ := hcert.satisfies J hSJ
   have hA' : IsExactMatvec id A (J.link (Blas.seq (Op := Op) (Tst := Tst)).table) :=
-    Interp.link_meets_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hAJ
+    Interp.link_satisfies_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hAJ
   exact ⟨_, exactModel_exactMachine, hS', hB, hA', hCmp⟩
 
 /-- Exact scalar and oracle assumptions imply complete arbitrary-cap sequential execution.
@@ -106,9 +106,9 @@ theorem runs_solve_seq {M : Machine K} {dec : K → ℝ} {n cap : ℕ}
         μ'.store.readBlock C.1 C.2 (3 * cap + 2) = some cs ∧
         Output dec A (decv dec n bs) cap vs cs) := by
   have hcert := Blas.seq_certifies_exact (Op := Op) (Tst := Tst) hM (fun _ => True)
-  obtain ⟨hS', hB⟩ := hcert.meets I hS
+  obtain ⟨hS', hB⟩ := hcert.satisfies I hS
   have hA' : IsExactMatvec dec A (I.link (Blas.seq (Op := Op) (Tst := Tst)).table) :=
-    Interp.link_meets_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
+    Interp.link_satisfies_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
   have hr := runs_solve hS' hM hB trivial hA' hCmp hAT (Blas.ws 0)
     (τ := τ) (μ := μ) (cap := cap) (B := B) (V := V) (C := C) (bs := bs)
     hBV hBC hVC hl hb hz

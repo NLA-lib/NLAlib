@@ -174,9 +174,9 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTs
 
 /-- The pair `S` copied $k$ times into `SR`: the shifts of a degree $k$ step with one repeated
 shift. The interface is `[k] (S) → (SR)`. -/
-def replicatePair : Impl O Q := opsImpl% [k] (S) → (SR) {
+def replicatePair : Stmt O Q := ops% [k] (S) → (SR) {
   for l < k {
-    run (unaryMap (Has.inj ScalarOp.copy)).body [2] (S, SR[2 * l])
+    run (unaryMap (Has.inj ScalarOp.copy)) [2] (S, SR[2 * l])
   }
 }
 
@@ -184,17 +184,17 @@ def replicatePair : Impl O Q := opsImpl% [k] (S) → (SR) {
 repeated $k$ times on a copy `T` of `A` (`SR` the repeated shifts, `Ds` the diagonal outputs),
 and the scan of its bottom $k$ subdiagonal entries against the threshold word `Thr` into the
 registers `Rg`. The interface is `[N, k] (A, S, Thr) → (T, SR, Ds, Rg)`. -/
-def trialStep : Impl O Q := opsImpl% [N, k] (A, S, Thr) → (T, SR, Ds, Rg) {
-  run (unaryMap (Has.inj ScalarOp.copy)).body [2 * (N * N)] (A, T);
-  run replicatePair.body [k] (S, SR);
-  run multiStepStable.body [N, k] (T, SR, T, Ds);
-  run bottomScan.body [N, k] (T, Thr, Rg)
+def trialStep : Stmt O Q := ops% [N, k] (A, S, Thr) → (T, SR, Ds, Rg) {
+  run (unaryMap (Has.inj ScalarOp.copy)) [2 * (N * N)] (A, T);
+  run replicatePair [k] (S, SR);
+  run multiStepStable [N, k] (T, SR, T, Ds);
+  run bottomScan [N, k] (T, Thr, Rg)
 }
 
 /-- The acceptance of a trial: copy the step `T` back to `A`, set the search word `G` to $0$ and
 the flag `Fl` to $1$. The interface is `[N] (T) → (A, G, Fl)`. -/
-def trialAccept : Impl O Q := opsImpl% [N] (T) → (A, G, Fl) {
-  run (unaryMap (Has.inj ScalarOp.copy)).body [2 * (N * N)] (T, A);
+def trialAccept : Stmt O Q := ops% [N] (T) → (A, G, Fl) {
+  run (unaryMap (Has.inj ScalarOp.copy)) [2 * (N * N)] (T, A);
   call (Has.inj (ScalarOp.lit 0)) [] () → (G);
   call (Has.inj (ScalarOp.lit 1)) [] () → (Fl)
 }
@@ -203,12 +203,12 @@ def trialAccept : Impl O Q := opsImpl% [N] (T) → (A, G, Fl) {
 `NLAlib.ShiftedQR.trialStep`; if its scan found a small entry (`Rg[3]` positive), accept it
 (`NLAlib.ShiftedQR.trialAccept`). The interface is
 `[N, k] (A, S, Thr, T, SR, Ds, Rg) → (A, G, Fl)`. -/
-def regularizeTrial : Impl O Q :=
-  opsImpl% [N, k] (A, S, Thr, T, SR, Ds, Rg) → (A, G, Fl) {
+def regularizeTrial : Stmt O Q :=
+  ops% [N, k] (A, S, Thr, T, SR, Ds, Rg) → (A, G, Fl) {
     if (Has.inj CmpTst.isPos) [] (G) {
-      run trialStep.body [N, k] (A, S, Thr, T, SR, Ds, Rg);
+      run trialStep [N, k] (A, S, Thr, T, SR, Ds, Rg);
       if (Has.inj CmpTst.isPos) [] (Rg[3]) {
-        run trialAccept.body [N] (T, A, G, Fl)
+        run trialAccept [N] (T, A, G, Fl)
       } else {
         skip
       }
@@ -219,25 +219,25 @@ def regularizeTrial : Impl O Q :=
 
 /-- The $k$ trials of `Regularize`, with the shifts `S[2j]` in turn. The interface is
 `[N, k] (A, S, Thr, T, SR, Ds, Rg) → (A, G, Fl)`. -/
-def regularizeTrials : Impl O Q :=
-  opsImpl% [N, k] (A, S, Thr, T, SR, Ds, Rg) → (A, G, Fl) {
+def regularizeTrials : Stmt O Q :=
+  ops% [N, k] (A, S, Thr, T, SR, Ds, Rg) → (A, G, Fl) {
     for j < k {
-      run regularizeTrial.body [N, k] (A, S[2 * j], Thr, T, SR, Ds, Rg, A, G, Fl)
+      run regularizeTrial [N, k] (A, S[2 * j], Thr, T, SR, Ds, Rg, A, G, Fl)
     }
   }
 
 /-- The decision of `Regularize`: `Optimal` of the $k$ shifts `S` with the word `C` into `G`; if
 optimal, the flag `Fl` is $0$; otherwise `Fl` is $2$, `G` is $1$, and the trials run. The
 interface is `[N, k] (A, S, C, Thr, T, SR, Ds, Rg) → (A, G, Fl)`. -/
-def regularizeDecide : Impl O Q :=
-  opsImpl% [N, k] (A, S, C, Thr, T, SR, Ds, Rg) → (A, G, Fl) {
-    run optimalTest.body [N, k] (A, S, C, G);
+def regularizeDecide : Stmt O Q :=
+  ops% [N, k] (A, S, C, Thr, T, SR, Ds, Rg) → (A, G, Fl) {
+    run optimalTest [N, k] (A, S, C, G);
     if (Has.inj CmpTst.isPos) [] (G) {
       call (Has.inj (ScalarOp.lit 0)) [] () → (Fl)
     } else {
       call (Has.inj (ScalarOp.lit 2)) [] () → (Fl);
       call (Has.inj (ScalarOp.lit 1)) [] () → (G);
-      run regularizeTrials.body [N, k] (A, S, Thr, T, SR, Ds, Rg, A, G, Fl)
+      run regularizeTrials [N, k] (A, S, Thr, T, SR, Ds, Rg, A, G, Fl)
     }
   }
 
@@ -255,13 +255,15 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTs
 
 omit [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- `NLAlib.ShiftedQR.replicatePair` on any scalar machine stores the pair $r$ of `S` $k$ times
-at `SR`, writing only `SR`. -/
+at `SR`, writing only `SR`.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem replicatePair_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {m : Mem ℝ} {k : ℕ} {sp sr : ℕ × ℕ} {r : ℂ}
     (hs : m.store.readBlock sp.1 sp.2 2 = some [r.re, r.im])
     (hsr : sr.2 + 2 * k ≤ m.store.len sr.1)
     (hd : Fp.Disj (Store.inBlock sp.1 sp.2 2) (Store.inBlock sr.1 sr.2 (2 * k))) :
-    Writes .total I τ (replicatePair (O := O) (Q := Q)).body (Env.frame [k] [sp, sr])
+    Writes .total I τ (replicatePair (O := O) (Q := Q)) (Env.frame [k] [sp, sr])
       (Store.inBlock sr.1 sr.2 (2 * k))
       (fun m' => m'.pos = m.pos ∧
         m'.store.readBlock sr.1 sr.2 (2 * (List.replicate k r).length) =
@@ -298,7 +300,9 @@ up to $n + 1$: from an upper Hessenberg $\mathbf{H}$ of order $n + 1$ at `A`, th
 and the threshold word $t$ at `Thr`, `NLAlib.ShiftedQR.trialStep` writes only its four outputs
 and stores at `T` a backward-stable degree $k$ step $\widehat{\mathbf{H}}$ with the shift $r$
 repeated (relative error $300(n+1)^2\boldsymbol{u}$), upper Hessenberg, and in `Rg` the scan
-of its bottom $k$ subdiagonal entries (`NLAlib.ShiftedQR.bottomScan_writes`). -/
+of its bottom $k$ subdiagonal entries (`NLAlib.ShiftedQR.bottomScan_writes`).
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem trialStep_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I) {n : ℕ}
     (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {k : ℕ}
@@ -321,7 +325,7 @@ theorem trialStep_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : 
     (hsd : Fp.Disj (Store.inBlock sr.1 sr.2 (2 * k)) (Store.inBlock ds.1 ds.2 (2 * k)))
     (hrg : Fp.Disj (Store.inBlock rg.1 rg.2 5)
       (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))) :
-    Writes .total I τ (trialStep (O := O) (Q := Q)).body
+    Writes .total I τ (trialStep (O := O) (Q := Q))
       (Env.frame [n + 1, k] [a, sp, thr, t, sr, ds, rg])
       (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock sr.1 sr.2 (2 * k) ⊔
         Store.inBlock ds.1 ds.2 (2 * k) ⊔ Store.inBlock rg.1 rg.2 5)
@@ -379,7 +383,9 @@ theorem trialStep_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : 
 omit [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- The acceptance of a trial on a scalar machine with the standard model and exact natural
 literals up to $1$: `NLAlib.ShiftedQR.trialAccept` copies the matrix at `T` to `A`, stores $0$
-in `G` and $1$ in `Fl`, and writes only these. -/
+in `G` and $1$ in `Fl`, and writes only these.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem trialAccept_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hNat : IsExactNatLit id M 1) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ}
     {t a g f : ℕ × ℕ} {H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
@@ -390,7 +396,7 @@ theorem trialAccept_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS 
     (hga : Fp.Disj (Store.inBlock g.1 g.2 1 ⊔ Store.inBlock f.1 f.2 1)
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))))
     (hgf : Fp.Disj (Store.inBlock g.1 g.2 1) (Store.inBlock f.1 f.2 1)) :
-    Writes .total I τ (trialAccept (O := O) (Q := Q)).body (Env.frame [n + 1] [t, a, g, f])
+    Writes .total I τ (trialAccept (O := O) (Q := Q)) (Env.frame [n + 1] [t, a, g, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
         Store.inBlock f.1 f.2 1)
       (fun m' => HoldsMatrix a H' m'.store ∧ m'.store.get g.1 g.2 = some 0 ∧
@@ -436,7 +442,9 @@ omit [Has IdxTst Q] in
 /-- One trial of `Regularize` on a scalar machine with the standard model at
 $(n + 1)\boldsymbol{u} \le 1/2500$, exact comparisons, index literals and exact natural literals
 up to $n + 1$: `NLAlib.ShiftedQR.regularizeTrial` writes only the matrix `A`, the words `G`,
-`Fl` and its scratch, and ends in `NLAlib.ShiftedQR.TrialPost`. -/
+`Fl` and its scratch, and ends in `NLAlib.ShiftedQR.TrialPost`.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem regularizeTrial_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I) {n : ℕ}
     (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {k : ℕ}
@@ -465,7 +473,7 @@ theorem regularizeTrial_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} 
         Store.inBlock ds.1 ds.2 (2 * k) ⊔ Store.inBlock rg.1 rg.2 5 ⊔
         Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))))
     (hgf : Fp.Disj (Store.inBlock g.1 g.2 1) (Store.inBlock f.1 f.2 1)) :
-    Writes .total I τ (regularizeTrial (O := O) (Q := Q)).body
+    Writes .total I τ (regularizeTrial (O := O) (Q := Q))
       (Env.frame [n + 1, k] [a, sp, thr, t, sr, ds, rg, a, g, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
         Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
@@ -523,7 +531,9 @@ pairs at `S`, the threshold word $t$ at `Thr`, the search word $1$ at `G`, and a
 every backward-stable degree $k$ step of which has a bottom subdiagonal entry of modulus at most
 $\omega$, $(1 + \boldsymbol{u})^2\omega^2 \le t$, `NLAlib.ShiftedQR.regularizeTrials` sets the
 flag to $1$ and stores at `A` an accepted step: a backward-stable degree $k$ step with some
-shift $z_j$ repeated, upper Hessenberg, with a bottom entry passing the scan. -/
+shift $z_j$ repeated, upper Hessenberg, with a bottom entry passing the scan.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem regularizeTrials_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I) {n : ℕ}
     (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {k : ℕ}
@@ -559,7 +569,7 @@ theorem regularizeTrials_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
       IsStableQRChain (300 * (n + 1) ^ 2 * u) H (List.replicate k (zs jstar)) H' Rs →
         ∃ i : Fin n, n ≤ (i : ℕ) + k ∧ ‖H' i.succ i.castSucc‖ ≤ ω)
     (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) :
-    Writes .total I τ (regularizeTrials (O := O) (Q := Q)).body
+    Writes .total I τ (regularizeTrials (O := O) (Q := Q))
       (Env.frame [n + 1, k] [a, s, thr, t, sr, ds, rg, a, g, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
         Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
@@ -652,7 +662,9 @@ $30000k(n + 1)^{3/2}\boldsymbol{u}((2 + 2C)\|\mathbf{H}\|_2)^k \le
 (\theta\psi_k(\mathbf{H}))^k$, `NLAlib.ShiftedQR.regularizeDecide` either sets the flag to $0$,
 leaves $\mathbf{H}$ at `A` and the shifts are $\theta$-optimal, or sets the flag to $1$ and stores
 at `A` an accepted step (`NLAlib.ShiftedQR.regularizeTrials_writes`), given that, when the shifts
-are not $0.998^{1/k}\theta$-optimal, some shift decouples every backward-stable step with it. -/
+are not $0.998^{1/k}\theta$-optimal, some shift decouples every backward-stable step with it.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem regularizeDecide_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I) {n : ℕ}
     (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {k : ℕ}
@@ -695,7 +707,7 @@ theorem regularizeDecide_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
         IsStableQRChain (300 * (n + 1) ^ 2 * u) H (List.replicate k (zs jstar)) H' Rs →
           ∃ i : Fin n, n ≤ (i : ℕ) + k ∧ ‖H' i.succ i.castSucc‖ ≤ ω)
     (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) :
-    Writes .total I τ (regularizeDecide (O := O) (Q := Q)).body
+    Writes .total I τ (regularizeDecide (O := O) (Q := Q))
       (Env.frame [n + 1, k] [a, s, c, thr, t, sr, ds, rg, a, g, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
         Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔

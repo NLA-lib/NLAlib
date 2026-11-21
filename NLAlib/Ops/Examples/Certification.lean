@@ -234,8 +234,8 @@ noncomputable def repeatAlgorithmLinked : Algorithm repeatModel repeatSpecificat
 /-- Model assumptions are exactly satisfaction of the declared primitive contracts. -/
 example (M : AccessModel ScalarOp Empty repeatProblem) (d : Fin 1 → ℕ)
     (x : repeatProblem.Input d) (I : Interp ScalarOp Empty ℝ) :
-    M.contracts d x I ↔ (∀ o, I.Meets .total o (M.operation d x o)) ∧
-      (∀ q, I.MeetsQuery q (M.query d x q)) := Iff.rfl
+    M.contracts d x I ↔ (∀ o, I.Satisfies .total o (M.operation d x o)) ∧
+      (∀ q, I.SatisfiesQuery q (M.query d x q)) := Iff.rfl
 
 /-- An arbitrary stronger model assumption is not a field of the core model. -/
 example : True := by

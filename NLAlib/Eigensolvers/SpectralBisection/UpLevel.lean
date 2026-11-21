@@ -30,7 +30,8 @@ open Ops
 /-- One actual upward level returns every mathematically assembled node result. The stored
 radius and literal two determine its shifts through the scalar machine. All remaining
 hypotheses concern actual node/child reads, decoded size bounds, output capacity and spatial
-separation. Scratch is freshly allocated and removed, and the tape position is unchanged. -/
+separation. Scratch is freshly allocated and removed, and the tape position is unchanged.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_upLevel {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     [Has MatrixOp Op] [Has IdxTst Tst] {M : Machine K} {dec : K → ℝ}
     (mm : MatMulMap (K × K)) (qr : QRMap (K × K)) (unif : K → Su → K) (normal : Sg → K × K)

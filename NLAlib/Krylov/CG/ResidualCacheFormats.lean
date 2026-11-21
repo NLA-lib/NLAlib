@@ -55,7 +55,7 @@ theorem wp_residualCache_float64 {I : Interp Op Tst Computation.FiniteFloat}
       n * (1 + Float.Model.Format.binary64.unitRoundoff) ^ (2 * n) *
         (2 + Float.Model.Format.binary64.unitRoundoff) *
           Float.Model.Format.binary64.underflowBound ≤ Float.Model.Format.binary64.maxFinite) :
-    Wp .total I τ (dotSum.body.link Blas.sumSeqTable) (Env.frame [n] [r, r, z])
+    Wp .total I τ (dotSum.link Blas.sumSeqTable) (Env.frame [n] [r, r, z])
       (fun out => ∃ cache, out = m.upd z cache ∧ out.store.get z.1 z.2 = some cache ∧
         Computation.AbsRelErr ((1 + Float.Model.Format.binary64.unitRoundoff) ^ (2 * n) - 1)
           (n * (1 + Float.Model.Format.binary64.unitRoundoff) ^ (2 * n) *
@@ -79,7 +79,7 @@ theorem wp_residualCache_binaryQuantized (fmt : Float.Model.Format) {round : ℝ
         ‖WithLp.toLp 2 (decv id n rs)‖ ^ 2 +
       n * (1 + (2 : ℝ)⁻¹ ^ fmt.mantissaBits) ^ (2 * n) *
         (2 + (2 : ℝ)⁻¹ ^ fmt.mantissaBits) * ((2 : ℝ) ^ fmt.minExponent / 2) ≤ fmt.maxFinite) :
-    Wp .total I τ (dotSum.body.link Blas.sumSeqTable) (Env.frame [n] [r, r, z])
+    Wp .total I τ (dotSum.link Blas.sumSeqTable) (Env.frame [n] [r, r, z])
       (fun out => ∃ cache, out = m.upd z cache ∧ out.store.get z.1 z.2 = some cache ∧
         Computation.AbsRelErr ((1 + (2 : ℝ)⁻¹ ^ fmt.mantissaBits) ^ (2 * n) - 1)
           (n * (1 + (2 : ℝ)⁻¹ ^ fmt.mantissaBits) ^ (2 * n) *
@@ -102,7 +102,7 @@ theorem wp_residualCache_fixedPoint (bound scale : ℕ) (hs : 0 < scale)
     (hz : z.2 < m.store.len z.1)
     (hRange : ‖WithLp.toLp 2 (decv (Examples.FixedPoint.decode scale) n rs)‖ ^ 2 +
       n / (scale : ℝ) ≤ (bound : ℝ) / scale) :
-    Wp .total I τ (dotSum.body.link Blas.sumSeqTable) (Env.frame [n] [r, r, z])
+    Wp .total I τ (dotSum.link Blas.sumSeqTable) (Env.frame [n] [r, r, z])
       (fun out => ∃ cache, out = m.upd z cache ∧ out.store.get z.1 z.2 = some cache ∧
         |‖WithLp.toLp 2 (decv (Examples.FixedPoint.decode scale) n rs)‖ ^ 2 -
           Examples.FixedPoint.decode scale cache| ≤ n / (scale : ℝ) ∧

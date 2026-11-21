@@ -24,7 +24,7 @@ advances by the length of the window. The operation takes no random operand. Two
   and no operation hands them out, so it cannot compute with them.
 
 The call rule is the one rule `NLAlib.Ops.wp_call_rel`, and the certificate of an implementation
-that draws into its own scratch is the one certificate `NLAlib.Ops.Impl.Triple`.
+that draws into its own scratch is the one certificate `NLAlib.Ops.Impl.Satisfies`.
 
 The statement about the law is separate and is mathematics: with the law of the tape
 (`NLAlib.Ops.IsTapeLaw`), the window of a call at the position `p` is independent of the past of
@@ -34,8 +34,8 @@ output has the law that the relation gives it from a fresh window.
 
 ## Main results
 
-* `NLAlib.Ops.drawRel`, `NLAlib.Ops.Interp.IsFn.meets_drawRel`: the vector draw; the vector draw
-  of the model meets its contract.
+* `NLAlib.Ops.drawRel`, `NLAlib.Ops.Interp.IsFn.satisfies_drawRel`: the vector draw; the vector draw
+  of the model satisfies its contract.
 * `NLAlib.Ops.wp_loop_fill`: the loop that fills a block cell by cell.
 -/
 
@@ -88,13 +88,13 @@ def drawRel (s : ℕ) : BlockRel K where
   outLens d := [d.headD 0]
   rel _ _ w ys := ys = [w]
 
-/-- The vector draw of the model meets the contract of the vector draw. -/
-theorem Interp.IsFn.meets_drawRel {I : Interp Op Tst K} {o : Op} {s : ℕ}
+/-- The vector draw of the model satisfies the contract of the vector draw. -/
+theorem Interp.IsFn.satisfies_drawRel {I : Interp Op Tst K} {o : Op} {s : ℕ}
     {adm adm' : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop}
     (h : I.IsFn .total o (.drawVec s) adm')
     (hsub : ∀ d ins outs, adm d ins outs → adm' d ins outs) :
-    I.Meets .total o ((drawRel s).spec adm) := by
-  refine h.meets_rel hsub rfl rfl (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) ?_
+    I.Satisfies .total o ((drawRel s).spec adm) := by
+  refine h.satisfies_rel hsub rfl rfl (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) ?_
   intro d w xs m ins outs hnd hw _ hr _
   obtain ⟨rfl, rfl⟩ := Mem.readBlocks_zero hr
   exact ⟨[w], rfl, by simpa [drawRel] using hw, rfl⟩

@@ -33,7 +33,8 @@ variable {K Op Tst Su Sg : Type} [Inhabited K] [Has ScalarOp Op] [Has MatrixOp O
 
 /-- One step writes exactly the existing rounded Newton–Schulz matrix. Its cached square is
 of this same actual input matrix. All four supplied regions are disjoint; the temporary scalar
-need not be initialized. Numerical accuracy is a separate property of the machine and product. -/
+need not be initialized. Numerical accuracy is a separate property of the machine and product.
+A fragment of `NLAlib.Sign.signRoutine`. -/
 theorem writes_step {I : Interp Op Tst K} (hS : IsScalar M I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) {τ : Tape K} {n : ℕ}
     (A : Matrix (Fin n) (Fin n) (K × K)) {x w v c : ℕ × ℕ} {m : Mem K}
@@ -46,7 +47,7 @@ theorem writes_step {I : Interp Op Tst K} (hS : IsScalar M I)
     (hx : x.2 + 2 * (n * n) ≤ m.store.len x.1)
     (hw : w.2 + 2 * (n * n) ≤ m.store.len w.1)
     (hv : v.2 + 2 * (n * n) ≤ m.store.len v.1) (hc : c.2 < m.store.len c.1) :
-    Writes .total I τ (step (Has.inj MatrixOp.mul)).body
+    Writes .total I τ (step (Has.inj MatrixOp.mul))
       (Env.frame [n] [x, w, v, c, x, w, v, c])
       (Store.inBlock x.1 x.2 (2 * (n * n)) ⊔ Store.inBlock w.1 w.2 (2 * (n * n)) ⊔
         Store.inBlock v.1 v.2 (2 * (n * n)) ⊔ Store.inBlock c.1 c.2 1)

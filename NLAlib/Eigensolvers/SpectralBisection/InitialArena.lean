@@ -50,7 +50,8 @@ private theorem initializeFp_le_arenas {n L : ℕ}
     (i := parent ⟨i, hi'⟩) (by simp [arenaOperands, arenaLengths]))
 
 /-- Actual initialization stores the mathematical root, future zeros and shared constants.
-Its input parameter block is retained and its write frame stays inside the eleven arenas. -/
+Its input parameter block is retained and its write frame stays inside the eleven arenas.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_initializeArenas_stored {K Op Tst : Type} [Inhabited K]
     [Has ScalarOp Op] [Has IndexOp Op] (M : Machine K) (F : FloatMachine K ℕ ℕ)
     (fuel : ℕ) (R0 eps beta : K) {n L : ℕ}
@@ -60,12 +61,11 @@ theorem writes_initializeArenas_stored {K Op Tst : Type} [Inhabited K]
     (hl : μ.Live [a, par, c, ma, sz, lv])
     (hRoom : μ.Room (arenaOperands c ma ua qa ea sz kd kp lv su sg) (arenaLengths n L))
     (hAP : Fp.Apart (arenaOperands c ma ua qa ea sz kd kp lv su sg) (arenaLengths n L))
-    (hSource : Fp.Disj (Store.inBlock a.1 a.2 (2 * (n * n))) (Store.inBlock par.1 par.2 3))
     (hProtect : Fp.Disj (Fp.blocks (arenaOperands c ma ua qa ea sz kd kp lv su sg)
       (arenaLengths n L)) (Fp.blocks [a, par] [2 * (n * n), 3]))
     (hA : μ.store.readBlock a.1 a.2 (2 * (n * n)) = some ((EntryCodec.pair K).packFinMatrix A))
     (hPar : μ.store.readBlock par.1 par.2 3 = some [R0, eps, beta]) :
-    Writes .total I τ initializeArenas.body (Env.frame [n, L] [a, par, c, ma, sz, lv])
+    Writes .total I τ initializeArenas (Env.frame [n, L] [a, par, c, ma, sz, lv])
       (Fp.blocks (arenaOperands c ma ua qa ea sz kd kp lv su sg) (arenaLengths n L))
       (fun ν => ν.pos = μ.pos ∧ ν.store.readBlock par.1 par.2 3 = some [R0, eps, beta] ∧
         ν.store.readBlock c.1 c.2 5 =
@@ -77,8 +77,9 @@ theorem writes_initializeArenas_stored {K Op Tst : Type} [Inhabited K]
   simp only [Mem.Room, and_true] at hCaps
   have hPar2 : μ.store.readBlock par.1 par.2 2 = some [R0, eps] := by
     simpa using Store.readBlock_sub hPar (o := 0) (n := 2) (by omega)
+  obtain ⟨hOut, hIn⟩ := apart_initialize_of_arenas hAP hProtect
   have hW := writes_initializeArenas (τ := τ) hS hIndex ((EntryCodec.pair K).packFinMatrix A)
-    R0 eps hl (apart_initialize_of_arenas hAP hSource hProtect) hA hPar2
+    R0 eps hl hOut hIn hA hPar2
     hCaps.1 hCaps.2.1 hCaps.2.2.1 hCaps.2.2.2
   have hSub := initializeFp_le_arenas (n := n) (L := L) c ma ua qa ea sz kd kp lv su sg
   refine hW.mono hSub ?_

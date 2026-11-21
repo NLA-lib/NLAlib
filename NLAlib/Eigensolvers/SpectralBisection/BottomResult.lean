@@ -58,13 +58,14 @@ theorem readsOnly_bottomOutput {K : Type} (M : Machine K) (k : ℕ) (u e : ℕ �
       s s' (fun b i hi => h b i (Or.inl hi)) hU,
     Store.readsOnly_holdsVec _ _ _ _ s s' (fun b i hi => h b i (Or.inr hi)) hE⟩
 
-/-- Literal identity and zero eigenvalues are initialized from output capacity alone. -/
+/-- Literal identity and zero eigenvalues are initialized from output capacity alone.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_bottomResult {K Op Tst : Type} [Has ScalarOp Op]
     {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I) {τ : Tape K}
     {m : Mem K} {k : ℕ} {u e : ℕ × ℕ} (hl : m.Live [u, e])
     (hu : u.2 + 2 * (k * k) ≤ m.store.len u.1) (he : e.2 + k ≤ m.store.len e.1)
     (hdis : Fp.Disj (Store.inBlock u.1 u.2 (2 * (k * k))) (Store.inBlock e.1 e.2 k)) :
-    Writes .total I τ (bottomResultImpl (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (bottomResult (Op := Op) (Tst := Tst))
       (Env.frame [k] [u, e])
       (Store.inBlock u.1 u.2 (2 * (k * k)) ⊔ Store.inBlock e.1 e.2 k)
       (fun m' => m'.pos = m.pos ∧ BottomOutput M k u e m'.store) m := by

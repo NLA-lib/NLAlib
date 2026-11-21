@@ -15,7 +15,7 @@ public import NLAlib.Ops.Catalog.Random
 Diagnostic and compute support; formal guarantees are independent of this output.
 Concrete carriers (`ℚ`, exact; `Float`) and the interpretations of the
 catalog groups over them, so that a program can be run by `#eval`. None of these is a model
-primitive. They are sample interpretations, chosen to meet the exact
+primitive. They are sample interpretations, chosen to satisfy the exact
 contracts on `ℚ` (except `sqrt`, see below) and to be a plain sequential reference on `Float`.
 
 ## Main results

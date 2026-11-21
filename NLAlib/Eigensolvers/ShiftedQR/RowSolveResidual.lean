@@ -34,21 +34,23 @@ open Ops
 variable {Op Tst : Type} [Has ScalarOp Op]
 
 /-- Subtract the first $j$ complex products from the supplied accumulator. -/
-def residualTerms : Impl Op Tst := opsImpl% [n, j] (R, V, Acc, T) → (Acc) {
+def residualTerms : Stmt Op Tst := ops% [n, j] (R, V, Acc, T) → (Acc) {
   for i < j {
-    run subtractProductWithScratch.body [] (V[2 * i], R[2 * (j * n + i)], T, Acc, Acc)
+    run subtractProductWithScratch [] (V[2 * i], R[2 * (j * n + i)], T, Acc, Acc)
   }
 }
 
 /-- Copy the current right-hand side and accumulate the triangular column residual. -/
-def columnResidual : Impl Op Tst := opsImpl% [n, j] (R, V, Acc, T) → (Acc) {
-  run Hermitian.copyPair.body [] (V[2 * j], Acc);
-  run residualTerms.body [n, j] (R, V, Acc, T, Acc)
+def columnResidual : Stmt Op Tst := ops% [n, j] (R, V, Acc, T) → (Acc) {
+  run Hermitian.copyPair [] (V[2 * j], Acc);
+  run residualTerms [n, j] (R, V, Acc, T, Acc)
 }
 
 /-- The scalar product loop computes the exact residual of a triangular column. Its three
 scratch words and the accumulator are separate from the matrix and vector buffers.
-[GolubVanLoan2013, §3.1.2]. -/
+[GolubVanLoan2013, §3.1.2].
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem residualTerms_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {n : ℕ} {a v z t : ℕ × ℕ} {R : Matrix (Fin n) (Fin n) ℂ} {w : Fin n → ℂ}
@@ -57,7 +59,7 @@ theorem residualTerms_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (htv : t.1 ≠ v.1) (htz : t.1 ≠ z.1)
     (hacc : m.store.readBlock z.1 z.2 2 = some [(w j).re, (w j).im])
     (hz : z.2 + 2 ≤ m.store.len z.1) (ht : t.2 + 3 ≤ m.store.len t.1) :
-    Writes .total I τ residualTerms.body (Env.frame [n, j] [a, v, z, t, z])
+    Writes .total I τ residualTerms (Env.frame [n, j] [a, v, z, t, z])
       (Store.inBlock t.1 t.2 3 ⊔ Store.inBlock z.1 z.2 2)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock z.1 z.2 2 =
         some [(residualPrefix R w j j).re, (residualPrefix R w j j).im]) m := by
@@ -99,7 +101,9 @@ theorem residualTerms_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 /-- The column-residual routine starts from the current vector entry and computes the exact
 sum required by triangular substitution. The source matrix and vector remain untouched.
-[GolubVanLoan2013, §3.1.2]. -/
+[GolubVanLoan2013, §3.1.2].
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem columnResidual_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {n : ℕ} {a v z t : ℕ × ℕ} {R : Matrix (Fin n) (Fin n) ℂ} {w : Fin n → ℂ}
@@ -107,7 +111,7 @@ theorem columnResidual_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hza : z.1 ≠ a.1) (hzv : z.1 ≠ v.1) (hta : t.1 ≠ a.1)
     (htv : t.1 ≠ v.1) (htz : t.1 ≠ z.1)
     (hz : z.2 + 2 ≤ m.store.len z.1) (ht : t.2 + 3 ≤ m.store.len t.1) :
-    Writes .total I τ columnResidual.body (Env.frame [n, j] [a, v, z, t, z])
+    Writes .total I τ columnResidual (Env.frame [n, j] [a, v, z, t, z])
       (Store.inBlock t.1 t.2 3 ⊔ Store.inBlock z.1 z.2 2)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock z.1 z.2 2 =
         some [(residualPrefix R w j j).re, (residualPrefix R w j j).im]) m := by
@@ -116,7 +120,7 @@ theorem columnResidual_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (Hermitian.wp_copyPair_of_disj (md := .total) (τ := τ) (x := x) hS
       (Fp.disj_inBlock_of_ne hzv.symm) (HoldsVector.get_re hV j)
       (HoldsVector.get_im hV j) hz rfl)
-  have hw : Writes .total I τ Hermitian.copyPair.body (Env.frame [] [x, z])
+  have hw : Writes .total I τ Hermitian.copyPair (Env.frame [] [x, z])
       (Store.inBlock z.1 z.2 2)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock z.1 z.2 2 =
         some [(w j).re, (w j).im]) m := by

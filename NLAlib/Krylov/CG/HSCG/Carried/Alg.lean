@@ -7,6 +7,7 @@ module
 
 public import NLAlib.Krylov.CG.HSCG.Alg
 public import NLAlib.Ops.Catalog.Compare
+public import NLAlib.Ops.RoutineSyntax
 
 /-!
 # Hestenes–Stiefel rounds with a retained residual product
@@ -51,9 +52,6 @@ def step : Stmt Op Tst := ops% [n] (X, R, P, rho) → (X, R, P, rho) {
   call (Has.inj ScalarOp.copy) [] (t[2]) → (rho)
 }
 
-/-- The block interface has one dimension and four state inputs and outputs. -/
-def stepImpl : Impl Op Tst := ⟨1, 4, 4, step⟩
-
 /-- Two dot products, two divisions, three axpys and all copies of one standard CG round. -/
 noncomputable def stepCount (n : ℕ) : Count Op Tst :=
   2 • Count.one (Has.inj Blas1Op.dot) [n] + Count.one (Has.inj OperatorOp.matvec) [n, n] +
@@ -83,20 +81,27 @@ theorem staticPeak_step_le (W : Op → List ℕ → ℕ) (n a b c d a' b' c' d' 
   omega
 
 
+/-- One retained-product round as a routine: three vectors of length `n` and the cell of the
+retained residual product, updated in place. -/
+def stepRoutine : Routine Op Tst :=
+  routine% [n] (x : n, r : n, p : n, rho : 1) → (x, r, p, rho) := step
+
 section Comparisons
 
 variable [Has CmpTst Tst]
 
 /-- Run at most the requested number of rounds, exiting as soon as the retained residual
 product is no longer positive. Exact arithmetic stops precisely at a zero residual. -/
-def rounds : Stmt Op Tst :=
-  .whileFuel (.var 1) (Has.inj CmpTst.isPos) [] [⟨3, .var 5⟩]
-    (.frame [.var 0]
-      [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩, ⟨3, .var 5⟩,
-        ⟨4, .var 6⟩, ⟨5, .var 7⟩, ⟨6, .var 8⟩, ⟨7, .var 9⟩] step) .skip
+def rounds : Stmt Op Tst := ops% [n, cap] (X, R, P, RHO) → (X, R, P, RHO) {
+  while i < cap, (Has.inj CmpTst.isPos) [] (RHO) {
+    run (stepRoutine (Op := Op) (Tst := Tst)) [n] (X, R, P, RHO)
+  } then { skip }
+}
 
-/-- The early-exit loop has dimensions `n,cap` and four input/output state blocks. -/
-def roundsImpl : Impl Op Tst := ⟨2, 4, 4, rounds⟩
+/-- The capped round loop as a routine: three vectors and the cell of the retained residual
+product, updated in place by at most `cap` rounds. -/
+def roundsRoutine : Routine Op Tst :=
+  routine% [n, cap] (x : n, r : n, p : n, rho : 1) → (x, r, p, rho) := rounds
 
 /-- A cap budgets one positivity test and one active round per permitted iteration. -/
 noncomputable def roundsCount (n cap : ℕ) : Count Op Tst :=
@@ -106,32 +111,28 @@ noncomputable def roundsCount (n cap : ℕ) : Count Op Tst :=
 theorem staticCost_rounds (n cap a b c d a' b' c' d' : ℕ) :
     stmtCost (rounds (Op := Op) (Tst := Tst)) [n, cap, a, b, c, d, a', b', c', d'] =
       roundsCount n cap := by
-  simp [rounds, stmtCost, testCost, IExp.evalList, IExp.eval, staticCost_step, roundsCount]
+  simp [rounds, stepRoutine, stmtCost, testCost, IExp.evalList, IExp.eval, staticCost_step,
+    roundsCount]
 
 /-- Early exit and the cap share the same reusable round workspace. -/
 theorem staticPeak_rounds_le (W : Op → List ℕ → ℕ) (n cap a b c d a' b' c' d' : ℕ) :
     stmtPeak W (rounds (Op := Op) (Tst := Tst))
       [n, cap, a, b, c, d, a', b', c', d'] ≤ stepPeak W n := by
-  simp only [rounds, stmtPeak]
+  simp only [rounds, stepRoutine, stmtPeak]
   apply max_le
   · apply Finset.sup_le
     intro i hi
-    simpa [IExp.evalList, IExp.eval] using staticPeak_step_le W n a b c d a' b' c' d'
+    simpa [IExp.evalList, IExp.eval] using staticPeak_step_le W n a b c d a b c d
   · simp
 
 
 end Comparisons
 
 /-- Initialize the ordinary CG state, then compute its retained residual self-product. -/
-def initializeState : Stmt Op Tst :=
-  .seq (.frame [.var 0]
-    [⟨0, .var 1⟩, ⟨1, .var 2⟩, ⟨2, .var 3⟩, ⟨3, .var 4⟩, ⟨4, .var 5⟩]
-    HSCG.initializeState)
-    (.seq (.call (Has.inj Blas1Op.dot) [.var 0]
-      [⟨3, .var 4⟩, ⟨3, .var 4⟩] [⟨5, .var 6⟩]) .skip)
-
-/-- Initialization takes the right-hand side and iterate, and produces four state blocks. -/
-def initializeImpl : Impl Op Tst := ⟨1, 2, 4, initializeState⟩
+def initializeState : Stmt Op Tst := ops% [n] (B, X) → (X, R, P, RHO) {
+  run (HSCG.initializeRoutine (Op := Op) (Tst := Tst)) [n] (B, X, R, P);
+  call (Has.inj Blas1Op.dot) [n] (R, R) → (RHO)
+}
 
 /-- Initialization includes one self-product beyond the three-vector initialization. -/
 noncomputable def initializeCount (n : ℕ) : Count Op Tst :=
@@ -145,29 +146,28 @@ def initializePeak (W : Op → List ℕ → ℕ) (n : ℕ) : ℕ :=
 theorem staticCost_initialize (n a b c d e f : ℕ) :
     stmtCost (initializeState (Op := Op) (Tst := Tst)) [n, a, b, c, d, e, f] =
       initializeCount n := by
-  simp [initializeState, stmtCost, IExp.evalList, IExp.eval,
+  simp [initializeState, HSCG.initializeRoutine, stmtCost, IExp.evalList, IExp.eval,
     HSCG.staticCost_initialize, useCost, initializeCount]
 
 /-- The retained scalar is caller storage, so initialization adds no allocation for it. -/
 theorem staticPeak_initialize_le (W : Op → List ℕ → ℕ) (n a b c d e f : ℕ) :
     stmtPeak W (initializeState (Op := Op) (Tst := Tst)) [n, a, b, c, d, e, f] ≤
       initializePeak W n := by
-  simpa [initializeState, stmtPeak, IExp.evalList, IExp.eval, initializePeak] using
-    max_le_max (HSCG.staticPeak_initialize_le W n a b c d e) le_rfl
+  simpa [initializeState, HSCG.initializeRoutine, stmtPeak, IExp.evalList, IExp.eval,
+    initializePeak] using max_le_max (HSCG.staticPeak_initialize_le W n a b b d e) le_rfl
+
+/-- Initialization as a routine: the right-hand side is read, the iterate is kept in place, the
+residual, the direction and the cell of the retained residual product are written. -/
+def initializeRoutine : Routine Op Tst :=
+  routine% [n] (b : n, x : n) → (x, r : n, p : n, rho : 1) := initializeState
 
 variable [Has CmpTst Tst]
 
 /-- Complete CG initialization followed by an early-exit loop with an arbitrary cap. -/
-def solve : Stmt Op Tst :=
-  .seq (.frame [.var 0]
-    [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩, ⟨3, .var 5⟩,
-      ⟨4, .var 6⟩, ⟨5, .var 7⟩] initializeState)
-    (.frame [.var 0, .var 1]
-      [⟨2, .var 4⟩, ⟨3, .var 5⟩, ⟨4, .var 6⟩, ⟨5, .var 7⟩,
-        ⟨2, .var 4⟩, ⟨3, .var 5⟩, ⟨4, .var 6⟩, ⟨5, .var 7⟩] rounds)
-
-/-- The solver has dimensions `n,cap`, two inputs and four state outputs. -/
-def solveImpl : Impl Op Tst := ⟨2, 2, 4, solve⟩
+def solve : Stmt Op Tst := ops% [n, cap] (B, X) → (X, R, P, RHO) {
+  run (initializeRoutine (Op := Op) (Tst := Tst)) [n] (B, X, R, P, RHO);
+  run (roundsRoutine (Op := Op) (Tst := Tst)) [n, cap] (X, R, P, RHO)
+}
 
 /-- The static budget includes initialization and at most `cap` tested rounds. -/
 noncomputable def solveCount (n cap : ℕ) : Count Op Tst :=
@@ -181,15 +181,15 @@ def solvePeak (W : Op → List ℕ → ℕ) (n : ℕ) : ℕ :=
 theorem staticCost_solve (n cap a b c d e f : ℕ) :
     stmtCost (solve (Op := Op) (Tst := Tst)) [n, cap, a, b, c, d, e, f] =
       solveCount n cap := by
-  simp [solve, stmtCost, IExp.evalList, IExp.eval, staticCost_initialize,
-    staticCost_rounds, solveCount]
+  simp [solve, initializeRoutine, roundsRoutine, stmtCost, IExp.evalList, IExp.eval,
+    staticCost_initialize, staticCost_rounds, solveCount]
 
 /-- The complete solver's peak is bounded independently of its cap. -/
 theorem staticPeak_solve_le (W : Op → List ℕ → ℕ) (n cap a b c d e f : ℕ) :
     stmtPeak W (solve (Op := Op) (Tst := Tst)) [n, cap, a, b, c, d, e, f] ≤
       solvePeak W n := by
-  simpa [solve, stmtPeak, IExp.evalList, IExp.eval, solvePeak] using
-    max_le_max (staticPeak_initialize_le W n a b c d e f)
-      (staticPeak_rounds_le W n cap c d e f c d e f)
+  simpa [solve, initializeRoutine, roundsRoutine, stmtPeak, IExp.evalList, IExp.eval,
+    solvePeak] using max_le_max (staticPeak_initialize_le W n a b b d e f)
+      (staticPeak_rounds_le W n cap b d e f b d e f)
 
 end NLAlib.Krylov.CG.HSCG.Carried

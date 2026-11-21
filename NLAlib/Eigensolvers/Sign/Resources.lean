@@ -51,7 +51,7 @@ def problem (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d) : P
 /-- The complete sign tree uses the standard dense operation signature. Parameters are
 matrix dimension and cap; the three handles are input matrix, parameters and output. -/
 def fixedProgram : Program DenseOp (CmpTst ⊕ IdxTst) 2 3 :=
-  ⟨(program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst) (Has.inj MatrixOp.mul)).body⟩
+  (signRoutine (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst) (Has.inj MatrixOp.mul)).close 2 3
 
 variable {domain : (Fin 2 → ℕ) → Prop} {admitted : ∃ d, domain d}
 

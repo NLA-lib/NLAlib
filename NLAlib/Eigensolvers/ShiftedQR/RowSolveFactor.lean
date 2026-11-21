@@ -31,21 +31,21 @@ open Ops
 variable {Op Tst : Type} [Has ScalarOp Op] [Has CmpTst Tst]
 
 /-- Compute the next factorization coefficients into their permanent pair views. -/
-def factorCoefficients : Impl Op Tst := opsImpl% [n, k] (R, Cf) → (Cf) {
-  run coefficients.body [] (R[2 * (k * n + k)], R[2 * (k * n + k + 1)],
+def factorCoefficients : Stmt Op Tst := ops% [n, k] (R, Cf) → (Cf) {
+  run coefficients [] (R[2 * (k * n + k)], R[2 * (k * n + k + 1)],
     Cf[4 * k], Cf[4 * k + 2])
 }
 
 /-- Compute and retain one rotation, then apply it to the working matrix. -/
-def factorRound : Impl Op Tst := opsImpl% [n, k] (R, Cf) → (R, Cf) {
-  run factorCoefficients.body [n, k] (R, Cf, Cf);
-  run rotateRows.body [n, k] (R, Cf[4 * k], Cf[4 * k + 2], R)
+def factorRound : Stmt Op Tst := ops% [n, k] (R, Cf) → (R, Cf) {
+  run factorCoefficients [n, k] (R, Cf, Cf);
+  run rotateRows [n, k] (R, Cf[4 * k], Cf[4 * k + 2], R)
 }
 
 /-- All adjacent-row rotations of the Givens factorization, with saved coefficients. -/
-def factorRows : Impl Op Tst := opsImpl% [n] (R, Cf) → (R, Cf) {
+def factorRows : Stmt Op Tst := ops% [n] (R, Cf) → (R, Cf) {
   for k < n - 1 {
-    run factorRound.body [n, k] (R, Cf, R, Cf)
+    run factorRound [n, k] (R, Cf, R, Cf)
   }
 }
 
@@ -81,14 +81,16 @@ theorem HoldsCoefficients.succ {n k : ℕ} {cf : ℕ × ℕ}
   · exact ⟨hc, hs⟩
 
 /-- The coefficient subprogram preserves the matrix and extends the saved prefix, including
-for a zero input pair. [GolubVanLoan2013, Algorithm 5.2.4]. -/
+for a zero input pair. [GolubVanLoan2013, Algorithm 5.2.4].
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem factorCoefficients_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k : ℕ} {a cf : ℕ × ℕ}
     {D : Matrix (Fin n) (Fin n) ℂ} (hk : k + 1 < n) (hac : a.1 ≠ cf.1)
     (hH : HoldsMatrix a (givensHessenbergState D k).2 m.store)
     (hC : HoldsCoefficients cf D k m.store) (hcf : cf.2 + 4 * n ≤ m.store.len cf.1) :
-    Writes .total I τ factorCoefficients.body (Env.frame [n, k] [a, cf, cf])
+    Writes .total I τ factorCoefficients (Env.frame [n, k] [a, cf, cf])
       (Store.inBlock cf.1 (cf.2 + 4 * k) 4)
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a (givensHessenbergState D k).2 m'.store ∧
         HoldsCoefficients cf D (k + 1) m'.store) m := by
@@ -129,14 +131,16 @@ theorem factorCoefficients_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
   · simpa only [stepCoefs, dif_pos hk, c, r, r'] using hx
   · simpa only [stepCoefs, dif_pos hk, s, r, r'] using hz
 /-- One retained Givens rotation advances the exact matrix state and its coefficient prefix.
-[GolubVanLoan2013, Algorithm 5.2.4]. -/
+[GolubVanLoan2013, Algorithm 5.2.4].
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem factorRound_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k : ℕ} {a cf : ℕ × ℕ}
     {D : Matrix (Fin n) (Fin n) ℂ} (hk : k + 1 < n) (hac : a.1 ≠ cf.1)
     (hH : HoldsMatrix a (givensHessenbergState D k).2 m.store)
     (hC : HoldsCoefficients cf D k m.store) (hcf : cf.2 + 4 * n ≤ m.store.len cf.1) :
-    Writes .total I τ factorRound.body (Env.frame [n, k] [a, cf, a, cf])
+    Writes .total I τ factorRound (Env.frame [n, k] [a, cf, a, cf])
       (Store.inBlock a.1 a.2 (2 * (n * n)) ⊔ Store.inBlock cf.1 (cf.2 + 4 * k) 4)
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a (givensHessenbergState D (k + 1)).2 m'.store ∧
         HoldsCoefficients cf D (k + 1) m'.store) m := by
@@ -171,13 +175,15 @@ theorem factorRound_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 /-- The scalar factorization sweep returns the full Givens triangular factor and the saved
 rotation sequence. Every pair, including zero pairs, follows the actual coefficient branch.
-[GolubVanLoan2013, Algorithm 5.2.4]. -/
+[GolubVanLoan2013, Algorithm 5.2.4].
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem factorRows_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a cf : ℕ × ℕ}
     {D : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hac : a.1 ≠ cf.1)
     (hH : HoldsMatrix a D m.store) (hcf : cf.2 + 4 * (n + 1) ≤ m.store.len cf.1) :
-    Writes .total I τ factorRows.body (Env.frame [n + 1] [a, cf, a, cf])
+    Writes .total I τ factorRows (Env.frame [n + 1] [a, cf, a, cf])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock cf.1 cf.2 (4 * (n + 1)))
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a (givensHessenbergR D) m'.store ∧

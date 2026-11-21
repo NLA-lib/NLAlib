@@ -28,14 +28,16 @@ open Ops
 variable {Op Tst : Type} [Has IndexOp Op] [Has CmpTst Tst]
 
 /-- The actual comparison keeps the first half on a tie and otherwise moves its start.
-[BanksGarzaVargasSrivastava2021, §4.3]. -/
+[BanksGarzaVargasSrivastava2021, §4.3].
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem findRitzChoice_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hL : IsIndexLit M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {a h : ℕ} {r : ℕ × ℕ} {left right : ℝ}
     (ha : m.store.get r.1 r.2 = some (a : ℝ))
     (hl : m.store.get r.1 (r.2 + 3) = some left)
     (hr : m.store.get r.1 (r.2 + 4) = some right) :
-    Writes .total I τ findRitzChoice.body (Env.frame [a, h] [r, r])
+    Writes .total I τ findRitzChoice (Env.frame [a, h] [r, r])
       (Store.inBlock r.1 r.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.get r.1 r.2 =
         some ((if right ≤ left then a else a + h : ℕ) : ℝ)) m := by
@@ -54,7 +56,9 @@ theorem findRitzChoice_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
       exact ⟨hp.1, by simpa only [if_neg hc] using hp.2⟩
 
 /-- The comparison and actual natural-literal operations advance the start, half length and
-exponent exactly. [BanksGarzaVargasSrivastava2021, §4.3]. -/
+exponent exactly. [BanksGarzaVargasSrivastava2021, §4.3].
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem findRitzDecision_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hL : IsIndexLit M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {a h e : ℕ} {r : ℕ × ℕ} {left right : ℝ}
@@ -62,7 +66,7 @@ theorem findRitzDecision_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hl : m.store.get r.1 (r.2 + 3) = some left)
     (hr : m.store.get r.1 (r.2 + 4) = some right)
     (hcap : r.2 + 3 ≤ m.store.len r.1) :
-    Writes .total I τ findRitzDecision.body (Env.frame [a, h, e] [r, r])
+    Writes .total I τ findRitzDecision (Env.frame [a, h, e] [r, r])
       (Store.inBlock r.1 r.2 3)
       (fun m' => m'.pos = m.pos ∧
         SearchWords r (if right ≤ left then a else a + h) (h / 2) (2 * e) m'.store) m := by

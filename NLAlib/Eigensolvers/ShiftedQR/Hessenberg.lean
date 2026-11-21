@@ -38,27 +38,29 @@ open Ops
 variable {Op Tst : Type} [Has ScalarOp Op]
 
 /-- Initialize one interleaved complex entry with two visible scalar zero-literal calls. -/
-def clearComplexEntry : Impl Op Tst := opsImpl% [] () → (Z) {
+def clearComplexEntry : Stmt Op Tst := ops% [] () → (Z) {
   call (Has.inj (ScalarOp.lit 0)) [] () → (Z);
   call (Has.inj (ScalarOp.lit 0)) [] () → (Z[1])
 }
 
 /-- Replace only entries strictly below the first subdiagonal by two scalar zero literals.
 The supplied matrix is modified in place; no scratch buffer or numerical test is needed. -/
-def clearBelowSubdiagonal : Impl Op Tst := opsImpl% [n] () → (A) {
+def clearBelowSubdiagonal : Stmt Op Tst := ops% [n] () → (A) {
   for i < n {
     for j < i - 1 {
-      run clearComplexEntry.body [] (A[2 * (j * n + i)])
+      run clearComplexEntry [] (A[2 * (j * n + i)])
     }
   }
 }
 
 /-- One complex entry set by `NLAlib.ShiftedQR.clearComplexEntry`: the two words are the
-literal $0$ of the machine, whatever it is. -/
+literal $0$ of the machine, whatever it is.
+Shared by the trees of `NLAlib.hessenbergReduceLast`, `NLAlib.ShiftedQR.shqrRoutine`,
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem clearComplexEntry_writes_lit {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {z : ℕ × ℕ}
     (hz : z.2 + 2 ≤ m.store.len z.1) :
-    Writes .total I τ (clearComplexEntry (Op := Op) (Tst := Tst)).body (Env.frame [] [z])
+    Writes .total I τ (clearComplexEntry (Op := Op) (Tst := Tst)) (Env.frame [] [z])
       (Store.inBlock z.1 z.2 2)
       (fun m' => (∀ u : Fin 2, m'.store.get z.1 (z.2 + u) =
         some ((EntryCodec.pair ℝ).words (M.lit 0, M.lit 0) u)) ∧
@@ -72,11 +74,13 @@ theorem clearComplexEntry_writes_lit {M : Machine ℝ} {I : Interp Op Tst ℝ}
   · rfl
 
 /-- The entries below the subdiagonal written by `NLAlib.ShiftedQR.clearBelowSubdiagonal` are
-the pair of the literal $0$ of the machine, and only they are written. -/
+the pair of the literal $0$ of the machine, and only they are written.
+Shared by the trees of `NLAlib.hessenbergReduceLast`, `NLAlib.ShiftedQR.shqrRoutine`,
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem clearBelowSubdiagonal_writes_region {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a : ℕ × ℕ}
     (hl : m.Live [a]) (ha : 0 < n → a.2 + 2 * (n * n) ≤ m.store.len a.1) :
-    Writes .total I τ (clearBelowSubdiagonal (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (clearBelowSubdiagonal (Op := Op) (Tst := Tst))
       (Env.frame [n] [a])
       ((EntryCodec.pair ℝ).regionFp a.1 a.2 n (fun j i => j * n + i) (fun i => i - 1))
       (fun m' => m'.store.HoldsEntryRegion (EntryCodec.pair ℝ) a.1 a.2 n
@@ -110,11 +114,13 @@ theorem clearBelowSubdiagonal_writes_region {M : Machine ℝ} {I : Interp Op Tst
 /-- The deletion below the subdiagonal on any machine: `NLAlib.ShiftedQR.clearBelowSubdiagonal`
 replaces every entry $(i, j)$ with $j + 1 < i$ by the pair of the literal $0$ of the machine and
 keeps every other entry; the tape position is unchanged. With an exact zero literal this is
-`NLAlib.ShiftedQR.clearBelowSubdiagonal_writes`. -/
+`NLAlib.ShiftedQR.clearBelowSubdiagonal_writes`.
+Shared by the trees of `NLAlib.hessenbergReduceLast`, `NLAlib.ShiftedQR.shqrRoutine`,
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem clearBelowSubdiagonal_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a : ℕ × ℕ}
     {A : Matrix (Fin n) (Fin n) ℂ} (hl : m.Live [a]) (hA : HoldsMatrix a A m.store) :
-    Writes .total I τ (clearBelowSubdiagonal (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (clearBelowSubdiagonal (Op := Op) (Tst := Tst))
       (Env.frame [n] [a]) (Store.inBlock a.1 a.2 (2 * (n * n)))
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a (Matrix.of fun i j =>
         if (j : ℕ) + 1 < i then (⟨M.lit 0, M.lit 0⟩ : ℂ) else A i j) m'.store) m := by
@@ -153,12 +159,14 @@ theorem clearBelowSubdiagonal_writes_word {M : Machine ℝ} {I : Interp Op Tst �
 
 /-- The stored pass removes exactly the structural fill and preserves every other entry.
 Only literal zero must be exact; all other scalar operations of the machine may be rounded.
-The position on the random tape is unchanged. Deletion error is not absorbed into a QR bound. -/
+The position on the random tape is unchanged. Deletion error is not absorbed into a QR bound.
+Shared by the trees of `NLAlib.hessenbergReduceLast`, `NLAlib.ShiftedQR.shqrRoutine`,
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem clearBelowSubdiagonal_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hzero : M.lit 0 = 0) {τ : Tape ℝ} {m : Mem ℝ}
     {n : ℕ} {a : ℕ × ℕ} {A : Matrix (Fin n) (Fin n) ℂ}
     (hl : m.Live [a]) (hA : HoldsMatrix a A m.store) :
-    Writes .total I τ (clearBelowSubdiagonal (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (clearBelowSubdiagonal (Op := Op) (Tst := Tst))
       (Env.frame [n] [a]) (Store.inBlock a.1 a.2 (2 * (n * n)))
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a (upperHessenbergPart A) m'.store ∧
         IsUpperHessenberg (upperHessenbergPart A)) m := by

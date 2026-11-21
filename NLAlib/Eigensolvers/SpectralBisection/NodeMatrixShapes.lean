@@ -25,7 +25,7 @@ namespace NLAlib.SpectralBisection
 open Ops
 
 private theorem projectors_shape (n k cap : ℕ) (offs : List ℕ) (hk : k ≤ n) :
-    (stmtCost (nodeProjectors (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body
+    (stmtCost (nodeProjectors (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))
       ([k, cap] ++ offs)).CallsSatisfy (MatrixShape n) := by
   refine (Count.callsSatisfy_add _ _ (MatrixShape n)).mpr ⟨?_, ?_⟩
   · refine callsSatisfy_stmtCost_frame (d := [k, cap]) (P := MatrixShape n) ?_ ?_

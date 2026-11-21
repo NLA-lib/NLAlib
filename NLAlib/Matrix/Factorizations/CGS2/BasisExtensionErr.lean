@@ -17,7 +17,7 @@ has zero columns where earlier columns were dropped. A zero column contributes n
 reduction, so the single-vector guarantee `NLAlib.IsOrthErr` is restated with the Gram defect on
 the support in its antecedent, `NLAlib.IsOrthErrOnSupport`; it follows from `NLAlib.IsOrthErr` on
 the nonzero columns. From this guarantee for every column, computed norms of relative accuracy
-$E$, and a deflation test with threshold $\tau$, the block meets the rounded contract
+$E$, and a deflation test with threshold $\tau$, the block satisfies the rounded contract
 `NLAlib.IsBasisExtensionErr` with
 $\mu = 2\varepsilon_1 + 4\varepsilon_3/\tau + 5E$ and
 $\varepsilon = \varepsilon_2 + 2E + 2\tau$. Design: `docs/design/LowRank-BlockLanczos.md` §3.5.
@@ -39,7 +39,7 @@ $\varepsilon = \varepsilon_2 + 2E + 2\tau$. Design: `docs/design/LowRank-BlockLa
 * `NLAlib.isOrthErrOnSupport_of_two_passes`: two classical passes against a basis with zero
   columns.
 * `NLAlib.cgs2ExtendMu_nonneg`: the parameter $\mu$ is nonnegative.
-* `NLAlib.isBasisExtensionErr_of_columns`: the column-wise scheme meets the rounded contract.
+* `NLAlib.isBasisExtensionErr_of_columns`: the column-wise scheme satisfies the rounded contract.
 -/
 
 @[expose] public section
@@ -519,7 +519,7 @@ private theorem frobNorm_le_mul_of_col_le {b : ℕ} {ε : ℝ} {A B : Matrix (Fi
   rw [← mul_pow]
   exact pow_le_pow_left₀ (norm_nonneg _) (h c) 2
 
-/-- **The column-wise scheme with threshold deflation meets the rounded contract.** Let
+/-- **The column-wise scheme with threshold deflation satisfies the rounded contract.** Let
 $\mathbf{Q}$ be the basis, $\mathbf{W}$ the block, $\mathbf{W}'$ the reduced block, $\mathbf{Q}'$
 the new block and $\mathbf{H}$, $\mathbf{R}$ the coefficients, $\mathbf{R}$ upper triangular.
 For every column $c$ assume: the step from $\mathbf{w}_c$ to $\mathbf{w}'_c$ with the

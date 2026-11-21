@@ -8,6 +8,7 @@ module
 public import NLAlib.Ops.ContextWork
 public import NLAlib.Ops.WeightEnvelope
 public import Mathlib.Tactic.Ring
+public import NLAlib.Ops.Logic.KernelRfl
 
 /-!
 # Context-sensitive polynomial bounds for complete program work

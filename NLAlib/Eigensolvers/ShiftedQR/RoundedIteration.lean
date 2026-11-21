@@ -52,11 +52,11 @@ shift pairs `S` and the flag `Fl`; if the flag is $0$ (the shifts are optimal),
 `NLAlib.ShiftedQR.shStep` with them and the words `Cg`, `Cr`, `Cw`, `Cp`, the net `G` of $n_0$
 points and `Thr`. The interface is
 `[N, m, k, n0, nq, T] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw, S) → (A, Fl)`. -/
-def shIterationWithScratchWith (SE : Impl O Q) : Impl O Q :=
-  opsImpl% [N, m, k, n0, nq, T] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw, S) → (A, Fl) {
-    run (regularizeWith SE).body [N, k, nq, T] (A, Rd, C, Thr, Qw, A, S, Fl);
+def shIterationWithScratchWith (SE : Stmt O Q) : Stmt O Q :=
+  ops% [N, m, k, n0, nq, T] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw, S) → (A, Fl) {
+    run (regularizeWith SE) [N, k, nq, T] (A, Rd, C, Thr, Qw, A, S, Fl);
     if (Has.inj CmpTst.isZero) [] (Fl) {
-      run (shStep (O := O) (Q := Q)).body [N, m, k, n0] (A, S, Cg, Cr, Cw, Cp, G, Thr, A, Fl)
+      run (shStep (O := O) (Q := Q)) [N, m, k, n0] (A, S, Cg, Cr, Cw, Cp, G, Thr, A, Fl)
     } else { skip }
   }
 
@@ -65,10 +65,10 @@ def shIterationWithScratchWith (SE : Impl O Q) : Impl O Q :=
 routine `SE`, then `Sh` with its shifts if they are optimal. The scratch for the $k$ shift pairs
 is scoped. The interface is
 `[N, m, k, n0, nq, T] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw) → (A, Fl)`. -/
-def shIterationWith (SE : Impl O Q) : Impl O Q :=
-  opsImpl% [N, m, k, n0, nq, T] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw) → (A, Fl) {
+def shIterationWith (SE : Stmt O Q) : Stmt O Q :=
+  ops% [N, m, k, n0, nq, T] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw) → (A, Fl) {
     let S ← alloc (2 * k);
-    run (shIterationWithScratchWith SE).body [N, m, k, n0, nq, T]
+    run (shIterationWithScratchWith SE) [N, m, k, n0, nq, T]
       (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw, S, A, Fl)
   }
 
@@ -77,9 +77,9 @@ body of the loop): `NLAlib.ShiftedQR.shIterationWith` with the `SmallEig` kernel
 (`NLAlib.ShiftedQR.smallEigKernel`), no words and the cap $0$: `Regularize`, then `Sh` with its
 shifts if they are optimal. The interface is
 `[N, m, k, n0] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G) → (A, Fl)`. -/
-def shIteration : Impl O Q :=
-  opsImpl% [N, m, k, n0] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G) → (A, Fl) {
-    run (shIterationWith (smallEigKernel (O := O) (Q := Q))).body [N, m, k, n0, 0, 0]
+def shIteration : Stmt O Q :=
+  ops% [N, m, k, n0] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G) → (A, Fl) {
+    run (shIterationWith (smallEigKernel (O := O) (Q := Q))) [N, m, k, n0, 0, 0]
       (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Rd, A, Fl)
   }
 
@@ -206,7 +206,9 @@ $\mathbb{D}(0, 1.1\|\mathbf{H}\|_2)$, `NLAlib.ShiftedQR.shStep` writes only the 
 flag and ends in `NLAlib.ShiftedQR.ShIterationOutcome` with the error
 $(1 + C)\|\mathbf{H}\|_2((1 + x)^k - 1)$ except with probability at most $\varphi$. One good set
 serves all shifts: the outcome is measurable
-(`NLAlib.ShiftedQR.measurableSet_iterationOutcome`). -/
+(`NLAlib.ShiftedQR.measurableSet_iterationOutcome`).
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem shStep_pwrites_of_forall {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I)
@@ -239,7 +241,7 @@ theorem shStep_pwrites_of_forall {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
       ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α * B ^ ((k : ℝ)⁻¹) * ω) *
         √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 8)
     (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) :
-    PWrites law I (shStep (O := O) (Q := Q)).body
+    PWrites law I (shStep (O := O) (Q := Q))
       (Env.frame [n + 1, q, k, (excNet ε).length] [a, s, wg, wr, ww, wp, g, thr, a, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (fun m => m.Live [a, s, wg, wr, ww, wp, g, thr, f] ∧ HoldsMatrix a H m.store ∧
@@ -297,12 +299,13 @@ theorem shStep_pwrites_of_forall {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
 
 variable [Has EigenvalueKernelOp O]
 
--- The default heartbeat budget does not cover the elaboration of this statement.
-set_option maxHeartbeats 1000000 in
 -- The hypothesis lists of `Regularize` and the kept words of `Sh` make elaboration heavy.
+set_option maxHeartbeats 1000000 in
+-- (the reason is stated above)
 omit [Has IdxTst Q] [Has EigenvalueKernelOp O] in
 /-- `Regularize` with a small-eigenvalue routine inside an iteration: the outcome of
-`NLAlib.ShiftedQR.regularizeWith_pwrites_at`, with the words of `Sh` kept. -/
+`NLAlib.ShiftedQR.regularizeWith_pwrites_at`, with the words of `Sh` kept.
+A step in the proof of `shIterationWithScratchWith_pwrites`. -/
 theorem shIteration_regularize_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I)
@@ -319,7 +322,7 @@ theorem shIteration_regularize_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u
         (Store.inBlock rd.1 rd.2 1 ⊔ Store.inBlock c.1 c.2 1 ⊔ Store.inBlock thr.1 thr.2 1 ⊔
           Store.inBlock wg.1 wg.2 1 ⊔ Store.inBlock wr.1 wr.2 1 ⊔ Store.inBlock ww.1 ww.2 1 ⊔
           Store.inBlock wp.1 wp.2 1 ⊔ Store.inBlock g.1 g.2 (2 * (excNet ε).length)))
-    {nq T : ℕ} {qs : List ℝ} {SE : Impl O Q} {qw : ℕ × ℕ}
+    {nq T : ℕ} {qs : List ℝ} {SE : Stmt O Q} {qw : ℕ × ℕ}
     (hqw : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
       Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock f.1 f.2 1)
         (Store.inBlock qw.1 qw.2 qs.length))
@@ -342,7 +345,7 @@ theorem shIteration_regularize_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u
       √(n + 1) * (300 * (n + 1) ^ 2 * u) ≤ ω / 2)
     (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv)
     (hSE : RandomSmallEigContractAt law β φse k nq T S qs SE I) :
-    PWrites law I (.frame ds args (regularizeWith SE).body) ρ
+    PWrites law I (.frame ds args (regularizeWith SE)) ρ
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
         Store.inBlock f.1 f.2 1)
       (fun m => m.Live [a, rd, c, thr, wg, wr, ww, wp, g, qw, s, f] ∧ HoldsMatrix a H m.store ∧
@@ -405,14 +408,16 @@ theorem one_le_regularizeTheta {B : ℝ} (hB : 1 ≤ B) (k : ℕ) :
     Real.one_le_rpow (by nlinarith [one_le_pow₀ (n := 4) hB]) (by positivity)
   nlinarith
 
--- The default heartbeat budget does not cover the elaboration of this statement.
-set_option maxHeartbeats 1000000 in
 -- The hypothesis lists of `Regularize` and `Sh` together, with their long real constants, make
 -- the elaboration of the composition heavy.
+set_option maxHeartbeats 1000000 in
+-- (the reason is stated above)
 omit [Has EigenvalueKernelOp O] in
 /-- One iteration with caller-owned scratch as a probabilistic block: the hypotheses of
 `NLAlib.ShiftedQR.shIteration_pwrites`, with the $k$ shift pairs at `s` apart from the other
-views. -/
+views.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem shIterationWithScratchWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I)
@@ -469,12 +474,12 @@ theorem shIterationWithScratchWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ
         B ^ ((k : ℝ)⁻¹) * S)) ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) *
       (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) * α *
         B ^ ((k : ℝ)⁻¹) * ω) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 8)
-    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) {nq T : ℕ} {qs : List ℝ} {SE : Impl O Q}
+    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) {nq T : ℕ} {qs : List ℝ} {SE : Stmt O Q}
     (hSE : RandomSmallEigContractAt law β φse k nq T S qs SE I) {qw : ℕ × ℕ}
     (hqw : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
       Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock f.1 f.2 1)
         (Store.inBlock qw.1 qw.2 qs.length)) :
-    PWrites law I (shIterationWithScratchWith SE).body
+    PWrites law I (shIterationWithScratchWith SE)
       (Env.frame [n + 1, q, k, (excNet ε).length, nq, T]
         [a, rd, c, thr, wg, wr, ww, wp, g, qw, s, a, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
@@ -554,10 +559,10 @@ theorem shIterationWithScratchWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ
       norm_num at htest
     · exact (Writes.skip ⟨H', hsim.mono hCε, hH', hA, Or.inl hdec⟩).mono bot_le fun _ _ h => h
 
--- The default heartbeat budget does not cover the elaboration of this statement.
-set_option maxHeartbeats 1000000 in
 -- The hypothesis lists of `Regularize` and `Sh` together, with their long real constants, make
 -- the elaboration of the composition heavy.
+set_option maxHeartbeats 1000000 in
+-- (the reason is stated above)
 omit [Has EigenvalueKernelOp O] in
 /-- **One rounded iteration with a small-eigenvalue routine as a probabilistic block**, with the
 word count `nq` apart from the words `qs` (`NLAlib.ShiftedQR.RandomSmallEigContractAt`), the
@@ -595,7 +600,9 @@ the matrix and the flag and, except with probability at most
 $\varphi_{\mathrm{se}} + \varphi_R/2 + \varphi$, ends in `NLAlib.ShiftedQR.ShIterationOutcome`: an
 upper Hessenberg perturbed unitary similarity of $\mathbf{H}$ with error
 $(1 + C)\|\mathbf{H}\|_2((1 + x)^k - 1)$, $x = 300(n+1)^2\boldsymbol{u}$, decoupled at the bottom
-or with $\psi_k \le 1.002(1 - \gamma)\psi_k(\mathbf{H})$. -/
+or with $\psi_k \le 1.002(1 - \gamma)\psi_k(\mathbf{H})$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem shIterationWith_pwrites_at {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I)
@@ -648,11 +655,11 @@ theorem shIterationWith_pwrites_at {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
         B ^ ((k : ℝ)⁻¹) * S)) ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) *
       (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) * α *
         B ^ ((k : ℝ)⁻¹) * ω) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 8)
-    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) {nq T : ℕ} {qs : List ℝ} {SE : Impl O Q}
+    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) {nq T : ℕ} {qs : List ℝ} {SE : Stmt O Q}
     (hSE : RandomSmallEigContractAt law β φse k nq T S qs SE I) {qw : ℕ × ℕ}
     (hqw : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (Store.inBlock qw.1 qw.2 qs.length)) :
-    PWrites law I (shIterationWith SE).body
+    PWrites law I (shIterationWith SE)
       (Env.frame [n + 1, q, k, (excNet ε).length, nq, T]
         [a, rd, c, thr, wg, wr, ww, wp, g, qw, a, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
@@ -670,11 +677,11 @@ theorem shIterationWith_pwrites_at {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
       (ShIterationOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1))
         a) (φse + φR / 2 + φ) := by
   have hφ0 : 0 ≤ φse + φR / 2 + φ := by positivity
-  have e : (shIterationWith SE).body = Stmt.allocs [.const 2 * .var 2]
+  have e : (shIterationWith SE) = Stmt.allocs [.const 2 * .var 2]
       (.frame [.var 0, .var 1, .var 2, .var 3, .var 4, .var 5] [⟨0, .var 6⟩, ⟨1, .var 7⟩,
         ⟨2, .var 8⟩, ⟨3, .var 9⟩, ⟨4, .var 10⟩, ⟨5, .var 11⟩, ⟨6, .var 12⟩, ⟨7, .var 13⟩,
         ⟨8, .var 14⟩, ⟨9, .var 15⟩, ⟨12, .const 0⟩, ⟨0, .var 6⟩, ⟨11, .var 17⟩]
-        (shIterationWithScratchWith SE).body) :=
+        (shIterationWithScratchWith SE)) :=
     rfl
   rw [e]
   refine PWrites.allocs (ns := [2 * k]) ?_ (Pre₁ := fun L μ => (a.1 < L ∧ rd.1 < L ∧ c.1 < L ∧
@@ -748,43 +755,42 @@ theorem shIterationWith_pwrites_at {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
                           tauto)
     · exact PWrites.of_writes hφ0 fun _ _ h => absurd h.1 hvL
 
--- The default heartbeat budget does not cover the elaboration of this statement.
-set_option maxHeartbeats 1000000 in
 -- The hypothesis lists of `Regularize` and `Sh` together, with their long real constants, make
 -- the elaboration of the composition heavy.
+set_option maxHeartbeats 1000000 in
+-- (the reason is stated above)
 /-- **One rounded iteration of the decoupling loop as a probabilistic block**
 ([BanksGarzaVargasSrivastava2022, Lemma 6.4], one round, corrected: the dichotomy constant of
-Theorem 4.1 is $\tfrac12 k^{-1/(2k)}$ for the printed $(2k)^{-1/(2k)}$, and the test in the proof
-of Lemma 4.6 is $\psi_k \ge \varepsilon$; the net of `Exc`, Lemma 5.3, has rounding at most
-$0.005\varepsilon\widetilde{R}$, covers $\mathbb{D}(r, (1 + \varepsilon)\widetilde{R})$ and has
-at most $11$ points near an eigenvalue, and its radius keeps the factor $2^{1/k}$ the paper omits
+Theorem 4.1 is $\tfrac12 k^{-1/(2k)}$ for the printed $(2k)^{-1/(2k)}$, and the test in the proof of
+Lemma 4.6 is $\psi_k \ge \varepsilon$; the net of `Exc`, Lemma 5.3, has rounding at most
+$0.005\varepsilon\widetilde{R}$, covers $\mathbb{D}(r, (1 + \varepsilon)\widetilde{R})$ and has at
+most $11$ points near an eigenvalue, and its radius keeps the factor $2^{1/k}$ the paper omits
 ($2.002^{1/k}$ for $1.001$, so the shift bound is $4.1\|\mathbf{H}\|_2$ for $3\|\mathbf{H}\|_2$);
-`Sh`, Lemma 5.4, returns the computed step, assumes $\|\mathbf{H}\|_2 \le \Sigma$ and $k \ge 2$,
-and reports with a flag that no shift was accepted; the precision of `Optimal`, Lemma 4.5,
-carries $n + kn^{3/2}$ for the printed $2n^2$): on a scalar machine with the standard model, exact
-comparisons, index literals, index conversion and exact natural literals up to $n + 1$, a
-measurable tape-local interpretation whose `SmallEig` is a randomized kernel with forward error
-$\beta \ge 0$ and failure probability $\varphi_{\mathrm{se}} \ge 0$ on a stream `s₀` uniform on
-$[0, 1]$, and an exact polar disk sampler on the same stream: let $\mathbf{H}$ be upper Hessenberg
-of order $n + 1$, $\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{e})$ with
-$\kappa(\mathbf{V}) \le B$, $B^{2/k} \le 2$, $2 \le k = 2^m \le n$, $\|\mathbf{H}\|_2 \le
-\Sigma$, $0 < \omega \le \psi_k(\mathbf{H})$, eigenvalues separated by $2\omega^2/\Sigma$; the words
-of `Regularize` (radius $R > 0$, $0.999\theta^k$ for
-$\theta = 1.01 \cdot 0.998^{-1/k}(2B^4)^{1/(2k)}$, the threshold $t \ge (1 + \boldsymbol{u})^2
-\omega^2$) with $0 < \varphi_R \le 1$, $\eta = R\sqrt{\varphi_R/(2k)}$ and $d = \eta/2$, and the
-words of `Sh` ($(1 - \gamma)^k$, $2^{1/k}\theta\alpha B^{1/k}$, $\varepsilon/2$,
-$1.0015(1 - \gamma)$,
-the net `NLAlib.ShiftedQR.excNet ε`) with $\alpha = (1.01B)^{4m/2^m}$, $0 < \gamma < 1$,
-$\varepsilon = (0.998(1 - \gamma)^2/((13B^4)^{1/k}\alpha^2\theta^2))^{k/(k-1)} \le 1/2$,
-$0 < \varphi \le 1/5$, $1.1 + 2.1 \cdot 2.002^{1/k}\theta\alpha B^{1/k} \le C$,
-$d \le \varepsilon \cdot 1.998^{1/k}\theta\alpha B^{1/k}\omega\sqrt{\varphi/(11(n + 1))}/4$; and the
-precision conditions of `Regularize` and `Sh`, those of `Sh` that involve $\psi_k(\mathbf{H})$
-asked at $\omega$ (below) and at $\Sigma$ (above). Then `NLAlib.ShiftedQR.shIteration` writes only
-the matrix and the flag and, except with probability at most
-$\varphi_{\mathrm{se}} + \varphi_R/2 + \varphi$, ends in `NLAlib.ShiftedQR.ShIterationOutcome`: an
-upper Hessenberg perturbed unitary similarity of $\mathbf{H}$ with error
-$(1 + C)\|\mathbf{H}\|_2((1 + x)^k - 1)$, $x = 300(n+1)^2\boldsymbol{u}$, decoupled at the bottom
-or with $\psi_k \le 1.002(1 - \gamma)\psi_k(\mathbf{H})$. -/
+`Sh`, Lemma 5.4, returns the computed step, assumes $\|\mathbf{H}\|_2 \le \Sigma$ and $k \ge 2$, and
+reports with a flag that no shift was accepted; the precision of `Optimal`, Lemma 4.5, carries $n +
+kn^{3/2}$ for the printed $2n^2$): on a scalar machine with the standard model, exact comparisons,
+index literals, index conversion and exact natural literals up to $n + 1$, a measurable tape-local
+interpretation whose `SmallEig` is a randomized kernel with forward error $\beta \ge 0$ and failure
+probability $\varphi_{\mathrm{se}} \ge 0$ on a stream `s₀` uniform on $[0, 1]$, and an exact polar
+disk sampler on the same stream: let $\mathbf{H}$ be upper Hessenberg of order $n + 1$,
+$\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{e})$ with $\kappa(\mathbf{V}) \le B$,
+$B^{2/k} \le 2$, $2 \le k = 2^m \le n$, $\|\mathbf{H}\|_2 \le \Sigma$, $0 < \omega \le
+\psi_k(\mathbf{H})$, eigenvalues separated by $2\omega^2/\Sigma$; the words of `Regularize` (radius
+$R > 0$, $0.999\theta^k$ for $\theta = 1.01 \cdot 0.998^{-1/k}(2B^4)^{1/(2k)}$, the threshold $t \ge
+(1 + \boldsymbol{u})^2 \omega^2$) with $0 < \varphi_R \le 1$, $\eta = R\sqrt{\varphi_R/(2k)}$ and $d
+= \eta/2$, and the words of `Sh` ($(1 - \gamma)^k$, $2^{1/k}\theta\alpha B^{1/k}$, $\varepsilon/2$,
+$1.0015(1 - \gamma)$, the net `NLAlib.ShiftedQR.excNet ε`) with $\alpha = (1.01B)^{4m/2^m}$, $0 <
+\gamma < 1$, $\varepsilon = (0.998(1 - \gamma)^2/((13B^4)^{1/k}\alpha^2\theta^2))^{k/(k-1)} \le
+1/2$, $0 < \varphi \le 1/5$, $1.1 + 2.1 \cdot 2.002^{1/k}\theta\alpha B^{1/k} \le C$, $d \le
+\varepsilon \cdot 1.998^{1/k}\theta\alpha B^{1/k}\omega\sqrt{\varphi/(11(n + 1))}/4$; and the
+precision conditions of `Regularize` and `Sh`, those of `Sh` that involve $\psi_k(\mathbf{H})$ asked
+at $\omega$ (below) and at $\Sigma$ (above). Then `NLAlib.ShiftedQR.shIteration` writes only the
+matrix and the flag and, except with probability at most $\varphi_{\mathrm{se}} + \varphi_R/2 +
+\varphi$, ends in `NLAlib.ShiftedQR.ShIterationOutcome`: an upper Hessenberg perturbed unitary
+similarity of $\mathbf{H}$ with error $(1 + C)\|\mathbf{H}\|_2((1 + x)^k - 1)$, $x =
+300(n+1)^2\boldsymbol{u}$, decoupled at the bottom or with $\psi_k \le 1.002(1 -
+\gamma)\psi_k(\mathbf{H})$.
+Stated in operand form; it is a statement about a tree, not the contract of a routine. -/
 theorem shIteration_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I)
@@ -838,7 +844,7 @@ theorem shIteration_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
       (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) * α *
         B ^ ((k : ℝ)⁻¹) * ω) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 8)
     (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) :
-    PWrites law I (shIteration (O := O) (Q := Q)).body
+    PWrites law I (shIteration (O := O) (Q := Q))
       (Env.frame [n + 1, q, k, (excNet ε).length] [a, rd, c, thr, wg, wr, ww, wp, g, a, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (fun m => m.Live [a, rd, c, thr, wg, wr, ww, wp, g, f] ∧ HoldsMatrix a H m.store ∧

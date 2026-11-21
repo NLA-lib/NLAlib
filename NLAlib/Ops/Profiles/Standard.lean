@@ -296,7 +296,7 @@ noncomputable def Model.ofKernels (scheme : Scheme) (u : ℝ) (hu : 0 ≤ u)
     have hS : IsScalar machine I := isScalar_ofFns (Tst := CmpTst) machine F (fun _ => rfl)
     have hF := Interp.ofFns_isFn (Tst := CmpTst) F .total (.matvec) AnyOperands
     have hA : IsMatvec decode (matrix d x) (scheme.roundoff (allowance d x)) I :=
-      hF.meets_matvec_error (hk d hd x)
+      hF.satisfies_matvec_error (hk d hd x)
     refine ⟨I, hS, hA, ?_⟩
     intro q d a m xs hr
     change (m.readBlocks a q.lens).map (q.fn decode) = _
@@ -345,8 +345,8 @@ noncomputable def Model.access (m : Model P n) : AccessModel Operation CmpTst P 
   resources := m.resources
   realize d hd x := by
     obtain ⟨I, hS, hA, hC⟩ := m.native d hd x
-    obtain ⟨hS', hB⟩ := (m.scheme.certifies m.scalar m.unit_nonneg).meets I hS
-    have hA' := Interp.link_meets_kept m.scheme.table_matvec hA
+    obtain ⟨hS', hB⟩ := (m.scheme.certifies m.scalar m.unit_nonneg).satisfies I hS
+    have hA' := Interp.link_satisfies_kept m.scheme.table_matvec hA
     let J := { I.link m.scheme.profile.table with index := fun _ _ _ => none }
     refine ⟨J, ?_, ?_⟩
     · intro o

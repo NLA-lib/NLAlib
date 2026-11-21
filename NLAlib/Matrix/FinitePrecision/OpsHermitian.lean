@@ -106,7 +106,7 @@ theorem writes_shift_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     (hX : μ.store.readBlock x.1 x.2 (2 * (n * n)) = some ((EntryCodec.pair K).packFinMatrix A))
     (hc : μ.store.get c.1 c.2 = some d)
     (hY : y.2 + 2 * (n * n) ≤ μ.store.len y.1) (hl : μ.Live [x, c, y]) :
-    Writes .total I τ (shift (Op := Op) (Tst := Tst)).body (Env.frame [n] [x, c, y])
+    Writes .total I τ (shift (Op := Op) (Tst := Tst)) (Env.frame [n] [x, c, y])
       (Store.inBlock y.1 y.2 (2 * (n * n)))
       (fun μ' => μ'.pos = μ.pos ∧ μ'.store.readBlock y.1 y.2 (2 * (n * n)) =
         some ((EntryCodec.pair K).packFinMatrix
@@ -135,7 +135,7 @@ theorem writes_scale_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     (hX : μ.store.readBlock x.1 x.2 (2 * (n * n)) = some ((EntryCodec.pair K).packFinMatrix A))
     (hc : μ.store.get c.1 c.2 = some d)
     (hY : y.2 + 2 * (n * n) ≤ μ.store.len y.1) (hl : μ.Live [x, c, y]) :
-    Writes .total I τ (scale (Op := Op) (Tst := Tst)).body (Env.frame [n] [x, c, y])
+    Writes .total I τ (scale (Op := Op) (Tst := Tst)) (Env.frame [n] [x, c, y])
       (Store.inBlock y.1 y.2 (2 * (n * n)))
       (fun μ' => μ'.pos = μ.pos ∧ μ'.store.readBlock y.1 y.2 (2 * (n * n)) =
         some ((EntryCodec.pair K).packFinMatrix
@@ -164,7 +164,7 @@ theorem writes_average_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     (hX : μ.store.readBlock x.1 x.2 (2 * (n * n)) = some ((EntryCodec.pair K).packFinMatrix A))
     (hc : μ.store.get c.1 c.2 = some d)
     (hY : y.2 + 2 * (n * n) ≤ μ.store.len y.1) (hl : μ.Live [x, c, y]) :
-    Writes .total I τ (average (Op := Op) (Tst := Tst)).body (Env.frame [n] [x, c, y])
+    Writes .total I τ (average (Op := Op) (Tst := Tst)) (Env.frame [n] [x, c, y])
       (Store.inBlock y.1 y.2 (2 * (n * n)))
       (fun μ' => μ'.pos = μ.pos ∧ μ'.store.readBlock y.1 y.2 (2 * (n * n)) =
         some ((EntryCodec.pair K).packFinMatrix
@@ -192,12 +192,12 @@ theorem writes_negate_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
       (Store.inBlock y.1 y.2 (2 * (r * c))) ∨ x = y)
     (hX : μ.store.readBlock x.1 x.2 (2 * (r * c)) = some ((EntryCodec.pair K).packFinMatrix A))
     (hY : y.2 + 2 * (r * c) ≤ μ.store.len y.1) (hl : μ.Live [x, y]) :
-    Writes .total I τ (negate (Op := Op) (Tst := Tst)).body (Env.frame [r, c] [x, y])
+    Writes .total I τ (negate (Op := Op) (Tst := Tst)) (Env.frame [r, c] [x, y])
       (Store.inBlock y.1 y.2 (2 * (r * c)))
       (fun μ' => μ'.pos = μ.pos ∧ μ'.store.readBlock y.1 y.2 (2 * (r * c)) =
         some ((EntryCodec.pair K).packFinMatrix
           ((M.toFloatMachine dec mm qr unif normal).negMat A))) μ := by
-  have hrun : Wp .total I τ negate.body (Env.frame [r, c] [x, y])
+  have hrun : Wp .total I τ negate (Env.frame [r, c] [x, y])
       (fun μ' => μ' = μ.updBlock y (((EntryCodec.pair K).packFinMatrix A).map M.neg)) μ :=
     wp_frame rfl rfl hl (wp_unaryMap_of_disj_or_eq (hI .neg) hxy hX hY rfl)
   refine (Writes.of_wp_eq_updBlock hrun).mono ?_ ?_

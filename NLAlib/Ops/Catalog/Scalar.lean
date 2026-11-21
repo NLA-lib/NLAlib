@@ -325,13 +325,13 @@ theorem stdModel_infl {u : ℝ} (hu : 0 ≤ u) : StdModel u id (inflMachine u) w
     rwa [abs_of_nonneg (Real.sqrt_nonneg _)] at this
 
 /-- An interpretation given by the block functions of a machine on the scalar operations (and
-anything on the others) meets the functional contract. -/
+anything on the others) satisfies the functional contract. -/
 theorem isScalar_ofFns [Has ScalarOp Op] (M : Machine K) (F : Op → BlockFn K)
     (hF : ∀ a, F (Has.inj a) = M.fn a) : IsScalar M (Interp.ofFns F : Interp Op Tst K) :=
   fun a => hF a ▸ Interp.ofFns_isFn F _ _ _
 
 /-- **Witness**: for every `u ≥ 0` there are a carrier, a decoding, a machine meeting the
-standard model and an interpretation meeting the functional contract. -/
+standard model and an interpretation satisfying the functional contract. -/
 theorem exists_isScalar {u : ℝ} (hu : 0 ≤ u) :
     ∃ (K : Type) (dec : K → ℝ) (M : Machine K) (I : Interp ScalarOp Empty K),
       StdModel u dec M ∧ IsScalar M I :=

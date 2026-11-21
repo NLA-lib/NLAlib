@@ -66,25 +66,17 @@ def exactCallDegree : ℕ :=
 def exactCallArity : ℕ :=
   (deflationProgram scalarDecouple).body.instrument.callArity
 
--- Kernel reduction of the closed instrumented tree exceeds the default recursion depth.
-set_option maxRecDepth 8192 in
 /-- The structural coefficient of this fixed complete instrumented tree is 17109. -/
-theorem exactWorkCoefficient_eq : exactWorkCoefficient = 17109 := by rfl
+theorem exactWorkCoefficient_eq : exactWorkCoefficient = 17109 := by kernel_rfl
 
--- Kernel reduction of the closed instrumented tree exceeds the default recursion depth.
-set_option maxRecDepth 8192 in
 /-- The slot-sensitive full-program work exponent is fourteen. -/
-theorem exactWorkDegree_eq : exactWorkDegree = 14 := by rfl
+theorem exactWorkDegree_eq : exactWorkDegree = 14 := by kernel_rfl
 
--- Kernel reduction of the closed instrumented tree exceeds the default recursion depth.
-set_option maxRecDepth 8192 in
 /-- Primitive dimension entries are bounded by the fifth power of the input base. -/
-theorem exactCallDegree_eq : exactCallDegree = 5 := by rfl
+theorem exactCallDegree_eq : exactCallDegree = 5 := by kernel_rfl
 
--- Kernel reduction of the closed instrumented tree exceeds the default recursion depth.
-set_option maxRecDepth 8192 in
 /-- Every primitive/query dimension list in the complete tree has length at most two. -/
-theorem exactCallArity_eq : exactCallArity = 2 := by rfl
+theorem exactCallArity_eq : exactCallArity = 2 := by kernel_rfl
 
 /-- A finite maximum of both supplied spectral costs over bounded dimension-list lengths
 and bounded entries. This includes malformed shapes conservatively without constraining the

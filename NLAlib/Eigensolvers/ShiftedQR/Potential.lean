@@ -41,26 +41,25 @@ def subdiagProductRound : Stmt Op Tst :=
     [⟨0, .var 2 + .const 2 *
       ((.var 0 - .const 1 - .var 1 + .var 5) * .var 0 +
         (.var 0 - .const 1 - .var 1 + .var 5 + .const 1))⟩, ⟨1, .var 3⟩]
-    PairScalar.normSq.body)
+    PairScalar.normSq)
     (.call (Has.inj ScalarOp.mul) [] [⟨2, .var 4⟩, ⟨1, .var 3 + .const 2⟩] [⟨2, .var 4⟩])
 
 /-- Multiply the last `k` squared subdiagonal moduli of an order-`n` matrix. The three-word
 scratch view is caller-owned; the single output word starts uninitialized. -/
-def subdiagProductWithScratch : Impl Op Tst where
-  nd := 2
-  nin := 2
-  nout := 1
-  body := .seq (.call (Has.inj (ScalarOp.lit 1)) [] [] [⟨2, .var 4⟩])
+def subdiagProductWithScratch : Stmt Op Tst :=
+  .seq (.call (Has.inj (ScalarOp.lit 1)) [] [] [⟨2, .var 4⟩])
     (.loop (.var 1) subdiagProductRound)
 
 /-- Scope the three scratch words once for the whole subdiagonal product calculation. -/
-def subdiagProduct : Impl Op Tst := opsImpl% [n, k] (A) → (P) {
+def subdiagProduct : Stmt Op Tst := ops% [n, k] (A) → (P) {
   let T ← alloc 3;
-  run subdiagProductWithScratch.body [n, k] (A, T, P)
+  run subdiagProductWithScratch [n, k] (A, T, P)
 }
 
 /-- The scalar product returns exactly the mathematical squared-potential statistic. Spatial
-separation preserves the input matrix and permits disjoint views of one underlying buffer. -/
+separation preserves the input matrix and permits disjoint views of one underlying buffer.
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem subdiagProductWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {n k : ℕ} {a t p : ℕ × ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
@@ -71,7 +70,7 @@ theorem subdiagProductWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst �
     (hap : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock p.1 p.2 1))
     (htp : Fp.Disj (Store.inBlock t.1 t.2 3) (Store.inBlock p.1 p.2 1)) :
-    Writes .total I τ subdiagProductWithScratch.body (Env.frame [n + 1, k] [a, t, p])
+    Writes .total I τ subdiagProductWithScratch (Env.frame [n + 1, k] [a, t, p])
       (Store.inBlock p.1 p.2 1 ⊔ Store.inBlock t.1 t.2 3)
       (fun m' => m'.pos = m.pos ∧
         m'.store.get p.1 p.2 = some (subdiagNormSqProd k H)) m := by
@@ -130,14 +129,16 @@ theorem subdiagProductWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst �
     ⟨h.1.trans hp₁, by simpa only [value, ← subdiagNormSqProd_eq_prod_range k hk H] using h.2⟩
 
 /-- The scoped product routine returns the exact statistic and frees its three scratch words.
-Only the matrix/output separation and one output word of capacity are supplied by the caller. -/
+Only the matrix/output separation and one output word of capacity are supplied by the caller.
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem subdiagProduct_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {n k : ℕ} {a p : ℕ × ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     (hk : k ≤ n) (hH : HoldsMatrix a H m.store) (hp : p.2 < m.store.len p.1)
     (hap : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock p.1 p.2 1)) :
-    Writes .total I τ subdiagProduct.body (Env.frame [n + 1, k] [a, p])
+    Writes .total I τ subdiagProduct (Env.frame [n + 1, k] [a, p])
       (Store.inBlock p.1 p.2 1)
       (fun m' => m'.pos = m.pos ∧
         m'.store.get p.1 p.2 = some (subdiagNormSqProd k H)) m := by

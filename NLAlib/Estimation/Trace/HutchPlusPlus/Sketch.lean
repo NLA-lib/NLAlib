@@ -33,7 +33,9 @@ variable {𝕜 Op Tst : Type} [RCLike 𝕜] [Has StoredOperatorOp Op] [Has Sampl
 local instance instInhabitedSketch : Inhabited 𝕜 := ⟨0⟩
 
 /-- Draw and apply a sketch, retaining its exact tape window and removing its scratch.
-The statement includes zero dimensions and does not assume sample independence. -/
+The statement includes zero dimensions and does not assume sample independence.
+A fragment of `NLAlib.HutchPlusPlus.estimateRoutine`: run only inside its tree, on its
+operands and the buffers it allocates. -/
 theorem writes_sketch {dataLength : ℕ → ℕ → ℕ}
     {matrix : (m n : ℕ) → List 𝕜 → Matrix (Fin m) (Fin n) 𝕜}
     (hI : StoredOperator.IsExact dataLength matrix I) (hSample : IsSample I) (stream : ℕ)
@@ -42,7 +44,7 @@ theorem writes_sketch {dataLength : ℕ → ℕ → ℕ}
     (hBA : Fp.Disj (Store.inBlock b.1 b.2 (k * n))
       (Store.inBlock data.1 data.2 (dataLength n n)))
     (hb : b.2 + k * n ≤ m.store.len b.1) :
-    Writes .total I τ (sketch stream).body (Env.frame [n, k] [data, b])
+    Writes .total I τ (sketch stream) (Env.frame [n, k] [data, b])
       (Store.inBlock b.1 b.2 (k * n))
       (fun m' => m'.pos = m.pos + n * k ∧ m'.store.readBlock b.1 b.2 (k * n) =
         some ((EntryCodec.scalar 𝕜).packFinMatrix (matrix n n as *

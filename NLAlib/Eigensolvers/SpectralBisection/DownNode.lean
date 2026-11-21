@@ -26,7 +26,8 @@ namespace NLAlib.SpectralBisection
 open Ops
 
 /-- Every active slot returns the existing mathematical step, including both leaf cases and
-all nonleaf outcomes. Writable geometry and operation contracts replace success-only premises. -/
+all nonleaf outcomes. Writable geometry and operation contracts replace success-only premises.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_downNode {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
     [Has MatrixOp Op] [Has CmpTst Tst] [Has IdxTst Tst]
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
@@ -56,7 +57,7 @@ theorem writes_downNode {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has I
         (Fp.blocks (nodeInputs n d lo par lv su sg ma c) (nodeInputLengths n k))) :
     let N := M.toFloatMachine dec mm qr M.mul (fun z : K × K => M.normalWords z.1 z.2)
     let outcome := eighStep N n fuel R0 beta A R eps (L + d) (storedNodeSample n lo U S)
-    Writes .total I τ (downNodeImpl (node (Op := Op) (Tst := Tst))).body
+    Writes .total I τ (downNode (node (Op := Op) (Tst := Tst)))
       (Env.frame [n, L, fuel, d, lo, k] [par, lv, su, sg, ma, ua, qa, ea, sz, kd, kp, c, t])
       (Fp.blocks (stepOutputs n d lo ma ua qa ea sz kd kp outcome) (stepOutputLengths outcome) ⊔
         Store.inBlock t.1 (t.2 + 4) 1)

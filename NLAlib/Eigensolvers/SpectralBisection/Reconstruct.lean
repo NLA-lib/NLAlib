@@ -68,7 +68,8 @@ theorem stored_upwardInputs_of_bottom_frame {ν : Mem K}
       ((hSep 0 (by omega)).mono le_rfl
         (constant_le_upReadRegion n 0 ma lv ua qa ea sz kd kp c)) hTwo
 
-/-- Complete root reconstruction from actual stored levels and node outcomes. -/
+/-- Complete root reconstruction from actual stored levels and node outcomes.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_reconstructResult {I : Interp Op Tst K} (hS : IsScalar M I)
     (hQ : IsToNat dec I) (hMM : IsMatrixMul (EntryCodec.pair K) mm I)
     (hLit : IsExactNatLit dec M (max n 4))
@@ -82,7 +83,7 @@ theorem writes_reconstructResult {I : Interp Op Tst K} (hS : IsScalar M I)
     (hLevels : ∀ d ≤ L + 1, StoresLevel M F n fuel R0 beta root d ma sz lv μ)
     (hRecords : ∀ d ≤ L, StoresRecords M F n fuel R0 beta root d ma ua qa ea sz kd kp μ)
     (hTwo : μ.store.get c.1 (c.2 + 1) = some (M.lit 2)) :
-    Writes .total I τ (reconstructResult (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (reconstructResult (Op := Op) (Tst := Tst))
       (Env.frame [n, L] [c, ua, qa, ea, sz, kd, kp, lv, u, dv])
       (resultArenaFp n L ua ea ⊔ Fp.blocks [u, dv] [2 * (n * n), n])
       (fun ν => ν.pos = μ.pos ∧ StoresResult n 0 0 u dv RES ν.store) μ := by

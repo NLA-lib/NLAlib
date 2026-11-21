@@ -95,7 +95,7 @@ Bauer–Fike bound (HD9), using the raw input condition `2*kappa(V) <= B`.
 It retains the complete backward guarantee and the same resource bounds. It does not assert
 a bijective matching of individual eigenvalues or reverse coverage of the original spectrum.
 
-The [canonical specification](../../NLAlib/Eigensolvers/ShiftedQR/DeflationCertificate.lean)
+The [canonical specification](../../NLAlib/Eigensolvers/ShiftedQR/DeflationCertification.lean)
 uses the full instruction manifest `staticCost` of the actual program. Modeled work and
 sequential span evaluate that same manifest with the declared kernel charges. Scratch uses
 `staticPeak`, including local primitive workspace; resident payload adds the supplied

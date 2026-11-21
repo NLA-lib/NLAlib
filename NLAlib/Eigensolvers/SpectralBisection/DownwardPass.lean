@@ -42,7 +42,8 @@ local notation "region" => (fun d => downLevelOutputFp n d lv su sg ma ua qa ea 
 
 /-- The actual counted downward traversal produces all level inputs and all node records.
 Its spatial premises protect earlier records, earlier input levels and future size zeros;
-the fresh-scratch premise concerns only storage shape and capacities. -/
+the fresh-scratch premise concerns only storage shape and capacities.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_downwardPass (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp dec I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) (hQR : IsMatrixQR (EntryCodec.pair K) qr I)
     (hQ : IsToNat dec I) (hSample : IsSample I)
@@ -73,7 +74,7 @@ theorem writes_downwardPass (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCm
           (eighStep F n fuel R0 beta x.A x.R x.ε x.ℓ (eighTapeSample n e lo)))
         (stepOutputLengths
           (eighStep F n fuel R0 beta x.A x.R x.ε x.ℓ (eighTapeSample n e lo))))) :
-    Writes .total I τ (downwardPass (node (Op := Op) (Tst := Tst))).body
+    Writes .total I τ (downwardPass (node (Op := Op) (Tst := Tst)))
       (Env.frame [n, L, fuel] [par, lv, su, sg, ma, ua, qa, ea, sz, kd, kp, c])
       (Fp.loopPrefix region (L + 1))
       (fun ν => ν.pos = base + (L + 1) * levelSampleSize n ∧

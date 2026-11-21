@@ -1,5 +1,12 @@
 # Explicit context operands through implementation linking
 
+> **Current interface.** This note describes the mechanism of context linking (how data
+> operands are added to a tree and forwarded through its frames). A stored routine is no longer
+> proved against that mechanism directly: it is `R.withData lens T`, the matrix-free routine `R`
+> with its data as isolated leading operands, specified with `Routine.Spec.onData`, and its
+> judgment is `Routine.Meets.withData` applied to the judgment of `R`
+> (`NLAlib/Ops/RoutineData.lean`, `NLAlib/Ops/README.md`).
+
 Stored operators receive their data as declared operands. A CG or Lanczos operation call
 that originally receives only a vector cannot read a stored matrix through an undeclared
 global handle. Context linking adds the data operands to the fixed program tree and forwards

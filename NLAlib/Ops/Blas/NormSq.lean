@@ -29,7 +29,7 @@ namespace NLAlib.Ops.PairScalar
 variable {Op Tst : Type} [Has ScalarOp Op]
 
 /-- Compute the squared components in output cells zero and one, and their sum in cell two. -/
-def normSq : Impl Op Tst := opsImpl% [] (X) → (T) {
+def normSq : Stmt Op Tst := ops% [] (X) → (T) {
   call (Has.inj ScalarOp.mul) [] (X, X) → (T);
   call (Has.inj ScalarOp.mul) [] (X[1], X[1]) → (T[1]);
   call (Has.inj ScalarOp.add) [] (T, T[1]) → (T[2])
@@ -45,7 +45,7 @@ theorem normSq_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hxi : m.store.get x.1 (x.2 + 1) = some xi)
     (hroom : t.2 + 3 ≤ m.store.len t.1)
     (hsep : Fp.Disj (Store.inBlock x.1 x.2 2) (Store.inBlock t.1 t.2 3)) :
-    Writes .total I τ (normSq (Op := Op) (Tst := Tst)).body (Env.frame [] [x, t])
+    Writes .total I τ (normSq (Op := Op) (Tst := Tst)) (Env.frame [] [x, t])
       (Store.inBlock t.1 t.2 3)
       (fun m' => m'.pos = m.pos ∧
         m'.store.get t.1 (t.2 + 2) = some (M.add (M.mul xr xr) (M.mul xi xi))) m := by
@@ -75,7 +75,7 @@ theorem normSq_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hxi : m.store.get x.1 (x.2 + 1) = some xi)
     (hroom : t.2 + 3 ≤ m.store.len t.1)
     (hsep : Fp.Disj (Store.inBlock x.1 x.2 2) (Store.inBlock t.1 t.2 3)) :
-    Writes .total I τ (normSq (Op := Op) (Tst := Tst)).body (Env.frame [] [x, t])
+    Writes .total I τ (normSq (Op := Op) (Tst := Tst)) (Env.frame [] [x, t])
       (Store.inBlock t.1 t.2 3)
       (fun m' => m'.pos = m.pos ∧
         m'.store.get t.1 (t.2 + 2) = some (xr ^ 2 + xi ^ 2)) m := by

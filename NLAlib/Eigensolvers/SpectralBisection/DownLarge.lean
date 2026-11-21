@@ -27,7 +27,8 @@ namespace NLAlib.SpectralBisection
 open Ops
 
 /-- The actual threshold computation and query choose the same leaf or nonleaf step as the
-mathematical algorithm. Capacity and spatial premises concern actual input and output regions. -/
+mathematical algorithm. Capacity and spatial premises concern actual input and output regions.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_downLarge {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
     [Has MatrixOp Op] [Has CmpTst Tst] [Has IdxTst Tst]
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
@@ -57,7 +58,7 @@ theorem writes_downLarge {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has 
         (Fp.blocks (nodeInputs n d lo par lv su sg ma c) (nodeInputLengths n k))) :
     let N := M.toFloatMachine dec mm qr M.mul (fun z : K × K => M.normalWords z.1 z.2)
     let outcome := eighStep N n fuel R0 beta A R eps (L + d) (storedNodeSample n lo U S)
-    Writes .total I τ (downLargeImpl (node (Op := Op) (Tst := Tst))).body
+    Writes .total I τ (downLarge (node (Op := Op) (Tst := Tst)))
       (Env.frame [n, L, fuel, d, lo, k] [par, lv, su, sg, ma, ua, qa, ea, sz, kd, kp, c, t])
       (Fp.blocks (stepOutputs n d lo ma ua qa ea sz kd kp outcome) (stepOutputLengths outcome) ⊔
         Store.inBlock t.1 (t.2 + 4) 1)

@@ -31,7 +31,8 @@ namespace NLAlib.SpectralBisection
 open Ops
 
 /-- The actual single-child program stores every field of its mathematical shift outcome,
-including the signed half-radius recovered from the retained radius on the upward pass. -/
+including the signed half-radius recovered from the retained radius on the upward pass.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_child_storesStep {K Su Sg Op Tst : Type} [Inhabited K]
     [Has ScalarOp Op] [Has IndexOp Op] {M : Machine K} (dec : K → ℝ)
     (mm : MatMulMap (K × K)) (qr : QRMap (K × K)) (unif : K → Su → K)
@@ -68,7 +69,8 @@ theorem writes_child_storesStep {K Su Sg Op Tst : Type} [Inhabited K]
     Bool.false_eq_true, if_false, if_true, Nat.cast_ofNat] using hreads
 
 /-- An interior split stores the complete existing mathematical branch outcome, with its two
-bases, compressions, child sizes and parent metadata in one tuple. -/
+bases, compressions, child sizes and parent metadata in one tuple.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_split_storesStep {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     [Has IndexOp Op] [Has MatrixOp Op] {M : Machine K} (dec : K → ℝ)
     (mm : MatMulMap (K × K)) (qr : QRMap (K × K)) {I : Interp Op Tst K}
@@ -141,7 +143,8 @@ private theorem splitInputs_matrix_shifts {K : Type} {m : Mem K} {n d lo k : ℕ
 
 /-- The three explicit dispatch loops execute exactly the selected child or split and store
 its entire mathematical outcome. Every premise is a primitive contract or a condition on
-actual readable inputs, writable outputs and their spatial separation. -/
+actual readable inputs, writable outputs and their spatial separation.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_nodeBranch {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     [Has IndexOp Op] [Has MatrixOp Op] {M : Machine K} (dec : K → ℝ)
     (mm : MatMulMap (K × K)) (qr : QRMap (K × K)) {I : Interp Op Tst K}

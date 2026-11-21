@@ -29,17 +29,17 @@ namespace NLAlib.Ops.ColumnProducts
 variable {Op Tst : Type} [Has ScalarOp Op] [Has Blas1Op Op]
 
 /-- Add one Hermitian product to an existing scalar accumulator, using one temporary cell. -/
-def step : Impl Op Tst := opsImpl% [n] (X, Y, t, out) → () {
+def step : Stmt Op Tst := ops% [n] (X, Y, t, out) → () {
   call (Has.inj Blas1Op.dot) [n] (X, Y) → (t);
   call (Has.inj ScalarOp.add) [] (out, t) → (out)
 }
 
 /-- Sum corresponding column inner products, reading column-major matrices.
 The accumulator is initialized to zero, including an empty collection of columns. -/
-def sum : Impl Op Tst := opsImpl% [n, k] (X, Y, t) → (out) {
+def sum : Stmt Op Tst := ops% [n, k] (X, Y, t) → (out) {
   call (Has.inj (ScalarOp.lit 0)) [] () → (out);
   for j < k {
-    run step.body [n] (X[n * j], Y[n * j], t, out)
+    run step [n] (X[n * j], Y[n * j], t, out)
   }
 }
 
@@ -57,12 +57,11 @@ theorem writes_step (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hTY : Fp.Disj (Store.inBlock t.1 t.2 1) (Store.inBlock y.1 y.2 n))
     (hdis : Fp.Disj (Store.inBlock t.1 t.2 1) (Store.inBlock out.1 out.2 1))
     (ht : t.2 + 1 ≤ m.store.len t.1) (ho : out.2 + 1 ≤ m.store.len out.1) :
-    Writes .total I τ step.body (Env.frame [n] [x, y, t, out])
+    Writes .total I τ step (Env.frame [n] [x, y, t, out])
       (Store.inBlock t.1 t.2 1 ⊔ Store.inBlock out.1 out.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 1 =
         some [a + RCLikeBlas.dot n xs ys]) m := by
   unfold step
-  dsimp only
   refine Writes.seq_le (RCLikeBlas.writes_dot hB rfl rfl rfl
     (by simp only [Mem.live_cons, Mem.live_nil];
         exact ⟨hl x (by simp), hl y (by simp), hl t (by simp), trivial⟩)
@@ -92,12 +91,11 @@ theorem writes_sum (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
       (Store.inBlock y.1 (y.2 + n * j) n))
     (hTO : Fp.Disj (Store.inBlock t.1 t.2 1) (Store.inBlock out.1 out.2 1))
     (ht : t.2 + 1 ≤ m.store.len t.1) (ho : out.2 + 1 ≤ m.store.len out.1) :
-    Writes .total I τ sum.body (Env.frame [n, k] [x, y, t, out])
+    Writes .total I τ sum (Env.frame [n, k] [x, y, t, out])
       (Store.inBlock t.1 t.2 1 ⊔ Store.inBlock out.1 out.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 1 =
         some [∑ j ∈ Finset.range k, RCLikeBlas.dot n (xs j) (ys j)]) m := by
   unfold sum
-  dsimp only
   refine Writes.seq_le (writes_call_const (hS (.lit 0)) rfl trivial
     (by change out.2 < m.store.len out.1; omega)) le_sup_right ?_
   intro m₁ hfr₁ ⟨hp₁, hzero⟩

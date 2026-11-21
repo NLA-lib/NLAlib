@@ -32,7 +32,7 @@ open scoped Matrix
 
 /-- The local total theorem of one fixed scalar shift-strategy iteration. Its actual Ritz
 list specifies the mathematical accepted step stored back in the same work view. -/
-def IterationContract {O Q : Type} (θ : ℝ) (Iter : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+def IterationContract {O Q : Type} (θ : ℝ) (Iter : Stmt O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ {n m M : ℕ} {τ B α γ : ℝ} {w p c : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ}
     (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
     IsUpperHessenberg H → 2 ^ m ≤ n → 0 ≤ τ → 0 ≤ B →
@@ -42,7 +42,7 @@ def IterationContract {O Q : Type} (θ : ℝ) (Iter : Impl O Q) (I : Interp O Q 
     μ.Live [w, p, c, w] → w.2 + 2 * ((n + 1) * (n + 1)) ≤ μ.store.len w.1 →
     Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock p.1 p.2 5 ⊔ Store.inBlock c.1 c.2 2) →
-    Writes .total I tape Iter.body (Env.frame [n + 1, m, 2 ^ m, M] [w, p, c, w])
+    Writes .total I tape Iter (Env.frame [n + 1, m, 2 ^ m, M] [w, p, c, w])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))))
       (fun μ' => μ'.pos = μ.pos ∧ ∃ ss : List ℂ, ss.length = 2 ^ m ∧
         IsOptimalRitzValues θ H ss ∧ HoldsMatrix w (shqrAcceptStep τ B θ α γ m H ss) μ'.store) μ

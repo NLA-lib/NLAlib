@@ -1,0 +1,162 @@
+{
+ "date": "2026-11-21",
+ "note": "Naming conventions of docs/contributing/programs.md ('Names of routines, files and certificates'). Module moves only rename files: the certificate file is Certification.lean (the namespace), and rounded variants live in a Rounded/ directory (the namespace). No certificate declaration is renamed. Specifications are renamed to match their routine (fooRoutine, fooSpec, fooRoutine_meets; a second specification is foo<Tag>Spec).",
+ "renames": [
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.passSpec",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgsPassSpec",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.twoPassSpec",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgs2Spec",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.roundedStepSpec",
+   "new": "NLAlib.ShiftedQR.shiftedStepRoundedSpec",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Ops.axpyLoopSpec",
+   "new": "NLAlib.Ops.axpyLoopExactSpec",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Ops.scalLoopSpec",
+   "new": "NLAlib.Ops.scalLoopExactSpec",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Ops.axpyMixedSpec",
+   "new": "NLAlib.Ops.axpyLoopMixedSpec",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.Ops.scalMixedSpec",
+   "new": "NLAlib.Ops.scalLoopMixedSpec",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.shqrTerminationSpec",
+   "new": "NLAlib.ShiftedQR.shqrSpec",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.shqrSmallEigTerminationSpec",
+   "new": "NLAlib.ShiftedQR.shqrSmallEigSpec",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.SmallEig.smallEigTerminationSpec",
+   "new": "NLAlib.SmallEig.smallEigSpec",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.smallEigCall",
+   "new": "NLAlib.ShiftedQR.smallEigCallRoutine",
+   "rule": "routine-spec-judgment"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.terminatingSmallEigSpec",
+   "new": "NLAlib.ShiftedQR.smallEigCallSpec",
+   "rule": "routine-spec-judgment"
+  }
+ ],
+ "statementChanged": [],
+ "module_moves": {
+  "NLAlib.Eigensolvers.ShiftedQR.DeflationCertificate": "NLAlib.Eigensolvers.ShiftedQR.DeflationCertification",
+  "NLAlib.Eigensolvers.ShiftedQR.RoundedCertificate": "NLAlib.Eigensolvers.ShiftedQR.RoundedCertification",
+  "NLAlib.Eigensolvers.ShiftedQR.RoundedSmallEigCertificate": "NLAlib.Eigensolvers.ShiftedQR.RoundedSmallEigCertification",
+  "NLAlib.Eigensolvers.SmallEig.Certificate": "NLAlib.Eigensolvers.SmallEig.Certification",
+  "NLAlib.Krylov.CG.HSCG.Carried.Certificate": "NLAlib.Krylov.CG.HSCG.Carried.Certification",
+  "NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Alg": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Alg",
+  "NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Bounds": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Bounds",
+  "NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Certificate": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Certification",
+  "NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Guards": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Guards",
+  "NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Initialization": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Initialization",
+  "NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Linked": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Linked",
+  "NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.OperationCount": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.OperationCount",
+  "NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Prefix": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Prefix",
+  "NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Recurrence": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Recurrence",
+  "NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Rounds": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Rounds",
+  "NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.ScalarTheorem": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.ScalarTheorem",
+  "NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Solve": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Solve",
+  "NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Stability": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stability",
+  "NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.Standard": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Standard",
+  "NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.State": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.State",
+  "NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.StoredCertificate": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.StoredCertification",
+  "NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.StoredExamples": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.StoredExamples",
+  "NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.StoredRoutine": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.StoredRoutine",
+  "NLAlib.Krylov.CG.HSCG.Carried.FinitePrecision.ZeroStart": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.ZeroStart",
+  "NLAlib.Krylov.CG.HSCG.Carried.StoredCertificate": "NLAlib.Krylov.CG.HSCG.Carried.StoredCertification",
+  "NLAlib.Krylov.CG.HSCG.Certificate": "NLAlib.Krylov.CG.HSCG.Certification",
+  "NLAlib.Krylov.CG.HSCG.StoredCertificate": "NLAlib.Krylov.CG.HSCG.StoredCertification",
+  "NLAlib.Krylov.CG.HSPCG.Certificate": "NLAlib.Krylov.CG.HSPCG.Certification",
+  "NLAlib.Krylov.CG.HSPCG.FinitePrecision.Alg": "NLAlib.Krylov.CG.HSPCG.Rounded.Alg",
+  "NLAlib.Krylov.CG.HSPCG.FinitePrecision.Guards": "NLAlib.Krylov.CG.HSPCG.Rounded.Guards",
+  "NLAlib.Krylov.CG.HSPCG.FinitePrecision.Initialization": "NLAlib.Krylov.CG.HSPCG.Rounded.Initialization",
+  "NLAlib.Krylov.CG.HSPCG.FinitePrecision.OperationCount": "NLAlib.Krylov.CG.HSPCG.Rounded.OperationCount",
+  "NLAlib.Krylov.CG.HSPCG.FinitePrecision.Pairing": "NLAlib.Krylov.CG.HSPCG.Rounded.Pairing",
+  "NLAlib.Krylov.CG.HSPCG.FinitePrecision.Preconditioner": "NLAlib.Krylov.CG.HSPCG.Rounded.Preconditioner",
+  "NLAlib.Krylov.CG.HSPCG.FinitePrecision.Prefix": "NLAlib.Krylov.CG.HSPCG.Rounded.Prefix",
+  "NLAlib.Krylov.CG.HSPCG.FinitePrecision.Recurrence": "NLAlib.Krylov.CG.HSPCG.Rounded.Recurrence",
+  "NLAlib.Krylov.CG.HSPCG.FinitePrecision.Rounds": "NLAlib.Krylov.CG.HSPCG.Rounded.Rounds",
+  "NLAlib.Krylov.CG.HSPCG.FinitePrecision.Solve": "NLAlib.Krylov.CG.HSPCG.Rounded.Solve",
+  "NLAlib.Krylov.CG.HSPCG.FinitePrecision.State": "NLAlib.Krylov.CG.HSPCG.Rounded.State",
+  "NLAlib.Krylov.CG.HSPCG.FinitePrecision.Step": "NLAlib.Krylov.CG.HSPCG.Rounded.Step",
+  "NLAlib.Krylov.CG.HSPCG.FinitePrecision.StoredCertificate": "NLAlib.Krylov.CG.HSPCG.Rounded.StoredCertification",
+  "NLAlib.Krylov.CG.HSPCG.FinitePrecision.StoredContext": "NLAlib.Krylov.CG.HSPCG.Rounded.StoredContext",
+  "NLAlib.Krylov.CG.HSPCG.FinitePrecision.StoredExamples": "NLAlib.Krylov.CG.HSPCG.Rounded.StoredExamples",
+  "NLAlib.Krylov.CG.HSPCG.FinitePrecision.StoredRoutine": "NLAlib.Krylov.CG.HSPCG.Rounded.StoredRoutine",
+  "NLAlib.Krylov.CG.HSPCG.FinitePrecision.ZeroStart": "NLAlib.Krylov.CG.HSPCG.Rounded.ZeroStart",
+  "NLAlib.Krylov.CG.HSPCG.StoredCertificate": "NLAlib.Krylov.CG.HSPCG.StoredCertification",
+  "NLAlib.Krylov.CG.Reorth.Certificate": "NLAlib.Krylov.CG.Reorth.Certification",
+  "NLAlib.Krylov.CG.Reorth.StoredCertificate": "NLAlib.Krylov.CG.Reorth.StoredCertification",
+  "NLAlib.Krylov.Lanczos.Certificate": "NLAlib.Krylov.Lanczos.Certification",
+  "NLAlib.Krylov.Lanczos.LinkedCertificate": "NLAlib.Krylov.Lanczos.LinkedCertification",
+  "NLAlib.Krylov.Lanczos.Reorth.Certificate": "NLAlib.Krylov.Lanczos.Reorth.Certification",
+  "NLAlib.Krylov.Lanczos.Reorth.RoundedAdvance": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Advance",
+  "NLAlib.Krylov.Lanczos.Reorth.RoundedAnalysis": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Analysis",
+  "NLAlib.Krylov.Lanczos.Reorth.RoundedHistory": "NLAlib.Krylov.Lanczos.Reorth.Rounded.History",
+  "NLAlib.Krylov.Lanczos.Reorth.RoundedInitialization": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Initialization",
+  "NLAlib.Krylov.Lanczos.Reorth.RoundedModels": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Models",
+  "NLAlib.Krylov.Lanczos.Reorth.RoundedOperationCount": "NLAlib.Krylov.Lanczos.Reorth.Rounded.OperationCount",
+  "NLAlib.Krylov.Lanczos.Reorth.RoundedOrthogonality": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Orthogonality",
+  "NLAlib.Krylov.Lanczos.Reorth.RoundedOutput": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Output",
+  "NLAlib.Krylov.Lanczos.Reorth.RoundedPrefix": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Prefix",
+  "NLAlib.Krylov.Lanczos.Reorth.RoundedRounds": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Rounds",
+  "NLAlib.Krylov.Lanczos.Reorth.RoundedRun": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Run",
+  "NLAlib.Krylov.Lanczos.Reorth.RoundedScalarTheorem": "NLAlib.Krylov.Lanczos.Reorth.Rounded.ScalarTheorem",
+  "NLAlib.Krylov.Lanczos.Reorth.RoundedSolve": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Solve",
+  "NLAlib.Krylov.Lanczos.Reorth.RoundedSpectral": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Spectral",
+  "NLAlib.Krylov.Lanczos.Reorth.RoundedStability": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Stability",
+  "NLAlib.Krylov.Lanczos.Reorth.RoundedState": "NLAlib.Krylov.Lanczos.Reorth.Rounded.State",
+  "NLAlib.Krylov.Lanczos.Reorth.RoundedStoredCertificate": "NLAlib.Krylov.Lanczos.Reorth.Rounded.StoredCertification",
+  "NLAlib.Krylov.Lanczos.Reorth.RoundedStoredSolve": "NLAlib.Krylov.Lanczos.Reorth.Rounded.StoredSolve",
+  "NLAlib.Krylov.Lanczos.Reorth.StoredCertificate": "NLAlib.Krylov.Lanczos.Reorth.StoredCertification",
+  "NLAlib.Krylov.Lanczos.RitzCertificate": "NLAlib.Krylov.Lanczos.RitzCertification",
+  "NLAlib.Krylov.Lanczos.Rounded": "NLAlib.Krylov.Lanczos.Rounded.Update",
+  "NLAlib.Krylov.Lanczos.RoundedAdvance": "NLAlib.Krylov.Lanczos.Rounded.Advance",
+  "NLAlib.Krylov.Lanczos.RoundedBounds": "NLAlib.Krylov.Lanczos.Rounded.Bounds",
+  "NLAlib.Krylov.Lanczos.RoundedInitialization": "NLAlib.Krylov.Lanczos.Rounded.Initialization",
+  "NLAlib.Krylov.Lanczos.RoundedLinked": "NLAlib.Krylov.Lanczos.Rounded.Linked",
+  "NLAlib.Krylov.Lanczos.RoundedModels": "NLAlib.Krylov.Lanczos.Rounded.Models",
+  "NLAlib.Krylov.Lanczos.RoundedNormalization": "NLAlib.Krylov.Lanczos.Rounded.Normalization",
+  "NLAlib.Krylov.Lanczos.RoundedOperationCount": "NLAlib.Krylov.Lanczos.Rounded.OperationCount",
+  "NLAlib.Krylov.Lanczos.RoundedOutput": "NLAlib.Krylov.Lanczos.Rounded.Output",
+  "NLAlib.Krylov.Lanczos.RoundedPrecision": "NLAlib.Krylov.Lanczos.Rounded.Precision",
+  "NLAlib.Krylov.Lanczos.RoundedRecurrence": "NLAlib.Krylov.Lanczos.Rounded.Recurrence",
+  "NLAlib.Krylov.Lanczos.RoundedRitz": "NLAlib.Krylov.Lanczos.Rounded.Ritz",
+  "NLAlib.Krylov.Lanczos.RoundedRounds": "NLAlib.Krylov.Lanczos.Rounded.Rounds",
+  "NLAlib.Krylov.Lanczos.RoundedRun": "NLAlib.Krylov.Lanczos.Rounded.Run",
+  "NLAlib.Krylov.Lanczos.RoundedScalarTheorem": "NLAlib.Krylov.Lanczos.Rounded.ScalarTheorem",
+  "NLAlib.Krylov.Lanczos.RoundedSolve": "NLAlib.Krylov.Lanczos.Rounded.Solve",
+  "NLAlib.Krylov.Lanczos.RoundedStability": "NLAlib.Krylov.Lanczos.Rounded.Stability",
+  "NLAlib.Krylov.Lanczos.RoundedState": "NLAlib.Krylov.Lanczos.Rounded.State",
+  "NLAlib.Krylov.Lanczos.RoundedStoredCertificate": "NLAlib.Krylov.Lanczos.Rounded.StoredCertification",
+  "NLAlib.Krylov.Lanczos.RoundedStoredSolve": "NLAlib.Krylov.Lanczos.Rounded.StoredSolve",
+  "NLAlib.Krylov.Lanczos.StoredCertificate": "NLAlib.Krylov.Lanczos.StoredCertification",
+  "NLAlib.Ops.Examples.RoutineCertificate": "NLAlib.Ops.Examples.RoutineCertification"
+ }
+}

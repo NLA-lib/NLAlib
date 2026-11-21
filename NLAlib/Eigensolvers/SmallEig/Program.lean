@@ -59,20 +59,20 @@ it to Hessenberg form, and run the core at the bottom width $1$ with the thresho
 $n_q$ words `Q` and the cap $T$, into `Ev` and a scratch failure word. The interface is
 `[d, nq, T] (Bk, Q) → (Ev)`.
 Algorithm: small-eig -/
-def smallEigProg (sG : ℕ) : Impl O Q := opsImpl% [d, nq, T] (Bk, Qw) → (Ev) {
+def smallEigProg (sG : ℕ) : Stmt O Q := ops% [d, nq, T] (Bk, Qw) → (Ev) {
   ifPos 2 - d {
-    run (copyLeaf (O := O) (Q := Q)).body [d, nq, T] (Bk, Qw, Ev)
+    run (copyLeaf (O := O) (Q := Q)) [d, nq, T] (Bk, Qw, Ev)
   };
   ifPos d - 1 {
     let W ← alloc (2 * (d * d));
     let Fl ← alloc 1;
     let Th ← alloc 1;
-    run (fillMap (Tst := Q) (Has.inj (ScalarOp.lit 0) : O)).body [2 * d] (Ev);
+    run (fillMap (Tst := Q) (Has.inj (ScalarOp.lit 0) : O)) [2 * d] (Ev);
     call (Has.inj ScalarOp.copy) [] (Qw[6]) → (Th);
-    run (unaryMap (Tst := Q) (Has.inj ScalarOp.copy)).body [2 * (d * d)] (Bk, W);
-    run (ginibrePerturb (O := O) (Q := Q) sG).body [d, nq] (W, Qw, W);
+    run (unaryMap (Tst := Q) (Has.inj ScalarOp.copy)) [2 * (d * d)] (Bk, W);
+    run (ginibrePerturb (O := O) (Q := Q) sG) [d, nq] (W, Qw, W);
     run (hessenbergReduceLast (O := O) (Q := Q)).body [d] (W, W);
-    run (smallEigCore (O := O) (Q := Q) sG).body [d, 1, nq, T, T] (W, Th, Qw, Ev, Fl)
+    run (smallEigCore (O := O) (Q := Q) sG) [d, 1, nq, T, T] (W, Th, Qw, Ev, Fl)
   }
 }
 
@@ -131,7 +131,8 @@ theorem smallEigCoreInput_of_scratch {n L : ℕ} {qs : List ℝ} {q o : ℕ × �
     omega
   · simp only [Mem.Room]
     exact ⟨by simp [hW], by simp [hT], hqr, hroom, by simp [hF], trivial⟩
-  · simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
+  · refine ShQRViewsApart.of_apart ?_
+    simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
       and_true]
     exact ⟨⟨hD (by omega), hD (by omega), hD (by omega), hD (by omega)⟩,
       ⟨hD (by omega), hD (by omega), hD (by omega)⟩, ⟨hqo, hD (by omega)⟩, hD (by omega)⟩
@@ -150,7 +151,7 @@ theorem smallEigProg_terminates_of_two_le {M : Machine ℝ} {I : Interp O Q ℝ}
     (hwo : Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 2) * (n + 2))))
       (Store.inBlock o.1 o.2 (2 * (n + 2))))
     (hqo : Fp.Disj (Store.inBlock q.1 q.2 qs.length) (Store.inBlock o.1 o.2 (2 * (n + 2)))) :
-    Writes .total I tape (smallEigProg (O := O) (Q := Q) sG).body
+    Writes .total I tape (smallEigProg (O := O) (Q := Q) sG)
       (Env.frame [n + 2, qs.length, T] [w, q, o]) (Store.inBlock o.1 o.2 (2 * (n + 2)))
       (fun μ' => ∃ ys, μ'.store.readBlock o.1 o.2 (2 * (n + 2)) = some ys) μ := by
   have hwl : w.1 < μ.store.length := hl w (by simp)
@@ -242,20 +243,41 @@ theorem smallEigProg_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsS
     (hqs : SmallEigCaps T qs) (hlen : 12 ≤ qs.length) {kmax : ℕ}
     (hNat : IsExactNatLit id M kmax) :
     TerminatingSmallEig kmax T qs (smallEigProg (O := O) (Q := Q) sG) I := by
-  intro d w q o tape μ B hd hB hq hl hroom hwo hqo
-  rcases Nat.lt_or_ge d 2 with hd2 | hd2
+  have hlen12 := hlen
+  unfold TerminatingSmallEig
+  routine_intro [k, nq, T'] (w, q, o) reads (ws, qs')
+  obtain ⟨hd, hnq, hT, B, hX⟩ := hpre
+  obtain rfl : nq = qs.length := hnq
+  obtain rfl : T = T' := hT.symm
+  obtain ⟨rfl, rfl⟩ : ws = matrixWords B ∧ qs = qs' := by simpa [eq_comm] using hX
+  have hB : HoldsMatrix w B m.store := hws
+  have hq := hqs'
+  have hl : m.Live [w, q, o] := hlive
+  have hdisj : Fp.Disj (Store.inBlock o.1 o.2 (2 * k))
+      (Store.inBlock w.1 w.2 (2 * (k * k)) ⊔ Store.inBlock q.1 q.2 qs.length) := by
+    simpa [Fp.blocks] using hblocks.2.1
+  obtain ⟨how, hoq⟩ := Fp.disj_sup_right.mp hdisj
+  have hwo := how.symm
+  have hqo := hoq.symm
+  suffices hW : Writes .total I τ (smallEigProg (O := O) (Q := Q) sG)
+      (Env.frame [k, qs.length, T] [w, q, o]) (Store.inBlock o.1 o.2 (2 * k))
+      (fun μ' => ∃ ys, μ'.store.readBlock o.1 o.2 (2 * k) = some ys) m by
+    refine hW.mono (by fp_sub) ?_
+    rintro μ' - ⟨ys, hys⟩
+    exact ⟨trivial, [ys], Mem.readBlocks_of_cons hys rfl, trivial⟩
+  rcases Nat.lt_or_ge k 2 with hd2 | hd2
   · unfold smallEigProg
-    refine (writes_ifPos (n := 2 - d)
-      (P := fun μ' => ∃ ys, μ'.store.readBlock o.1 o.2 (2 * d) = some ys) rfl ?_).seq_le le_rfl ?_
+    refine (writes_ifPos (n := 2 - k)
+      (P := fun μ' => ∃ ys, μ'.store.readBlock o.1 o.2 (2 * k) = some ys) rfl ?_).seq_le le_rfl ?_
     · rw [if_pos (by omega)]
-      exact ((copyLeaf_terminates hS d qs T B le_rfl hB hq hl hroom hwo hqo :
-        Writes .total I tape _ _ _ _ μ).in_frame rfl rfl hl)
+      exact ((copyLeaf_terminates hS k qs T B le_rfl hB hq hl hroom hwo hqo :
+        Writes .total I τ _ _ _ _ m).in_frame rfl rfl hl)
     · intro μ₁ _ h₁
-      refine writes_ifPos (n := d - 1) rfl ?_
+      refine writes_ifPos (n := k - 1) rfl ?_
       rw [if_neg (by omega)]
       exact h₁
-  · obtain ⟨n, rfl⟩ : ∃ n, d = n + 2 := ⟨d - 2, by omega⟩
-    exact smallEigProg_terminates_of_two_le hS hL hQ hC hSmp hDisk hqs hlen
+  · obtain ⟨n, rfl⟩ : ∃ n, k = n + 2 := ⟨k - 2, by omega⟩
+    exact smallEigProg_terminates_of_two_le hS hL hQ hC hSmp hDisk hqs hlen12
       (hNat.mono hd) hB hq hl hroom hwo hqo
 
 end Theorems

@@ -58,18 +58,20 @@ variable {Op Tst : Type} [Has ScalarOp Op]
 
 /-- The Frobenius norm of actual interleaved matrix words, using the existing fully scalar
 sequential Euclidean-norm lowering. Its square and summation scratch is scoped by that lowering. -/
-def matrixNorm : Impl Op Tst := opsImpl% [rows, cols] (H) → (Norm) {
+def matrixNorm : Stmt Op Tst := ops% [rows, cols] (H) → (Norm) {
   run RoundedScalarBlas.nrm2.body [2 * (cols * rows)] (H, Norm)
 }
 
 /-- Exact scalar arithmetic computes the matrix Frobenius norm directly from every supplied
-real and imaginary component word. No matrix norm operation remains a primitive. -/
+real and imaginary component word. No matrix norm operation remains a primitive.
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine` and
+`NLAlib.ShiftedQR.scalarDecouple`, on their scratch. -/
 theorem matrixNorm_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {rows cols : ℕ} {a z : ℕ × ℕ} {H : Matrix (Fin rows) (Fin cols) ℂ}
     (hl : m.Live [a, z]) (hH : HoldsMatrix a H m.store)
     (hz : z.2 < m.store.len z.1) (haz : a.1 ≠ z.1) :
-    Writes .total I τ matrixNorm.body (Env.frame [rows, cols] [a, z])
+    Writes .total I τ matrixNorm (Env.frame [rows, cols] [a, z])
       (Store.inBlock z.1 z.2 1)
       (fun μ => μ.pos = m.pos ∧ μ.store.get z.1 z.2 = some (frobNorm H)) m := by
   have hn := RoundedScalarBlas.writes_nrm2_exact (τ := τ) (xs := matrixWords H)

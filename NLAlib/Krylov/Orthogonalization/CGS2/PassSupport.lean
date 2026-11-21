@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Krylov.Lanczos.Reorth.RoundedOrthogonality
+public import NLAlib.Krylov.Lanczos.Reorth.Rounded.Orthogonality
 public import NLAlib.Matrix.Perturbation.BasisExtension
 
 /-!

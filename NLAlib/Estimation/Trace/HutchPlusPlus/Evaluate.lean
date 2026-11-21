@@ -46,7 +46,9 @@ variable [Has ScalarOp Op] [Has Blas1Op Op] [Has IndexOp Op] [Has StoredOperator
   {I : Interp Op Tst 𝕜} {τ : Tape 𝕜} {m : Mem 𝕜}
 
 /-- The actual operator batch and trace contractions return `hutchpp` on the supplied
-sketch and probes. All workspaces are explicit, with ordinary capacity and separation premises. -/
+sketch and probes. All workspaces are explicit, with ordinary capacity and separation premises.
+A fragment of `NLAlib.HutchPlusPlus.estimateRoutine`: run only inside its tree, on its
+operands and the buffers it allocates. -/
 theorem writes_evaluate (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hB : RCLikeBlas.IsExact I) (hLit : IsIndexLit (RCLikeBlas.machine : Machine 𝕜) I)
     {dataLength : ℕ → ℕ → ℕ}
@@ -63,7 +65,7 @@ theorem writes_evaluate (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
         (projectedBasis (gramSchmidtQ (matrix n n as * S)) G)))
     (ht : t.2 + 2 ≤ m.store.len t.1) (hc : c.2 + (k + ell) * n ≤ m.store.len c.1)
     (ho : out.2 + 1 ≤ m.store.len out.1) :
-    Writes .total I τ evaluate.body (Env.frame [n, k, ell] [data, b, t, c, out])
+    Writes .total I τ evaluate (Env.frame [n, k, ell] [data, b, t, c, out])
       (Store.inBlock c.1 c.2 ((k + ell) * n) ⊔
         (Store.inBlock t.1 t.2 2 ⊔ Store.inBlock out.1 out.2 1))
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 1 =
@@ -93,7 +95,6 @@ theorem writes_evaluate (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     simp only [Mem.live_cons, Mem.live_nil]
     exact ⟨hl data (by simp), hl b (by simp), hl c (by simp), trivial⟩
   unfold evaluate
-  dsimp only
   refine Writes.seq_le ((writes_applyColumns hI as W hl₃ hA hBInput hCB hCD hc).in_frame
     rfl rfl hl₃) le_sup_left ?_
   intro m₁ hfr ⟨hp, hC⟩

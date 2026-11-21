@@ -13,7 +13,7 @@ public import NLAlib.Ops.BlockRel
 A **functional** contract is a contract in operand form whose relation is the graph of a
 function. `NLAlib.Ops.BlockFn` is such a function (of the dimensions, the entries of the tape
 window and the input blocks, to the output blocks), `NLAlib.Ops.BlockFn.rel` the relation it
-defines, and `NLAlib.Ops.Interp.IsFn` says an operation meets its contract. Under `IsFn` a call
+defines, and `NLAlib.Ops.Interp.IsFn` says an operation satisfies its contract. Under `IsFn` a call
 is an equation: it is `NLAlib.Ops.BlockFn.apply`, the effect of the function on the memory
 (`NLAlib.Ops.Interp.IsFn.callS_eq`, `NLAlib.Ops.Interp.IsFn.apply_of_callS`).
 
@@ -28,7 +28,7 @@ The common shapes: scalar functions on cells (`NLAlib.Ops.BlockFn.const`, `un`, 
 
 * `NLAlib.Ops.BlockFn.apply_eq_some_iff`: the effect of a block function, unfolded.
 * `NLAlib.Ops.Interp.IsFn.callS_eq`: under a functional contract a call is an equation.
-* `NLAlib.Ops.Interp.ofFns_isFn`: an interpretation given by block functions meets their
+* `NLAlib.Ops.Interp.ofFns_isFn`: an interpretation given by block functions satisfies their
   functional contracts.
 * `NLAlib.Ops.BlockFn.apply_bin_eq_some_iff` and its analogues: calls of scalar block functions,
   on cells.
@@ -127,10 +127,10 @@ theorem apply_of_read {f : BlockFn K} {d : List ℕ} {ins outs : List (ℕ × �
 end BlockFn
 
 /-- **The operation `o` of `I` is the block function `f`** on the admitted operands, in the mode
-`md`: it meets the contract in operand form of `f`. -/
+`md`: it satisfies the contract in operand form of `f`. -/
 def Interp.IsFn (I : Interp Op Tst K) (md : Mode) (o : Op) (f : BlockFn K)
     (adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop) : Prop :=
-  I.Meets md o (f.rel.spec adm)
+  I.Satisfies md o (f.rel.spec adm)
 
 /-- **A call of a functional operation is an equation.** -/
 theorem Interp.IsFn.callS_eq {I : Interp Op Tst K} {o : Op} {f : BlockFn K}
@@ -173,7 +173,7 @@ theorem Interp.ofFns_callS (F : Op → BlockFn K) (o : Op) (d : List ℕ) (ins o
     | some m' => simp [BlockFn.shape_of_apply h]
   · simp [Interp.callS, BlockFn.apply, hl]
 
-/-- An interpretation given by block functions meets their functional contracts, in both modes
+/-- An interpretation given by block functions satisfies their functional contracts, in both modes
 and on all operands. -/
 theorem Interp.ofFns_isFn (F : Op → BlockFn K) (md : Mode) (o : Op)
     (adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop) :

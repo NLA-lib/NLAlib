@@ -39,7 +39,8 @@ local notation "F" => tapeMachine M dec mm qr n base τ
 local notation "nodes" => (fun lo => nodeAtSlot F n fuel R0 beta (EighNode.mk n A R0 eps L) D lo)
 local notation "KS" => (fun lo => EighNode.k (nodes lo))
 
-/-- Arena capacities and mathematical slot disjointness give total bottom initialization. -/
+/-- Arena capacities and mathematical slot disjointness give total bottom initialization.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_bottomLevel_stored {I : Interp Op Tst K}
     (hS : IsScalar M I) (hQ : IsToNat dec I) (hexact : IsExactNatLit dec M (max n 4))
     (hD : D ≤ L + 1) (hl : μ.Live [sz, ua, ea])

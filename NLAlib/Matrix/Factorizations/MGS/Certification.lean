@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Matrix.Factorizations.MGS.Factor
+public import NLAlib.Matrix.Factorizations.MGS.Routine
 public import NLAlib.Matrix.Factorizations.MGS.Resources
 public import NLAlib.Ops.Certification
 public import NLAlib.Ops.Profiles.Standard
@@ -109,7 +109,7 @@ theorem staticPeak_program (cost : Standard.Costing) (d : Fin 2 → ℕ) :
     staticPeak (resources cost) MGS.program d = 2 := by
   rw [staticPeak_eq, (resources cost).queryReserve_of_zero (fun _ _ => rfl), Nat.add_zero]
   change stmtPeak (fun (_ : RCLikeBlas.Operation) _ => 0)
-    (.frame [.var 0, .var 1] [⟨0, .const 0⟩] factor.body)
+    (.frame [.var 0, .var 1] [⟨0, .var 2⟩, ⟨0, .var 2⟩] factor)
     (Program.environment (b := 1) d).idx = 2
   simp only [stmtPeak, Program.environment, List.ofFn_succ, List.ofFn_zero,
     List.cons_append, List.nil_append, IExp.evalList, IExp.eval,
@@ -131,10 +131,12 @@ noncomputable def specification (cost : Standard.Costing) :
 The actual program performs all sweeps, comparisons, normalizations and scoped cleanup. -/
 noncomputable def algorithm (cost : Standard.Costing) :
     Algorithm (model (𝕜 := 𝕜) cost) (specification cost) := by
-  refine Algorithm.ofWp MGS.program (by rfl) ?_
-    (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) ?_
-  · intro d _ x I hI τ
+  refine Routine.algorithm (r := 2) (b := 1) factorRoutine (fun _ _ => factorSpec 𝕜)
+    (fun _ x => [(EntryCodec.scalar 𝕜).packFinMatrix x.val.1]) ?_ ?_ ?_ (hmemory := ?_)
+  · intro d _ x I hI
     obtain ⟨hS, hB, hC⟩ := laws hI
+    exact factorRoutine_meets hS hB hC
+  · intro d _ x
     let μ := (problem (𝕜 := 𝕜)).initial d x
     have hRead := Problem.initial_readBlock d x (0 : Fin 1) x.property
     have hLen := Problem.initial_len (P := problem (𝕜 := 𝕜)) d x (0 : Fin 1)
@@ -146,12 +148,19 @@ noncomputable def algorithm (cost : Standard.Costing) :
       change _ = _ at hLen
       rw [x.property, List.length_map, hLength] at hLen
       exact hLen
-    have hRun := writes_factor (m := μ) (τ := τ) hS hB hC x.val.1
-      (y := (0, 0)) (by simp [μ, Mem.Live, Problem.initial]) hRead
-      (by simpa only [Nat.zero_add] using hCap.ge)
-    change Wp .total I τ (.frame _ _ _) _ _ μ
-    apply wp_frame rfl rfl (by simp [μ, Mem.Live, Problem.initial])
-    exact hRun.wp fun m _ h c _ => h
+    refine ⟨Mem.readBlocks_of_cons hRead rfl, fun _ => trivial, ?_⟩
+    change μ.Room [(0, 0)] [d 1 * d 0]
+    simp only [Mem.room_cons, Mem.room_nil, and_true, Nat.zero_add]
+    exact hCap.ge
+  · intro d _ x τ m' _ hpos ys hys hrel c _
+    read_outputs hys as (qs)
+    have hqs' : qs = (EntryCodec.scalar 𝕜).packFinMatrix (gramSchmidtQ x.val.1) := by
+      have h : qs = (EntryCodec.scalar 𝕜).packFinMatrix (gramSchmidtQ
+          ((EntryCodec.scalar 𝕜).matrix (d 0) (d 1)
+            ((EntryCodec.scalar 𝕜).packFinMatrix x.val.1))) := hrel
+      exact h.trans (congrArg (fun A => (EntryCodec.scalar 𝕜).packFinMatrix (gramSchmidtQ A))
+        (EntryCodec.matrix_packFinMatrix (EntryCodec.scalar 𝕜) x.val.1))
+    exact ⟨hpos, hqs.trans (congrArg some hqs')⟩
   · intro d _ x
     rw [initialBytes_problem]
     exact le_rfl

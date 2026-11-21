@@ -33,9 +33,9 @@ theorem eval_upNode_shift {K Op Tst : Type} [Has ScalarOp Op] [Has MatrixOp Op]
     {τ : Tape K} {m : Mem K} {n d lo k : ℕ} {ua qa ea kd kp t : ℕ × ℕ} (side : Bool)
     {w : K} (hkind : m.store.get kd.1 (kd.2 + n * d + lo) = some w)
     (hdec : dec w = if side then (2 : ℕ) else 3) (hl : m.Live [ua, qa, ea, kd, kp, t]) :
-    eval I τ (upNodeImpl (Op := Op) (Tst := Tst)).body
+    eval I τ (upNode (Op := Op) (Tst := Tst))
       (Env.frame [n, d, lo, k] [ua, qa, ea, kd, kp, t]) m =
-    eval I τ (upShiftResultImpl (Op := Op) (Tst := Tst)).body
+    eval I τ (upShiftResult (Op := Op) (Tst := Tst))
       (Env.frame [k] [(ua.1, ua.2 + 2 * (n * n) * (d + 1) + 2 * n * lo),
         (ea.1, ea.2 + n * (d + 1) + lo), (t.1, t.2 + if side then 0 else 1),
         (ua.1, ua.2 + 2 * (n * n) * d + 2 * n * lo), (ea.1, ea.2 + n * d + lo)]) m := by
@@ -43,7 +43,7 @@ theorem eval_upNode_shift {K Op Tst : Type} [Has ScalarOp Op] [Has MatrixOp Op]
     (m := m) (n := if side then 2 else 3) hkind (by cases side <;> simpa using hdec)
   simp only [Mem.live_cons, Mem.live_nil, and_true] at hl
   cases side <;>
-    simp [upNodeImpl, eval, iter, Stmt.ifZero, IExp.eval, IExp.evalList,
+    simp [upNode, eval, iter, Stmt.ifZero, IExp.eval, IExp.evalList,
       Operand.evalList, Operand.eval, Env.frame, Env.pushIdx, Mem.Live, hquery, hl]
 
 /-- A stored leaf kind performs no reconstruction calls and keeps the complete memory. -/
@@ -51,11 +51,11 @@ theorem eval_upNode_leaf {K Op Tst : Type} [Has ScalarOp Op] [Has MatrixOp Op]
     [Has IdxTst Tst] {dec : K → ℝ} {I : Interp Op Tst K} (hQ : IsToNat dec I)
     {τ : Tape K} {m : Mem K} {n d lo k : ℕ} {ua qa ea kd kp t : ℕ × ℕ}
     {w : K} (hkind : m.store.get kd.1 (kd.2 + n * d + lo) = some w) (hdec : dec w = 1) :
-    eval I τ (upNodeImpl (Op := Op) (Tst := Tst)).body
+    eval I τ (upNode (Op := Op) (Tst := Tst))
       (Env.frame [n, d, lo, k] [ua, qa, ea, kd, kp, t]) m = some m := by
   have hquery := hQ.index_eq_of_decode_nat (x := (kd.1, kd.2 + n * d + lo))
     (m := m) (n := 1) hkind (by simpa using hdec)
-  simp [upNodeImpl, eval, iter, Stmt.ifZero, IExp.eval, IExp.evalList, Operand.evalList,
+  simp [upNode, eval, iter, Stmt.ifZero, IExp.eval, IExp.evalList, Operand.evalList,
     Operand.eval, Env.frame, Env.pushIdx, hquery]
 
 /-- Kind four reads the actual bounded split size and selects exactly the checked two-child
@@ -66,9 +66,9 @@ theorem eval_upNode_split {K Op Tst : Type} [Has ScalarOp Op] [Has MatrixOp Op]
     {kind split : K} (hkind : m.store.get kd.1 (kd.2 + n * d + lo) = some kind)
     (hdec : dec kind = 4) (hr : m.store.get kp.1 (kp.2 + n * d + lo) = some split)
     (hrdec : dec split = r) (hrbound : r ≤ k) (hl : m.Live [ua, qa, ea, kd, kp, t]) :
-    eval I τ (upNodeImpl (Op := Op) (Tst := Tst)).body
+    eval I τ (upNode (Op := Op) (Tst := Tst))
       (Env.frame [n, d, lo, k] [ua, qa, ea, kd, kp, t]) m =
-    eval I τ (upSplitResultImpl (Op := Op) (Tst := Tst)).body
+    eval I τ (upSplitResult (Op := Op) (Tst := Tst))
       (Env.frame [k, r]
         [(qa.1, qa.2 + 2 * (n * n) * d + 2 * n * lo),
           (qa.1, qa.2 + 2 * (n * n) * d + 2 * n * lo + 2 * (k * r)),
@@ -81,12 +81,13 @@ theorem eval_upNode_split {K Op Tst : Type} [Has ScalarOp Op] [Has MatrixOp Op]
   have hrquery := hQ.index_eq_of_decode_nat (x := (kp.1, kp.2 + n * d + lo))
     (m := m) (n := r) hr hrdec
   simp only [Mem.live_cons, Mem.live_nil, and_true] at hl
-  simp [upNodeImpl, eval, iter, Stmt.ifZero, IExp.eval, IExp.evalList, Operand.evalList,
+  simp [upNode, eval, iter, Stmt.ifZero, IExp.eval, IExp.evalList, Operand.evalList,
     Operand.eval, Env.frame, Env.pushIdx, Mem.Live, hquery, hrquery, hrbound, hl]
 
 /-- A one-child node returns its child basis and the actual scalar-shifted eigenvalues after
 reading the declared stored kind. All source reads, capacities and spatial assumptions are
-explicit; the selected implementation's correctness is discharged by its checked theorem. -/
+explicit; the selected implementation's correctness is discharged by its checked theorem.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_upNode_shift {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     [Has MatrixOp Op] [Has IdxTst Tst] {M : Machine K} {dec : K → ℝ}
     {I : Interp Op Tst K} (hS : IsScalar M I) (hQ : IsToNat dec I)
@@ -106,7 +107,7 @@ theorem writes_upNode_shift {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
       (ua.1, ua.2 + 2 * (n * n) * (d + 1) + 2 * n * lo),
       (ea.1, ea.2 + n * (d + 1) + lo), (t.1, t.2 + if side then 0 else 1)]
       [2 * (k * k), k, 2 * (k * k), k, 1]) :
-    Writes .total I τ (upNodeImpl (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (upNode (Op := Op) (Tst := Tst))
       (Env.frame [n, d, lo, k] [ua, qa, ea, kd, kp, t])
       (Fp.blocks [(ua.1, ua.2 + 2 * (n * n) * d + 2 * n * lo),
         (ea.1, ea.2 + n * d + lo)] [2 * (k * k), k])

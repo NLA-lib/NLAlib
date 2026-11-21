@@ -111,6 +111,18 @@ theorem original_stmtCost_tally (ks : List Bookkeeping) (idx : List ℕ) :
   | nil => simp [tally, stmtCost]
   | cons k ks ih => simp [tally, stmtCost, original_useCost_inr, ih]
 
+/-- Structural instructions weigh one each, so the bookkeeping list of a tree weighs its
+length. -/
+theorem lift_stmtCost_tally (f : Op → List ℕ → ℕ) (g : Tst → List ℕ → ℕ)
+    (ks : List Bookkeeping) (idx : List ℕ) :
+    Count.lift (Sum.elim (Sum.elim f fun _ _ => 1) g)
+      (stmtCost (tally (Op := Op) (Tst := Tst) ks) idx) = ks.length := by
+  induction ks with
+  | nil => simp [tally, stmtCost]
+  | cons k ks ih =>
+    simp [tally, stmtCost, useCost, ih, IExp.evalList]
+    omega
+
 /-- Structural instrumentation preserves the original operation/query static count exactly.
 The unprojected static count still contains all structural and address-evaluation work. -/
 theorem original_stmtCost_instrument (s : Stmt Op Tst) (idx : List ℕ) :

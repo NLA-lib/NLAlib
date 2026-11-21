@@ -28,7 +28,9 @@ variable {𝕜 Op Tst : Type} [RCLike 𝕜] [Has ScalarOp Op] [Has Blas1Op Op] [
   {I : Interp Op Tst 𝕜} {τ : Tape 𝕜} {m : Mem 𝕜}
 
 /-- The explicit accumulation returns the low-rank sum plus the mean residual sum.
-Input blocks are read from actual columns and retained through disjoint scalar writes. -/
+Input blocks are read from actual columns and retained through disjoint scalar writes.
+A fragment of `NLAlib.HutchPlusPlus.estimateRoutine`: run only inside its tree, on its
+operands and the buffers it allocates. -/
 theorem writes_accumulate (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hB : RCLikeBlas.IsExact I) (hLit : IsIndexLit (RCLikeBlas.machine : Machine 𝕜) I)
     {n k ell : ℕ} {b c t out : ℕ × ℕ} (xs ys : ℕ → List 𝕜)
@@ -41,7 +43,7 @@ theorem writes_accumulate (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
       (Store.inBlock c.1 (c.2 + n * j) n))
     (hTO : Fp.Disj (Store.inBlock t.1 t.2 2) (Store.inBlock out.1 out.2 1))
     (ht : t.2 + 2 ≤ m.store.len t.1) (ho : out.2 + 1 ≤ m.store.len out.1) :
-    Writes .total I τ accumulate.body (Env.frame [n, k, ell] [b, c, t, out])
+    Writes .total I τ accumulate (Env.frame [n, k, ell] [b, c, t, out])
       (Store.inBlock t.1 t.2 2 ⊔ Store.inBlock out.1 out.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 1 = some
         [(∑ j ∈ Finset.range k, RCLikeBlas.dot n (xs j) (ys j)) +
@@ -56,7 +58,6 @@ theorem writes_accumulate (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
   have hF₁ : Store.inBlock t.1 t.2 1 ⊔ Store.inBlock t.1 (t.2 + 1) 1 ≤
       Store.inBlock t.1 t.2 2 := sup_le ht₀ ht₁
   unfold accumulate
-  dsimp only
   refine Writes.seq_le ((ColumnProducts.writes_sum hS hB xs ys hl
     (fun j hj => hX j (by omega)) (fun j hj => hY j (by omega))
     (fun j hj => (hDX j (by omega)).mono hF₀ le_rfl)

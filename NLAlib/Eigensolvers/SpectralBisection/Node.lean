@@ -42,10 +42,10 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op] [Has MatrixOp Op]
 
 /-- Scale the two stored component words of every selected Gaussian entry. The source
 indexing selects a size-k submatrix from one side of a level's fixed Gaussian batch. -/
-def deflateSamples : Impl Op Tst := opsImpl% [n, k, lo, side] (Sg, sq) → (G) {
+def deflateSamples : Stmt Op Tst := ops% [n, k, lo, side] (Sg, sq) → (G) {
   for j < k {
     for i < k {
-      run Pair.multiply.body []
+      run Pair.multiply []
         (Sg[2 * (n * (2 * (lo + j) + side) + i)], sq, G[2 * (j * k + i)])
     }
   }
@@ -54,43 +54,43 @@ def deflateSamples : Impl Op Tst := opsImpl% [n, k, lo, side] (Sg, sq) → (G) {
 /-- Construct the sampled range of one projector and store its first `r` QR columns.
 The side selects one of the two Gaussian submatrices in the level's stored sample block.
 Every sample scaling, product, QR and copy is executed explicitly. -/
-def deflate : Impl Op Tst := opsImpl% [n, k, r, lo, side] (Sg, sq, P) → (Qout) {
+def deflate : Stmt Op Tst := ops% [n, k, r, lo, side] (Sg, sq, P) → (Qout) {
   let G ← alloc (2 * (k * k));
   let Y ← alloc (2 * (k * k));
   let Q ← alloc (2 * (k * k));
   let R ← alloc (2 * (k * k));
-  run deflateSamples.body [n, k, lo, side] (Sg, sq, G);
+  run deflateSamples [n, k, lo, side] (Sg, sq, G);
   call (Has.inj MatrixOp.mul) [k, k, k] (P, G) → (Y);
   call (Has.inj MatrixOp.qr) [k, k] (Y) → (Q, R);
-  run PairMatrix.copy.body [k, r] (Q, Qout)
+  run PairMatrix.copy [k, r] (Q, Qout)
 }
 
 /-- Compress the stored matrix by a rectangular basis, Hermitianize the computed product,
 and subtract a stored real shift. Only matrix multiplication is a matrix-level primitive. -/
-def compress : Impl Op Tst := opsImpl% [k, r] (Q, A, two, sigma) → (C) {
+def compress : Stmt Op Tst := ops% [k, r] (Q, A, two, sigma) → (C) {
   let Qh ← alloc (2 * (k * r));
   let C1 ← alloc (2 * (r * k));
   let C2 ← alloc (2 * (r * r));
   let C3 ← alloc (2 * (r * r));
-  run PairMatrix.conjTranspose.body [k, r] (Q, Qh);
+  run PairMatrix.conjTranspose [k, r] (Q, Qh);
   call (Has.inj MatrixOp.mul) [r, k, k] (Qh, A) → (C1);
   call (Has.inj MatrixOp.mul) [r, k, r] (C1, Q) → (C2);
-  run Hermitian.average.body [r] (C2, two, C3);
-  run Hermitian.shift.body [r] (C3, sigma, C)
+  run Hermitian.average [r] (C2, two, C3);
+  run Hermitian.shift [r] (C3, sigma, C)
 }
 
 /-- Store the two child bases, shifted compressions, sizes and parent split metadata.
 The mathematical split is represented by the dimension `kp`; the caller obtains it from an
 actual bounded query on a clamped computed trace. -/
 def split : Stmt Op Tst := ops% [n, d, lo, k, kp] (Sg, Pp, Pm, Ma, Qa, Sz, Kd, Kp, c, t) → () {
-  run deflate.body [n, k, kp, lo, 0]
+  run deflate [n, k, kp, lo, 0]
     (Sg, c[4], Pp, Qa[2 * (n * n) * d + 2 * n * lo]);
-  run deflate.body [n, k, k - kp, lo, 1]
+  run deflate [n, k, k - kp, lo, 1]
     (Sg, c[4], Pm, Qa[2 * (n * n) * d + 2 * n * lo + 2 * (k * kp)]);
-  run compress.body [k, kp]
+  run compress [k, kp]
     (Qa[2 * (n * n) * d + 2 * n * lo], Ma[2 * (n * n) * d + 2 * n * lo], c[1], t,
       Ma[2 * (n * n) * (d + 1) + 2 * n * lo]);
-  run compress.body [k, k - kp]
+  run compress [k, k - kp]
     (Qa[2 * (n * n) * d + 2 * n * lo + 2 * (k * kp)],
       Ma[2 * (n * n) * d + 2 * n * lo], c[1], t[1],
       Ma[2 * (n * n) * (d + 1) + 2 * n * (lo + kp)]);
@@ -103,7 +103,7 @@ def split : Stmt Op Tst := ops% [n, d, lo, k, kp] (Sg, Pp, Pm, Ma, Qa, Sz, Kd, K
 /-- A single child occupies its parent's slot at the next level, with the selected shift
 and a recorded parent kind. The program computes the shifted matrix before writing metadata. -/
 def child : Stmt Op Tst := ops% [n, d, lo, k, kind] (Ma, Sz, Kd, sigma) → () {
-  run Hermitian.shift.body [k]
+  run Hermitian.shift [k]
     (Ma[2 * (n * n) * d + 2 * n * lo], sigma,
       Ma[2 * (n * n) * (d + 1) + 2 * n * lo]);
   call (Has.inj IndexOp.lit) [k] () → (Sz[n * (d + 1) + lo]);
@@ -113,7 +113,7 @@ def child : Stmt Op Tst := ops% [n, d, lo, k, kind] (Ma, Sz, Kd, sigma) → () {
 /-- Compute the two signed half-radii, the stored level parameter and the sampled shift.
 The literal level parameter is an index operation; all divisions and multiplications keep
 exactly the node's machine-word evaluation order. -/
-def nodeScalars : Impl Op Tst := opsImpl% [L, d, lo] (Lv, c, Su) → (t) {
+def nodeScalars : Stmt Op Tst := ops% [L, d, lo] (Lv, c, Su) → (t) {
   call (Has.inj ScalarOp.div) [] (Lv[2 * d], c[1]) → (t);
   call (Has.inj ScalarOp.neg) [] (t) → (t[1]);
   call (Has.inj IndexOp.lit) [L + d] () → (t[2]);
@@ -122,19 +122,19 @@ def nodeScalars : Impl Op Tst := opsImpl% [L, d, lo] (Lv, c, Su) → (t) {
 }
 
 /-- Store the supplied sign tolerance and the rounded doubled radius. -/
-def signParameters : Impl Op Tst := opsImpl% [d] (Lv, par, two) → (sp) {
+def signParameters : Stmt Op Tst := ops% [d] (Lv, par, two) → (sp) {
   call (Has.inj ScalarOp.copy) [] (par[2]) → (sp);
   call (Has.inj ScalarOp.mul) [] (two, Lv[2 * d]) → (sp[1])
 }
 
 /-- Construct both rounded spectral projectors from the actual capped sign iteration.
 The supplied B and T scratch buffers retain the same ownership and operation order as the node. -/
-def nodeProjectors : Impl Op Tst := opsImpl% [k, F] (W, sp, c) → (B, T, Pp, Pm) {
-  run (Sign.program (Has.inj MatrixOp.mul)).body [k, F] (W, sp, B);
-  run Hermitian.shift.body [k] (B, c[3], T);
-  run Hermitian.scale.body [k] (T, c[1], Pp);
-  run Hermitian.shiftNegate.body [k] (B, c, T);
-  run Hermitian.scale.body [k] (T, c[1], Pm)
+def nodeProjectors : Stmt Op Tst := ops% [k, F] (W, sp, c) → (B, T, Pp, Pm) {
+  run (Sign.signRoutine (Has.inj MatrixOp.mul)) [k, F] (W, sp, B);
+  run Hermitian.shift [k] (B, c[3], T);
+  run Hermitian.scale [k] (T, c[1], Pp);
+  run Hermitian.shiftNegate [k] (B, c, T);
+  run Hermitian.scale [k] (T, c[1], Pm)
 }
 
 /-- Dispatch the bounded split size through the three explicit zero-or-one trip loops.
@@ -154,21 +154,21 @@ def nodeBranch : Stmt Op Tst := ops% [n, d, lo, k, kp]
 
 /-- Compute and clamp the rounded projector trace before its bounded natural query.
 Only cells two, three, five and six of the supplied temporary block are written. -/
-def nodeSplitIndex : Impl Op Tst := opsImpl% [k] (Pp, c) → (t) {
-  run PairMatrix.traceRe.body [k] (Pp, t[5]);
+def nodeSplitIndex : Stmt Op Tst := ops% [k] (Pp, c) → (t) {
+  run PairMatrix.traceRe [k] (Pp, t[5]);
   call (Has.inj ScalarOp.add) [] (t[5], c[2]) → (t[6]);
   call (Has.inj IndexOp.lit) [0] () → (t[2]);
   call (Has.inj IndexOp.lit) [k] () → (t[3]);
-  run clamp.body [] (t[2], t[3], t[6], t[6])
+  run clamp [] (t[2], t[3], t[6], t[6])
 }
 
 /-- Prepare both projectors and the retained signed shifts in caller-owned workspace. -/
 def nodePrepare : Stmt Op Tst := ops% [n, L, F, d, lo, k]
     (par, Lv, Su, Sg, Ma, Qa, Sz, Kd, Kp, c, t, sp, W, B, T, Pp, Pm) → () {
-  run nodeScalars.body [L, d, lo] (Lv, c, Su, t);
-  run Hermitian.shift.body [k] (Ma[2 * (n * n) * d + 2 * n * lo], t[4], W);
-  run signParameters.body [d] (Lv, par, c[1], sp);
-  run nodeProjectors.body [k, F] (W, sp, c, B, T, Pp, Pm)
+  run nodeScalars [L, d, lo] (Lv, c, Su, t);
+  run Hermitian.shift [k] (Ma[2 * (n * n) * d + 2 * n * lo], t[4], W);
+  run signParameters [d] (Lv, par, c[1], sp);
+  run nodeProjectors [k, F] (W, sp, c, B, T, Pp, Pm)
 }
 
 /-- The mathematical stages of a nonleaf node with caller-owned workspace. -/
@@ -176,7 +176,7 @@ def nodeBody : Stmt Op Tst := ops% [n, L, F, d, lo, k]
     (par, Lv, Su, Sg, Ma, Qa, Sz, Kd, Kp, c, t, sp, W, B, T, Pp, Pm) → () {
   run nodePrepare [n, L, F, d, lo, k]
     (par, Lv, Su, Sg, Ma, Qa, Sz, Kd, Kp, c, t, sp, W, B, T, Pp, Pm);
-  run nodeSplitIndex.body [k] (Pp, c, t);
+  run nodeSplitIndex [k] (Pp, c, t);
   let kp ← index (Has.inj IdxTst.toNat) (t[6]) ≤ k;
   run nodeBranch [n, d, lo, k, kp] (Sg, Pp, Pm, Ma, Qa, Sz, Kd, Kp, c, t)
 }

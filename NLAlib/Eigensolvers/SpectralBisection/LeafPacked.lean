@@ -29,7 +29,8 @@ namespace NLAlib.SpectralBisection
 
 open Ops
 
-/-- Actual leaf outputs as the finite mathematical identity and diagonal or zero vector. -/
+/-- Actual leaf outputs as the finite mathematical identity and diagonal or zero vector.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_leaf_packed {K Op Tst Su Sg : Type} [Inhabited K] [Has ScalarOp Op]
     [Has IndexOp Op] {M : Machine K} {dec : K → ℝ} {mm : MatMulMap (K × K)}
     {qr : QRMap (K × K)} {unif : K → Su → K} {normal : Sg → K × K}

@@ -197,10 +197,10 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTs
 /-- The potential test of a trial: the rounded potential of the step `T` (`k = 2^q`) into `P2`;
 if it is below the threshold word `Pt`, accept the step (`NLAlib.ShiftedQR.trialAccept`). The
 interface is `[N, k, q] (Pt, T, P2) → (A, G, Fl)`. -/
-def shPotentialAccept : Impl O Q := opsImpl% [N, k, q] (Pt, T, P2) → (A, G, Fl) {
-  run roundedPotential.body [N, k, q] (T, P2);
+def shPotentialAccept : Stmt O Q := ops% [N, k, q] (Pt, T, P2) → (A, G, Fl) {
+  run roundedPotential [N, k, q] (T, P2);
   if (Has.inj CmpTst.lt) [] (P2, Pt) {
-    run trialAccept.body [N] (T, A, G, Fl)
+    run trialAccept [N] (T, A, G, Fl)
   } else {
     skip
   }
@@ -210,14 +210,14 @@ def shPotentialAccept : Impl O Q := opsImpl% [N, k, q] (Pt, T, P2) → (A, G, Fl
 with the shift `S`; accept the step if its scan found a small entry (`Rg[3]` positive), else
 run the potential test `NLAlib.ShiftedQR.shPotentialAccept` against `Pt`. The interface is
 `[N, k, q] (A, S, Thr, Pt, T, SR, Ds, Rg, P2) → (A, G, Fl)`. -/
-def shTrial : Impl O Q :=
-  opsImpl% [N, k, q] (A, S, Thr, Pt, T, SR, Ds, Rg, P2) → (A, G, Fl) {
+def shTrial : Stmt O Q :=
+  ops% [N, k, q] (A, S, Thr, Pt, T, SR, Ds, Rg, P2) → (A, G, Fl) {
     if (Has.inj CmpTst.isPos) [] (G) {
-      run trialStep.body [N, k] (A, S, Thr, T, SR, Ds, Rg);
+      run trialStep [N, k] (A, S, Thr, T, SR, Ds, Rg);
       if (Has.inj CmpTst.isPos) [] (Rg[3]) {
-        run trialAccept.body [N] (T, A, G, Fl)
+        run trialAccept [N] (T, A, G, Fl)
       } else {
-        run shPotentialAccept.body [N, k, q] (Pt, T, P2, A, G, Fl)
+        run shPotentialAccept [N, k, q] (Pt, T, P2, A, G, Fl)
       }
     } else {
       skip
@@ -226,10 +226,10 @@ def shTrial : Impl O Q :=
 
 /-- The $n_0$ trials of `Sh`, with the shifts `S[2j]` in turn. The interface is
 `[N, k, q, n0] (A, S, Thr, Pt, T, SR, Ds, Rg, P2) → (A, G, Fl)`. -/
-def shTrials : Impl O Q :=
-  opsImpl% [N, k, q, n0] (A, S, Thr, Pt, T, SR, Ds, Rg, P2) → (A, G, Fl) {
+def shTrials : Stmt O Q :=
+  ops% [N, k, q, n0] (A, S, Thr, Pt, T, SR, Ds, Rg, P2) → (A, G, Fl) {
     for j < n0 {
-      run shTrial.body [N, k, q] (A, S[2 * j], Thr, Pt, T, SR, Ds, Rg, P2, A, G, Fl)
+      run shTrial [N, k, q] (A, S[2 * j], Thr, Pt, T, SR, Ds, Rg, P2, A, G, Fl)
     }
   }
 
@@ -253,7 +253,9 @@ $\mathbf{H}$ at `A` and the words $g$, $f$ at `G`, `Fl`,
 `NLAlib.ShiftedQR.shPotentialAccept` computes a $p$ within $20\boldsymbol{u}$, relatively, of
 $\psi_k(\widehat{\mathbf{H}})$, and either $p < p_t$ and the step is accepted (`A` holds
 $\widehat{\mathbf{H}}$, `G` is $0$, `Fl` is $1$), or $p_t \le p$ and `A`, `G`, `Fl` are
-unchanged. It writes only `A`, `G`, `Fl` and `P2`. -/
+unchanged. It writes only `A`, `G`, `Fl` and `P2`.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem shPotentialAccept_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hNat : IsExactNatLit id M 1) (hC : IsCmp id I) {τ : Tape ℝ}
     {m : Mem ℝ} {n k q : ℕ} (hkq : k = 2 ^ q) (hkn : k ≤ n) (hu : 20000 * k * u ≤ 1)
@@ -270,7 +272,7 @@ theorem shPotentialAccept_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
       (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock pt.1 pt.2 1 ⊔
         Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
         Store.inBlock f.1 f.2 1)) :
-    Writes .total I τ (shPotentialAccept (O := O) (Q := Q)).body
+    Writes .total I τ (shPotentialAccept (O := O) (Q := Q))
       (Env.frame [n + 1, k, q] [pt, t, p2, a, g, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
         Store.inBlock f.1 f.2 1 ⊔ Store.inBlock p2.1 p2.2 1)
@@ -343,7 +345,9 @@ omit [Has IdxTst Q] in
 $(n + 1)\boldsymbol{u} \le 1/2500$ and $20000k\boldsymbol{u} \le 1$, exact comparisons, index
 literals and exact natural literals up to $n + 1$, for $k = 2^q \le n$:
 `NLAlib.ShiftedQR.shTrial` writes only the matrix `A`, the words `G`, `Fl` and its scratch, and
-ends in `NLAlib.ShiftedQR.ShTrialPost`. -/
+ends in `NLAlib.ShiftedQR.ShTrialPost`.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem shTrial_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I) {n : ℕ}
     (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {k q : ℕ}
@@ -380,7 +384,7 @@ theorem shTrial_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : Is
       (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock pt.1 pt.2 1 ⊔
         Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
         Store.inBlock f.1 f.2 1)) :
-    Writes .total I τ (shTrial (O := O) (Q := Q)).body
+    Writes .total I τ (shTrial (O := O) (Q := Q))
       (Env.frame [n + 1, k, q] [a, sp, thr, pt, t, sr, ds, rg, p2, a, g, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
         Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
@@ -447,7 +451,9 @@ $k$ step of which has a bottom subdiagonal entry of modulus below $\omega$,
 $(1 + \boldsymbol{u})^2\omega^2 \le t$, or passes the potential test against $p_t$,
 `NLAlib.ShiftedQR.shTrials` sets the flag to $1$ and stores at `A` an accepted
 (`NLAlib.ShiftedQR.ShAccepted`) backward-stable degree $k$ step with some shift $z_j$
-repeated, upper Hessenberg. -/
+repeated, upper Hessenberg.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem shTrials_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I) {n : ℕ}
     (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {k q n0 : ℕ}
@@ -494,7 +500,7 @@ theorem shTrials_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : I
         (∃ i : Fin n, n ≤ (i : ℕ) + k ∧ ‖H' i.succ i.castSucc‖ < ω) ∨
           ∀ p : ℝ, |p - hessenbergPotential k H'| ≤ 20 * u * hessenbergPotential k H' → p < pv)
     (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) :
-    Writes .total I τ (shTrials (O := O) (Q := Q)).body
+    Writes .total I τ (shTrials (O := O) (Q := Q))
       (Env.frame [n + 1, k, q, n0] [a, s, thr, pt, t, sr, ds, rg, p2, a, g, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
         Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔

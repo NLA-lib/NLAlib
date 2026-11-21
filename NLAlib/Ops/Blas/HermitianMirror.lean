@@ -41,7 +41,7 @@ theorem writes_mirror_lower {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar
     (hz : y.2 + 2 * (n * n) ≤ m.store.len y.1)
     (hu : m.store.HoldsRowEntries (EntryCodec.pair K) ⟨y.1, y.2, n, n, n⟩
       (fun j => j + 1) A) :
-    Writes md I τ (mirror (Op := Op) (Tst := Tst)).body (Env.frame [n] [y, y])
+    Writes md I τ (mirror (Op := Op) (Tst := Tst)) (Env.frame [n] [y, y])
       ((EntryCodec.pair K).regionFp y.1 y.2 n (fun i j => i * n + j) (fun j => j))
       (fun m' => m'.store.HoldsEntryRegion (EntryCodec.pair K) y.1 y.2 n
         (fun i j => i * n + j) (fun j => j) (fun i j => ((A i j).1, M.neg (A i j).2)) ∧
@@ -87,7 +87,7 @@ theorem writes_mirror {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     (hz : y.2 + 2 * (n * n) ≤ m.store.len y.1)
     (hu : m.store.HoldsRowEntries (EntryCodec.pair K) ⟨y.1, y.2, n, n, n⟩
       (fun j => j + 1) A) :
-    Writes md I τ (mirror (Op := Op) (Tst := Tst)).body (Env.frame [n] [y, y])
+    Writes md I τ (mirror (Op := Op) (Tst := Tst)) (Env.frame [n] [y, y])
       ((EntryCodec.pair K).regionFp y.1 y.2 n (fun i j => i * n + j) (fun j => j))
       (fun m' => m'.store.HoldsEntries (EntryCodec.pair K) ⟨y.1, y.2, n, n, n⟩
         (completeUpper M A) ∧ m'.pos = m.pos) m := by

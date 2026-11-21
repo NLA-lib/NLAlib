@@ -18,8 +18,8 @@ One node of the deflation of [BanksGarzaVargasSrivastava2025, §6] (the paper's 
 with `RHess` at every node, decision D7 of the design): `RHess` makes the last-row weights large,
 `OneEig` finds a shift within $\beta' = \omega/20$ of an eigenvalue and at least $\eta_1$ away from
 the spectrum, and `Decouple` makes the last subdiagonal entry at most $\omega$. As the decoupler of
-the rounded worklist at the bottom width $k = 1$ it meets the randomized decoupling contract on the
-class of the blocks; Lemma 6.2's preservation of the class is carried by the composition of the
+the rounded worklist at the bottom width $k = 1$ it satisfies the randomized decoupling contract on
+the class of the blocks; Lemma 6.2's preservation of the class is carried by the composition of the
 three contracts, and the class inside the node by one doubling
 (`NLAlib.SmallEig.class_of_rhess`).
 
@@ -55,16 +55,16 @@ words `P` into the shift `Lam` and the flag; if the flag is $0$,
 `[N, k, np, F, T] (W, P) → (W, Fl)`, that of the decoupling routine of
 `NLAlib.ShiftedQR.solveRoundedWith`; the bottom width and the iteration cap are not read.
 Algorithm: small-eig -/
-def smallEigDecoupler (sG : ℕ) : Impl O Q := opsImpl% [N, k, np, F, T] (W, P) → (W, Fl) {
+def smallEigDecoupler (sG : ℕ) : Stmt O Q := ops% [N, k, np, F, T] (W, P) → (W, Fl) {
   let m ← index (Has.inj IdxTst.toNat) (P[8]) ≤ T;
   let q ← index (Has.inj IdxTst.toNat) (P[9]) ≤ m;
   let t ← index (Has.inj IdxTst.toNat) (P[10]) ≤ T;
   let m2 ← index (Has.inj IdxTst.toNat) (P[11]) ≤ T;
   let Lam ← alloc 2;
-  run (rhess (O := O) (Q := Q) sG).body [N] (W, W);
-  run (oneEig (O := O) (Q := Q)).body [N, m, q, t] (W, P, Lam, Fl);
+  run (rhess (O := O) (Q := Q) sG) [N] (W, W);
+  run (oneEig (O := O) (Q := Q)) [N, m, q, t] (W, P, Lam, Fl);
   if (Has.inj CmpTst.isZero) [] (Fl) {
-    run (decoupleLast (O := O) (Q := Q)).body [N, m2] (W, Lam, P, W, Fl)
+    run (decoupleLast (O := O) (Q := Q)) [N, m2] (W, Lam, P, W, Fl)
   } else { skip }
 }
 
@@ -153,7 +153,9 @@ $1 \le n \le n_{\max}$, after `RHess` (upper Hessenberg, condition at most $4B_c
 $g_c/4$, last-row weights at least $p$, norm at most
 $2\Sigma(1 + 200(n_{\max} + 1)^2\boldsymbol{u})$), `OneEig` with the cap words $m = 2^q$, $q$,
 $t$ sets the flag to $0$ and stores a point at distance between $\eta_1$ and
-$\beta'$ from the spectrum, except with probability at most $\varphi_D/2$. -/
+$\beta'$ from the spectrum, except with probability at most $\varphi_D/2$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem smallEigDecoupler_oneEig_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hL : IsIndexLit M I)
     (hNat : IsExactNatLit id M 1) (hC : IsCmp id I) (hI : I.IsMeasurable)
@@ -168,7 +170,7 @@ theorem smallEigDecoupler_oneEig_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} 
     (hgap : ∀ i j, i ≠ j → smallEigSeparation nmax S δ φ c₁ / 4 ≤ ‖d i - d j‖)
     (hw : ∀ i, smallEigWeight nmax S δ φ c₂ ≤ lastRowWeights V i)
     (hHS : specNorm H ≤ 2 * S * (1 + 200 * ((nmax : ℝ) + 1) ^ 2 * u)) {h qw lam f : ℕ × ℕ} :
-    PWrites law I (oneEig (O := O) (Q := Q)).body
+    PWrites law I (oneEig (O := O) (Q := Q))
       (Env.frame [n + 1, 2 ^ smallEigDegreeLog nmax S δ φ c₂, smallEigDegreeLog nmax S δ φ c₂,
         smallEigRounds nmax S δ φ c₁ c₂] [h, qw, lam, f])
       (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1)
@@ -228,7 +230,9 @@ upper Hessenberg with condition at most $4B_c$, separation $g_c/4$ and last-row 
 $p$, and let the shift $z$ of `OneEig` be at distance between $\eta_1$ and $\beta'$ from the
 spectrum. Then on every tape `Decouple` sets the flag to $0$ and stores an upper Hessenberg
 perturbed unitary similarity of $\mathbf{H}$ with the error `NLAlib.SmallEig.smallEigDecoupleError`
-at $N$ whose last subdiagonal entry is at most $1.5\,\omega$. -/
+at $N$ whose last subdiagonal entry is at most $1.5\,\omega$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem smallEigDecoupler_decouple_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {nmax : ℕ} (hn1 : 1 ≤ nmax)
@@ -246,7 +250,7 @@ theorem smallEigDecoupler_decouple_writes {M : Machine ℝ} {I : Interp O Q ℝ}
     (hz2 : ⨅ i, ‖z - d i‖ ≤ smallEigAccuracy nmax S δ φ c₁ c₂) {τ : Tape ℝ} {μ : Mem ℝ}
     {h lam qw f : ℕ × ℕ}
     (hin : DecoupleInput H₁ z (smallEigParams nmax S δ φ c₁ c₂) h lam qw f μ) :
-    Writes .total I τ (decoupleLast (O := O) (Q := Q)).body
+    Writes .total I τ (decoupleLast (O := O) (Q := Q))
       (Env.frame [k + 1 + 1, smallEigDecoupleSteps nmax S δ φ c₂] [h, lam, qw, h, f])
       (Store.inBlock h.1 h.2 (2 * ((k + 1 + 1) * (k + 1 + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧
@@ -318,7 +322,9 @@ omit [Has IndexOp O] [Has DiskSampleOp O] [Has IdxTst Q] in
 parameters of `NLAlib.SmallEig.smallEigParams`): on a block of order $n + 1 \le n_{\max} + 1$ and
 norm at most $N \le 2\Sigma$ in the class $(2B_c, g_c/2)$, `RHess` stores a block in
 `NLAlib.SmallEig.SmallEigRHessClass` with the error $200(n + 1)^2\boldsymbol{u}N$, except with
-probability at most $\varphi_D/2$. -/
+probability at most $\varphi_D/2$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem smallEigDecoupler_rhess_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hzero : M.lit 0 = 0) (hC : IsCmp id I)
     (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sG : ℕ}
@@ -329,7 +335,7 @@ theorem smallEigDecoupler_rhess_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {
     (hHN : specNorm H ≤ N) (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal d)
     (hκ : pseudoConditionNumber V ≤ 2 * smallEigCondition nmax S δ φ c₂)
     (hgap : ∀ i j, i ≠ j → smallEigSeparation nmax S δ φ c₁ / 2 ≤ ‖d i - d j‖) {w : ℕ × ℕ} :
-    PWrites law I (rhess (O := O) (Q := Q) sG).body (Env.frame [n + 1] [w, w])
+    PWrites law I (rhess (O := O) (Q := Q) sG) (Env.frame [n + 1] [w, w])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))))
       (fun μ => HoldsMatrix w H μ.store ∧ μ.Live [w])
       (fun μ' => ∃ H₁, HoldsMatrix w H₁ μ'.store ∧
@@ -367,10 +373,11 @@ theorem smallEigDecoupler_rhess_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {
 
 omit [Has SampleOp O] [Has IdxTst Q] in
 /-- The tail of the decoupler (`OneEig`, then `Decouple` on the flag $0$): from a block
-$\mathbf{H}_1$ in `NLAlib.SmallEig.SmallEigRHessClass` of a block $\mathbf{H}$ of order
-$k + 2 \le n_{\max} + 1$ and norm at most $N \le 2\Sigma$, with the pair at `(L, 0)`, the tail of
+$\mathbf{H}_1$ in `NLAlib.SmallEig.SmallEigRHessClass` of a block $\mathbf{H}$ of order $k + 2 \le
+n_{\max} + 1$ and norm at most $N \le 2\Sigma$, with the pair at `(L, 0)`, the tail of
 `NLAlib.SmallEig.smallEigDecoupler` reaches the outcome of the decoupling contract, except with
-probability at most $\varphi_D/2$. The frames are given by their evaluations. -/
+probability at most $\varphi_D/2$. The frames are given by their evaluations.
+A step in the proof of `smallEigDecoupler_randomDecouplingRoutineContract_of_le`. -/
 theorem smallEigDecoupler_tail_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
@@ -389,9 +396,9 @@ theorem smallEigDecoupler_tail_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u
     (ht : Operand.evalList ρ tins = some [f])
     (hd₂ : IExp.evalList ρ.idx ds₂ = some [k + 1 + 1, smallEigDecoupleSteps nmax S δ φ c₂])
     (ha₂ : Operand.evalList ρ args₂ = some [w, (L, 0), q, w, f]) :
-    PWrites law I ((Stmt.frame ds₁ args₁ (oneEig (O := O) (Q := Q)).body).seq
+    PWrites law I ((Stmt.frame ds₁ args₁ (oneEig (O := O) (Q := Q))).seq
         (Stmt.ite (Has.inj CmpTst.isZero) [] tins
-          (Stmt.frame ds₂ args₂ (decoupleLast (O := O) (Q := Q)).body) Stmt.skip)) ρ
+          (Stmt.frame ds₂ args₂ (decoupleLast (O := O) (Q := Q))) Stmt.skip)) ρ
       (Store.inBlock L 0 2 ⊔ Store.inBlock f.1 f.2 1 ⊔
         (Store.inBlock w.1 w.2 (2 * ((k + 1 + 1) * (k + 1 + 1))) ⊔ Store.inBlock f.1 f.2 1))
       (OneEigInput H₁ (smallEigParams nmax S δ φ c₁ c₂) w q (L, 0) f)
@@ -468,7 +475,7 @@ theorem OneEigInput.of_alloc {n : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) �
       and_true]
     exact ⟨⟨hqw, (hD hlw).symm, hwf⟩, ⟨(hD hlq).symm, hqf⟩, hD hlf⟩
 
-/-- The decoupler meets the randomized decoupling contract at a smaller order bound
+/-- The decoupler satisfies the randomized decoupling contract at a smaller order bound
 (`NLAlib.SmallEig.smallEigDecoupler_randomDecouplingRoutineContract` with the words still at
 $n_{\max}$): the contract holds at orders up to $k_b \le n_{\max}$ when the natural literals are
 exact up to $k_b + 1$ only. -/
@@ -541,7 +548,7 @@ theorem smallEigDecoupler_randomDecouplingRoutineContract_of_le {M : Machine ℝ
   · rintro μ μ' - ⟨hfr, hf0, hinit, hPUS, hHess, hsm⟩
     exact ⟨hfr, hf0, _, hPUS, hHess, hsm, holdsMatrix_storedMatrix hinit⟩
 
-/-- **The decoupler meets the randomized decoupling contract** ([BanksGarzaVargasSrivastava2025,
+/-- **The decoupler satisfies the randomized decoupling contract** ([BanksGarzaVargasSrivastava2025,
 Theorem 6.1], one node; [BanksGarzaVargasSrivastava2025, Lemma 6.2] carried by the composition):
 on a scalar machine with the standard model at $\boldsymbol{u} \le$
 `NLAlib.SmallEig.uSmallEig`, $M.\mathrm{lit}(0) = 0$, index literals, exact natural literals up to

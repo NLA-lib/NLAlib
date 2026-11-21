@@ -28,7 +28,8 @@ open Ops
 
 /-- A stored split returns its two projected child bases and shifted eigenvalues in the
 pure recursion's finite sum order. Actual metadata decoding, child reads, parent capacities
-and the common arena separation invariant suffice for total execution. -/
+and the common arena separation invariant suffice for total execution.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_upNode_splitResult {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     [Has MatrixOp Op] [Has IdxTst Tst] {M : Machine K} {dec : K → ℝ}
     {I : Interp Op Tst K} (hS : IsScalar M I) (hQ : IsToNat dec I)
@@ -50,7 +51,7 @@ theorem writes_upNode_splitResult {K Op Tst : Type} [Inhabited K] [Has ScalarOp 
     (hap : Fp.Apart (upNodeRegions n d lo ua qa ea kd kp t) (upNodeRegionLengths n k)) :
     let index : Fin k ≃ Fin r ⊕ Fin (k - r) :=
       (finCongr (Nat.add_sub_of_le hr).symm).trans finSumFinEquiv.symm
-    Writes .total I τ (upNodeImpl (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (upNode (Op := Op) (Tst := Tst))
       (Env.frame [n, d, lo, k] [ua, qa, ea, kd, kp, t])
       (Fp.blocks (resultOperands n d lo ua ea) (resultLengths k))
       (fun m' => m'.pos = m.pos ∧ StoresResult n d lo ua ea
@@ -85,7 +86,7 @@ theorem writes_upNode_splitResult {K Op Tst : Type} [Inhabited K] [Has ScalarOp 
     (by simpa using hparts.1) (by simpa [Nat.mul_add, Nat.add_assoc] using hparts.2.2)
   unfold Writes Wp
   rw [hev]
-  change Writes .total I τ upSplitResultImpl.body _ _ _ m
+  change Writes .total I τ upSplitResult _ _ _ m
   refine hRun.mono (le_of_eq ?_) ?_
   · simpa only [resultOperands, resultLengths] using fp_upSplit_eq hr
       (ua.1, ua.2 + 2 * (n * n) * d + 2 * n * lo) (ea.1, ea.2 + n * d + lo)

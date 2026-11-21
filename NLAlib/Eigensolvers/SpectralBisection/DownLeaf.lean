@@ -45,7 +45,8 @@ theorem apart_downLeaf {n d lo k : ℕ} {par lv su sg ma ua ea kd c : ℕ × ℕ
         (nodeInputLengths n k) (i := 6) (by simp [nodeInputs, nodeInputLengths])
   exact hAP.append (by simp [Fp.Apart]) rfl (hDisj.mono le_rfl (sup_le hA bot_le))
 
-/-- A diagonal or zero leaf stores the corresponding constructor of the mathematical step. -/
+/-- A diagonal or zero leaf stores the corresponding constructor of the mathematical step.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_downLeaf {K Op Tst Su Sg : Type} [Inhabited K] [Has ScalarOp Op]
     [Has IndexOp Op] {M : Machine K} {dec : K → ℝ} {mm : MatMulMap (K × K)}
     {qr : QRMap (K × K)} {unif : K → Su → K} {normal : Sg → K × K}

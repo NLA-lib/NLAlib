@@ -26,7 +26,7 @@ namespace NLAlib.SpectralBisection
 open Ops
 
 private theorem reconstruct_shape (n L : ℕ) (offs : List ℕ) :
-    (stmtCost (reconstructResult (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body
+    (stmtCost (reconstructResult (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))
       ([n, L] ++ offs)).CallsSatisfy (MatrixShape n) := by
   refine (Count.callsSatisfy_add _ _ (MatrixShape n)).mpr
     ⟨matrixShapes_of_allOps n _ (by rfl) _, ?_⟩

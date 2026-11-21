@@ -38,7 +38,7 @@ theorem writes_shiftNegate_packed {I : Interp Op Tst K} (hI : IsScalar M I)
     (hX : μ.store.readBlock x.1 x.2 (2 * (n * n)) = some ((EntryCodec.pair K).packFinMatrix A))
     (hc : μ.store.get c.1 c.2 = some d)
     (hY : y.2 + 2 * (n * n) ≤ μ.store.len y.1) (hl : μ.Live [x, c, y]) :
-    Writes .total I τ (shiftNegate (Op := Op) (Tst := Tst)).body (Env.frame [n] [x, c, y])
+    Writes .total I τ (shiftNegate (Op := Op) (Tst := Tst)) (Env.frame [n] [x, c, y])
       (Store.inBlock y.1 y.2 (2 * (n * n)))
       (fun μ' => μ'.pos = μ.pos ∧ μ'.store.readBlock y.1 y.2 (2 * (n * n)) =
         some ((EntryCodec.pair K).packFinMatrix

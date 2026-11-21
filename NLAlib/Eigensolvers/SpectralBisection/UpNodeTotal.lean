@@ -28,7 +28,7 @@ open Ops
 /-- Any stored node outcome reconstructs its mathematical result from the occupied child
 results. Explicit metadata exactness, capacities, arena separation and actual scalar/matrix
 operation contracts suffice for total execution; no successful-run or numerical-quality
-premise is assumed. -/
+premise is assumed. A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_upNode {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     [Has MatrixOp Op] [Has IdxTst Tst] {M : Machine K} {dec : K → ℝ}
     (mm : MatMulMap (K × K)) (qr : QRMap (K × K)) (unif : K → Su → K) (normal : Sg → K × K)
@@ -47,7 +47,7 @@ theorem writes_upNode {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
       m.store.get t.1 (t.2 + 1) = some (M.neg (M.div R (M.lit 2))))
     (hroom : m.Room (resultOperands n d lo ua ea) (resultLengths k))
     (hap : Fp.Apart (upNodeRegions n d lo ua qa ea kd kp t) (upNodeRegionLengths n k)) :
-    Writes .total I τ (upNodeImpl (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (upNode (Op := Op) (Tst := Tst))
       (Env.frame [n, d, lo, k] [ua, qa, ea, kd, kp, t])
       (Fp.blocks (resultOperands n d lo ua ea) (resultLengths k))
       (fun m' => m'.pos = m.pos ∧ StoresResult n d lo ua ea

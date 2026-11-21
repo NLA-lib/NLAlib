@@ -72,7 +72,7 @@ The headline and the operation count concern the same program, not one run. The 
 with explicit work and span bounds conjoined with correctness, is the certificate
 `NLAlib.ShiftedQR.roundedShQRAlgorithm` and its bound
 `NLAlib.ShiftedQR.roundedShQR_algorithm_measureReal_not_accepts_le`
-(`NLAlib.Eigensolvers.ShiftedQR.RoundedCertificate`).
+(`NLAlib.Eigensolvers.ShiftedQR.RoundedCertification`).
 -/
 
 @[expose] public section
@@ -96,7 +96,7 @@ with the decoupling loop `NLAlib.ShiftedQR.roundedDecoupleWith SE` and the leaf
 `NLAlib.ShiftedQR.seLeaf SE`. The routine reads the last $12$ parameter words and the cap $T$. The
 interface is `[N, k, np, F, T] (A, Thr, P) → (Out, Fl)`.
 Algorithm: shifted-qr-rounded -/
-def roundedShQRWith (SE : Impl O Q) : Impl O Q :=
+def roundedShQRWith (SE : Stmt O Q) : Stmt O Q :=
   solveRoundedWith (roundedDecoupleWith SE) (seLeaf SE)
 
 /-- **The rounded shifted QR algorithm** ([BanksGarzaVargasSrivastava2022, Theorem 6.3]): the
@@ -106,8 +106,8 @@ rounded deflation worklist with the decoupling loop of Lemma 6.4 and the `SmallE
 `[N, k, np, F] (A, Thr, P) → (Out, Fl)`: the order, the shift degree, the number of parameter
 words and the iteration cap; the matrix (overwritten), the deflation threshold word, the parameter
 words; the $2N$ output words and the failure word. -/
-def roundedShQR : Impl O Q := opsImpl% [N, k, np, F] (A, Thr, P) → (Out, Fl) {
-  run (roundedShQRWith (smallEigKernel (O := O) (Q := Q))).body [N, k, np, F, 0]
+def roundedShQR : Stmt O Q := ops% [N, k, np, F] (A, Thr, P) → (Out, Fl) {
+  run (roundedShQRWith (smallEigKernel (O := O) (Q := Q))) [N, k, np, F, 0]
     (A, Thr, P, Out, Fl)
 }
 
@@ -138,8 +138,7 @@ def ShQRInput {n : ℕ} (k : ℕ) (B Γ S δ φ : ℝ) (a t p out f : ℕ × ℕ
   μ.Live [a, t, p, out, f] ∧
     μ.Room [a, t, p, out, f]
       [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ).length, 2 * (n + 1), 1] ∧
-    Fp.Apart [a, t, p, out, f]
-      [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ).length, 2 * (n + 1), 1] ∧
+    ShQRViewsApart (n + 1) ((shqrParams n k B Γ S δ φ).length) a t p out f ∧
     HoldsMatrix a H μ.store ∧ μ.store.get t.1 t.2 = some (shqrDeflationThreshold n k B Γ S δ φ) ∧
     μ.store.readBlock p.1 p.2 (shqrParams n k B Γ S δ φ).length = some (shqrParams n k B Γ S δ φ)
 
@@ -164,9 +163,9 @@ section RoutineAt
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q]
   [Has IdxTst Q]
 
--- The default heartbeat budget does not cover the elaboration of this statement.
-set_option maxHeartbeats 1000000 in
 -- The headline's hypotheses, with their long real constants, make elaboration heavy.
+set_option maxHeartbeats 1000000 in
+-- (the reason is stated above)
 /-- The rounded shifted QR algorithm with a small-eigenvalue routine, with the word count $12$
 apart from the routine's words `qs` (none, or $12$; `NLAlib.ShiftedQR.RandomSmallEigContractAt`):
 the statement of `NLAlib.ShiftedQR.roundedShQRWith_measureReal_not_spectrum_le`, of which
@@ -183,7 +182,7 @@ theorem roundedShQRWith_measureReal_not_spectrum_le_at {Mch : Machine ℝ} {I : 
     (hHV : H * V = V * Matrix.diagonal d) (hκ : pseudoConditionNumber V ≤ B) (hΓ : 0 < Γ)
     (hgap : ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖) (hHS : specNorm H ≤ S) (hδ : 0 < δ) (hδS : δ ≤ S)
     (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B)) {βse φse : ℝ} {T : ℕ}
-    {qs : List ℝ} {SE : Impl O Q}
+    {qs : List ℝ} {SE : Stmt O Q}
     (hSE : RandomSmallEigContractAt law βse φse (min k (n + 1)) 12 T (4 * S) qs SE I)
     (hq12 : qs = [] ∨ qs.length = 12) (hβse0 : 0 ≤ βse)
     (hse : βse ≤ shqrSmallEigAccuracy n B Γ S δ)
@@ -192,14 +191,13 @@ theorem roundedShQRWith_measureReal_not_spectrum_le_at {Mch : Machine ℝ} {I : 
     (hl : μ.Live [a, t, p, out, f])
     (hr : μ.Room [a, t, p, out, f]
       [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ ++ qs).length, 2 * (n + 1), 1])
-    (ha : Fp.Apart [a, t, p, out, f]
-      [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ ++ qs).length, 2 * (n + 1), 1])
+    (ha : ShQRViewsApart (n + 1) ((shqrParams n k B Γ S δ φ ++ qs).length) a t p out f)
     (hA : HoldsMatrix a H μ.store)
     (ht : μ.store.get t.1 t.2 = some (shqrDeflationThreshold n k B Γ S δ φ))
     (hp : μ.store.readBlock p.1 p.2 (shqrParams n k B Γ S δ φ ++ qs).length =
       some (shqrParams n k B Γ S δ φ ++ qs))
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRWith SE).body
+    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRWith SE)
       (Env.frame [n + 1, k, (shqrParams n k B Γ S δ φ ++ qs).length, shqrCap n B Γ S δ, T]
         [a, t, p, out, f]) (shqrFp n a out f) (ShQRSpectrum out f H δ) μ} ≤ φ := by
   have hu0 := hM.roundoff_nonneg
@@ -260,18 +258,17 @@ theorem roundedShQRWith_terminates_at {Mch : Machine ℝ} {I : Interp O Q ℝ}
     {n : ℕ} (hS : IsScalar Mch I) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I) {sU : ℕ}
     (hDisk : IsPolarDiskSampler sU I) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {k : ℕ}
-    {B Γ S δ φ : ℝ} (hk : k = shqrDegree (4 * B)) {T : ℕ} {qs : List ℝ} {SE : Impl O Q}
+    {B Γ S δ φ : ℝ} (hk : k = shqrDegree (4 * B)) {T : ℕ} {qs : List ℝ} {SE : Stmt O Q}
     (hSE : TerminatingSmallEigAt (min k (n + 1)) 12 T qs SE I)
     (hq12 : qs = [] ∨ qs.length = 12)
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ} (hl : μ.Live [a, t, p, out, f])
     (hr : μ.Room [a, t, p, out, f]
       [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ ++ qs).length, 2 * (n + 1), 1])
-    (ha : Fp.Apart [a, t, p, out, f]
-      [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ ++ qs).length, 2 * (n + 1), 1])
+    (ha : ShQRViewsApart (n + 1) ((shqrParams n k B Γ S δ φ ++ qs).length) a t p out f)
     (hA : HoldsMatrix a H μ.store) {thr : ℝ} (ht : μ.store.get t.1 t.2 = some thr)
     (hp : μ.store.readBlock p.1 p.2 (shqrParams n k B Γ S δ φ ++ qs).length =
       some (shqrParams n k B Γ S δ φ ++ qs)) (τ : Tape ℝ) :
-    Writes .total I τ (roundedShQRWith SE).body
+    Writes .total I τ (roundedShQRWith SE)
       (Env.frame [n + 1, k, (shqrParams n k B Γ S δ φ ++ qs).length, shqrCap n B Γ S δ, T]
         [a, t, p, out, f]) (shqrFp n a out f) (fun _ => True) μ := by
   have hkq : k = 2 ^ Nat.log 2 k := by
@@ -328,7 +325,7 @@ theorem roundedShQR_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp 
     (hφse : φse ≤ shqrSmallEigFailure n B Γ S δ φ) (hu : u ≤ uShQR n k B Γ S δ φ)
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ} (hin : ShQRInput k B Γ S δ φ a t p out f H μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQR (O := O) (Q := Q)).body
+    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQR (O := O) (Q := Q))
       (Env.frame (shqrDims n k B Γ S δ φ) [a, t, p, out, f]) (shqrFp n a out f)
       (ShQRSpectrum out f H δ) μ} ≤ φ := by
   obtain ⟨hl, hr, ha, hA, ht, hp⟩ := hin
@@ -369,7 +366,7 @@ theorem roundedShQR_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ}
     {B Γ S δ φ : ℝ} (hk : k = shqrDegree (4 * B))
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ} (hin : ShQRInput k B Γ S δ φ a t p out f H μ)
     (τ : Tape ℝ) :
-    Writes .total I τ (roundedShQR (O := O) (Q := Q)).body
+    Writes .total I τ (roundedShQR (O := O) (Q := Q))
       (Env.frame (shqrDims n k B Γ S δ φ) [a, t, p, out, f]) (shqrFp n a out f) (fun _ => True)
       μ := by
   obtain ⟨hl, hr, ha, hA, ht, hp⟩ := hin
@@ -449,7 +446,7 @@ theorem roundedShQR_relative {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hu : u ≤ uShQR n k B Γ S (δ * S / c) φ)
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ} (hin : ShQRInput k B Γ S (δ * S / c) φ a t p out f H μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQR (O := O) (Q := Q)).body
+    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQR (O := O) (Q := Q))
       (Env.frame (shqrDims n k B Γ S (δ * S / c) φ) [a, t, p, out, f]) (shqrFp n a out f)
       (ShQRSpectrum out f H (δ * specNorm H)) μ} ≤ φ := by
   have hc0 : 0 < c := by linarith
@@ -492,7 +489,7 @@ theorem roundedShQR_hermitian {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hφse : φse ≤ shqrSmallEigFailure n 1 Γ S δ φ) (hu : u ≤ uShQR n k 1 Γ S δ φ)
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ} (hin : ShQRInput k 1 Γ S δ φ a t p out f H μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQR (O := O) (Q := Q)).body
+    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQR (O := O) (Q := Q))
       (Env.frame (shqrDims n k 1 Γ S δ φ) [a, t, p, out, f]) (shqrFp n a out f)
       (ShQRSpectrum out f H δ) μ} ≤ φ := by
   set U := (hH.eigenvectorUnitary : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
@@ -525,10 +522,10 @@ the order of the count is $N^3F(k^3 + n_pk)$: $2N$ worklist rounds of $F$ iterat
 `Find` of $k^3N^2$ (the static supremum over its index words $m \le k$, $he \le k^2$, against
 the paper's $k\log k$ steps) and Exc's $n_p$ trials of $kN^2$. -/
 theorem roundedShQR_work_le : ∃ c : ℕ, ∀ n k np F : ℕ,
-    Count.size (stmtCost (roundedShQR (O := O) (Q := Q)).body [n + 1, k, np, F]) ≤
+    Count.size (stmtCost (roundedShQR (O := O) (Q := Q)) [n + 1, k, np, F]) ≤
       c * (n + 1) ^ 4 * (k + 1) ^ 4 * (np + 1) * (F + 1) := by
   refine ⟨2011, fun n k np F => ?_⟩
-  have hw : stmtWorkMono (roundedShQR (O := O) (Q := Q)).body
+  have hw : stmtWorkMono (roundedShQR (O := O) (Q := Q))
       [⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩] = ⟨2011, [3, 3, 1, 1]⟩ := by
     kernel_rfl
   have hσ : SlotsLe [n + 1, k + 1, np + 1, F + 1] [n + 1, k, np, F]
@@ -581,7 +578,7 @@ theorem roundedShQRWith_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Int
     (hHV : H * V = V * Matrix.diagonal d) (hκ : pseudoConditionNumber V ≤ B) (hΓ : 0 < Γ)
     (hgap : ∀ i j, i ≠ j → Γ ≤ ‖d i - d j‖) (hHS : specNorm H ≤ S) (hδ : 0 < δ) (hδS : δ ≤ S)
     (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hk : k = shqrDegree (4 * B)) {βse φse : ℝ} {T : ℕ}
-    {qs : List ℝ} {SE : Impl O Q}
+    {qs : List ℝ} {SE : Stmt O Q}
     (hSE : RandomSmallEigContract law βse φse (min k (n + 1)) T (4 * S) qs SE I)
     (hqs : qs.length = 12) (hβse0 : 0 ≤ βse) (hse : βse ≤ shqrSmallEigAccuracy n B Γ S δ)
     (hφse0 : 0 ≤ φse) (hφse : φse ≤ shqrSmallEigFailure n B Γ S δ φ)
@@ -589,22 +586,21 @@ theorem roundedShQRWith_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Int
     (hl : μ.Live [a, t, p, out, f])
     (hr : μ.Room [a, t, p, out, f]
       [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ ++ qs).length, 2 * (n + 1), 1])
-    (ha : Fp.Apart [a, t, p, out, f]
-      [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ ++ qs).length, 2 * (n + 1), 1])
+    (ha : ShQRViewsApart (n + 1) ((shqrParams n k B Γ S δ φ ++ qs).length) a t p out f)
     (hA : HoldsMatrix a H μ.store)
     (ht : μ.store.get t.1 t.2 = some (shqrDeflationThreshold n k B Γ S δ φ))
     (hp : μ.store.readBlock p.1 p.2 (shqrParams n k B Γ S δ φ ++ qs).length =
       some (shqrParams n k B Γ S δ φ ++ qs))
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRWith SE).body
+    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRWith SE)
       (Env.frame [n + 1, k, (shqrParams n k B Γ S δ φ ++ qs).length, shqrCap n B Γ S δ, T]
         [a, t, p, out, f]) (shqrFp n a out f) (ShQRSpectrum out f H δ) μ} ≤ φ :=
   roundedShQRWith_measureReal_not_spectrum_le_at hS hM hL hNat hQ hC hI hloc hDisk hU hHess hV hHV
     hκ hΓ hgap hHS hδ hδS hφ hφ1 hk (hqs ▸ hSE.at) (Or.inr hqs) hβse0 hse hφse0 hφse hu hl hr ha
     hA ht hp hξ
 
-/-- **The rounded shifted QR algorithm with a terminating small-eigenvalue routine terminates on
-every tape**: on a scalar machine with index literals, exact natural literals up to $n + 1$, exact
+/-- The rounded shifted QR algorithm with a terminating small-eigenvalue routine terminates on
+every tape: on a scalar machine with index literals, exact natural literals up to $n + 1$, exact
 `toNat` and comparisons, an exact polar disk sampler, and a routine `SE` that terminates on orders
 at most $\min(k, n + 1)$ with the cap $T$ and $12$ words `qs`
 (`NLAlib.ShiftedQR.TerminatingSmallEig`), for any
@@ -616,17 +612,16 @@ theorem roundedShQRWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ}
     {n : ℕ} (hS : IsScalar Mch I) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I) {sU : ℕ}
     (hDisk : IsPolarDiskSampler sU I) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {k : ℕ}
-    {B Γ S δ φ : ℝ} (hk : k = shqrDegree (4 * B)) {T : ℕ} {qs : List ℝ} {SE : Impl O Q}
+    {B Γ S δ φ : ℝ} (hk : k = shqrDegree (4 * B)) {T : ℕ} {qs : List ℝ} {SE : Stmt O Q}
     (hSE : TerminatingSmallEig (min k (n + 1)) T qs SE I) (hqs : qs.length = 12)
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ} (hl : μ.Live [a, t, p, out, f])
     (hr : μ.Room [a, t, p, out, f]
       [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ ++ qs).length, 2 * (n + 1), 1])
-    (ha : Fp.Apart [a, t, p, out, f]
-      [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ ++ qs).length, 2 * (n + 1), 1])
+    (ha : ShQRViewsApart (n + 1) ((shqrParams n k B Γ S δ φ ++ qs).length) a t p out f)
     (hA : HoldsMatrix a H μ.store) {thr : ℝ} (ht : μ.store.get t.1 t.2 = some thr)
     (hp : μ.store.readBlock p.1 p.2 (shqrParams n k B Γ S δ φ ++ qs).length =
       some (shqrParams n k B Γ S δ φ ++ qs)) (τ : Tape ℝ) :
-    Writes .total I τ (roundedShQRWith SE).body
+    Writes .total I τ (roundedShQRWith SE)
       (Env.frame [n + 1, k, (shqrParams n k B Γ S δ φ ++ qs).length, shqrCap n B Γ S δ, T]
         [a, t, p, out, f]) (shqrFp n a out f) (fun _ => True) μ :=
   roundedShQRWith_terminates_at hS hL hNat hQ hC hDisk hk (hqs ▸ hSE.at) (Or.inr hqs) hl hr ha hA ht

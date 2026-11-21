@@ -30,7 +30,8 @@ open Ops
 /-- The nonleaf node returns the existing mathematical step on its actual stored inputs.
 Every possible bounded split has writable, separated arena outputs; exact bounded literals
 justify all metadata conversions. Scratch is fresh and requires no initialized values.
-Numerical accuracy and the law of the stored samples are separate assumptions. -/
+Numerical accuracy and the law of the stored samples are separate assumptions.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_node {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
     [Has MatrixOp Op] [Has CmpTst Tst] [Has IdxTst Tst]
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))

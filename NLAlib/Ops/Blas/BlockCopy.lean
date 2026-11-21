@@ -29,9 +29,9 @@ namespace NLAlib.Ops
 variable {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
 
 /-- Copy interleaved entries between two rectangular views, counting both component copies. -/
-def copyStrided : Impl Op Tst := opsImpl% [rows, cols, srcLd, dstLd] (X) → (Y) {
+def copyStrided : Stmt Op Tst := ops% [rows, cols, srcLd, dstLd] (X) → (Y) {
   for j < cols { for i < rows {
-    run (unaryMap (Has.inj ScalarOp.copy)).body [2]
+    run (unaryMap (Has.inj ScalarOp.copy)) [2]
       (X[2 * (j * srcLd + i)], Y[2 * (j * dstLd + i)])
   } }
 }
@@ -48,13 +48,13 @@ theorem writes_copyStrided {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar 
     (hxy : Fp.Disj
       ((EntryCodec.pair K).regionFp x.1 x.2 cols (fun i j => j * srcLd + i) (fun _ => rows))
       ((EntryCodec.pair K).regionFp y.1 y.2 cols (fun i j => j * dstLd + i) (fun _ => rows))) :
-    Writes .total I τ (copyStrided (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (copyStrided (Op := Op) (Tst := Tst))
       (Env.frame [rows, cols, srcLd, dstLd] [x, y])
       ((EntryCodec.pair K).regionFp y.1 y.2 cols (fun i j => j * dstLd + i) (fun _ => rows))
       (fun m' => m'.store.HoldsEntries (EntryCodec.pair K)
         ⟨y.1, y.2, rows, cols, dstLd⟩ A ∧ m'.pos = m.pos) m := by
   let C := EntryCodec.pair K
-  suffices hfill : Writes .total I τ (copyStrided (Op := Op) (Tst := Tst)).body
+  suffices hfill : Writes .total I τ (copyStrided (Op := Op) (Tst := Tst))
       (Env.frame [rows, cols, srcLd, dstLd] [x, y])
       (C.regionFp y.1 y.2 cols (fun i j => j * dstLd + i) (fun _ => rows))
       (fun m' => m'.store.HoldsEntryRegion C y.1 y.2 cols

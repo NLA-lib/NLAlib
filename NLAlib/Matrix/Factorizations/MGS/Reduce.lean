@@ -32,7 +32,9 @@ variable {𝕜 Op Tst : Type} [RCLike 𝕜] [Has ScalarOp Op] [Has Blas1Op Op]
   {I : Interp Op Tst 𝕜} {τ : Tape 𝕜} {m : Mem 𝕜}
 
 /-- A reduction writes the projection subtraction and its negated coefficient, preserving
-all other cells. Input/output vector overlap is allowed by the local block contracts. -/
+all other cells. Input/output vector overlap is allowed by the local block contracts.
+A fragment of `NLAlib.MGS.sweepRoutine`: run only inside its tree, on its operands
+and the buffers it allocates. -/
 theorem writes_reduce (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hB : RCLikeBlas.IsExact I) {n : ℕ} {q v r : ℕ × ℕ} (qs vs : List 𝕜)
     (hl : m.Live [q, v, r])
@@ -42,13 +44,12 @@ theorem writes_reduce (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hrv : Fp.Disj (Store.inBlock r.1 r.2 1) (Store.inBlock v.1 v.2 n))
     (hqv : Fp.Disj (Store.inBlock q.1 q.2 n) (Store.inBlock v.1 v.2 n) ∨ q = v)
     (hroom : r.2 + 1 ≤ m.store.len r.1) (hvroom : v.2 + n ≤ m.store.len v.1) :
-    Writes .total I τ reduce.body (Env.frame [n] [q, v, r])
+    Writes .total I τ reduce (Env.frame [n] [q, v, r])
       (Store.inBlock r.1 r.2 1 ⊔ Store.inBlock v.1 v.2 n)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock v.1 v.2 n =
         some (List.ofFn fun i : Fin n =>
           vs.getD i 0 - RCLikeBlas.dot n qs vs * qs.getD i 0)) m := by
   unfold reduce
-  dsimp only
   refine Writes.seq_le (RCLikeBlas.writes_dot hB rfl rfl rfl hl hq hv hrq hrv hroom)
     le_sup_left ?_
   intro m₁ hfr₁ ⟨hp₁, hr₁⟩

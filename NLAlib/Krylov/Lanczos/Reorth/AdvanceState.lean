@@ -57,7 +57,10 @@ private theorem normalization_guard {n : ℕ} {w q : Fin n → ℝ} {σ : ℝ}
   rw [hσnorm]
   exact sq_pos_iff.trans (not_congr hzero)
 
-/-- The total exact round advances the initialized prefix and its zero-detecting guard. -/
+/-- The total exact round advances the initialized prefix and its zero-detecting guard.
+
+The `advance` fragment read on the loop invariant `State`, the form in which the loop of `solve`
+uses it. -/
 theorem advance_state_writes {M : Machine K} {dec : K → ℝ}
     {n cap j L B V C bo vo co : ℕ} {A : Matrix (Fin n) (Fin n) ℝ} {b : Fin n → ℝ}
     {I : Interp Op Tst K} {ok : ℕ → Prop}
@@ -132,7 +135,7 @@ theorem advance_state_writes {M : Machine K} {dec : K → ℝ}
       congrArg LanczosState.beta hs
     rw [hc', hp', hb', hs]
     exact hrawold
-  obtain ⟨hnextR, hβR⟩ := hpasses.next_eq (initial := next) (σ := σ) (β₀ := β₀)
+  obtain ⟨hnextR, hβR⟩ := hpasses.next_eq
     hbasisdec hrawreorth ⟨hnormalized, hnormβ⟩
   change decv dec n ys = (lanczosReorthState A b (j + 1)).cur at hnextR
   change dec β' = (lanczosReorthState A b (j + 1)).beta at hβR

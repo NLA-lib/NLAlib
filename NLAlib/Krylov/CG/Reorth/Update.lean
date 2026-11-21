@@ -31,7 +31,10 @@ variable {K Op Tst : Type} [Inhabited K]
 variable [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op]
 
 /-- Exact arithmetic forms the new iterate and raw residual and retains the old squared norm.
-The three caller buffers are below the three distinct scratch buffers starting at `L`. -/
+The three caller buffers are below the three distinct scratch buffers starting at `L`.
+
+A fragment of `NLAlib.Krylov.CG.Reorth.solveRoutine`, not a routine: it runs on the scratch of
+`round`, and the old squared norm it leaves in the scalar cell `t[0]` is read by `direction`. -/
 theorem update_writes {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hM : ExactModel dec M) (hB : IsExactBlas1 dec (fun _ => True) I)
     {n L : ℕ} {A : Matrix (Fin n) (Fin n) ℝ} (hA : IsExactMatvec dec A I)

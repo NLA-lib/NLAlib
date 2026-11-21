@@ -33,12 +33,13 @@ open Ops
 does not add a frame or alter any instruction of the program. -/
 abbrev downSlotsBody {Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op]
     [Has MatrixOp Op] [Has CmpTst Tst] [Has IdxTst Tst] : Stmt Op Tst :=
-  match (downNodesImpl (node (Op := Op) (Tst := Tst))).body with
+  match (downNodes (node (Op := Op) (Tst := Tst))) with
   | .loop _ body => body
   | _ => .abort
 
 /-- One stored-size query and its active-node branch satisfy total correctness from actual
-word reads and node output geometry. Inactive slots perform no node call. -/
+word reads and node output geometry. Inactive slots perform no node call.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_downSlot {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
     [Has MatrixOp Op] [Has CmpTst Tst] [Has IdxTst Tst]
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
@@ -100,7 +101,8 @@ theorem writes_downSlot {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has I
 
 /-- The actual bounded size queries and active-node calls return one mathematical stored step
 per positive-size slot. A partition of slot intervals and one apart collection of output levels
-retain all completed outcomes; pending inputs are protected by the exact prefix frame. -/
+retain all completed outcomes; pending inputs are protected by the exact prefix frame.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_downNodes {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
     [Has MatrixOp Op] [Has CmpTst Tst] [Has IdxTst Tst]
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
@@ -150,7 +152,7 @@ theorem writes_downNodes {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has 
     let N := M.toFloatMachine dec mm qr M.mul (fun z : K × K => M.normalWords z.1 z.2)
     let steps := fun lo => eighStep N n fuel R0 beta (A lo) R eps (L + d)
       (storedNodeSample n lo (U lo) S)
-    Writes .total I τ (downNodesImpl (node (Op := Op) (Tst := Tst))).body
+    Writes .total I τ (downNodes (node (Op := Op) (Tst := Tst)))
       (Env.frame [n, L, fuel, d] [par, lv, su, sg, ma, ua, qa, ea, sz, kd, kp, c, t])
       (Fp.loopPrefix (fun lo => activeStepFp n d lo ma ua qa ea sz kd kp (steps lo)) n ⊔
         Store.inBlock t.1 (t.2 + 4) 1)

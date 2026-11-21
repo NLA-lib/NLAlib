@@ -38,7 +38,8 @@ postcondition. One proof gives the total statement and the refinement.
   their handles and lengths; the frame after the pops is the caller's.
 * `NLAlib.Ops.writes_ite`, `NLAlib.Ops.writes_bindIdx`, `NLAlib.Ops.writes_bindIdx_of_isIndex`.
 * `NLAlib.Ops.Wp.named`: generalise a chain of updates into a fresh memory (checkpoint).
-* `NLAlib.Ops.Impl.meets_of_writes`: a conditional triple from a block specification; the
+* `NLAlib.Ops.Impl.satisfies_of_writes`: an implementation satisfies a contract, from a block
+  specification; the
   equation of the contract is built once, here.
 -/
 
@@ -114,14 +115,14 @@ end Writes
 /-- Two total contracts with the same block shapes and input domain jointly describe the
 same output blocks when those blocks are apart. This combines an error relation with a
 functional word relation without assuming two independent executions agree. -/
-theorem Interp.Meets.and_rel {I : Interp Op Tst K} {o : Op} {R : BlockRel K}
+theorem Interp.Satisfies.and_rel {I : Interp Op Tst K} {o : Op} {R : BlockRel K}
     {Q : List ℕ → List (List K) → List K → List (List K) → Prop}
     {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop}
-    (hR : I.Meets .total o (R.spec adm))
-    (hQ : I.Meets .total o ({ R with rel := Q }.spec adm))
+    (hR : I.Satisfies .total o (R.spec adm))
+    (hQ : I.Satisfies .total o ({ R with rel := Q }.spec adm))
     (hap : ∀ d ins outs (m : Mem K),
       adm d ins outs → m.Room outs (R.outLens d) → Fp.Apart outs (R.outLens d)) :
-    I.Meets .total o
+    I.Satisfies .total o
       ({ R with rel := fun d xs w ys => R.rel d xs w ys ∧ Q d xs w ys }.spec adm) := by
   intro d ins outs τ m hp
   obtain ⟨m', hc, xs, hr, hz, ys, hlen, hrel, hm⟩ := hR d ins outs τ m hp
@@ -155,7 +156,7 @@ advances by the window, and the outputs are read back (they are pairwise disjoin
 the inputs read and to the window. Success needs live handles, readable inputs in the domain and
 room, under `md.Needs`; a successful liberal call gives the inputs read. -/
 theorem writes_call {o : Op} {R : BlockRel K}
-    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Meets md o (R.spec adm))
+    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Satisfies md o (R.spec adm))
     {ds : List IExp} {ins outs : List Operand} {d : List ℕ} {a b : List (ℕ × ℕ)} {k : ℕ}
     {ls : List ℕ} (hd : IExp.evalList ρ.idx ds = some d) (ha : Operand.evalList ρ ins = some a)
     (hb : Operand.evalList ρ outs = some b) (hnd : d.length = R.nd) (hk : R.win d = k)
@@ -188,7 +189,7 @@ theorem writes_call {o : Op} {R : BlockRel K}
 
 /-- The call rule with a footprint for **one output block**: the block is read back. -/
 theorem writes_call1 {o : Op} {R : BlockRel K}
-    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Meets md o (R.spec adm))
+    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Satisfies md o (R.spec adm))
     {ds : List IExp} {ins outs : List Operand} {d : List ℕ} {a : List (ℕ × ℕ)} {z : ℕ × ℕ}
     {k l : ℕ} (hd : IExp.evalList ρ.idx ds = some d) (ha : Operand.evalList ρ ins = some a)
     (hb : Operand.evalList ρ outs = some [z]) (hnd : d.length = R.nd) (hk : R.win d = k)
@@ -207,7 +208,7 @@ theorem writes_call1 {o : Op} {R : BlockRel K}
 
 /-- The call rule with a footprint for **one output cell**. -/
 theorem writes_call_cell {o : Op} {R : BlockRel K}
-    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Meets md o (R.spec adm))
+    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Satisfies md o (R.spec adm))
     {ds : List IExp} {ins outs : List Operand} {d : List ℕ} {a : List (ℕ × ℕ)} {z : ℕ × ℕ}
     {k : ℕ} (hd : IExp.evalList ρ.idx ds = some d) (ha : Operand.evalList ρ ins = some a)
     (hb : Operand.evalList ρ outs = some [z]) (hnd : d.length = R.nd) (hk : R.win d = k)
@@ -226,7 +227,7 @@ theorem writes_call_cell {o : Op} {R : BlockRel K}
 
 /-- The call rule with a footprint for **two output blocks**, apart. -/
 theorem writes_call2 {o : Op} {R : BlockRel K}
-    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Meets md o (R.spec adm))
+    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Satisfies md o (R.spec adm))
     {ds : List IExp} {ins outs : List Operand} {d : List ℕ} {a : List (ℕ × ℕ)} {z₁ z₂ : ℕ × ℕ}
     {k l₁ l₂ : ℕ} (hd : IExp.evalList ρ.idx ds = some d) (ha : Operand.evalList ρ ins = some a)
     (hb : Operand.evalList ρ outs = some [z₁, z₂]) (hnd : d.length = R.nd) (hk : R.win d = k)
@@ -480,39 +481,40 @@ end Rules
 
 /-! ### Certificates from block specifications -/
 
-/-- A conditional triple from a block specification. On admitted, live operands with the inputs
+/-- An implementation satisfies a contract, from a block specification. On admitted, live operands
+with the inputs
 `xs` read and room for the outputs, the body writes only the output blocks, advances the
 position by the window, and the output blocks are read back related to the inputs: then the
-implementation meets the contract. The output blocks must be pairwise disjoint (the admitted
+implementation satisfies the contract. The output blocks must be pairwise disjoint (the admitted
 operands say so); the equation `m' = (m.updBlocks outs ys).advance _` is built here, once
 (`Mem.eq_updBlocks_of_eqOff`). -/
-theorem Impl.meets_of_writes {R : Impl Op Tst} {I : Interp Op Tst K} {B : BlockRel K}
+theorem Impl.satisfies_of_writes {E : Impl Op Tst} {I : Interp Op Tst K} {B : BlockRel K}
     {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop}
     (h : ∀ (d : List ℕ) (ins outs : List (ℕ × ℕ)) (τ : Tape K) (m : Mem K) (xs : List (List K)),
       d.length = B.nd → adm d ins outs → m.Live (ins ++ outs) →
       m.readBlocks ins (B.inLens d) = some xs →
       B.dom d xs (τ.window B.stream m.pos (B.win d)) → m.Room outs (B.outLens d) →
-      R.Fits d.length ins.length outs.length ∧
-        Writes .total I τ R.body (Env.frame d (ins ++ outs)) (Fp.blocks outs (B.outLens d))
+      E.Fits d.length ins.length outs.length ∧
+        Writes .total I τ E.body (Env.frame d (ins ++ outs)) (Fp.blocks outs (B.outLens d))
           (fun m' => m'.pos = m.pos + B.win d ∧ ∃ ys, m'.readBlocks outs (B.outLens d) = some ys ∧
             B.rel d xs (τ.window B.stream m.pos (B.win d)) ys) m) :
-    R.Triple I .total (B.spec adm) := by
-  refine Impl.meets_rel fun d ins outs τ m xs hnd hadm hl hr hdom hz => ?_
+    E.Satisfies I .total (B.spec adm) := by
+  refine Impl.satisfies_rel fun d ins outs τ m xs hnd hadm hl hr hdom hz => ?_
   obtain ⟨hfit, hw⟩ := h d ins outs τ m xs hnd hadm hl hr hdom hz
   refine ⟨hfit, Wp.mono hw fun m' ⟨hfr, hpos, ys, hys, hrel⟩ =>
     ⟨ys, Mem.map_length_of_readBlocks hys, hrel, ?_⟩⟩
   rw [← Mem.updBlocks_advance]
   exact Mem.eq_updBlocks_of_eqOff (m := m.advance (B.win d)) hfr hys hpos
 
-/-- A conditional implementation triple writes only the output blocks of its contract.
+/-- An implementation that satisfies a contract writes only the output blocks of its contract.
 Its body can be used by a larger proof with the same contract postcondition and a frame on all
 other cells. -/
-theorem Impl.Triple.writes {R : Impl Op Tst} {I : Interp Op Tst K} {md : Mode} {B : BlockRel K}
+theorem Impl.Satisfies.writes {E : Impl Op Tst} {I : Interp Op Tst K} {md : Mode} {B : BlockRel K}
     {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop}
-    (h : R.Triple I md (B.spec adm)) {d : List ℕ} {ins outs : List (ℕ × ℕ)}
+    (h : E.Satisfies I md (B.spec adm)) {d : List ℕ} {ins outs : List (ℕ × ℕ)}
     {τ : Tape K} {m : Mem K} (hpre : ((B.spec adm).on md d ins outs τ m).pre m)
     (hlive : m.Live (ins ++ outs)) :
-    Writes md I τ R.body (Env.frame d (ins ++ outs)) (Fp.blocks outs (B.outLens d))
+    Writes md I τ E.body (Env.frame d (ins ++ outs)) (Fp.blocks outs (B.outLens d))
       (((B.spec adm).on md d ins outs τ m).post m) m := by
   refine Wp.mono ((h d ins outs τ m hpre).2 hlive).2 fun m' hpost => ?_
   obtain ⟨xs, hr, hroom, ys, hlen, hrel, rfl⟩ := hpost
@@ -522,16 +524,16 @@ theorem Impl.Triple.writes {R : Impl Op Tst} {I : Interp Op Tst K} {md : Mode} {
 /-- Use a proved implementation exactly like a relational primitive call: its declared outputs
 are read back, with the relation on the supplied input blocks and the frame on other cells.
 No client needs to unfold the contract's update equation or reconstruct writes by hand. -/
-theorem Impl.Triple.writes_blocks {R : Impl Op Tst} {I : Interp Op Tst K}
+theorem Impl.Satisfies.writes_blocks {E : Impl Op Tst} {I : Interp Op Tst K}
     {md : Mode} {B : BlockRel K}
     {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop}
-    (h : R.Triple I md (B.spec adm)) {d : List ℕ} {ins outs : List (ℕ × ℕ)}
+    (h : E.Satisfies I md (B.spec adm)) {d : List ℕ} {ins outs : List (ℕ × ℕ)}
     {τ : Tape K} {m : Mem K} {xs : List (List K)}
     (hnd : d.length = B.nd) (hadm : adm d ins outs) (hlive : m.Live (ins ++ outs))
     (hr : m.readBlocks ins (B.inLens d) = some xs)
     (hdom : B.dom d xs (τ.window B.stream m.pos (B.win d)))
     (hroom : m.Room outs (B.outLens d)) (hap : Fp.Apart outs (B.outLens d)) :
-    Writes md I τ R.body (Env.frame d (ins ++ outs)) (Fp.blocks outs (B.outLens d))
+    Writes md I τ E.body (Env.frame d (ins ++ outs)) (Fp.blocks outs (B.outLens d))
       (fun m' => m'.pos = m.pos + B.win d ∧ ∃ ys,
         m'.readBlocks outs (B.outLens d) = some ys ∧
           B.rel d xs (τ.window B.stream m.pos (B.win d)) ys) m := by
@@ -559,5 +561,15 @@ theorem Writes.of_wp_eq_updBlock {K Op Tst : Type} {md : Mode} {I : Interp Op Ts
   refine h.mono fun m' he => ?_
   subst m'
   exact ⟨(Store.EqOff.refl _ _).updBlock_of_le le_rfl, rfl⟩
+
+/-- Linking a footprint statement: a statement about a tree under the linked interpretation
+is one about the linked tree under the interpretation of the operations it is linked to. -/
+theorem Writes.link {Op₁ Op₂ : Type} {md : Mode} (I : Interp Op₂ Tst K)
+    (T : Table Op₁ Op₂ Tst) {τ : Tape K} {s : Stmt Op₁ Tst} {ρ : Env} {F : Fp}
+    {P : Mem K → Prop} {m : Mem K} (h : Writes md (I.link T) τ s ρ F P m) :
+    Writes md I τ (s.link T) ρ F P m := by
+  unfold Writes Wp at h ⊢
+  rw [run_link]
+  exact h
 
 end NLAlib.Ops

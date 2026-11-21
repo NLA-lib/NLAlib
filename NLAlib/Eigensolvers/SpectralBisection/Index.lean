@@ -34,7 +34,8 @@ def indexCells (t : ℕ × ℕ) : Fp :=
 
 /-- The executed index preparation returns the exact clamped rounded trace on actual words.
 Only its four declared cells may change; in particular the node's half-radii and sampled
-shift remain available to the selected child or split branch. -/
+shift remain available to the selected child or split branch.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_nodeSplitIndex {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     [Has IndexOp Op] [Has CmpTst Tst] {M : Machine K} (dec : K → ℝ)
     (mm : MatMulMap (K × K)) (qr : QRMap (K × K)) (unif : K → Su → K)
@@ -48,7 +49,7 @@ theorem writes_nodeSplitIndex {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarO
     (hroom : t.2 + 7 ≤ μ.store.len t.1)
     (hsep : Fp.Disj (Store.inBlock t.1 t.2 7)
       (Fp.blocks [pp, (c.1, c.2 + 2)] [2 * (k * k), 1])) :
-    Writes .total I τ (nodeSplitIndex (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (nodeSplitIndex (Op := Op) (Tst := Tst))
       (Env.frame [k] [pp, c, t]) (indexCells t)
       (fun μ' => μ'.pos = μ.pos ∧ μ'.store.get t.1 (t.2 + 6) =
         some (clampWord dec (M.lit 0) (M.lit (k : ℚ))

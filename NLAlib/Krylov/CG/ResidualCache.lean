@@ -85,7 +85,7 @@ theorem wp_residualCache [Inhabited K] {Op Tst : Type} [Has ScalarOp Op] [Has Bl
     (hz : z.2 < m.store.len z.1) (hSafe : ∀ a : ℝ, |a| ≤ B → safe a)
     (hRange : (1 + u) ^ (2 * n) * ‖WithLp.toLp 2 (decv dec n rs)‖ ^ 2 +
       n * (1 + u) ^ (2 * n) * (2 + u) * eta ≤ B) :
-    Wp .total I τ (dotSum.body.link Blas.sumSeqTable) (Env.frame [n] [r, r, z])
+    Wp .total I τ (dotSum.link Blas.sumSeqTable) (Env.frame [n] [r, r, z])
       (fun out => ∃ cache, out = m.upd z cache ∧ out.store.get z.1 z.2 = some cache ∧
         Computation.AbsRelErr ((1 + u) ^ (2 * n) - 1)
           (n * (1 + u) ^ (2 * n) * (2 + u) * eta)

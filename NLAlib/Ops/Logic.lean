@@ -95,7 +95,7 @@ theorem wp_seq {s t : Stmt Op Tst} (h : Wp md I τ s ρ (Wp md I τ t ρ Q) m) :
   Mode.holds_bind h
 
 /-- **Call by contract.** The contract is given the window of the tape at the position. -/
-theorem wp_call {o : Op} {C : Contract K} (hI : I.Meets md o C) {ds : List IExp}
+theorem wp_call {o : Op} {C : Contract K} (hI : I.Satisfies md o C) {ds : List IExp}
     {ins outs : List Operand} {d : List ℕ} {a b : List (ℕ × ℕ)}
     (hd : IExp.evalList ρ.idx ds = some d) (ha : Operand.evalList ρ ins = some a)
     (hb : Operand.evalList ρ outs = some b) (hpre : (C.on md d a b τ m).pre m)

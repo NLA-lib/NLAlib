@@ -34,7 +34,9 @@ variable {𝕜 Op Tst : Type} [RCLike 𝕜] [Has StoredOperatorOp Op]
 local instance instInhabitedApply : Inhabited 𝕜 := ⟨0⟩
 
 /-- A batch of local matrix-vector applications computes a matrix product. Read-only
-operator data and input columns may share a buffer when their spans satisfy the contract. -/
+operator data and input columns may share a buffer when their spans satisfy the contract.
+A fragment of `NLAlib.HutchPlusPlus.estimateRoutine`: run only inside its tree, on its
+operands and the buffers it allocates. -/
 theorem writes_applyColumns {dataLength : ℕ → ℕ → ℕ}
     {matrix : (m n : ℕ) → List 𝕜 → Matrix (Fin m) (Fin n) 𝕜}
     (hI : StoredOperator.IsExact dataLength matrix I) {n k : ℕ} {data x y : ℕ × ℕ}
@@ -45,7 +47,7 @@ theorem writes_applyColumns {dataLength : ℕ → ℕ → ℕ}
     (hYA : Fp.Disj (Store.inBlock y.1 y.2 (k * n))
       (Store.inBlock data.1 data.2 (dataLength n n)))
     (hy : y.2 + k * n ≤ m.store.len y.1) :
-    Writes .total I τ applyColumns.body (Env.frame [n, k] [data, x, y])
+    Writes .total I τ applyColumns (Env.frame [n, k] [data, x, y])
       (Store.inBlock y.1 y.2 (k * n))
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock y.1 y.2 (k * n) =
         some ((EntryCodec.scalar 𝕜).packFinMatrix (matrix n n as * X))) m := by
@@ -58,7 +60,6 @@ theorem writes_applyColumns {dataLength : ℕ → ℕ → ℕ}
     rw [Nat.mul_succ, Nat.mul_comm n k] at hb
     exact Fp.inBlock_le_inBlock (by omega) (by omega)
   unfold applyColumns
-  dsimp only
   refine (writes_loop_disjoint region
     (fun j s => s.readBlock y.1 (y.2 + n * j) n = some (List.ofFn (col j)))
     rfl hsub ?_ (fun j _ => Store.readsOnly_readBlock _ _ _ _) ?_).mono le_rfl ?_

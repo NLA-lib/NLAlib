@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import Mathlib.Data.Fin.VecNotation
-public import NLAlib.Krylov.GolubKahan.Band.Run
+public import NLAlib.Krylov.GolubKahan.Band.Solve
 public import NLAlib.Ops.AllocationFree
 public import NLAlib.Ops.Catalog.Functional
 public import NLAlib.Ops.Certification
@@ -78,8 +78,8 @@ Design: `docs/design/LowRank-BlockLanczos.md` §4.1.
   `NLAlib.Krylov.GolubKahan.Band.Certification.coefBot_stackCoef`,
   `NLAlib.Krylov.GolubKahan.Band.Certification.decodeMatrix_packFinMatrix`: the packed round trip.
 * `NLAlib.Krylov.GolubKahan.Band.Certification.isBasisExtension_exactExtension`,
-  `NLAlib.Krylov.GolubKahan.Band.Certification.meets_exactExtendFn`: the chosen extension realizes
-  the exact contract.
+  `NLAlib.Krylov.GolubKahan.Band.Certification.satisfies_exactExtendFn`: the chosen extension
+  realizes the exact contract.
 * `NLAlib.Krylov.GolubKahan.Band.Certification.confined_contract`,
   `NLAlib.Krylov.GolubKahan.Band.Certification.confined_model`: the model is confined.
 * `NLAlib.Krylov.GolubKahan.Band.Certification.laws`: the contracts of an interpretation of the
@@ -128,7 +128,7 @@ omit [Has OrthOp Op] [Has OperatorPairOp Op] [Has SampleOp Op] in
 /-- The static count of a block of products: `b` calls of the operation `o` at the dimensions
 `[m, n]`, for all offsets `x`, `y` of the two operands. -/
 theorem stmtCost_applyColumns (o : Op) (m n b x y : ℕ) :
-    stmtCost (applyColumns (Tst := Tst) o).body [m, n, b, x, y] = b • Count.one o [m, n] := by
+    stmtCost (applyColumns (Tst := Tst) o) [m, n, b, x, y] = b • Count.one o [m, n] := by
   simp [applyColumns, stmtCost, useCost]
 
 omit [Has SampleOp Op] in
@@ -137,7 +137,7 @@ $\mathbf{A}$, one basis extension at `[m, j * b, b]`, `b` products with
 $\mathbf{A}^{\mathsf{H}}$ and one basis extension at `[n, (j + 1) * b, b]`, for all offsets
 of the five operands. -/
 theorem stmtCost_step (m n b j u v r s w : ℕ) :
-    stmtCost (step (Op := Op) (Tst := Tst)).body [m, n, b, j, u, v, r, s, w] =
+    stmtCost (step (Op := Op) (Tst := Tst)) [m, n, b, j, u, v, r, s, w] =
       b • Count.one (Has.inj OperatorPairOp.matvec) [m, n] +
         Count.one (Has.inj OrthOp.extend) [m, j * b, b] +
         b • Count.one (Has.inj OperatorPairOp.rmatvec) [n, m] +
@@ -149,7 +149,7 @@ theorem stmtCost_step (m n b j u v r s w : ℕ) :
 dimensions $(m, n, b, q)$ and all offsets `u`, `v`, `g`, `r`, `s` of the five output operands:
 the counts depend on the dimensions only. -/
 theorem stmtCost_solve (stream m n b q u v g r s : ℕ) :
-    stmtCost (solve (Op := Op) (Tst := Tst) stream).body [m, n, b, q, u, v, g, r, s] =
+    stmtCost (solve (Op := Op) (Tst := Tst) stream) [m, n, b, q, u, v, g, r, s] =
       solveCount stream m n b q := by
   simp [solve, stmtCost, useCost, stmtCost_sampleVector, stmtCost_step, solveCount,
     Finset.sum_add_distrib, ← mul_nsmul']
@@ -161,13 +161,13 @@ common bound `w` of the workspace of every primitive, for all offsets `u`, `v`, 
 the five output operands. -/
 theorem stmtPeak_solve_le (W : Op → List ℕ → ℕ) (w : ℕ) (hW : ∀ o ds, W o ds ≤ w)
     (stream m n b q u v g r s : ℕ) :
-    stmtPeak W (solve (Op := Op) (Tst := Tst) stream).body [m, n, b, q, u, v, g, r, s] ≤
+    stmtPeak W (solve (Op := Op) (Tst := Tst) stream) [m, n, b, q, u, v, g, r, s] ≤
       (m + (n - m)) * b + w := by
   refine (stmtPeak_le_zero_add W w hW _ _).trans (Nat.add_le_add_right ?_ w)
   have hSample (idx : List ℕ) := stmtPeak_zero_of_allocationFree
-    (s := (sampleVector (Op := Op) (Tst := Tst) stream).body) (idx := idx) (by rfl)
+    (s := (sampleVector (Op := Op) (Tst := Tst) stream)) (idx := idx) (by rfl)
   have hStep (idx : List ℕ) := stmtPeak_zero_of_allocationFree
-    (s := (step (Op := Op) (Tst := Tst)).body) (idx := idx) (by rfl)
+    (s := (step (Op := Op) (Tst := Tst))) (idx := idx) (by rfl)
   have hz (t : Finset ℕ) : (t.sup fun _ => (0 : ℕ)) = 0 := Finset.sup_bot t
   simp [solve, stmtPeak, Stmt.alloc, hSample, hStep, hz]
 
@@ -192,7 +192,7 @@ def solvePeak (W : Op → List ℕ → ℕ) (stream m n b q : ℕ) : ℕ :=
 offsets `u`, `v`, `g`, `r`, `s` of the five output operands. No common bound of `W` is assumed:
 only the calls of the run contribute. -/
 theorem stmtPeak_solve_le_solvePeak (W : Op → List ℕ → ℕ) (stream m n b q u v g r s : ℕ) :
-    stmtPeak W (solve (Op := Op) (Tst := Tst) stream).body [m, n, b, q, u, v, g, r, s] ≤
+    stmtPeak W (solve (Op := Op) (Tst := Tst) stream) [m, n, b, q, u, v, g, r, s] ≤
       solvePeak W stream m n b q := by
   have hsmul (k : ℕ) (o : Op) (ds : List ℕ) (h : W o ds ≤ primitivePeak W stream m n b q) :
       (k • (Count.one o ds : Count Op Tst)).BoundsWorkspace W
@@ -315,12 +315,12 @@ noncomputable def exactExtendFn : BlockFn ℝ where
           (EntryCodec.scalar ℝ).packFinMatrix (stackCoef E.2.1 E.2.2)]
     | _ => none
 
-/-- An operation interpreted as the block function of the chosen exact extension meets the exact
+/-- An operation interpreted as the block function of the chosen exact extension satisfies the exact
 contract of a basis extension over real words, at all dimensions and on all admitted operands. -/
-theorem meets_exactExtendFn {Op Tst : Type} {I : Interp Op Tst ℝ} {o : Op}
+theorem satisfies_exactExtendFn {Op Tst : Type} {I : Interp Op Tst ℝ} {o : Op}
     (h : I.IsFn .total o exactExtendFn AnyOperands) :
-    I.Meets .total o ((exactExtendRel (𝕜 := ℝ) id).spec ExtendOperands) := by
-  refine h.meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl) (fun _ => rfl)
+    I.Satisfies .total o ((exactExtendRel (𝕜 := ℝ) id).spec ExtendOperands) := by
+  refine h.satisfies_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl) (fun _ => rfl)
     (fun _ => rfl) ?_
   intro d w X μ ins outs hnd hw hadm hr hdom
   obtain ⟨x, y, qs, ws, -, hq, hws, rfl⟩ := Mem.readBlocks_two hr
@@ -422,10 +422,10 @@ noncomputable def model (work workspace : Operation → List ℕ → ℕ) :
       Interp.ofFns_isFn (Tst := CmpTst) (functions x.val.1) .total o AnyOperands
     rintro (o | o | o)
     · cases o
-      exact meets_exactExtendFn (hF (.inl .extend))
+      exact satisfies_exactExtendFn (hF (.inl .extend))
     · cases o
-      · exact (hF (.inr (.inl .matvec))).meets_matvec
-      · exact (hF (.inr (.inl .rmatvec))).meets_matvec
+      · exact (hF (.inr (.inl .matvec))).satisfies_matvec
+      · exact (hF (.inr (.inl .rmatvec))).satisfies_matvec
     · cases o with
       | draw stream => exact hF (.inr (.inr (.draw stream)))
 
@@ -449,7 +449,8 @@ an exact basis extension, and draws that return the words of the tape. -/
 theorem laws {work workspace : Operation → List ℕ → ℕ} {d : Fin 4 → ℕ} {x : problem.Input d}
     {I : Interp Operation CmpTst ℝ} (h : (model work workspace).contracts d x I) :
     IsExactMatvecPair id x.val.1 I ∧
-      I.Meets .total (Has.inj OrthOp.extend) ((exactExtendRel (𝕜 := ℝ) id).spec ExtendOperands) ∧
+      I.Satisfies .total (Has.inj OrthOp.extend)
+        ((exactExtendRel (𝕜 := ℝ) id).spec ExtendOperands) ∧
       IsSample I :=
   ⟨⟨h.1 (.inr (.inl .matvec)), h.1 (.inr (.inl .rmatvec))⟩, h.1 (.inl .extend),
     fun stream => h.1 (.inr (.inr (.draw stream)))⟩
@@ -526,7 +527,7 @@ theorem original_staticBudget (stream : ℕ) (d : Fin 4 → ℕ) :
     Count.original (staticBudget stream d) =
       solveCount (Op := Operation) (Tst := CmpTst) stream (d 0) (d 1) (d 2) (d 3) := by
   rw [staticBudget, staticCost, original_stmtCost_instrument]
-  change stmtCost (solve stream).body [d 0, d 1, d 2, d 3, 0, 0, 0, 0, 0] = _
+  change stmtCost (solve stream) [d 0, d 1, d 2, d 3, 0, 0, 0, 0, 0] = _
   exact stmtCost_solve ..
 
 /-- The scratch of the fixed program at the sizes $(m, n, b, q)$ is at most the block of
@@ -537,7 +538,7 @@ theorem staticPeak_program_le (R : ResourceModel Operation CmpTst) (w : ℕ)
     staticPeak R (program stream) d ≤
       (d 0 + (d 1 - d 0)) * d 2 + w + R.queryReserve (staticBudget stream d) := by
   rw [staticPeak_eq]
-  change stmtPeak R.workspace (solve stream).body [d 0, d 1, d 2, d 3, 0, 0, 0, 0, 0] + _ ≤ _
+  change stmtPeak R.workspace (solve stream) [d 0, d 1, d 2, d 3, 0, 0, 0, 0, 0] + _ ≤ _
   exact Nat.add_le_add_right
     (stmtPeak_solve_le R.workspace w hW stream (d 0) (d 1) (d 2) (d 3) 0 0 0 0 0) _
 
@@ -550,7 +551,7 @@ theorem staticPeak_program_le_solvePeak (R : ResourceModel Operation CmpTst) (st
       solvePeak R.workspace stream (d 0) (d 1) (d 2) (d 3) +
         R.queryReserve (staticBudget stream d) := by
   rw [staticPeak_eq]
-  change stmtPeak R.workspace (solve stream).body [d 0, d 1, d 2, d 3, 0, 0, 0, 0, 0] + _ ≤ _
+  change stmtPeak R.workspace (solve stream) [d 0, d 1, d 2, d 3, 0, 0, 0, 0, 0] + _ ≤ _
   exact Nat.add_le_add_right
     (stmtPeak_solve_le_solvePeak R.workspace stream (d 0) (d 1) (d 2) (d 3) 0 0 0 0 0) _
 
@@ -576,29 +577,58 @@ noncomputable def specification (work workspace : Operation → List ℕ → ℕ
 
 /-- Total execution of the fixed program from the initial memory, for any signature that contains
 the operations of the driver. If the two products are the exact products with the supplied matrix
-$\mathbf{A}$ and with $\mathbf{A}^{\mathsf{H}}$, the basis extension meets the exact contract
+$\mathbf{A}$ and with $\mathbf{A}^{\mathsf{H}}$, the basis extension satisfies the exact contract
 and the draws return the words of the tape, then at all sizes $(m, n, b, q)$ and on every tape
 the program terminates in a memory that satisfies the postcondition
 `NLAlib.Krylov.GolubKahan.Band.Certification.Good`. The interpretation may be one induced by
-linking an orthogonalization scheme. -/
+linking an orthogonalization scheme. This is the judgment of
+`NLAlib.Krylov.GolubKahan.Band.solveRoutine` read at the initial memory of the problem; it is
+stated apart from the certificate because it holds for every signature, and the certificate
+fixes one. -/
 theorem wp_program {Op Tst : Type} [Has OrthOp Op] [Has OperatorPairOp Op] [Has SampleOp Op]
     {d : Fin 4 → ℕ} {x : problem.Input d} {I : Interp Op Tst ℝ}
     (hA : IsExactMatvecPair id x.val.1 I)
-    (hO : I.Meets .total (Has.inj OrthOp.extend)
+    (hO : I.Satisfies .total (Has.inj OrthOp.extend)
       ((exactExtendRel (𝕜 := ℝ) id).spec ExtendOperands))
     (hSample : IsSample I) (stream : ℕ) (τ : Tape ℝ) :
     Wp .total I τ (program stream).body (Program.environment (b := 5) d)
       (Good stream d x.val.1 τ) (problem.initial d x) := by
   have hl : (problem.initial d x).Live outputs := by
     simp [outputs, Mem.Live, Problem.initial]
-  have hRun := solve_writes hA hO hSample stream (τ := τ) (μ := problem.initial d x)
-    (U := (0, 0)) (V := (1, 0)) (G := (2, 0)) (R := (3, 0)) (S := (4, 0)) (b := d 2)
-    (q := d 3) (by simp) hl (initial_room d x)
-  change Wp .total I τ (.frame _ _ _) _ _ (problem.initial d x)
-  apply wp_frame rfl rfl hl
-  exact hRun.wp fun μ' hfr hp =>
-    ⟨by simpa [Problem.initial] using hp.1, by simpa [Problem.initial] using hfr.length_eq,
-      hp.2⟩
+  have hRun := (solveRoutine_meets hA hO hSample stream) [d 0, d 1, d 2, d 3] outputs τ
+    (problem.initial d x) [] rfl rfl hl
+    (Routine.separatedAt_of_separated (Routine.separated_of_nodup _ (by simp [outputs]))) rfl
+    ⟨rfl, rfl, trivial, fun _ _ => ⟨trivial, trivial⟩⟩ (initial_room d x)
+  change Wp .total I τ (solve stream) (Env.frame [d 0, d 1, d 2, d 3] outputs) _
+    (problem.initial d x)
+  exact hRun.wp fun μ' hfr ⟨hpos, ys, hys, hpost⟩ =>
+    ⟨hpos.eq_of_start rfl, by simpa [Problem.initial] using hfr.length_eq,
+      solveSpecOf_post hys hpost⟩
+
+/-- The canonical exact certificate of the abstract driver: the fixed program with its total
+certification against the model and the specification. The model is confined and, because the
+pair of products with the supplied matrix is a declared oracle, not uniform; the budget is the
+static count of the program (a manifest) and the scratch is the closed form
+`NLAlib.Krylov.GolubKahan.Band.solvePeak` plus the reservation of the queries. -/
+noncomputable def algorithm (work workspace : Operation → List ℕ → ℕ) (stream : ℕ) :
+    Algorithm (model work workspace) (specification work workspace stream) := by
+  refine Routine.algorithm (r := 4) (b := 5) (solveRoutine stream)
+    (fun _ x => solveSpec stream id x.val.1) (fun _ _ => [])
+    (ht := wellTyped_program work workspace stream) ?_ ?_ ?_ (fun _ _ => le_rfl)
+    (fun d _ => staticPeak_program_le_solvePeak _ stream d)
+    (fun _ _ => le_rfl) (fun _ _ => le_rfl) ?_
+  · intro d _ x I hI
+    obtain ⟨hA, hO, hSample⟩ := laws hI
+    exact solveRoutine_meets hA hO hSample stream
+  · intro d _ x
+    exact ⟨rfl, fun _ => ⟨rfl, rfl, trivial, fun _ _ => ⟨trivial, trivial⟩⟩, initial_room d x⟩
+  · intro d _ x τ μ' hfr hpos ys hys hpost c _
+    read_outputs hys as (us, vs, gs, rs, ss)
+    exact ⟨hpos.eq_of_start rfl, by simpa [Problem.initial] using hfr.length_eq,
+      us, vs, gs, rs, ss, hys, hpost⟩
+  · intro d _ x
+    rw [initialBytes_problem]
+    exact le_rfl
 
 /-- The fixed program is certified in total mode. For all sizes $(m, n, b, q)$, every real
 $m \times n$ matrix $\mathbf{A}$, every interpretation whose products are the exact products with
@@ -609,28 +639,8 @@ words of the tape, releases its scratch and leaves five output blocks that decod
 run for $\mathbf{A}$ from the start block decoded from the tape. There is no rank, nonbreakdown
 or success hypothesis. -/
 theorem certifies (work workspace : Operation → List ℕ → ℕ) (stream : ℕ) :
-    (program stream).Certifies (model work workspace) (specification work workspace stream) := by
-  refine (Algorithm.ofWp (M := model work workspace)
-    (S := specification work workspace stream) (program stream)
-    (wellTyped_program work workspace stream) ?_ (fun _ _ => le_rfl)
-    (fun d _ => staticPeak_program_le_solvePeak _ stream d)
-    (fun _ _ => le_rfl) (fun _ _ => le_rfl) ?_).correct
-  · intro d _ x I hI τ
-    obtain ⟨hA, hO, hSample⟩ := laws hI
-    exact (wp_program hA hO hSample stream τ).mono fun _ h _ _ => h
-  · intro d _ x
-    rw [initialBytes_problem]
-    exact le_rfl
-
-/-- The canonical exact certificate of the abstract driver: the fixed program with its total
-certification against the model and the specification. The model is confined and, because the
-pair of products with the supplied matrix is a declared oracle, not uniform; the budget is the
-static count of the program (a manifest) and the scratch is the closed form
-`NLAlib.Krylov.GolubKahan.Band.solvePeak` plus the reservation of the queries. -/
-noncomputable def algorithm (work workspace : Operation → List ℕ → ℕ) (stream : ℕ) :
-    Algorithm (model work workspace) (specification work workspace stream) where
-  program := program stream
-  correct := certifies work workspace stream
+    (program stream).Certifies (model work workspace) (specification work workspace stream) :=
+  (algorithm work workspace stream).correct
 
 end Certification
 

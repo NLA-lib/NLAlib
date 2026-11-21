@@ -42,7 +42,8 @@ local notation "ST" => (fun d lo => eighStep F n fuel R0 beta (EighNode.A (X d l
   (EighNode.R (X d lo)) (EighNode.ε (X d lo)) (EighNode.ℓ (X d lo)) (eighTapeSample n d lo))
 
 /-- Full arena capacity and apartness supply every geometric prerequisite for actual upward
-execution. The returned root is exactly the existing pure recursion with budget `L + 1`. -/
+execution. The returned root is exactly the existing pure recursion with budget `L + 1`.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_upwardPass_of_arenas (unif : K → Su → K) (normal : Sg → K × K)
     {I : Interp Op Tst K} (hS : IsScalar M I) (hQ : IsToNat dec I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) {m : Mem K}
@@ -56,7 +57,7 @@ theorem writes_upwardPass_of_arenas (unif : K → Su → K) (normal : Sg → K �
       0 (L + 1) ua ea m.store)
     (hTwo : m.store.get c.1 (c.2 + 1) = some (M.lit 2))
     (hLit : IsExactNatLit dec M (max n 4)) :
-    Writes .total I τ (upwardPass (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (upwardPass (Op := Op) (Tst := Tst))
       (Env.frame [n, L] [lv, ua, qa, ea, sz, kd, kp, c]) (resultArenaFp n L ua ea)
       (fun m' => m'.pos = m.pos ∧ StoresResult n 0 0 ua ea
         (eighAux F n fuel R0 beta (L + 1) A R0 eps ell

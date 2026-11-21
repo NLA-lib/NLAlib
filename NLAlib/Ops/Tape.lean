@@ -249,10 +249,10 @@ theorem pos_of_run_of_straight {I : Interp Op Tst K} {k : Op → List ℕ → �
 /-- **The window lemma.** The meaning induced by an implementation without tests and index
 binders over tape-local operations is tape-local, with the static window of the tree. -/
 theorem Interp.TapeLocal.link {I : Interp Op₂ Tst K} {k₂ : Op₂ → List ℕ → ℕ}
-    (hI : ∀ o, I.TapeLocal o (k₂ o)) {T : Table Op₁ Op₂ Tst} {o : Op₁} {R : Impl Op₂ Tst}
-    (hT : T o = .inl R) (hs : R.body.Straight) {w : List ℕ → ℕ}
-    (hw : ∀ d offs : List ℕ, d.length = R.nd → offs.length = R.nin + R.nout →
-      staticWindow k₂ R.body (d ++ offs) = w d) : (I.link T).TapeLocal o w := by
+    (hI : ∀ o, I.TapeLocal o (k₂ o)) {T : Table Op₁ Op₂ Tst} {o : Op₁} {E : Impl Op₂ Tst}
+    (hT : T o = .inl E) (hs : E.body.Straight) {w : List ℕ → ℕ}
+    (hw : ∀ d offs : List ℕ, d.length = E.nd → offs.length = E.nin + E.nout →
+      staticWindow k₂ E.body (d ++ offs) = w d) : (I.link T).TapeLocal o w := by
   intro d ins outs m τ τ' hag
   simp only [Interp.link, hT]
   split_ifs with hfit
@@ -261,18 +261,18 @@ theorem Interp.TapeLocal.link {I : Interp Op₂ Tst K} {k₂ : Op₂ → List �
   have hw' := hw d ((ins ++ outs).map Prod.snd) hfit.1 (by simp [hfit.2.1, hfit.2.2])
   have key : ∀ (σ σ' : Tape K) (m' : Mem K),
       (∀ j < w d, σ (m.pos + j) = σ' (m.pos + j)) →
-      eval I σ R.body (Env.frame d (ins ++ outs)) m = some m' →
-      m'.pos = m.pos + w d ∧ eval I σ' R.body (Env.frame d (ins ++ outs)) m = some m' := by
+      eval I σ E.body (Env.frame d (ins ++ outs)) m = some m' →
+      m'.pos = m.pos + w d ∧ eval I σ' E.body (Env.frame d (ins ++ outs)) m = some m' := by
     intro σ σ' m' hσ hr
     have hp : m'.pos = m.pos + w d := by rw [pos_of_run_of_straight hI hs hr, Env.idx_frame, hw']
     refine ⟨hp, (run_follows hI σ σ' _ _ m m' hr).2 fun j hj hj' => ?_⟩
     have := hσ (j - m.pos) (by omega)
     rwa [Nat.add_sub_cancel' hj] at this
   refine ⟨?_, fun m' h => (key τ τ' m' hag h).1⟩
-  cases hr : eval I τ R.body (Env.frame d (ins ++ outs)) m with
+  cases hr : eval I τ E.body (Env.frame d (ins ++ outs)) m with
   | some m' => exact (key τ τ' m' hag hr).2.symm
   | none =>
-    cases hr' : eval I τ' R.body (Env.frame d (ins ++ outs)) m with
+    cases hr' : eval I τ' E.body (Env.frame d (ins ++ outs)) m with
     | none => rfl
     | some m' =>
       rw [(key τ' τ m' (fun j hj => (hag j hj).symm) hr').2] at hr

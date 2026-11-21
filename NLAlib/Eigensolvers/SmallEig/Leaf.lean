@@ -40,7 +40,7 @@ variable {O Q : Type} [Has ScalarOp O]
 (pairs). The interface is `[d, np, T] (Bk, P) → (Ev)`, that of the leaf routine of
 `NLAlib.ShiftedQR.solveRoundedWith`; the words and the cap are not read.
 Algorithm: small-eig -/
-def copyLeaf : Impl O Q := opsImpl% [d, np, T] (Bk, P) → (Ev) {
+def copyLeaf : Stmt O Q := ops% [d, np, T] (Bk, P) → (Ev) {
   for i < d {
     call (Has.inj ScalarOp.copy) [] (Bk[2 * (i * d + i)]) → (Ev[2 * i]);
     call (Has.inj ScalarOp.copy) [] (Bk[2 * (i * d + i) + 1]) → (Ev[2 * i + 1])
@@ -49,12 +49,14 @@ def copyLeaf : Impl O Q := opsImpl% [d, np, T] (Bk, P) → (Ev) {
 
 /-- `NLAlib.SmallEig.copyLeaf` on a scalar machine, at any order $d$: from a matrix
 $\mathbf{B}$ of order $d$ at `w` and room for $2d$ words at `o`, apart from $\mathbf{B}$, on every
-tape, it writes only those words and stores the diagonal of $\mathbf{B}$ as a column of pairs. -/
+tape, it writes only those words and stores the diagonal of $\mathbf{B}$ as a column of pairs.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem copyLeaf_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I) {d np T : ℕ}
     {τ : Tape ℝ} {μ : Mem ℝ} {w p o : ℕ × ℕ} {B : Matrix (Fin d) (Fin d) ℂ}
     (hB : HoldsMatrix w B μ.store) (hl : μ.Live [w, p, o]) (ho : o.2 + 2 * d ≤ μ.store.len o.1)
     (hwo : Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d))) (Store.inBlock o.1 o.2 (2 * d))) :
-    Writes .total I τ (copyLeaf (O := O) (Q := Q)).body (Env.frame [d, np, T] [w, p, o])
+    Writes .total I τ (copyLeaf (O := O) (Q := Q)) (Env.frame [d, np, T] [w, p, o])
       (Store.inBlock o.1 o.2 (2 * d))
       (fun μ' => HoldsMatrix o (Matrix.of fun i (_ : Fin 1) => B i i) μ'.store) μ := by
   unfold copyLeaf

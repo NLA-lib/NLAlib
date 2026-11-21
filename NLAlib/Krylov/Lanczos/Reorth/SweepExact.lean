@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Krylov.Lanczos.Reorth.TwoPassInterface
+public import NLAlib.Krylov.Lanczos.Reorth.TwoPass
 public import NLAlib.Ops.Blas.Decoded
 public import NLAlib.Krylov.Processes.LanczosReorthRecurrence
 
@@ -17,7 +17,7 @@ total execution, including zero dimensions and dependent or zero basis columns.
 
 ## Main results
 
-* `NLAlib.Krylov.Lanczos.Reorth.cgs2_spec_exact`: exact total two-pass certificate.
+* `NLAlib.Krylov.Lanczos.Reorth.cgs2Routine_meets_exact`: exact total two-pass specification.
 * `NLAlib.Krylov.Lanczos.Reorth.PassOut.dec_vec_eq_sub_sum`: exact decoded projection update.
 -/
 
@@ -32,7 +32,7 @@ variable {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has Blas1Op Op]
 omit [Has ScalarOp Op] in
 private theorem axpy_zero {dec : K → ℝ} {ok : ℕ → Prop} {I : Interp Op Tst K}
     (h : IsExactBlas1 dec ok I) :
-    I.Meets .total (Has.inj Blas1Op.axpy) ((axpyRel dec 0).spec (InPlace ok)) := by
+    I.Satisfies .total (Has.inj Blas1Op.axpy) ((axpyRel dec 0).spec (InPlace ok)) := by
   refine h.axpy.mono (fun _ _ _ _ _ hp => hp) ?_
   intro d ins outs τ m m' _ hpost
   obtain ⟨X, hread, hroom, Y, hlen, hrel, hm⟩ := hpost
@@ -43,32 +43,18 @@ private theorem axpy_zero {dec : K → ℝ} {ok : ℕ → Prop} {I : Interp Op T
   · contradiction
 
 /-- An exact machine and exact level-1 operations give a total exact classical pass. -/
-theorem cgsPass_spec_exact {M : Machine K} {dec : K → ℝ} {ok : ℕ → Prop}
+theorem cgsPassRoutine_meets_exact {M : Machine K} {dec : K → ℝ} {ok : ℕ → Prop}
     {I : Interp Op Tst K} (hS : IsScalar M I) (hM : ExactModel dec M)
     (hB : IsExactBlas1 dec ok I) :
-    (cgsPassImpl (Op := Op) (Tst := Tst)).Triple I .total
-      ((passRel dec (fun _ => 0) 0).spec (PassOperands ok)) :=
-  cgsPass_spec hS hB.dot_zero (axpy_zero hB) hM.neg
+    (cgsPassRoutine (Op := Op) (Tst := Tst)).Meets I (cgsPassSpec dec (fun _ => 0) 0 ok) :=
+  cgsPassRoutine_meets hS hB.dot_zero (axpy_zero hB) hM.neg
 
 /-- Both exact classical passes execute without rank or nonbreakdown assumptions. -/
-theorem cgs2_spec_exact {M : Machine K} {dec : K → ℝ} {ok : ℕ → Prop}
+theorem cgs2Routine_meets_exact {M : Machine K} {dec : K → ℝ} {ok : ℕ → Prop}
     {I : Interp Op Tst K} (hS : IsScalar M I) (hM : ExactModel dec M)
     (hB : IsExactBlas1 dec ok I) :
-    (cgs2Impl (Op := Op) (Tst := Tst)).Triple I .total
-      ((twoPassRel dec (fun _ => 0) 0).spec (TwoPassOperands ok)) :=
-  cgs2_spec hS hB.dot_zero (axpy_zero hB) hM.neg
-
-/-- The exact two-pass certificate exposes the current vector read for composing a round. -/
-theorem cgs2_writes_exact {M : Machine K} {dec : K → ℝ} {ok : ℕ → Prop}
-    {I : Interp Op Tst K} (hS : IsScalar M I) (hM : ExactModel dec M)
-    (hB : IsExactBlas1 dec ok I) {n k : ℕ} {τ : Tape K} {μ : Mem K}
-    {Q w : ℕ × ℕ} {qs ws : List K} (hok : ok n) (hQw : Q.1 ≠ w.1)
-    (hl : μ.Live [Q, w]) (hqs : μ.store.readBlock Q.1 Q.2 (k * n) = some qs)
-    (hws : μ.store.readBlock w.1 w.2 n = some ws) (hz : μ.Room [w] [n]) :
-    Writes .total I τ cgs2 (Env.frame [n, k] [Q, w, w]) (Fp.blocks [w] [n])
-      (fun μ' => μ'.pos = μ.pos ∧ ∃ ws', μ'.store.readBlock w.1 w.2 n = some ws' ∧
-        TwoPassOut dec 0 0 n k qs ws ws') μ :=
-  cgs2_writes hS hB.dot_zero (axpy_zero hB) hM.neg hok hQw hl hqs hws hz
+    (cgs2Routine (Op := Op) (Tst := Tst)).Meets I (cgs2Spec dec (fun _ => 0) 0 ok) :=
+  cgs2Routine_meets hS hB.dot_zero (axpy_zero hB) hM.neg
 
 omit [Has ScalarOp Op] [Has Blas1Op Op] in
 /-- Each exact coefficient uses the vector from the start of the classical pass. -/

@@ -33,20 +33,17 @@ variable {K Op Tst : Type} [Inhabited K]
 
 /-- Apply one unary operation to each entry of a vector, without scratch allocations.
 The operation reads one cell and writes one cell. -/
-def unaryMap (o : Op) : Impl Op Tst where
-  nd := 1
-  nin := 1
-  nout := 1
-  body := .loop (.var 0) (.call o [] [⟨0, .var 1 + .var 3⟩] [⟨1, .var 2 + .var 3⟩])
+def unaryMap (o : Op) : Stmt Op Tst :=
+  .loop (.var 0) (.call o [] [⟨0, .var 1 + .var 3⟩] [⟨1, .var 2 + .var 3⟩])
 
 /-- The unary map's complete primitive count is one call per entry. -/
 theorem stmtCost_unaryMap (o : Op) (n x y : ℕ) :
-    stmtCost (unaryMap (Tst := Tst) o).body [n, x, y] = n • Count.one o [] := by
+    stmtCost (unaryMap (Tst := Tst) o) [n, x, y] = n • Count.one o [] := by
   simp [unaryMap, stmtCost, useCost]
 
 /-- A unary map has only the workspace of a primitive call, independently of vector length. -/
 theorem stmtPeak_unaryMap_le (o : Op) (W : Op → List ℕ → ℕ) (n x y : ℕ) :
-    stmtPeak W (unaryMap (Tst := Tst) o).body [n, x, y] ≤ W o [] := by
+    stmtPeak W (unaryMap (Tst := Tst) o) [n, x, y] ≤ W o [] := by
   simp only [unaryMap, stmtPeak]
   exact Finset.sup_le fun _ _ => le_rfl
 
@@ -60,7 +57,7 @@ theorem wp_unaryMap_of_disj_or_eq {o : Op} {f : K → K} {I : Interp Op Tst K}
     (hx : m.store.readBlock x.1 x.2 n = some xs)
     (hy : y.2 + n ≤ m.store.len y.1) {Q : Mem K → Prop}
     (hQ : Q (m.updBlock y (xs.map f))) :
-    Wp md I τ (unaryMap o).body (Env.frame [n] [x, y]) Q m := by
+    Wp md I τ (unaryMap o) (Env.frame [n] [x, y]) Q m := by
   have hxs := Store.length_of_readBlock hx
   have hgx : ∀ k < n, m.store.get x.1 (x.2 + k) = some (vec xs k) :=
     fun k hk => Store.get_of_readBlock hx hk default
@@ -101,26 +98,23 @@ theorem wp_unaryMap {o : Op} {f : K → K} {I : Interp Op Tst K}
     (hxy : x.1 ≠ y.1 ∨ x = y) (hx : m.store.readBlock x.1 x.2 n = some xs)
     (hy : y.2 + n ≤ m.store.len y.1) {Q : Mem K → Prop}
     (hQ : Q (m.updBlock y (xs.map f))) :
-    Wp md I τ (unaryMap o).body (Env.frame [n] [x, y]) Q m :=
+    Wp md I τ (unaryMap o) (Env.frame [n] [x, y]) Q m :=
   wp_unaryMap_of_disj_or_eq hI (hxy.imp Fp.disj_inBlock_of_ne id) hx hy hQ
 
 /-- Apply one binary scalar operation to corresponding entries of two stored vectors.
 The output may be exactly either input, or spatially disjoint from it. -/
-def binaryMap (o : Op) : Impl Op Tst where
-  nd := 1
-  nin := 2
-  nout := 1
-  body := .loop (.var 0) (.call o []
+def binaryMap (o : Op) : Stmt Op Tst :=
+  .loop (.var 0) (.call o []
     [⟨0, .var 1 + .var 4⟩, ⟨1, .var 2 + .var 4⟩] [⟨2, .var 3 + .var 4⟩])
 
 /-- A binary map performs one declared scalar call per output word. -/
 theorem stmtCost_binaryMap (o : Op) (n x y z : ℕ) :
-    stmtCost (binaryMap (Tst := Tst) o).body [n, x, y, z] = n • Count.one o [] := by
+    stmtCost (binaryMap (Tst := Tst) o) [n, x, y, z] = n • Count.one o [] := by
   simp [binaryMap, stmtCost, useCost]
 
 /-- The only workspace of a binary map is the workspace of its scalar operation. -/
 theorem stmtPeak_binaryMap_le (o : Op) (W : Op → List ℕ → ℕ) (n x y z : ℕ) :
-    stmtPeak W (binaryMap (Tst := Tst) o).body [n, x, y, z] ≤ W o [] := by
+    stmtPeak W (binaryMap (Tst := Tst) o) [n, x, y, z] ≤ W o [] := by
   simp only [binaryMap, stmtPeak]
   exact Finset.sup_le fun _ _ => le_rfl
 
@@ -134,7 +128,7 @@ theorem writes_binaryMap {o : Op} {f : K → K → K} {I : Interp Op Tst K}
     (hz : z.2 + n ≤ m.store.len z.1)
     (hxz : Fp.Disj (Store.inBlock x.1 x.2 n) (Store.inBlock z.1 z.2 n) ∨ x = z)
     (hyz : Fp.Disj (Store.inBlock y.1 y.2 n) (Store.inBlock z.1 z.2 n) ∨ y = z) :
-    Writes .total I τ (binaryMap (Tst := Tst) o).body (Env.frame [n] [x, y, z])
+    Writes .total I τ (binaryMap (Tst := Tst) o) (Env.frame [n] [x, y, z])
       (Store.inBlock z.1 z.2 n)
       (fun m' => m'.store.HoldsVec z.1 z.2 n (fun i => f (vx i) (vy i)) ∧ m'.pos = m.pos) m := by
   refine writes_fill rfl (fun i => f (vx i) (vy i)) (fun _ => m.pos) rfl

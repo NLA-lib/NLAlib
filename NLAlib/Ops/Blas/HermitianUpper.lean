@@ -33,7 +33,7 @@ theorem writes_copyTriangle {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar
       (Store.inBlock y.1 y.2 (2 * (n * n))))
     (hX : m.store.HoldsEntries (EntryCodec.pair K) ⟨x.1, x.2, n, n, n⟩ A)
     (hY : y.2 + 2 * (n * n) ≤ m.store.len y.1) (hl : m.Live [x, y]) :
-    Writes .total I τ (copyTriangle (Op := Op) (Tst := Tst)).body (Env.frame [n] [x, y])
+    Writes .total I τ (copyTriangle (Op := Op) (Tst := Tst)) (Env.frame [n] [x, y])
       ((EntryCodec.pair K).rowsFp ⟨y.1, y.2, n, n, n⟩ id)
       (fun m' => m'.store.HoldsRowEntries (EntryCodec.pair K) ⟨y.1, y.2, n, n, n⟩ id A ∧
         m'.pos = m.pos) m := by
@@ -73,7 +73,7 @@ omit [Has ScalarOp Op] in
 /-- A triangular entry procedure needs only a word-level transition specification. The shared
 matrix rule supplies its actual entry, transposed entry, scalar, output room, and all framing.
 The procedure is fixed before matrix sizes and values are chosen. -/
-theorem writes_triangle {I : Interp Op Tst K} {τ : Tape K} (entry : Impl Op Tst)
+theorem writes_triangle {I : Interp Op Tst K} {τ : Tape K} (entry : Stmt Op Tst)
     (F : (K × K) → (K × K) → K → K × K)
     (hentry : ∀ (μ : Mem K) (x xt c z : ℕ × ℕ) (a aT : K × K) (d : K),
       Fp.Disj (Store.inBlock x.1 x.2 2) (Store.inBlock z.1 z.2 2) →
@@ -83,7 +83,7 @@ theorem writes_triangle {I : Interp Op Tst K} {τ : Tape K} (entry : Impl Op Tst
       μ.store.get x.1 x.2 = some a.1 → μ.store.get x.1 (x.2 + 1) = some a.2 →
       μ.store.get xt.1 xt.2 = some aT.1 → μ.store.get xt.1 (xt.2 + 1) = some aT.2 →
       μ.store.get c.1 c.2 = some d → z.2 + 2 ≤ μ.store.len z.1 →
-      Wp .total I τ entry.body (Env.frame [] [x, xt, c, z])
+      Wp .total I τ entry (Env.frame [] [x, xt, c, z])
         (fun μ' => μ' = μ.updBlock z [(F a aT d).1, (F a aT d).2]) μ)
     {n : ℕ} {x c y : ℕ × ℕ} {m : Mem K} {A : ℕ → ℕ → K × K} {d : K}
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (n * n)))
@@ -92,7 +92,7 @@ theorem writes_triangle {I : Interp Op Tst K} {τ : Tape K} (entry : Impl Op Tst
     (hX : m.store.HoldsEntries (EntryCodec.pair K) ⟨x.1, x.2, n, n, n⟩ A)
     (hc : m.store.get c.1 c.2 = some d)
     (hY : y.2 + 2 * (n * n) ≤ m.store.len y.1) (hl : m.Live [x, c, y]) :
-    Writes .total I τ (triangle entry).body (Env.frame [n] [x, c, y])
+    Writes .total I τ (triangle entry) (Env.frame [n] [x, c, y])
       ((EntryCodec.pair K).rowsFp ⟨y.1, y.2, n, n, n⟩ id)
       (fun m' => m'.store.HoldsRowEntries (EntryCodec.pair K) ⟨y.1, y.2, n, n, n⟩ id
         (fun i j => F (A i j) (A j i) d) ∧ m'.pos = m.pos) m := by
@@ -136,7 +136,7 @@ theorem writes_triangle {I : Interp Op Tst K} {τ : Tape K} (entry : Impl Op Tst
 omit [Has ScalarOp Op] in
 /-- A diagonal entry procedure is lifted to all diagonal positions by the injective-region
 rule. Its matrix-level proof supplies no partial-output invariant or component framing. -/
-theorem writes_diagonal {I : Interp Op Tst K} {τ : Tape K} (entry : Impl Op Tst)
+theorem writes_diagonal {I : Interp Op Tst K} {τ : Tape K} (entry : Stmt Op Tst)
     (F : (K × K) → K → K × K)
     (hentry : ∀ (μ : Mem K) (x c z : ℕ × ℕ) (a : K × K) (d : K),
       Fp.Disj (Store.inBlock x.1 x.2 2) (Store.inBlock z.1 z.2 2) →
@@ -144,7 +144,7 @@ theorem writes_diagonal {I : Interp Op Tst K} {τ : Tape K} (entry : Impl Op Tst
       μ.Live [x, c, z] →
       μ.store.get x.1 x.2 = some a.1 → μ.store.get x.1 (x.2 + 1) = some a.2 →
       μ.store.get c.1 c.2 = some d → z.2 + 2 ≤ μ.store.len z.1 →
-      Wp .total I τ entry.body (Env.frame [] [x, c, z])
+      Wp .total I τ entry (Env.frame [] [x, c, z])
         (fun μ' => μ' = μ.updBlock z [(F a d).1, (F a d).2]) μ)
     {n : ℕ} {x c y : ℕ × ℕ} {m : Mem K} {A : ℕ → ℕ → K × K} {d : K}
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (n * n)))
@@ -153,7 +153,7 @@ theorem writes_diagonal {I : Interp Op Tst K} {τ : Tape K} (entry : Impl Op Tst
     (hX : m.store.HoldsEntries (EntryCodec.pair K) ⟨x.1, x.2, n, n, n⟩ A)
     (hc : m.store.get c.1 c.2 = some d)
     (hY : y.2 + 2 * (n * n) ≤ m.store.len y.1) (hl : m.Live [x, c, y]) :
-    Writes .total I τ (diagonal entry).body (Env.frame [n] [x, c, y])
+    Writes .total I τ (diagonal entry) (Env.frame [n] [x, c, y])
       ((EntryCodec.pair K).regionFp y.1 y.2 n (fun _ j => j * n + j) (fun _ => 1))
       (fun m' => m'.store.HoldsEntryRegion (EntryCodec.pair K) y.1 y.2 n
         (fun _ j => j * n + j) (fun _ => 1) (fun _ j => F (A j j) d) ∧
@@ -202,7 +202,7 @@ omit [Has ScalarOp Op] in
 /-- Strict-upper and diagonal procedure specifications compose into one inclusive upper
 matrix specification. Region disjointness preserves the strict-upper entries automatically. -/
 theorem writes_upper {I : Interp Op Tst K} {τ : Tape K}
-    (offDiagonal diagonalEntry : Impl Op Tst) {n : ℕ} {x c y : ℕ × ℕ} {m : Mem K}
+    (offDiagonal diagonalEntry : Stmt Op Tst) {n : ℕ} {x c y : ℕ × ℕ} {m : Mem K}
     (U : ℕ → ℕ → K × K) (D : ℕ → K × K)
     {A : ℕ → ℕ → K × K} {d : K}
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (n * n)))
@@ -211,7 +211,7 @@ theorem writes_upper {I : Interp Op Tst K} {τ : Tape K}
     (hX : m.store.HoldsEntries (EntryCodec.pair K) ⟨x.1, x.2, n, n, n⟩ A)
     (hc : m.store.get c.1 c.2 = some d)
     (hY : y.2 + 2 * (n * n) ≤ m.store.len y.1) (hl : m.Live [x, c, y])
-    (hu : Writes .total I τ (triangle offDiagonal).body (Env.frame [n] [x, c, y])
+    (hu : Writes .total I τ (triangle offDiagonal) (Env.frame [n] [x, c, y])
       ((EntryCodec.pair K).rowsFp ⟨y.1, y.2, n, n, n⟩ id)
       (fun μ => μ.store.HoldsRowEntries (EntryCodec.pair K) ⟨y.1, y.2, n, n, n⟩ id U ∧
         μ.pos = m.pos) m)
@@ -219,11 +219,11 @@ theorem writes_upper {I : Interp Op Tst K} {τ : Tape K}
       μ.store.HoldsEntries (EntryCodec.pair K) ⟨x.1, x.2, n, n, n⟩ A →
       μ.store.get c.1 c.2 = some d → y.2 + 2 * (n * n) ≤ μ.store.len y.1 →
       μ.Live [x, c, y] →
-      Writes .total I τ (diagonal diagonalEntry).body (Env.frame [n] [x, c, y])
+      Writes .total I τ (diagonal diagonalEntry) (Env.frame [n] [x, c, y])
         ((EntryCodec.pair K).regionFp y.1 y.2 n (fun _ j => j * n + j) (fun _ => 1))
         (fun μ' => μ'.store.HoldsEntryRegion (EntryCodec.pair K) y.1 y.2 n
           (fun _ j => j * n + j) (fun _ => 1) (fun _ j => D j) ∧ μ'.pos = μ.pos) μ) :
-    Writes .total I τ (upper offDiagonal diagonalEntry).body (Env.frame [n] [x, c, y])
+    Writes .total I τ (upper offDiagonal diagonalEntry) (Env.frame [n] [x, c, y])
       (Store.inBlock y.1 y.2 (2 * (n * n)))
       (fun μ => μ.store.HoldsRowEntries (EntryCodec.pair K) ⟨y.1, y.2, n, n, n⟩
         (fun j => j + 1) (fun i j => if i = j then D i else U i j) ∧ μ.pos = m.pos) m := by
@@ -254,7 +254,7 @@ theorem writes_shiftUpper {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M
     (hX : m.store.HoldsEntries (EntryCodec.pair K) ⟨x.1, x.2, n, n, n⟩ A)
     (hc : m.store.get c.1 c.2 = some d)
     (hY : y.2 + 2 * (n * n) ≤ m.store.len y.1) (hl : m.Live [x, c, y]) :
-    Writes .total I τ (shiftUpper (Op := Op) (Tst := Tst)).body (Env.frame [n] [x, c, y])
+    Writes .total I τ (shiftUpper (Op := Op) (Tst := Tst)) (Env.frame [n] [x, c, y])
       (Store.inBlock y.1 y.2 (2 * (n * n)))
       (fun μ => μ.store.HoldsRowEntries (EntryCodec.pair K) ⟨y.1, y.2, n, n, n⟩
         (fun j => j + 1) (fun i j => if i = j then (M.sub (A i i).1 d, M.lit 0) else A i j) ∧
@@ -281,7 +281,7 @@ theorem writes_scaleUpper {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M
     (hX : m.store.HoldsEntries (EntryCodec.pair K) ⟨x.1, x.2, n, n, n⟩ A)
     (hc : m.store.get c.1 c.2 = some d)
     (hY : y.2 + 2 * (n * n) ≤ m.store.len y.1) (hl : m.Live [x, c, y]) :
-    Writes .total I τ (scaleUpper (Op := Op) (Tst := Tst)).body (Env.frame [n] [x, c, y])
+    Writes .total I τ (scaleUpper (Op := Op) (Tst := Tst)) (Env.frame [n] [x, c, y])
       (Store.inBlock y.1 y.2 (2 * (n * n)))
       (fun μ => μ.store.HoldsRowEntries (EntryCodec.pair K) ⟨y.1, y.2, n, n, n⟩
         (fun j => j + 1) (fun i j => if i = j then (M.div (A i i).1 d, M.lit 0)
@@ -310,7 +310,7 @@ theorem writes_averageUpper {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar
     (hX : m.store.HoldsEntries (EntryCodec.pair K) ⟨x.1, x.2, n, n, n⟩ A)
     (hc : m.store.get c.1 c.2 = some d)
     (hY : y.2 + 2 * (n * n) ≤ m.store.len y.1) (hl : m.Live [x, c, y]) :
-    Writes .total I τ (averageUpper (Op := Op) (Tst := Tst)).body (Env.frame [n] [x, c, y])
+    Writes .total I τ (averageUpper (Op := Op) (Tst := Tst)) (Env.frame [n] [x, c, y])
       (Store.inBlock y.1 y.2 (2 * (n * n)))
       (fun μ => μ.store.HoldsRowEntries (EntryCodec.pair K) ⟨y.1, y.2, n, n, n⟩
         (fun j => j + 1) (fun i j => if i = j then

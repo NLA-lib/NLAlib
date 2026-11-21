@@ -24,11 +24,8 @@ updated exactly in place or copied between disjoint regions of one arena.
 namespace NLAlib.Ops
 
 /-- Apply a binary scalar operation with a fixed stored right operand. -/
-def scalarBroadcast {Op Tst : Type} (o : Op) : Impl Op Tst where
-  nd := 1
-  nin := 2
-  nout := 1
-  body := .loop (.var 0)
+def scalarBroadcast {Op Tst : Type} (o : Op) : Stmt Op Tst :=
+  .loop (.var 0)
     (.call o [] [⟨0, .var 1 + .var 4⟩, ⟨1, .var 2⟩] [⟨2, .var 3 + .var 4⟩])
 
 /-- A stored broadcast operation returns its pointwise value. The vector operands may alias
@@ -40,7 +37,7 @@ theorem writes_scalarBroadcast {K Op Tst : Type} {o : Op} {f : K → K → K}
     (hy : y.2 + n ≤ m.store.len y.1)
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 n) (Store.inBlock y.1 y.2 n) ∨ x = y)
     (hay : Fp.Disj (Store.inBlock a.1 a.2 1) (Store.inBlock y.1 y.2 n)) :
-    Writes .total I τ (scalarBroadcast (Tst := Tst) o).body (Env.frame [n] [x, a, y])
+    Writes .total I τ (scalarBroadcast (Tst := Tst) o) (Env.frame [n] [x, a, y])
       (Store.inBlock y.1 y.2 n)
       (fun m' => m'.store.HoldsVec y.1 y.2 n (fun i => f (v i) c) ∧ m'.pos = m.pos) m := by
   refine writes_fill rfl (fun i => f (v i) c) (fun _ => m.pos) rfl
@@ -72,7 +69,7 @@ theorem writes_scalarBroadcast_readBlock {K Op Tst : Type} [Inhabited K]
     (hy : y.2 + n ≤ m.store.len y.1)
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 n) (Store.inBlock y.1 y.2 n) ∨ x = y)
     (hay : Fp.Disj (Store.inBlock a.1 a.2 1) (Store.inBlock y.1 y.2 n)) :
-    Writes .total I τ (scalarBroadcast (Tst := Tst) o).body (Env.frame [n] [x, a, y])
+    Writes .total I τ (scalarBroadcast (Tst := Tst) o) (Env.frame [n] [x, a, y])
       (Store.inBlock y.1 y.2 n)
       (fun m' => m'.pos = m.pos ∧
         m'.store.readBlock y.1 y.2 n = some (xs.map fun v => f v c)) m := by

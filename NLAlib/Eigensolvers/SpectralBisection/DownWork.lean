@@ -45,7 +45,7 @@ theorem downSlot_kernelWeight_le_of_exec {K : Type}
     Dense.kernelWeight T b.cost ≤ Dense.kernelWeight T a.cost + (2 * cap + 9) * T k := by
   have hidx := hQ.index_eq_of_decode_nat (m := a.mem)
     (x := (sz.1, sz.2 + n * d + lo)) hSize hDecode
-  dsimp only [downSlotsBody, downNodesImpl] at hr
+  dsimp only [downSlotsBody, downNodes] at hr
   rw [evalCounted] at hr
   simp only [Operand.evalList, Operand.eval, Env.pushIdx, Env.frame, List.map_cons, List.map_nil,
     List.cons_append, List.nil_append, List.length_cons, List.length_nil, zero_add, Nat.reduceAdd,
@@ -85,8 +85,8 @@ theorem downNodes_kernelWeight_sum_le_of_exec {K : Type} [Inhabited K]
     (hG : DownLevelGeometry n d ks par lv su sg ma ua qa ea sz kd kp c t μ.store)
     (T : ℕ → ℕ) (W : DenseOp → List ℕ → ℕ)
     {a b : St DenseOp (CmpTst ⊕ IdxTst) K} (hmem : a.mem = μ)
-    (hr : evalCounted I W τ (downNodesImpl (node (Op := DenseOp)
-      (Tst := CmpTst ⊕ IdxTst))).body
+    (hr : evalCounted I W τ (downNodes (node (Op := DenseOp)
+      (Tst := CmpTst ⊕ IdxTst)))
       (Env.frame [n, L, fuel, d] [par, lv, su, sg, ma, ua, qa, ea, sz, kd, kp, c, t]) a = some b) :
     Dense.kernelWeight T b.cost ≤ Dense.kernelWeight T a.cost +
       ∑ lo ∈ Finset.range n, (2 * fuel + 9) * T (ks lo) := by

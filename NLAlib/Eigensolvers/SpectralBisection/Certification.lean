@@ -106,25 +106,32 @@ noncomputable def certifiedAlgorithm (M : Machine K) (dec : K → ℝ)
       (Dense.functionalModel (problem (K := K) domain admitted) M dec (EntryCodec.pair K) mm qr
         (Dense.resources matrixWork matrixWorkspace))
       (wordSpecification M dec mm qr domain admitted budget scratch work span memory) := by
-  refine Algorithm.ofWp (program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))
-    (wellTyped_program matrixWork matrixWorkspace) ?_ hCost hScratch hWork hSpan ?_
-  · intro d hd x I hI τ
+  refine (bisectionRoutine (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).algorithm (r := 3)
+    (b := 4) (P := problem (K := K) domain admitted)
+    (fun d x => bisectionSpec M dec mm qr (vec x.val.1.2 0) (vec x.val.1.2 1) (vec x.val.1.2 2)
+      (inputMatrix d x))
+    (fun d x => [(EntryCodec.pair K).packFinMatrix (inputMatrix d x),
+      [vec x.val.1.2 0, vec x.val.1.2 1, vec x.val.1.2 2]])
+    (ht := wellTyped_program matrixWork matrixWorkspace) ?_ ?_ ?_ hCost hScratch hWork
+    hSpan ?_
+  · intro d hd x I hI
     rcases Dense.laws_functionalModel M dec (EntryCodec.pair K) mm qr
       (Dense.resources matrixWork matrixWorkspace) d x I hI with
       ⟨hS, hL, hMM, hQR, hSample, hC, hQ⟩
-    rcases initial_problem_geometry d x with ⟨hl, _, hRoom, hLength, _⟩
-    have hRun := writes_solve M dec mm qr (vec x.val.1.2 0) (vec x.val.1.2 1)
-      (vec x.val.1.2 2) (inputMatrix d x)
-      (μ := (problem (K := K) domain admitted).initial d x) (τ := τ) (L := d 1) (fuel := d 2)
-      (a := (0, 0)) (par := (1, 0)) (u := (2, 0)) (dv := (3, 0))
-      hS hL hC hMM hQR hQ hSample (hLit d hd) hl
-      (initial_readBlock_inputMatrix d x) (initial_parameter_words d x) hRoom
-      (by disjoint) (by disjoint)
-    apply hRun.wp
-    intro ν hfr h c _
+    exact bisectionRoutine_meets M dec mm qr _ _ _ _ hS hL hC hMM hQR hQ hSample
+  · intro d hd x
+    rcases initial_problem_geometry d x with ⟨-, -, hRoom, -, -⟩
+    exact ⟨Mem.readBlocks_of_cons (initial_readBlock_inputMatrix d x)
+        (Mem.readBlocks_of_cons (initial_parameter_words d x) rfl),
+      fun _ => ⟨rfl, hLit d hd, rfl, rfl⟩, hRoom⟩
+  · intro d hd x τ ν hfr hpos ys hys hpost c _
+    rcases initial_problem_geometry d x with ⟨-, -, -, hLength, -⟩
     have hFinalLength : ν.store.length = 4 := hfr.length_eq.trans hLength
-    simpa only [wordSpecification, Problem.initial, Nat.zero_add] using
-      And.intro h.2 (And.intro h.1 hFinalLength)
+    change ν.readBlocks [(2, 0), (3, 0)] [2 * (d 0 * d 0), d 0] = some ys at hys
+    obtain ⟨z, w, us, ds, -, -, -, rfl⟩ := Mem.readBlocks_two hys
+    obtain ⟨rfl, rfl⟩ : us = _ ∧ ds = _ := hpost
+    refine ⟨storesResult_iff_readBlocks.mpr ?_, hpos.trans (Nat.zero_add _), hFinalLength⟩
+    simpa [resultOperands, resultLengths] using hys
   · intro d hd x
     change (problem (K := K) domain admitted).initialBytes d x + scratch d ≤ memory d
     rw [initialBytes_problem]

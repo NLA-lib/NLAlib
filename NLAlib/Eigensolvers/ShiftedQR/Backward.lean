@@ -40,7 +40,10 @@ of the exact-arithmetic program takes a decoupler that never fails.
 * `NLAlib.ShiftedQR.specNorm_machineColRotation_sub_le`,
   `NLAlib.ShiftedQR.isPerturbedUnitarySimilar_machineColRotation`: one rounded round is within
   $49\boldsymbol{u}\|\mathbf{Z}\|_2$ of the exact conjugation, a perturbed unitary similarity.
-* `NLAlib.ShiftedQR.shiftedStep_isPerturbedUnitarySimilar`: the rounded single step.
+* `NLAlib.ShiftedQR.shiftedStepRoutine_meets_rounded`: the step routine meets its rounded
+  specification.
+* `NLAlib.ShiftedQR.shiftedStep_isPerturbedUnitarySimilar`: the rounded single step on its
+  operands.
 -/
 
 @[expose] public section
@@ -58,7 +61,7 @@ words $(\tau, B, \theta, \alpha, \gamma)$, the stored result is upper Hessenberg
 perturbed unitary similarity of the input with backward error $\nu N$. Optimality of the Ritz
 values and the acceptance test are not part of the backward contract (they are the convergence
 half). -/
-def BackwardIterationContract (θ ν : ℝ) (Iter : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+def BackwardIterationContract (θ ν : ℝ) (Iter : Stmt O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ {n m M : ℕ} {τ B α γ N : ℝ} {w p c : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ}
     (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
     IsUpperHessenberg H → specNorm H ≤ N → 2 ^ m ≤ n → 0 ≤ τ → 0 ≤ B →
@@ -68,7 +71,7 @@ def BackwardIterationContract (θ ν : ℝ) (Iter : Impl O Q) (I : Interp O Q �
     μ.Live [w, p, c, w] → w.2 + 2 * ((n + 1) * (n + 1)) ≤ μ.store.len w.1 →
     Fp.Disj (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock p.1 p.2 5 ⊔ Store.inBlock c.1 c.2 2) →
-    Writes .total I tape Iter.body (Env.frame [n + 1, m, 2 ^ m, M] [w, p, c, w])
+    Writes .total I tape Iter (Env.frame [n + 1, m, 2 ^ m, M] [w, p, c, w])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))))
       (fun μ' => μ'.pos = μ.pos ∧ ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
         IsPerturbedUnitarySimilar H H' (ν * N) ∧ IsUpperHessenberg H' ∧
@@ -77,7 +80,7 @@ def BackwardIterationContract (θ ν : ℝ) (Iter : Impl O Q) (I : Interp O Q �
 /-- The backward contract of a decoupling implementation with the backward error `ε N` for
 inputs of norm at most `N`: as `NLAlib.ShiftedQR.DecouplingContract`, with the exact unitary
 similarity replaced by a perturbed one. -/
-def BackwardDecouplingContract (θ : ℝ) (ε : ℝ → ℝ) (D : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+def BackwardDecouplingContract (θ : ℝ) (ε : ℝ → ℝ) (D : Stmt O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ {n m F M : ℕ} {τ B α γ δ N : ℝ} {w p r : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ}
     (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
     IsUpperHessenberg H → specNorm H ≤ N → RapidDecouplingHyps H τ B θ α γ δ m F → 2 ^ m ≤ n →
@@ -89,7 +92,7 @@ def BackwardDecouplingContract (θ : ℝ) (ε : ℝ → ℝ) (D : Impl O Q) (I :
       (Store.inBlock r.1 r.2 5) →
     Fp.Disj (Store.inBlock p.1 p.2 5)
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock r.1 r.2 5) →
-    Writes .total I tape D.body (Env.frame [n + 1, m, 2 ^ m, F, M] [w, p, w, r])
+    Writes .total I tape D (Env.frame [n + 1, m, 2 ^ m, F, M] [w, p, w, r])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock r.1 r.2 5)
       (fun μ' => μ'.pos = μ.pos ∧
         ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, IsPerturbedUnitarySimilar H H' (ε N) ∧
@@ -98,7 +101,7 @@ def BackwardDecouplingContract (θ : ℝ) (ε : ℝ → ℝ) (D : Impl O Q) (I :
 
 /-- An exact iteration contract is a backward iteration contract with backward error $0$
 (`NLAlib.ShiftedQR.shqrAcceptStep` is a unitary similarity of its input). -/
-theorem IterationContract.backward {θ : ℝ} {Iter : Impl O Q} {I : Interp O Q ℝ}
+theorem IterationContract.backward {θ : ℝ} {Iter : Stmt O Q} {I : Interp O Q ℝ}
     (h : IterationContract θ Iter I) : BackwardIterationContract θ 0 Iter I := by
   intro n m M τ B α γ N w p c tape μ H hH _ hk hτ hB hM hM0 hW hP hC hl hw hd
   refine (h H hH hk hτ hB hM hM0 hW hP hC hl hw hd).mono le_rfl ?_
@@ -110,7 +113,7 @@ theorem IterationContract.backward {θ : ℝ} {Iter : Impl O Q} {I : Interp O Q 
   exact hU.isPerturbedUnitarySimilar H
 
 /-- An exact decoupling contract is a backward decoupling contract with backward error $0$. -/
-theorem DecouplingContract.backward {θ : ℝ} {D : Impl O Q} {I : Interp O Q ℝ}
+theorem DecouplingContract.backward {θ : ℝ} {D : Stmt O Q} {I : Interp O Q ℝ}
     (h : DecouplingContract θ D I) : BackwardDecouplingContract θ (fun _ => 0) D I := by
   intro n m F M τ B α γ δ N w p r tape μ H hH _ hyp hk hτ hM hM0 hW hP hl hw hr hd₁ hd₂
   refine (h H hH hyp hk hτ hM hM0 hW hP hl hw hr hd₁ hd₂).mono le_rfl ?_
@@ -276,7 +279,7 @@ private theorem round_backwardStep {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
       (Store.inBlock cf.1 cf.2 4)) (B : ℝ) :
     BackwardStep .total I τ
       (.frame [.var 0, .var 6]
-        [⟨0, .var 1⟩, ⟨1, .var 2⟩, ⟨2, .var 3⟩, ⟨3, .var 4⟩, ⟨4, .var 5⟩] round.body)
+        [⟨0, .var 1⟩, ⟨1, .var 2⟩, ⟨2, .var 3⟩, ⟨3, .var 4⟩, ⟨4, .var 5⟩] round)
       ((Env.frame [n + 1] [w, z, cf, w, z]).pushIdx k)
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock cf.1 cf.2 4)
@@ -299,9 +302,11 @@ private theorem round_backwardStep {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
 
 /-- **The rounded sweep is a perturbed unitary similarity of the output**: on a machine with the
 standard model at $0 \le \boldsymbol{u} \le 1/576$, the $n$ rounds of the sweep of an
-$(n+1)\times(n+1)$ output $\mathbf{H}$ end with a perturbed unitary similarity of $\mathbf{H}$
-with backward error $((1 + 49\boldsymbol{u})^n - 1)\|\mathbf{H}\|_2$, whatever the working
-matrix. The rounds compose by `NLAlib.Ops.BackwardStep.loop_rel`. -/
+$(n+1)\times(n+1)$ output $\mathbf{H}$ end with a perturbed unitary similarity of $\mathbf{H}$ with
+backward error $((1 + 49\boldsymbol{u})^n - 1)\|\mathbf{H}\|_2$, whatever the working matrix. The
+rounds compose by `NLAlib.Ops.BackwardStep.loop_rel`. Shared by the trees of
+`NLAlib.ShiftedQR.multiStepStable`, `NLAlib.ShiftedQR.shiftedStep`, `NLAlib.MGS.sweepRoutine` and
+`NLAlib.ShiftedQR.sweepWithDiag`. -/
 private theorem sweep_writes_isPerturbedUnitarySimilar {M : Machine ℝ} {I : Interp O Q ℝ}
     {u : ℝ} (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hu' : u ≤ 1 / 576)
     (hCmp : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {w z cf : ℕ × ℕ}
@@ -315,20 +320,67 @@ private theorem sweep_writes_isPerturbedUnitarySimilar {M : Machine ℝ} {I : In
     (hzc : Fp.Disj (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock cf.1 cf.2 4))
     (hl : m.Live [w, z, cf, w, z]) :
-    Writes .total I τ sweep.body (Env.frame [n + 1] [w, z, cf, w, z])
+    Writes .total I τ sweep (Env.frame [n + 1] [w, z, cf, w, z])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock cf.1 cf.2 4)
       (fun m' => m'.pos = m.pos ∧ ∃ H', IsPerturbedUnitarySimilar H H'
         ((1 + 49 * u) ^ n * specNorm H - specNorm H) ∧ HoldsMatrix z H' m'.store) m := by
   have hloop := BackwardStep.loop_rel (md := .total) (I := I) (τ := τ)
     (body := .frame [.var 0, .var 6]
-      [⟨0, .var 1⟩, ⟨1, .var 2⟩, ⟨2, .var 3⟩, ⟨3, .var 4⟩, ⟨4, .var 5⟩] round.body)
+      [⟨0, .var 1⟩, ⟨1, .var 2⟩, ⟨2, .var 3⟩, ⟨3, .var 4⟩, ⟨4, .var 5⟩] round)
     isBackwardErrorRel_isPerturbedUnitarySimilar (n := .var 0 - .const 1) (N := n) rfl
     (fun _ => SweepState (n := n) m.pos w z cf) specNorm (fun h => h.specNorm_le) (49 * u)
     (specNorm H)
     fun k hk B => round_backwardStep hS hM hu hu' hCmp hk hwz hwc hzc B
   exact (hloop H m ⟨⟨rfl, hl, hc, ⟨W, hW⟩, hH⟩, le_rfl⟩).mono le_rfl
     fun _ _ ⟨H', hR, ⟨hp, _, _, _, hZ⟩, _⟩ => ⟨hp, H', hR, hZ⟩
+
+/-- At a positive order `n = n' + 1` with $n \boldsymbol{u} \le 1/2500$, the written block packs a
+perturbed unitary similarity of the matrix that the first block read packs, with backward error
+$50 n \boldsymbol{u} \lVert \mathbf{H} \rVert_2$. -/
+noncomputable def shiftedStepRoundedSpec (u : ℝ) : Routine.Spec ℝ :=
+  spec% [n] (aw, sw) → (zw) requires 0 < n ∧ (n : ℝ) * u ≤ 1 / 2500 ensures
+    ∀ n', n = n' + 1 → ∃ H' : Matrix (Fin (n' + 1)) (Fin (n' + 1)) ℂ,
+      IsPerturbedUnitarySimilar (matrixOfWords (n' + 1) aw) H'
+        (50 * (n' + 1) * u * specNorm (matrixOfWords (n' + 1) aw)) ∧ zw = matrixWords H'
+
+/-- The step routine meets its rounded specification on a machine with the standard model at the
+unit roundoff $\boldsymbol{u}$, for every shift. -/
+theorem shiftedStepRoutine_meets_rounded {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hCmp : IsCmp id I) :
+    (shiftedStepRoutine (Op := O) (Tst := Q)).Meets I (shiftedStepRoundedSpec u) := by
+  routine_intro [n] (a, s, z) reads (aw, sw)
+  obtain ⟨hpos₀, hnu⟩ := hpre
+  obtain ⟨k, rfl⟩ : ∃ k, n = k + 1 := ⟨n - 1, by omega⟩
+  have hnu' : (k + 1 : ℝ) * u ≤ 1 / 2500 := by exact_mod_cast hnu
+  have hlen' : aw.length = 2 * ((k + 1) * (k + 1)) := Store.length_of_readBlock haw
+  set H := matrixOfWords (k + 1) aw
+  have hH : HoldsMatrix a H m.store := by
+    simpa only [HoldsMatrix, H, matrixWords_matrixOfWords aw hlen'] using haw
+  have hs : m.store.readBlock s.1 s.2 2 =
+      some [(⟨vec sw 0, vec sw 1⟩ : ℂ).re, (⟨vec sw 0, vec sw 1⟩ : ℂ).im] := by
+    rw [← eq_vec_two (Store.length_of_readBlock hsw)]
+    exact hsw
+  have hzs : Fp.Disj (Store.inBlock z.1 z.2 (2 * ((k + 1) * (k + 1))))
+        (Store.inBlock a.1 a.2 (2 * ((k + 1) * (k + 1)))) ∧
+      Fp.Disj (Store.inBlock z.1 z.2 (2 * ((k + 1) * (k + 1)))) (Store.inBlock s.1 s.2 2) := by
+    simpa using hblocks.2.1
+  have hu' : u ≤ 1 / 576 := by nlinarith [mul_nonneg (Nat.cast_nonneg k : (0 : ℝ) ≤ k) hu]
+  have hgrow : (1 + 49 * u) ^ k * specNorm H - specNorm H ≤ 50 * (k + 1) * u * specNorm H := by
+    have h := mul_le_mul_of_nonneg_right (one_add_mul_pow_sub_one_le hu hnu') (specNorm_nonneg H)
+    nlinarith [mul_nonneg hu (specNorm_nonneg H)]
+  refine (shiftedStep_writes_of_sweep
+    (P := fun H' => IsPerturbedUnitarySimilar H H' (50 * (k + 1) * u * specNorm H))
+    hS hlive hH hs hroom hzs.1.symm hzs.2.symm
+    fun m₁ w cf hW hZ hc hwz hwc hzc hl₁ => ?_).mono (by fp_sub) ?_
+  · exact (sweep_writes_isPerturbedUnitarySimilar hS hM hu hu' hCmp hW hZ hc hwz hwc hzc
+      hl₁).mono le_rfl fun _ _ ⟨hp, H', hR, hZ'⟩ => ⟨hp, H', hR.mono hgrow, hZ'⟩
+  · rintro μ' - ⟨hpos, H', hR, hZ⟩
+    refine ⟨hpos, [_], Mem.readBlocks_of_cons hZ rfl, ?_⟩
+    change ∀ n', k + 1 = n' + 1 → _
+    intro n' hn
+    obtain rfl : k = n' := by omega
+    exact ⟨H', hR, rfl⟩
 
 /-- **The rounded single shifted QR step is backward stable** ([BanksGarzaVargasSrivastava2022,
 Lemma 3.5], for the conjugating implementation): the scalar program `shiftedStep`, run on
@@ -352,18 +404,22 @@ theorem shiftedStep_isPerturbedUnitarySimilar {M : Machine ℝ} {I : Interp O Q 
       (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1)))))
     (hsz : Fp.Disj (Store.inBlock s.1 s.2 2)
       (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))))) :
-    Writes .total I τ shiftedStep.body (Env.frame [n + 1] [a, s, z])
+    Writes .total I τ shiftedStep (Env.frame [n + 1] [a, s, z])
       (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))))
       (fun m' => m'.pos = m.pos ∧ ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
         IsPerturbedUnitarySimilar H H' (50 * (n + 1) * u * specNorm H) ∧
           HoldsMatrix z H' m'.store) m := by
-  have hu' : u ≤ 1 / 576 := by nlinarith [mul_nonneg (Nat.cast_nonneg n : (0 : ℝ) ≤ n) hu]
-  have hgrow : (1 + 49 * u) ^ n * specNorm H - specNorm H ≤ 50 * (n + 1) * u * specNorm H := by
-    have h := mul_le_mul_of_nonneg_right (one_add_mul_pow_sub_one_le hu hnu) (specNorm_nonneg H)
-    nlinarith [mul_nonneg hu (specNorm_nonneg H)]
-  refine shiftedStep_writes_of_sweep hS hl hH hs hz haz hsz
-    fun m₁ w cf hW hZ hc hwz hwc hzc hl₁ => ?_
-  exact (sweep_writes_isPerturbedUnitarySimilar hS hM hu hu' hCmp hW hZ hc hwz hwc hzc
-    hl₁).mono le_rfl fun _ _ ⟨hp, H', hR, hZ'⟩ => ⟨hp, H', hR.mono hgrow, hZ'⟩
+  have h := shiftedStepRoutine_meets_rounded (O := O) (Q := Q) hS hM hu hCmp [n + 1] [a, s, z] τ
+    m [matrixWords H, [shift.re, shift.im]] rfl rfl hl
+    (by routine_sep) (Mem.readBlocks_of_cons hH (Mem.readBlocks_of_cons hs rfl))
+    ⟨Nat.succ_pos n, by exact_mod_cast hnu⟩ (by routine_nf; simpa [Mem.Room] using hz)
+  refine h.mono (by routine_nf; fp_sub) ?_
+  rintro μ' - ⟨hpos, ys, hys, hpost⟩
+  routine_nf at hys
+  obtain ⟨z', zs, hz', hzs, rfl⟩ := Mem.readBlocks_one hys
+  obtain rfl : z = z' := by simpa using hz'
+  obtain ⟨H', hR, rfl⟩ := hpost n rfl
+  rw [matrixOfWords_matrixWords] at hR
+  exact ⟨hpos, H', hR, hzs⟩
 
 end NLAlib.ShiftedQR

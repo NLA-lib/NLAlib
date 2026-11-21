@@ -29,14 +29,16 @@ open Ops
 variable {Op Tst : Type} [Has ScalarOp Op] [Has CmpTst Tst]
 
 /-- Solve an already factored matrix with an initially clear singularity flag. -/
-def rowSolveAfterFlag : Impl Op Tst := opsImpl% [n] (R, V, Cf, Acc, T, Flag) → (V, Flag) {
-  run substitutionLoop.body [n] (R, V, Acc, T, Flag, V, Flag);
-  run finishRowSolve.body [n] (V, Cf, T, Flag, V, Flag)
+def rowSolveAfterFlag : Stmt Op Tst := ops% [n] (R, V, Cf, Acc, T, Flag) → (V, Flag) {
+  run substitutionLoop [n] (R, V, Acc, T, Flag, V, Flag);
+  run finishRowSolve [n] (V, Cf, T, Flag, V, Flag)
 }
 
 /-- Checked triangular substitution and saved reverse rotations return a genuine singularity
 certificate or the exact inverse row. The determinant is not assumed nonzero.
-[GolubVanLoan2013, §5.2.5]. -/
+[GolubVanLoan2013, §5.2.5].
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem rowSolveAfterFlag_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a v cf z t f : ℕ × ℕ}
@@ -47,7 +49,7 @@ theorem rowSolveAfterFlag_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hc : cf.2 + 4 * (n + 1) ≤ m.store.len cf.1)
     (hz : z.2 + 2 ≤ m.store.len z.1) (ht : t.2 + 10 ≤ m.store.len t.1)
     (hf : f.2 + 1 ≤ m.store.len f.1) :
-    Writes .total I τ rowSolveAfterFlag.body (Env.frame [n + 1] [a, v, cf, z, t, f, v, f])
+    Writes .total I τ rowSolveAfterFlag (Env.frame [n + 1] [a, v, cf, z, t, f, v, f])
       (rowSolveFp (n + 1) a v cf z t f)
       (fun m' => m'.pos = m.pos ∧ RowSolveResult v f D w m'.store) m := by
   have hl := rowSolve_live hR hV hc hz ht hf
@@ -79,18 +81,20 @@ theorem rowSolveAfterFlag_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (by fp_sub [rowSolveFp]) (fun _ _ h => ⟨h.1.trans hp, h.2⟩)
 
 /-- Initialize the singularity report with an actual scalar zero literal. -/
-def clearRowSolveFlag : Impl Op Tst := opsImpl% [] (Flag) → (Flag) {
+def clearRowSolveFlag : Stmt Op Tst := ops% [] (Flag) → (Flag) {
   call (Has.inj (ScalarOp.lit 0)) [] () → (Flag)
 }
 
 omit [Has CmpTst Tst] in
-/-- Clearing the report writes one actual word and does not consume tape. -/
+/-- Clearing the report writes one actual word and does not consume tape.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem clearRowSolveFlag_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ} {f : ℕ × ℕ}
     (hf : f.2 + 1 ≤ m.store.len f.1) :
-    Writes .total I τ clearRowSolveFlag.body (Env.frame [] [f, f]) (Store.inBlock f.1 f.2 1)
+    Writes .total I τ clearRowSolveFlag (Env.frame [] [f, f]) (Store.inBlock f.1 f.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.get f.1 f.2 = some 0) m := by
-  have hw : Wp .total I τ clearRowSolveFlag.body (Env.frame [] [f, f])
+  have hw : Wp .total I τ clearRowSolveFlag (Env.frame [] [f, f])
       (fun m' => m' = m.updBlock f [M.lit 0]) m := by
     refine wp_call_const (hS (.lit 0)) (z := f) rfl rfl rfl trivial (by omega) ?_
     simp [Mem.updBlock, Store.updBlock, Mem.upd]
@@ -102,14 +106,16 @@ theorem clearRowSolveFlag_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     Store.get_upd_self (s := m.store) (b := f.1) (i := f.2) (by omega) (0 : ℝ)
 
 /-- Initialize the report and solve an already factored row using its saved coefficients. -/
-def rowSolveTriangular : Impl Op Tst := opsImpl% [n] (R, V, Cf, Acc, T, Flag) → (V, Flag) {
-  run clearRowSolveFlag.body [] (Flag, Flag);
-  run rowSolveAfterFlag.body [n] (R, V, Cf, Acc, T, Flag, V, Flag)
+def rowSolveTriangular : Stmt Op Tst := ops% [n] (R, V, Cf, Acc, T, Flag) → (V, Flag) {
+  run clearRowSolveFlag [] (Flag, Flag);
+  run rowSolveAfterFlag [n] (R, V, Cf, Acc, T, Flag, V, Flag)
 }
 
 /-- The complete checked triangular and reverse-rotation phase initializes its own report.
 Singular inputs return their certificate, while nonsingular inputs return the inverse row.
-[GolubVanLoan2013, §5.2.5]. -/
+[GolubVanLoan2013, §5.2.5].
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem rowSolveTriangular_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a v cf z t f : ℕ × ℕ}
@@ -120,7 +126,7 @@ theorem rowSolveTriangular_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hc : cf.2 + 4 * (n + 1) ≤ m.store.len cf.1)
     (hz : z.2 + 2 ≤ m.store.len z.1) (ht : t.2 + 10 ≤ m.store.len t.1)
     (hf : f.2 + 1 ≤ m.store.len f.1) :
-    Writes .total I τ rowSolveTriangular.body (Env.frame [n + 1] [a, v, cf, z, t, f, v, f])
+    Writes .total I τ rowSolveTriangular (Env.frame [n + 1] [a, v, cf, z, t, f, v, f])
       (rowSolveFp (n + 1) a v cf z t f)
       (fun m' => m'.pos = m.pos ∧ RowSolveResult v f D w m'.store) m := by
   have hfl : f.1 < m.store.length := Store.lt_length_of_lt_len (by omega : f.2 < _)
@@ -147,14 +153,16 @@ theorem rowSolveTriangular_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (fun _ _ h => ⟨h.1.trans hp, h.2⟩)
 
 /-- Factor the working matrix, then execute the checked triangular solve and rotations. -/
-def rowSolveCore : Impl Op Tst := opsImpl% [n] (R, V, Cf, Acc, T, Flag) → (V, Flag) {
-  run factorRows.body [n] (R, Cf, R, Cf);
-  run rowSolveTriangular.body [n] (R, V, Cf, Acc, T, Flag, V, Flag)
+def rowSolveCore : Stmt Op Tst := ops% [n] (R, V, Cf, Acc, T, Flag) → (V, Flag) {
+  run factorRows [n] (R, Cf, R, Cf);
+  run rowSolveTriangular [n] (R, V, Cf, Acc, T, Flag, V, Flag)
 }
 
 /-- The concrete scalar row-solve core is total on every upper Hessenberg input, reporting
 singularity or returning the original row multiplied by the inverse.
-[GolubVanLoan2013, §5.2.5]. -/
+[GolubVanLoan2013, §5.2.5].
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem rowSolveCore_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a v cf z t f : ℕ × ℕ}
@@ -164,7 +172,7 @@ theorem rowSolveCore_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hc : cf.2 + 4 * (n + 1) ≤ m.store.len cf.1)
     (hz : z.2 + 2 ≤ m.store.len z.1) (ht : t.2 + 10 ≤ m.store.len t.1)
     (hf : f.2 + 1 ≤ m.store.len f.1) :
-    Writes .total I τ rowSolveCore.body (Env.frame [n + 1] [a, v, cf, z, t, f, v, f])
+    Writes .total I τ rowSolveCore (Env.frame [n + 1] [a, v, cf, z, t, f, v, f])
       (rowSolveFp (n + 1) a v cf z t f)
       (fun m' => m'.pos = m.pos ∧ RowSolveResult v f D w m'.store) m := by
   have hl0 := rowSolve_live hR hV hc hz ht hf

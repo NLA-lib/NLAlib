@@ -131,8 +131,8 @@ namespace Profile
 /-- **The certificate of a profile.** -/
 structure Refines (P : Profile Op Lo Tst) (Base : Interp Lo Tst K → Prop)
     (Ck : Interp Op Tst K → Prop) : Prop where
-  /-- Over a lower interpretation meeting `Base`, the linked interpretation meets `Ck`. -/
-  meets : ∀ I, Base I → Ck (I.link P.table)
+  /-- Over a lower interpretation satisfying `Base`, the linked interpretation satisfies `Ck`. -/
+  satisfies : ∀ I, Base I → Ck (I.link P.table)
   /-- A run within a budget under the linked interpretation is a run of the linked program
   within the pushed-forward budget. -/
   transfer : ∀ (I : Interp Lo Tst K) (τ : Tape K) (s : Stmt Op Tst) (ρ : Env) (m : Mem K)
@@ -165,7 +165,7 @@ theorem Refines.of_accounts {P : Profile Op Lo Tst} {Base : Interp Lo Tst K → 
 theorem Refines.mono {P : Profile Op Lo Tst} {Base Base' : Interp Lo Tst K → Prop}
     {Ck Ck' : Interp Op Tst K → Prop} (h : P.Refines Base Ck) (hB : ∀ I, Base' I → Base I)
     (hC : ∀ J, Ck J → Ck' J) : P.Refines Base' Ck' :=
-  ⟨fun I hI => hC _ (h.meets I (hB I hI)), h.transfer, fun I hI => h.tapeLocal I (hB I hI)⟩
+  ⟨fun I hI => hC _ (h.satisfies I (hB I hI)), h.transfer, fun I hI => h.tapeLocal I (hB I hI)⟩
 
 /-- **The corollary for any algorithm and any certified profile**: a theorem proved for every
 interpretation meeting `Ck` holds for the linked program over every interpretation meeting
@@ -175,7 +175,7 @@ theorem Refines.runs {P : Profile Op Lo Tst} {Base : Interp Lo Tst K → Prop}
     {ρ : Env} {m : Mem K} {B : Count Op Tst} {M : ℕ} {Q : Mem K → Prop}
     (hT : ∀ J, Ck J → ConditionalRuns J P.ws τ s ρ m B M Q) {I : Interp Lo Tst K} (hI : Base I) :
     ConditionalRuns I P.wsLo τ (s.link P.table) ρ m (Count.push P.cost B) M Q :=
-  h.transfer I τ s ρ m B M Q (hT _ (h.meets I hI))
+  h.transfer I τ s ρ m B M Q (hT _ (h.satisfies I hI))
 
 /-- **A profile on a profile**: the trees of `P` linked through `Q`. -/
 noncomputable def over (P : Profile Op Mid Tst) (Q : Profile Mid Lo Tst) : Profile Op Lo Tst where
@@ -192,10 +192,10 @@ theorem Refines.over {P : Profile Op Mid Tst} {Q : Profile Mid Lo Tst}
     (hP : P.Refines C₁ C₂) (hQ : Q.Refines C₀ C₁) (hws : P.wsLo = Q.ws)
     (hwin : P.winLo = Q.win) : (P.over Q).Refines C₀ C₂ where
   tapeLocal I hI hloc o := by
-    have := hP.tapeLocal _ (hQ.meets I hI) (hwin ▸ hQ.tapeLocal I hI hloc) o
+    have := hP.tapeLocal _ (hQ.satisfies I hI) (hwin ▸ hQ.tapeLocal I hI hloc) o
     rwa [Interp.link_comp] at this
-  meets I hI := by
-    have := hP.meets _ (hQ.meets I hI)
+  satisfies I hI := by
+    have := hP.satisfies _ (hQ.satisfies I hI)
     rwa [Interp.link_comp] at this
   transfer I τ s ρ m B M Post h := by
     have h1 : ConditionalRuns ((I.link Q.table).link P.table) P.ws τ s ρ m B M Post := by
@@ -219,7 +219,7 @@ noncomputable def id (W : Op → List ℕ → ℕ) (V : Op → List ℕ → ℕ 
 
 theorem certifies_id (W V : Op → List ℕ → ℕ) (C : Interp Op Tst K → Prop) :
     (Profile.id (Tst := Tst) W V).Refines C C where
-  meets I hI := hI
+  satisfies I hI := hI
   tapeLocal I _ hloc o := Interp.TapeLocal.link_kept rfl (hloc o)
   transfer I τ s ρ m B M Q h := by
     simpa [Profile.id] using h

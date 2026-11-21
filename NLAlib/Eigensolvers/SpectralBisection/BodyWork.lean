@@ -54,8 +54,6 @@ theorem solveBody_kernelWeight_le_of_arenas
     (hPar : μ.store.readBlock par.1 par.2 3 = some [R0, eps, beta])
     (hRoom : μ.Room (arenaOperands c ma ua qa ea sz kd kp lv su sg) (arenaLengths n L))
     (hAP : Fp.Apart (arenaOperands c ma ua qa ea sz kd kp lv su sg) (arenaLengths n L))
-    (hSource : Fp.Disj (Store.inBlock input.1 input.2 (2 * (n * n)))
-      (Store.inBlock par.1 par.2 3))
     (hProtect : Fp.Disj ARENA (Fp.blocks [input, par] [2 * (n * n), 3]))
     (T : ℕ → ℕ) (hT : Monotone T) (hadd : ∀ i j, T i + T j ≤ T (i + j))
     (W : DenseOp → List ℕ → ℕ) {start finish : St DenseOp (CmpTst ⊕ IdxTst) K}
@@ -72,7 +70,7 @@ theorem solveBody_kernelWeight_le_of_arenas
     Mem.live_nil, and_true] at hl
   rcases hl with ⟨hi, hp, hu, hdv, hc, hma, hua, hqa, hea, hsz, hkd, hkp, hlv, hsu, hsg⟩
   have hInit := writes_initializeArenas_stored (μ := start.mem) (τ := τ)
-    M F fuel R0 eps beta A hS hL (by room) hRoom hAP hSource hProtect hA hPar
+    M F fuel R0 eps beta A hS hL (by room) hRoom hAP hProtect hA hPar
   dsimp only [solveBody] at hr
   rw [evalCounted] at hr
   obtain ⟨first, hInitRun, hr⟩ := Option.bind_eq_some_iff.mp hr

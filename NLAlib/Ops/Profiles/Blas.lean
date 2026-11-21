@@ -45,23 +45,23 @@ variable {K Op Tst : Type} [Has ScalarOp Op] [Has Blas1Op Op] [Apart Blas1Op Sca
 /-- `dot`, `nrm2` over `sum`; `axpy`, `scal`, `copy` as loops; the rest kept. -/
 def level1Table : Table Op Op Tst := fun o =>
   match Has.proj (G := Blas1Op) o with
-  | some .dot => .inl dotSum
-  | some .nrm2 => .inl nrm2Sum
-  | some .axpy => .inl axpyLoop
-  | some .scal => .inl scalLoop
-  | some .copy => .inl copyLoop
+  | some .dot => .inl dotSumRoutine.impl
+  | some .nrm2 => .inl nrm2SumRoutine.impl
+  | some .axpy => .inl axpyLoopRoutine.impl
+  | some .scal => .inl scalLoopRoutine.impl
+  | some .copy => .inl copyLoopRoutine.impl
   | _ => .inr o
 
 /-- `sum` by sequential summation; the rest kept. -/
 def sumSeqTable : Table Op Op Tst := fun o =>
   match Has.proj (G := Blas1Op) o with
-  | some .sum => .inl sumSeq
+  | some .sum => .inl sumSeqRoutine.impl
   | _ => .inr o
 
 /-- `sum` by pairwise summation (its tree calls `sum`); the rest kept. -/
 def sumPairwiseTable : Table Op Op Tst := fun o =>
   match Has.proj (G := Blas1Op) o with
-  | some .sum => .inl sumPairwise
+  | some .sum => .inl sumPairwiseRoutine.impl
   | _ => .inr o
 
 /-- One call of a scalar operation. -/
@@ -153,15 +153,20 @@ theorem level1_accounts (wsum : ℕ → ℕ) (I : Interp Op Tst K) :
     rcases h : Has.proj (G := Blas1Op) o with _ | (_ | _ | _ | _ | _ | _) <;>
       simp only [h] at hT <;> cases hT <;> obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hd
     · obtain ⟨a, b, c, rfl⟩ := List.length_eq_three.mp ho
-      simp [dotSum, prodLoop, stmtCost, stmtPeak, useCost, level1Cost, ws, h]
+      simp [dotSumRoutine, Routine.impl, routineNF, dotSum, prodLoop, stmtCost, stmtPeak, useCost,
+        level1Cost, ws, h]
     · obtain ⟨a, b, c, e, rfl⟩ := List.length_eq_four.mp ho
-      simp [axpyLoop, stmtCost, stmtPeak, useCost, level1Cost, ws, h]
+      simp [axpyLoopRoutine, Routine.impl, routineNF, axpyLoop, stmtCost, stmtPeak, useCost,
+        level1Cost, ws, h]
     · obtain ⟨a, b, rfl⟩ := List.length_eq_two.mp ho
-      simp [nrm2Sum, prodLoop, stmtCost, stmtPeak, useCost, level1Cost, ws, h]
+      simp [nrm2SumRoutine, Routine.impl, routineNF, nrm2Sum, prodLoop, stmtCost, stmtPeak,
+        useCost, level1Cost, ws, h]
     · obtain ⟨a, b, c, rfl⟩ := List.length_eq_three.mp ho
-      simp [scalLoop, stmtCost, stmtPeak, useCost, level1Cost, ws, h]
+      simp [scalLoopRoutine, Routine.impl, routineNF, scalLoop, stmtCost, stmtPeak, useCost,
+        level1Cost, ws, h]
     · obtain ⟨a, b, rfl⟩ := List.length_eq_two.mp ho
-      simp [copyLoop, stmtCost, stmtPeak, useCost, level1Cost, ws, h]
+      simp [copyLoopRoutine, Routine.impl, routineNF, copyLoop, stmtCost, stmtPeak, useCost,
+        level1Cost, ws, h]
   · intro o o' hT d
     simp only [level1Table] at hT
     rcases h : Has.proj (G := Blas1Op) o with _ | (_ | _ | _ | _ | _ | _) <;>
@@ -176,7 +181,8 @@ theorem sumSeq_accounts (I : Interp Op Tst K) :
       simp only [h] at hT <;> cases hT
     obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hd
     obtain ⟨a, b, rfl⟩ := List.length_eq_two.mp ho
-    simp [NLAlib.Ops.sumSeq, Stmt.ifPos, stmtCost, stmtPeak, useCost, sumSeqCost, ws, h]
+    simp [NLAlib.Ops.sumSeqRoutine, routineNF, Stmt.ifPos, stmtCost,
+      stmtPeak, useCost, sumSeqCost, ws, h]
   · intro o o' hT d
     simp only [sumSeqTable] at hT
     rcases h : Has.proj (G := Blas1Op) o with _ | (_ | _ | _ | _ | _ | _) <;>
@@ -200,16 +206,19 @@ theorem sumPairwise_accounts (I : Interp Op Tst K) :
       simp only [h] at hT <;> cases hT
     obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hd
     obtain ⟨a, b, rfl⟩ := List.length_eq_two.mp ho
-    refine ⟨by simp [NLAlib.Ops.sumPairwise, Stmt.ifPos, Stmt.ifZero, stmtCost, useCost,
+    refine ⟨by simp [NLAlib.Ops.sumPairwiseRoutine, Routine.impl, routineNF,
+      NLAlib.Ops.sumPairwise, Stmt.ifPos, Stmt.ifZero, stmtCost, useCost,
       sumPairwiseCost, h, mul_smul, add_assoc], ?_⟩
     rcases Nat.lt_or_ge n 2 with hn | hn
     · have h0 : n / 2 = 0 := by omega
-      simp [NLAlib.Ops.sumPairwise, Stmt.ifPos, Stmt.ifZero, stmtPeak, ws, h, h0]
+      simp [NLAlib.Ops.sumPairwiseRoutine, Routine.impl, routineNF, NLAlib.Ops.sumPairwise,
+        Stmt.ifPos, Stmt.ifZero, stmtPeak, ws, h, h0]
     · have h1 : 1 - (1 - n / 2) = 1 := by omega
       have h2 : 1 - n = 0 := by omega
       have h3 : 1 - (n - 1) = 0 := by omega
       have := pairWs_step hn
-      simp [NLAlib.Ops.sumPairwise, Stmt.ifPos, Stmt.ifZero, stmtPeak, ws, h, h1, h2, h3]
+      simp [NLAlib.Ops.sumPairwiseRoutine, Routine.impl, routineNF, NLAlib.Ops.sumPairwise,
+        Stmt.ifPos, Stmt.ifZero, stmtPeak, ws, h, h1, h2, h3]
       omega
   · intro o o' hT d
     simp only [sumPairwiseTable] at hT

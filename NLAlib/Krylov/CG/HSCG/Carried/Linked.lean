@@ -98,9 +98,9 @@ theorem runs_rounded_step_seq {M : Machine K} {dec : K → ℝ} {n : ℕ} {em u 
       ((Rounded.stepRel em u (Blas.seq.err u) dec A).Post
         [n] [xs, rs, ps, [rr]] [x, r, p, v] [] μ) := by
   have hcert := Blas.seq_certifies (Op := Op) (Tst := Tst) hM hu (fun _ => True)
-  obtain ⟨hS', hB⟩ := hcert.meets I hS
+  obtain ⟨hS', hB⟩ := hcert.satisfies I hS
   have hA' : IsMatvec dec A (em * specNorm A) (I.link (Blas.seq (Op := Op) (Tst := Tst)).table) :=
-    Interp.link_meets_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
+    Interp.link_satisfies_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
   have hrun := Rounded.runs_step hS' hM hB trivial hA' (Blas.ws 0) (τ := τ)
     hxr hxp hxv hrp hrv hpv hl hx hr hp hv hed hrne hrr hmargin hz
   exact (hcert.transfer I τ _ _ _ _ _ _ hrun).mono
@@ -150,9 +150,9 @@ theorem exists_exactContracts [Apart ScalarOp OperatorOp Op] {n : ℕ}
   obtain ⟨I, hS, hA, hCmp⟩ := exists_scalarMatvecCmp (Op := Op) (Tst := Tst) exactMachine A
   have hcert := Blas.seq_certifies_exact (Op := Op) (Tst := Tst)
     exactModel_exactMachine (fun _ => True)
-  obtain ⟨hS', hB⟩ := hcert.meets I hS
+  obtain ⟨hS', hB⟩ := hcert.satisfies I hS
   have hA' : IsExactMatvec id A (I.link (Blas.seq (Op := Op) (Tst := Tst)).table) :=
-    Interp.link_meets_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
+    Interp.link_satisfies_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
   exact ⟨_, exactModel_exactMachine, hS', hB, hA', hCmp⟩
 
 /-- Every real standard-model scalar machine has a joint sequential BLAS, exact matvec and
@@ -163,9 +163,9 @@ theorem exists_stdContracts_ofMachine [Apart ScalarOp OperatorOp Op] {n : ℕ} {
       IsBlas1 id (Blas.seq.err u) (fun _ => True) I ∧ IsExactMatvec id A I ∧ IsCmp id I := by
   obtain ⟨I, hS, hA, hCmp⟩ := exists_scalarMatvecCmp (Op := Op) (Tst := Tst) M A
   have hcert := Blas.seq_certifies (Op := Op) (Tst := Tst) hM hu (fun _ => True)
-  obtain ⟨hS', hB⟩ := hcert.meets I hS
+  obtain ⟨hS', hB⟩ := hcert.satisfies I hS
   have hA' : IsExactMatvec id A (I.link (Blas.seq (Op := Op) (Tst := Tst)).table) :=
-    Interp.link_meets_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
+    Interp.link_satisfies_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
   exact ⟨_, hM, hS', hB, hA', hCmp⟩
 
 /-- Rounded scalar, sequential BLAS, exact operator and comparison contracts coexist for
@@ -210,9 +210,9 @@ theorem runs_solve_seq {M : Machine K} {dec : K → ℝ} {n : ℕ}
         decv dec n ys = cgIterate A (decv dec n bs) (decv dec n xs)
           (min cap (krylovGrade A (decv dec n bs - A *ᵥ decv dec n xs)))) := by
   have hcert := Blas.seq_certifies_exact (Op := Op) (Tst := Tst) hM (fun _ => True)
-  obtain ⟨hS', hB⟩ := hcert.meets I hS
+  obtain ⟨hS', hB⟩ := hcert.satisfies I hS
   have hA' : IsExactMatvec dec A (I.link (Blas.seq (Op := Op) (Tst := Tst)).table) :=
-    Interp.link_meets_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
+    Interp.link_satisfies_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
   have hCmp' : IsCmp dec (I.link (Blas.seq (Op := Op) (Tst := Tst)).table) := hCmp
   have hrun := runs_solve hS' hM hB hA' hCmp' hPos (Blas.ws 0) (τ := τ) (cap := cap)
     hbx hbr hbp hbv hxr hxp hxv hrp hrv hpv hl hbs hxs hz

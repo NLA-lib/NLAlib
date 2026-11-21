@@ -53,7 +53,8 @@ def splitInputLengths (n k : ℕ) : List ℕ :=
 
 /-- The split returns both actual computed bases, their shifted compressions, and the machine
 words for both sizes, kind four and the split size. Explicit interior, slot, readable-input,
-output-capacity and spatial-disjointness assumptions suffice for total execution. -/
+output-capacity and spatial-disjointness assumptions suffice for total execution.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_split {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     [Has IndexOp Op] [Has MatrixOp Op]
     {M : Machine K} (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))

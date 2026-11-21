@@ -33,7 +33,7 @@ local notation "qz" => (fun (_ : CmpTst ⊕ IdxTst) (_ : List ℕ) => 0)
 
 private theorem test_work (k : ℕ) (offs : List ℕ) :
     stmtWeightedCost mw qz (Sign.test (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)
-      (Has.inj MatrixOp.mul)).body ([k] ++ offs) ≤ T k := by
+      (Has.inj MatrixOp.mul)) ([k] ++ offs) ≤ T k := by
   calc
     _ ≤ T k + 0 := Nat.add_le_add ?_
       (le_of_eq (stmtWeightedCost_matrix_zero_of_allOps _ _ (by rfl) _))
@@ -43,7 +43,7 @@ private theorem test_work (k : ℕ) (offs : List ℕ) :
 
 private theorem step_work (k : ℕ) (offs : List ℕ) :
     stmtWeightedCost mw qz (Sign.step (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)
-      (Has.inj MatrixOp.mul)).body ([k] ++ offs) ≤ T k := by
+      (Has.inj MatrixOp.mul)) ([k] ++ offs) ≤ T k := by
   calc
     _ ≤ 0 + (0 + (T k + 0)) := Nat.add_le_add
       (le_of_eq (stmtWeightedCost_matrix_zero_of_allOps _ _ (by rfl) _))
@@ -55,7 +55,7 @@ private theorem step_work (k : ℕ) (offs : List ℕ) :
 
 private theorem round_work (k : ℕ) (offs : List ℕ) :
     stmtWeightedCost mw qz (Sign.round (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)
-      (Has.inj MatrixOp.mul)).body ([k] ++ offs) ≤ 2 * T k := by
+      (Has.inj MatrixOp.mul)) ([k] ++ offs) ≤ 2 * T k := by
   calc
     _ ≤ T k + T k := by
       apply Nat.add_le_add
@@ -69,7 +69,7 @@ private theorem round_work (k : ℕ) (offs : List ℕ) :
 
 private theorem loop_work (k cap : ℕ) (offs : List ℕ) :
     stmtWeightedCost mw qz (Sign.loop (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)
-      (Has.inj MatrixOp.mul)).body ([k, cap] ++ offs) ≤ cap * (2 * T k) := by
+      (Has.inj MatrixOp.mul)) ([k, cap] ++ offs) ≤ cap * (2 * T k) := by
   calc
     _ ≤ (∑ i ∈ Finset.range cap, 2 * T k) + 0 := by
       apply Nat.add_le_add
@@ -84,7 +84,7 @@ private theorem loop_work (k cap : ℕ) (offs : List ℕ) :
 
 private theorem start_work (k cap : ℕ) (offs : List ℕ) :
     stmtWeightedCost mw qz (Sign.start (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)
-      (Has.inj MatrixOp.mul)).body ([k, cap] ++ offs) ≤ (2 * cap + 1) * T k := by
+      (Has.inj MatrixOp.mul)) ([k, cap] ++ offs) ≤ (2 * cap + 1) * T k := by
   calc
     _ ≤ T k + cap * (2 * T k) := by
       apply Nat.add_le_add
@@ -98,7 +98,7 @@ private theorem start_work (k cap : ℕ) (offs : List ℕ) :
 
 private theorem initialized_work (k cap : ℕ) (offs : List ℕ) :
     stmtWeightedCost mw qz (Sign.initialized (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)
-      (Has.inj MatrixOp.mul)).body ([k, cap] ++ offs) ≤ (2 * cap + 1) * T k := by
+      (Has.inj MatrixOp.mul)) ([k, cap] ++ offs) ≤ (2 * cap + 1) * T k := by
   calc
     _ ≤ 0 + (0 + (0 + (2 * cap + 1) * T k)) := by
       apply Nat.add_le_add (le_of_eq (stmtWeightedCost_matrix_zero_of_allOps _ _ (by rfl) _))
@@ -113,7 +113,7 @@ private theorem initialized_work (k cap : ℕ) (offs : List ℕ) :
 per possible loop round. Scalar work and queries are separate; no monotonicity of T is needed. -/
 theorem sign_matrixWork_le (k cap : ℕ) (offs : List ℕ) :
     stmtWeightedCost mw qz (Sign.program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)
-      (Has.inj MatrixOp.mul)).body ([k, cap] ++ offs) ≤ (2 * cap + 1) * T k := by
+      (Has.inj MatrixOp.mul)) ([k, cap] ++ offs) ≤ (2 * cap + 1) * T k := by
   apply stmtWeightedCost_frame_le (d := [k, cap])
   · simp [IExp.evalList, IExp.eval]
   · exact fun os => initialized_work T k cap os

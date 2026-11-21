@@ -36,11 +36,8 @@ noncomputable def clampWord (dec : K → ℝ) (lo hi x : K) : K :=
 
 /-- Clamp one input word between two stored endpoint words. The three inputs and one output
 may alias. Copying the interior input makes the output independent of its prior contents. -/
-def clamp : Impl Op Tst where
-  nd := 0
-  nin := 3
-  nout := 1
-  body := .ite (Has.inj CmpTst.le) [] [⟨0, .var 0⟩, ⟨2, .var 2⟩]
+def clamp : Stmt Op Tst :=
+  .ite (Has.inj CmpTst.le) [] [⟨0, .var 0⟩, ⟨2, .var 2⟩]
     (.ite (Has.inj CmpTst.le) [] [⟨1, .var 1⟩, ⟨2, .var 2⟩]
       (.call (Has.inj ScalarOp.copy) [] [⟨1, .var 1⟩] [⟨3, .var 3⟩])
       (.call (Has.inj ScalarOp.copy) [] [⟨2, .var 2⟩] [⟨3, .var 3⟩]))
@@ -54,7 +51,7 @@ theorem wp_clamp {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     (ha : m.store.get a.1 a.2 = some lo) (hb : m.store.get b.1 b.2 = some hi)
     (hx : m.store.get x.1 x.2 = some w) (hz : z.2 < m.store.len z.1)
     {Q : Mem K → Prop} (hQ : Q (m.upd z (clampWord dec lo hi w))) :
-    Wp md I τ clamp.body (Env.frame [] [a, b, x, z]) Q m := by
+    Wp md I τ clamp (Env.frame [] [a, b, x, z]) Q m := by
   classical
   refine wp_ite rfl rfl (hC.test_le ha hx) ?_
   by_cases h0 : dec lo ≤ dec w
@@ -78,7 +75,7 @@ theorem writes_clamp {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     {a b x z : ℕ × ℕ} {lo hi w : K} {m : Mem K}
     (ha : m.store.get a.1 a.2 = some lo) (hb : m.store.get b.1 b.2 = some hi)
     (hx : m.store.get x.1 x.2 = some w) (hz : z.2 < m.store.len z.1) :
-    Writes md I τ clamp.body (Env.frame [] [a, b, x, z]) (Store.inBlock z.1 z.2 1)
+    Writes md I τ clamp (Env.frame [] [a, b, x, z]) (Store.inBlock z.1 z.2 1)
       (fun m' => m'.pos = m.pos ∧
         m'.store.get z.1 z.2 = some (clampWord dec lo hi w)) m := by
   apply wp_clamp hS hC ha hb hx hz
@@ -119,7 +116,7 @@ theorem writes_clamp_bindIdx [Has IdxTst Tst] {M : Machine K} {dec : K → ℝ}
       m'.pos = m.pos → m'.store.get z.1 z.2 = some (clampWord dec lo hi w) →
       Writes .total I τ body (ρ.pushIdx (min B ⌊dec w⌋₊)) F P m') :
     Writes .total I τ
-      (.seq (.frame [] args clamp.body) (.bindIdx (Has.inj IdxTst.toNat) [out] bound body))
+      (.seq (.frame [] args clamp) (.bindIdx (Has.inj IdxTst.toNat) [out] bound body))
       ρ (Store.inBlock z.1 z.2 1 ⊔ F) P m := by
   have hl : m.Live [a, b, x, z] := by
     simp only [Mem.live_cons, Mem.live_nil, and_true]

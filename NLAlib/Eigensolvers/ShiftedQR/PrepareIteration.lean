@@ -31,6 +31,7 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O
   [Has CmpTst Q]
 
 omit [Has EigenvalueKernelOp O] [Has CmpTst Q] in
+/-- A step in the proof of `registers_writes`. -/
 private theorem radiusFlag_writes {M : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I)
     {tape : Tape ℝ} {μ : Mem ℝ} {ρ : Env} {m : ℕ}
@@ -48,7 +49,7 @@ private theorem radiusFlag_writes {M : Machine ℝ} {I : Interp O Q ℝ}
       (Store.inBlock b.1 b.2 1 ⊔ Store.inBlock theta.1 theta.2 1 ⊔
         Store.inBlock alpha.1 alpha.2 1))
     (hrf : Fp.Disj (Store.inBlock rad.1 rad.2 1) (Store.inBlock f.1 f.2 1)) :
-    Writes .total I tape (.seq (.frame ds args radius.body)
+    Writes .total I tape (.seq (.frame ds args radius)
       (.call (Has.inj IndexOp.lit) [.const 0] [] [flag])) ρ
       (Fp.blocks [rad, f] [1, 1])
       (fun μ' => μ'.pos = μ.pos ∧ μ'.readBlocks [rad, f] [1, 1] =
@@ -64,14 +65,15 @@ private theorem radiusFlag_writes {M : Machine ℝ} {I : Interp O Q ℝ}
   simpa only [Nat.cast_zero, he] using hzero.readBlocks_singleton
 
 private def registersCode : Stmt O Q :=
-  .seq (.frame [.var 0, .var 2] [⟨0, .var 3⟩, ⟨4, .var 7⟩] subdiagProduct.body)
+  .seq (.frame [.var 0, .var 2] [⟨0, .var 3⟩, ⟨4, .var 7⟩] subdiagProduct)
     (.seq (.call (Has.inj ScalarOp.mul) [] [⟨2, .var 5 + .const 1⟩, ⟨4, .var 7⟩]
       [⟨4, .var 7 + .const 1⟩])
       (.seq (.frame [.var 1] [⟨4, .var 7⟩, ⟨1, .var 4 + .const 1⟩,
-        ⟨1, .var 4 + .const 2⟩, ⟨1, .var 4 + .const 3⟩, ⟨4, .var 7 + .const 2⟩] radius.body)
+        ⟨1, .var 4 + .const 2⟩, ⟨1, .var 4 + .const 3⟩, ⟨4, .var 7 + .const 2⟩] radius)
         (.call (Has.inj IndexOp.lit) [.const 0] [] [⟨4, .var 7 + .const 3⟩])))
 
 omit [Has EigenvalueKernelOp O] [Has CmpTst Q] in
+/-- A step in the proof of `prepareIteration_writes`. -/
 private theorem registers_writes {M : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I)
     {tape : Tape ℝ} {μ : Mem ℝ} {n m k : ℕ} {w p c ss r : ℕ × ℕ}
@@ -168,7 +170,9 @@ omit [Has CmpTst Q] in
 /-- Concrete preparation returns the local routine's actual Ritz column and four scalar
 registers: subdiagonal product, contraction target, exceptional radius and zero flag. All
 inputs are protected from the disjoint output views. The degree is the positive power of two
-within the trailing block, and the conditioning bound is nonnegative. -/
+within the trailing block, and the conditioning bound is nonnegative.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem prepareIteration_writes {M : Machine ℝ} {I : Interp O Q ℝ}
     {eta : ℝ} {K : KernelRoutines eta}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I)
@@ -183,7 +187,7 @@ theorem prepareIteration_writes {M : Machine ℝ} {I : Interp O Q ℝ}
     (hApart : Fp.Apart [ss, r] [2 * k, 4])
     (hsep : Fp.Disj (Store.inBlock ss.1 ss.2 (2 * k) ⊔ Store.inBlock r.1 r.2 4)
       (Fp.blocks [w, p, c] [2 * ((n + 1) * (n + 1)), 5, 2])) :
-    Writes .total I tape prepareIteration.body (Env.frame [n + 1, m, k] [w, p, c, ss, r])
+    Writes .total I tape prepareIteration (Env.frame [n + 1, m, k] [w, p, c, ss, r])
       (Store.inBlock ss.1 ss.2 (2 * k) ⊔ Store.inBlock r.1 r.2 4)
       (fun μ' => μ'.pos = μ.pos ∧
         HoldsMatrix ss (shiftColumn (K.ritz (n + 1) k H)) μ'.store ∧

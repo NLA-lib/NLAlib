@@ -18,6 +18,9 @@ potential threshold, the random shifts, the trials, and the mathematics that one
 The random shifts are a family of probabilistic blocks, one per centre and radius; their outcome
 is read through a measurable set of memory pairs (`NLAlib.Ops.PWrites.pstep_of_forall`).
 
+The operand-form lemmas of this file are about trees shared by
+`NLAlib.ShiftedQR.shqrRoutine` and `NLAlib.ShiftedQR.shqrSmallEigRoutine`.
+
 ## Main definitions
 
 * `NLAlib.ShiftedQR.shExcInit`, `NLAlib.ShiftedQR.shExc`: the programs.
@@ -167,7 +170,7 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has
 search word `Gw` is $1$, the threshold $\mathrm{fl}(c_p\tilde\psi)$ of the potential test goes
 to `Pt` and the radius $\mathrm{fl}(c_r\tilde\psi)$ to `Rt` (which held $\tilde\psi$). The
 interface is `[] (Cr, Cp, Rt) → (Rt, Pt, Gw, Fl)`. -/
-def shExcInit : Impl O Q := opsImpl% [] (Cr, Cp, Rt) → (Rt, Pt, Gw, Fl) {
+def shExcInit : Stmt O Q := ops% [] (Cr, Cp, Rt) → (Rt, Pt, Gw, Fl) {
   call (Has.inj (ScalarOp.lit 2)) [] () → (Fl);
   call (Has.inj (ScalarOp.lit 1)) [] () → (Gw);
   call (Has.inj ScalarOp.mul) [] (Cp, Rt) → (Pt);
@@ -179,12 +182,12 @@ shifts around the centre `Z` (`NLAlib.ShiftedQR.excShifts`, with the radius `Rt`
 translate factor `Cw` and the net `G`) into `Ss`, and the trials (`NLAlib.ShiftedQR.shTrials`).
 The interface is
 `[N, k, q, n0] (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, T, SR, Ds, Rg, P2, Ss) → (A, Gw, Fl)`. -/
-def shExc : Impl O Q :=
-  opsImpl% [N, k, q, n0] (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, T, SR, Ds, Rg, P2, Ss) →
+def shExc : Stmt O Q :=
+  ops% [N, k, q, n0] (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, T, SR, Ds, Rg, P2, Ss) →
       (A, Gw, Fl) {
-    run shExcInit.body [] (Cr, Cp, Rt, Rt, Pt, Gw, Fl);
-    run (excShifts (O := O) (Q := Q)).body [n0] (Z, Rt, Cw, G, Ss);
-    run shTrials.body [N, k, q, n0] (A, Ss, Thr, Pt, T, SR, Ds, Rg, P2, A, Gw, Fl)
+    run shExcInit [] (Cr, Cp, Rt, Rt, Pt, Gw, Fl);
+    run (excShifts (O := O) (Q := Q)) [n0] (Z, Rt, Cw, G, Ss);
+    run shTrials [N, k, q, n0] (A, Ss, Thr, Pt, T, SR, Ds, Rg, P2, A, Gw, Fl)
   }
 
 end Program
@@ -210,7 +213,7 @@ theorem shExcInit_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M
     (hfg : Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock gw.1 gw.2 1))
     (hfgp : Fp.Disj (Store.inBlock f.1 f.2 1 ⊔ Store.inBlock gw.1 gw.2 1)
       (Store.inBlock pt.1 pt.2 1)) :
-    Writes .total I τ (shExcInit (O := O) (Q := Q)).body
+    Writes .total I τ (shExcInit (O := O) (Q := Q))
       (Env.frame [] [cr, cp, rt, rt, pt, gw, f])
       (Store.inBlock rt.1 rt.2 1 ⊔ Store.inBlock pt.1 pt.2 1 ⊔ Store.inBlock gw.1 gw.2 1 ⊔
         Store.inBlock f.1 f.2 1)
@@ -652,7 +655,7 @@ theorem shExcShifts_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hI
       hessenbergPotential k H)) ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α *
         B ^ ((k : ℝ)⁻¹) * hessenbergPotential k H) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 8)
     (hcr : cr = (2 : ℝ) ^ ((k : ℝ)⁻¹) * (θ * α * B ^ ((k : ℝ)⁻¹))) (hcw : cw = ε / 2) :
-    PWrites law I (excShifts (O := O) (Q := Q)).body
+    PWrites law I (excShifts (O := O) (Q := Q))
       (Env.frame [(excNet ε).length] [(L, 0), (L + 1, 0), ww, g, (L + 10, 0)])
       (Store.inBlock (L + 10) 0 (2 * (excNet ε).length))
       (ShExcMid1 M u L k ε H V e ss α γ cg cr cw cp tv a s wg wr ww wp g thr f)
@@ -796,7 +799,7 @@ theorem shExcTrials_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS 
       (300 * (n + 1) ^ 2 * u) ≤ 0.001 * ω)
     (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) (hcp : cp = 1.0015 * (1 - γ))
     (hm : ShExcMid2 M u L k ε H e ss γ cg cr cw cp tv d C a s wg wr ww wp g thr f m) :
-    Writes .total I τ (shTrials (O := O) (Q := Q)).body
+    Writes .total I τ (shTrials (O := O) (Q := Q))
       (Env.frame [n + 1, k, q, (excNet ε).length] [a, (L + 10, 0), thr, (L + 2, 0), (L + 5, 0),
         (L + 6, 0), (L + 7, 0), (L + 8, 0), (L + 9, 0), a, (L + 11, 0), f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 11) 0 1 ⊔
@@ -921,7 +924,7 @@ theorem shExc_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hI : I.I
     (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv)
     (hcr : cr = (2 : ℝ) ^ ((k : ℝ)⁻¹) * (θ * α * B ^ ((k : ℝ)⁻¹))) (hcw : cw = ε / 2)
     (hcp : cp = 1.0015 * (1 - γ)) :
-    PWrites law I (shExc (O := O) (Q := Q)).body
+    PWrites law I (shExc (O := O) (Q := Q))
       (Env.frame [n + 1, k, q, (excNet ε).length] [a, (L, 0), wr, ww, wp, g, thr, (L + 1, 0),
         (L + 2, 0), (L + 5, 0), (L + 6, 0), (L + 7, 0), (L + 8, 0), (L + 9, 0), (L + 10, 0), a,
         (L + 11, 0), f])

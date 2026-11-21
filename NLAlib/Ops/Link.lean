@@ -11,7 +11,9 @@ public import NLAlib.Ops.Exec
 # Linking
 
 An implementation of the operations `Op₁` over the operations `Op₂` is a table
-(`NLAlib.Ops.Table`): each operation of `Op₁` is given a tree over `Op₂` (`NLAlib.Ops.Impl`) or is
+(`NLAlib.Ops.Table`): each operation of `Op₁` is given an implementation over `Op₂`
+(`NLAlib.Ops.Impl`, the tree of a
+routine with the arity of the operation) or is
 kept as an operation of `Op₂`. Linking (`NLAlib.Ops.Stmt.link`) turns each call of an implemented
 operation into the frame of its tree; a call whose numbers of dimensions and operands do not fit
 the implementation becomes `abort`. The linked program is a first-order tree for all sizes.
@@ -24,6 +26,11 @@ The interpretation of `Op₁` induced by a table and an interpretation of `Op₂
 `NLAlib.Ops.run_link`: **the linked program under `I` and the program under the induced
 interpretation end in the same memory, or both fail.** This is the refinement transfer, in both
 modes, with no certificate.
+
+The three statements of the layer, `NLAlib.Ops.Routine.Meets`, `NLAlib.Ops.Interp.Satisfies` and
+`NLAlib.Ops.Impl.Satisfies`, and their roles are described once, in `NLAlib/Ops/README.md`
+("Three statements") and the header of `NLAlib/Ops/Routine.lean`.
+
 ## Main results
 
 * `NLAlib.Ops.run_link`: refinement transfer.
@@ -40,9 +47,25 @@ namespace NLAlib.Ops
 
 variable {Op Op₁ Op₂ Op₃ Tst K : Type}
 
-/-- An implementation of an operation: a tree whose index variables are the `nd` dimensions of the
-call followed by the offsets of its operands, and whose buffer variables are the `nin` input and
-`nout` output operands. -/
+/-- **An implementation of an operation**: the entry of a linking table (`NLAlib.Ops.Table`). It
+is a tree with the arity of the operation it implements: its index variables are the `nd`
+dimensions of the call followed by the offsets of its operands, and its buffer variables are the
+`nin` input and `nout` output operands.
+
+It is not a routine (`NLAlib.Ops.Routine`). It is the tree of a routine with the arity of that
+routine (`NLAlib.Ops.Routine.impl`), and the two are different because one tree may implement an
+operation whose contract admits several layouts of the operands, which are several routines
+sharing that tree. The `axpy` entry of
+`NLAlib.Ops.RCLikeScalar.table` is one tree; its contract admits the output apart from both
+vectors, on either vector in place, and on both at once, and each of these is a routine with its
+own interface. What an implementation must prove is `NLAlib.Ops.Impl.Satisfies`, by cases on the
+layout, from the judgments of those routines.
+
+An entry is written directly, not as the tree of a routine, only where no routine can describe
+it: an entry of a context table, whose first inputs are the context forwarded to every call
+(`NLAlib.Ops.ContextDense.impl`); an implementation that does not always terminate, for liberal
+mode (`NLAlib.Ops.Examples.divImpl`); and the examples that prove a contract from the run of the
+entry itself, the layer on which routine judgments are built (`NLAlib.Ops.Examples.dotImpl`). -/
 structure Impl (Op Tst : Type) where
   /-- The number of dimensions. -/
   nd : ℕ
@@ -53,22 +76,13 @@ structure Impl (Op Tst : Type) where
   /-- The tree. -/
   body : Stmt Op Tst
 
-/-- Place a fixed implementation in a fixed initial buffer interface. Operand aliases are
-preserved: the input and output lists are syntax, not a runtime environment callback. A wrong
-arity elaborates to failure and therefore cannot obtain a total certificate. -/
-def Impl.program (R : Impl Op Tst) (b : ℕ) (ins outs : List Operand) :
-    Program Op Tst R.nd b :=
-  ⟨if ins.length = R.nin ∧ outs.length = R.nout then
-    .frame (List.ofFn fun i : Fin R.nd => IExp.var i.val) (ins ++ outs) R.body
-  else .abort⟩
-
 /-- **An implementation of `Op₁` over `Op₂`**: for each operation of `Op₁`, a tree over `Op₂` or
 an operation of `Op₂`. Queries are not in the table. -/
 abbrev Table (Op₁ Op₂ Tst : Type) := Op₁ → Impl Op₂ Tst ⊕ Op₂
 
 /-- The numbers of dimensions and operands fit the implementation. -/
-abbrev Impl.Fits (R : Impl Op Tst) (nd nin nout : ℕ) : Prop :=
-  nd = R.nd ∧ nin = R.nin ∧ nout = R.nout
+abbrev Impl.Fits (E : Impl Op Tst) (nd nin nout : ℕ) : Prop :=
+  nd = E.nd ∧ nin = E.nin ∧ nout = E.nout
 
 /-- **Linking**: each call of an implemented operation becomes the frame of its implementation
 (`abort` if the numbers of dimensions and operands do not fit); a kept operation is renamed. -/
@@ -111,17 +125,17 @@ theorem Interp.link_callS_inr (I : Interp Op₂ Tst K) {T : Table Op₁ Op₂ Ts
 /-- The call of an implemented operation under the induced interpretation is the run of its
 implementation on live operands: the run keeps the shape of the store by itself. -/
 theorem Interp.link_callS_inl (I : Interp Op₂ Tst K) {T : Table Op₁ Op₂ Tst} {o : Op₁}
-    {R : Impl Op₂ Tst} (hT : T o = .inl R) (d : List ℕ) (ins outs : List (ℕ × ℕ)) (τ : Tape K)
+    {E : Impl Op₂ Tst} (hT : T o = .inl E) (d : List ℕ) (ins outs : List (ℕ × ℕ)) (τ : Tape K)
     (m : Mem K) :
     (I.link T).callS o d ins outs τ m =
       if m.Live (ins ++ outs) then
-        if R.Fits d.length ins.length outs.length then
-          eval I τ R.body (Env.frame d (ins ++ outs)) m
+        if E.Fits d.length ins.length outs.length then
+          eval I τ E.body (Env.frame d (ins ++ outs)) m
         else none
       else none := by
   simp only [Interp.callS, Interp.link, hT]
   split_ifs with hl hfit
-  · cases hr : eval I τ R.body (Env.frame d (ins ++ outs)) m with
+  · cases hr : eval I τ E.body (Env.frame d (ins ++ outs)) m with
     | none => rfl
     | some m' => simp [shape_store_of_run hr]
   · rfl

@@ -10,6 +10,7 @@ public import NLAlib.Eigensolvers.ShiftedQR.Coefficients
 public import NLAlib.Eigensolvers.ShiftedQR.Hessenberg
 public import NLAlib.Eigensolvers.ShiftedQR.RotationLoops
 public import NLAlib.Matrix.FinitePrecision.GivensRounded
+public import NLAlib.Ops.RoutineSyntax
 public import NLAlib.Matrix.Perturbation.UnitarySimilarity
 public import NLAlib.Ops.Logic.Functional
 
@@ -36,6 +37,7 @@ over rounded scalar arithmetic, and its backward error is proved. The exact top-
 
 * `NLAlib.reduceLastStep_writes_word`, `NLAlib.hessenbergReduceLast_writes_word`: the program
   stores the machine evaluation.
+* `NLAlib.hessenbergReduceLast_meets`: the routine meets its specification.
 * `NLAlib.hessenbergReduceLast_isPerturbedUnitarySimilar`: backward stability, with the last
   coordinate vector fixed.
 * `NLAlib.hessenbergReduceLast_terminates`: termination on every tape.
@@ -58,14 +60,14 @@ $(\mathbf{A}_{r, c+1}, -\mathbf{A}_{r, c})$ into `Uv`, its rounded Givens coeffi
 `Cf` (`NLAlib.ShiftedQR.coefficients`), then the rotation of the columns $c, c + 1$ and of the
 rows $c, c + 1$ of `A` in place. The interface is `[N, r, c] (A) → (A, Cf, Uv)`.
 Algorithm: hessenberg-reduction -/
-def reduceLastStep : Impl O Q := opsImpl% [N, r, c] (A) → (A, Cf, Uv) {
+def reduceLastStep : Stmt O Q := ops% [N, r, c] (A) → (A, Cf, Uv) {
   call (Has.inj ScalarOp.copy) [] (A[2 * ((c + 1) * N + r)]) → (Uv);
   call (Has.inj ScalarOp.copy) [] (A[2 * ((c + 1) * N + r) + 1]) → (Uv[1]);
   call (Has.inj ScalarOp.neg) [] (A[2 * (c * N + r)]) → (Uv[2]);
   call (Has.inj ScalarOp.neg) [] (A[2 * (c * N + r) + 1]) → (Uv[3]);
-  run (coefficients (Op := O) (Tst := Q)).body [] (Uv, Uv[2], Cf, Cf[2]);
-  run (rotateColumns (Op := O) (Tst := Q)).body [N, c] (A, Cf, Cf[2], A);
-  run (rotateRows (Op := O) (Tst := Q)).body [N, c] (A, Cf, Cf[2], A)
+  run (coefficients (Op := O) (Tst := Q)) [] (Uv, Uv[2], Cf, Cf[2]);
+  run (rotateColumns (Op := O) (Tst := Q)) [N, c] (A, Cf, Cf[2], A);
+  run (rotateRows (Op := O) (Tst := Q)) [N, c] (A, Cf, Cf[2], A)
 }
 
 /-- **The bottom-up Hessenberg reduction** ([BanksGarzaVargasSrivastava2025, Definition 5.1],
@@ -73,18 +75,18 @@ as a program): for the rows $r = N - 1, \dots, 2$ (round $i$ has $r = N - 1 - i$
 $c = 0, \dots, r - 2$, the step `NLAlib.reduceLastStep`: the Givens coefficients of the pair
 $(\mathbf{A}_{r, c+1}, -\mathbf{A}_{r, c})$, then the rotation of the columns $c, c + 1$ (which
 zeros $\mathbf{A}_{r,c}$) and of the rows $c, c + 1$; finally the entries below the subdiagonal
-are written as zeros. The interface is `[N] (A) → (A)`; the coefficients and the pair are
-scoped scratch.
+are written as zeros. The routine updates the packed matrix in place; the coefficients and the
+pair are scoped scratch.
 Algorithm: hessenberg-reduction -/
-def hessenbergReduceLast : Impl O Q := opsImpl% [N] (A) → (A) {
+def hessenbergReduceLast : Routine O Q := routine% [N] (A : 2 * (N * N)) → (A) {
   let Cf ← alloc 4;
   let Uv ← alloc 4;
   for i < N - 2 {
     for c < N - 2 - i {
-      run (reduceLastStep (O := O) (Q := Q)).body [N, N - 1 - i, c] (A, A, Cf, Uv)
+      run (reduceLastStep (O := O) (Q := Q)) [N, N - 1 - i, c] (A, A, Cf, Uv)
     }
   };
-  run (clearBelowSubdiagonal (Op := O) (Tst := Q)).body [N] (A)
+  run (clearBelowSubdiagonal (Op := O) (Tst := Q)) [N] (A)
 }
 
 end Program
@@ -118,13 +120,14 @@ variable {O Q : Type} [Has ScalarOp O] [Has CmpTst Q]
 
 /-- One step of the reduction (`NLAlib.reduceLastStep`) on any scalar machine with exact
 comparisons stores the machine step `NLAlib.reduceLastStepWord` in place, for $c + 1 < N$ and
-$r < N$, and writes only the matrix and its two scratch blocks, in buffers of their own. -/
+$r < N$, and writes only the matrix and its two scratch blocks, in buffers of their own.
+A fragment of `NLAlib.hessenbergReduceLast`. -/
 theorem reduceLastStep_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {N r c : ℕ} (hc : c + 1 < N) (hr : r < N)
     {a cf uv : ℕ × ℕ} {A : Matrix (Fin N) (Fin N) ℂ} (hA : HoldsMatrix a A m.store)
     (hcf : cf.2 + 4 ≤ m.store.len cf.1) (huv : uv.2 + 4 ≤ m.store.len uv.1)
     (hac : a.1 ≠ cf.1) (hau : a.1 ≠ uv.1) :
-    Writes .total I τ (reduceLastStep (O := O) (Q := Q)).body (Env.frame [N, r, c] [a, a, cf, uv])
+    Writes .total I τ (reduceLastStep (O := O) (Q := Q)) (Env.frame [N, r, c] [a, a, cf, uv])
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock cf.1 cf.2 4 ⊔
         Store.inBlock uv.1 uv.2 4)
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a (reduceLastStepWord M r c A) m'.store) m := by
@@ -208,7 +211,15 @@ theorem reduceLastStep_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
 
 /-- `NLAlib.hessenbergReduceLast` on any scalar machine with exact comparisons stores the machine
 evaluation `NLAlib.hessenbergReduceLastWord` of the matrix in place, writes only the matrix, and
-reads no tape. -/
+reads no tape.
+
+This operand form is the primary statement, and the judgment
+`NLAlib.hessenbergReduceLast_meets` its corollary, because it is stronger in one case: it holds
+for a block at any offset, while the judgment requires every written operand to lie within its
+buffer, which a successful read of the block does not give when the block is empty (`N = 0`).
+Its callers in `NLAlib/Eigensolvers/SmallEig` state their invariants on the matrix
+(`HoldsMatrix`) and use it inside deterministic steps of probabilistic proofs
+(`PWrites.of_writes`). -/
 theorem hessenbergReduceLast_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {N : ℕ} {a : ℕ × ℕ}
     {A : Matrix (Fin N) (Fin N) ℂ} (hl : m.Live [a]) (hA : HoldsMatrix a A m.store) :
@@ -231,7 +242,7 @@ theorem hessenbergReduceLast_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} 
     μ.store.length = L + 2 ∧ μ.store.len L = 4 ∧ μ.store.len (L + 1) = 4 ∧
     HoldsMatrix a (ps.foldl step A) μ.store with hSt
   have hround : ∀ (ps : List (ℕ × ℕ)) (i c : ℕ), i < N - 2 → c < N - 2 - i → ∀ μ, St ps μ →
-      Writes .total I τ (reduceLastStep (O := O) (Q := Q)).body
+      Writes .total I τ (reduceLastStep (O := O) (Q := Q))
         (Env.frame [N, N - 1 - i, c] [a, a, (L, 0), (L + 1, 0)]) G
         (St (ps ++ [(i, c)])) μ := by
     rintro ps i c hi hc μ ⟨hp, hlen', hL0, hL1, hW⟩
@@ -269,6 +280,26 @@ theorem hessenbergReduceLast_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} 
       le_sup_left ?_
     rintro μ' - ⟨hp', hW'⟩
     exact ⟨hp'.trans hp, hW'⟩
+
+/-- The written block is the packed machine evaluation `NLAlib.hessenbergReduceLastWord` of the
+reduction of the matrix packed in the block read. -/
+noncomputable def hessenbergReduceLastSpec (M : Machine ℝ) : Routine.Spec ℝ :=
+  spec% [N] (xs) → (ys) ensures ys = matrixWords (hessenbergReduceLastWord M (matrixOfWords N xs))
+
+/-- `NLAlib.hessenbergReduceLast` meets its specification on any scalar machine with exact
+comparisons: it stores the machine evaluation of the reduction in place, writes only the matrix,
+and reads no tape. -/
+theorem hessenbergReduceLast_meets {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hC : IsCmp id I) :
+    (hessenbergReduceLast (O := O) (Q := Q)).Meets I (hessenbergReduceLastSpec M) := by
+  routine_intro [N] (a) reads (xs)
+  have hA : HoldsMatrix a (matrixOfWords N xs) m.store := by
+    rw [HoldsMatrix, matrixWords_matrixOfWords xs (Store.length_of_readBlock hxs)]
+    exact hxs
+  have hl : m.Live [a] := by simpa only [Mem.live_cons, Mem.live_nil, and_true] using hl
+  refine (hessenbergReduceLast_writes_word (τ := τ) hS hC hl hA).mono (by simp [Fp.blocks]) ?_
+  rintro m' - ⟨hp, hW⟩
+  exact ⟨hp, [_], Mem.readBlocks_of_cons hW rfl, rfl⟩
 
 section BackwardError
 

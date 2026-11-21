@@ -27,7 +27,8 @@ namespace NLAlib.SpectralBisection
 
 open Ops
 
-/-- The final copies write both supplied result blocks and consume no random words. -/
+/-- The final copies write both supplied result blocks and consume no random words.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_rootResultCopy {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
     {τ : Tape K} {μ : Mem K} {n : ℕ} {ua ea u dv : ℕ × ℕ}
@@ -36,7 +37,7 @@ theorem writes_rootResultCopy {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     (hAP : Fp.Apart [ua, ea, u, dv] [2 * (n * n), n, 2 * (n * n), n])
     (hread : StoresResult n 0 0 ua ea result μ.store)
     (hroom : μ.Room [u, dv] [2 * (n * n), n]) :
-    Writes .total I τ (rootResultCopy (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (rootResultCopy (Op := Op) (Tst := Tst))
       (Env.frame [n] [ua, ea, u, dv]) (Fp.blocks [u, dv] [2 * (n * n), n])
       (fun μ' => μ'.pos = μ.pos ∧ μ'.readBlocks [u, dv] [2 * (n * n), n] =
         some [(EntryCodec.pair K).packFinMatrix result.1, List.ofFn result.2]) μ := by

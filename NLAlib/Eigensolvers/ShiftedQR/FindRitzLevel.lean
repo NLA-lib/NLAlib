@@ -30,7 +30,8 @@ open Ops
 variable {Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op] [Has CmpTst Tst]
 
 /-- Both actual norms and the actual comparison advance the stored window exactly.
-[BanksGarzaVargasSrivastava2021, §4.3]. -/
+[BanksGarzaVargasSrivastava2021, §4.3]. A fragment: its tree runs only inside the tree of
+`NLAlib.ShiftedQR.findRitzLevel`. -/
 theorem findRitzWindow_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k a h e : ℕ} {b ss r : ℕ × ℕ}
@@ -41,7 +42,7 @@ theorem findRitzWindow_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hak : a + 2 * h ≤ k) (hal : a + 2 * h ≤ shifts.length)
     (hra : r.1 ≠ b.1) (hrs : r.1 ≠ ss.1) (hl : m.Live [b, ss, r, r])
     (hr : r.2 + 6 ≤ m.store.len r.1) :
-    Writes .total I τ findRitzWindow.body (Env.frame [n + 1, k, a, h, e] [b, ss, r, r])
+    Writes .total I τ findRitzWindow (Env.frame [n + 1, k, a, h, e] [b, ss, r, r])
       (Store.inBlock r.1 r.2 6)
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix b H m'.store ∧
         HoldsShifts (k := k) ss shifts m'.store ∧
@@ -64,9 +65,10 @@ theorem findRitzWindow_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 variable [Has IdxTst Tst]
 
-/-- Bounded toNat queries read the actual stored start, half length and exponent before the
-same numerical window transition. Every query's runtime bound is proved explicitly.
-[BanksGarzaVargasSrivastava2021, §4.3]. -/
+/-- Bounded toNat queries read the actual stored start, half length and exponent before the same
+numerical window transition. Every query's runtime bound is proved explicitly.
+[BanksGarzaVargasSrivastava2021, §4.3]. A fragment: its tree runs only inside the tree of
+`NLAlib.ShiftedQR.findRitzLevels`. -/
 theorem findRitzLevel_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I)
     (hCmp : IsCmp id I) (hToNat : IsToNat id I)
@@ -79,7 +81,7 @@ theorem findRitzLevel_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (ha : a ≤ k) (hh : h ≤ k) (he : e ≤ k)
     (hra : r.1 ≠ b.1) (hrs : r.1 ≠ ss.1) (hl : m.Live [b, ss, r, r])
     (hr : r.2 + 6 ≤ m.store.len r.1) :
-    Writes .total I τ findRitzLevel.body (Env.frame [n + 1, k] [b, ss, r, r])
+    Writes .total I τ findRitzLevel (Env.frame [n + 1, k] [b, ss, r, r])
       (Store.inBlock r.1 r.2 6)
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix b H m'.store ∧
         HoldsShifts (k := k) ss shifts m'.store ∧

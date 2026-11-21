@@ -100,21 +100,21 @@ structure IsRandBase (dec : K → ℝ) {n : ℕ} (A : Matrix (Fin n) (Fin n) ℝ
   /-- `matvec`. -/
   matvec : IsExactMatvec dec A J
   /-- `dot`. -/
-  dot : J.Meets .total .dot ((dotExactRel dec).spec (OutApart (· = n)))
+  dot : J.Satisfies .total .dot ((dotExactRel dec).spec (OutApart (· = n)))
   /-- `add`. -/
-  add : J.Meets .total .add ((addExRel dec).spec AnyOperands)
+  add : J.Satisfies .total .add ((addExRel dec).spec AnyOperands)
   /-- `nrm2`. -/
-  nrm2 : J.Meets .total .nrm2 ((nrm2ExactRel dec).spec (OutApart (· = n)))
+  nrm2 : J.Satisfies .total .nrm2 ((nrm2ExactRel dec).spec (OutApart (· = n)))
   /-- `mulc`. -/
-  mulc : ∀ q, J.Meets .total (.mulc q) ((mulcRel dec q).spec AnyOperands)
+  mulc : ∀ q, J.Satisfies .total (.mulc q) ((mulcRel dec q).spec AnyOperands)
   /-- `axpy`. -/
-  axpy : J.Meets .total .axpy ((axpyExactRel dec).spec (InPlace (· = n)))
+  axpy : J.Satisfies .total .axpy ((axpyExactRel dec).spec (InPlace (· = n)))
 
 /-- **The contracts of the randomized examples**: the base and the vector draw. -/
 structure IsRandLin (dec : K → ℝ) {n : ℕ} (A : Matrix (Fin n) (Fin n) ℝ)
     (J : Interp ROp Tst K) : Prop extends IsRandBase dec A J where
   /-- `gauss` is the vector draw: its output is the window. -/
-  gauss : J.Meets .total .gauss ((drawRel Stream.gauss).spec (OutApart (· = n)))
+  gauss : J.Satisfies .total .gauss ((drawRel Stream.gauss).spec (OutApart (· = n)))
 
 /-- The tape windows of the operations: one entry for `draw`, `n` for `gauss` at the length `n`,
 none for the others. -/

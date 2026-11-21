@@ -40,7 +40,8 @@ local notation "ST" => (fun lo => eighStep F n fuel R0 beta (EighNode.A (X lo))
 local notation "KS" => (fun lo => EighNode.k (X lo))
 
 /-- One actual upward level computes the existing pure recursion at every reached node.
-No execution premise or numerical quality assumption is required. -/
+No execution premise or numerical quality assumption is required.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_upLevel_eighAux (unif : K → Su → K) (normal : Sg → K × K)
     {I : Interp Op Tst K} (hS : IsScalar M I) (hQ : IsToNat dec I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) {m : Mem K}

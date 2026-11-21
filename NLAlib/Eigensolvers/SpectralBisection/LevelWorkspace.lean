@@ -33,7 +33,7 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op] [Has MatrixOp Op]
 /-- A large slot either writes a leaf without allocation or executes the actual node. -/
 theorem stmtPeak_downLarge_zero_le (n L cap d lo k : ℕ) (offs : List ℕ)
     (hn : 2 ≤ n) (hk : k ≤ n) :
-    stmtPeak (fun (_ : Op) _ => 0) (downLargeImpl (node (Op := Op) (Tst := Tst))).body
+    stmtPeak (fun (_ : Op) _ => 0) (downLarge (node (Op := Op) (Tst := Tst)))
       ([n, L, cap, d, lo, k] ++ offs) ≤ 18 * (n * n) + 9 := by
   apply max_le
   · rw [stmtPeak_zero_of_allocationFree (by rfl)]
@@ -49,7 +49,7 @@ theorem stmtPeak_downLarge_zero_le (n L cap d lo k : ℕ) (offs : List ℕ)
 root-size node scratch reservation. Guarded trip counts do not accumulate stored scratch. -/
 theorem stmtPeak_downNode_zero_le (n L cap d lo k : ℕ) (offs : List ℕ)
     (hn : 2 ≤ n) (hk : k ≤ n) :
-    stmtPeak (fun (_ : Op) _ => 0) (downNodeImpl (node (Op := Op) (Tst := Tst))).body
+    stmtPeak (fun (_ : Op) _ => 0) (downNode (node (Op := Op) (Tst := Tst)))
       ([n, L, cap, d, lo, k] ++ offs) ≤ 18 * (n * n) + 9 := by
   apply max_le
   · rw [stmtPeak_zero_of_allocationFree (by rfl)]
@@ -64,7 +64,7 @@ theorem stmtPeak_downNode_zero_le (n L cap d lo k : ℕ) (offs : List ℕ)
 size therefore fits the same peak reservation, independently of the number of occupied slots. -/
 theorem stmtPeak_downNodes_zero_le (n L cap d : ℕ) (offs : List ℕ)
     (hlen : offs.length = 13) (hn : 2 ≤ n) :
-    stmtPeak (fun (_ : Op) _ => 0) (downNodesImpl (node (Op := Op) (Tst := Tst))).body
+    stmtPeak (fun (_ : Op) _ => 0) (downNodes (node (Op := Op) (Tst := Tst)))
       ([n, L, cap, d] ++ offs) ≤ 18 * (n * n) + 9 := by
   apply Finset.sup_le
   intro lo hlo
@@ -84,9 +84,9 @@ variable [Has SampleOp Op]
 
 /-- Sampling and parameter computation allocate no stored buffers. The prepared slot loop
 uses the same node reservation for every position in the level. -/
-theorem stmtPeak_downLevelImpl_zero_le (n L cap d : ℕ) (offs : List ℕ)
+theorem stmtPeak_downLevelBody_zero_le (n L cap d : ℕ) (offs : List ℕ)
     (hn : 2 ≤ n) :
-    stmtPeak (fun (_ : Op) _ => 0) (downLevelImpl (node (Op := Op) (Tst := Tst))).body
+    stmtPeak (fun (_ : Op) _ => 0) (downLevelBody (node (Op := Op) (Tst := Tst)))
       ([n, L, cap, d] ++ offs) ≤ 18 * (n * n) + 9 := by
   apply max_le
   · rw [stmtPeak_zero_of_allocationFree (by rfl)]
@@ -106,11 +106,11 @@ theorem stmtPeak_downLevel_zero_le (n L cap d : ℕ) (offs : List ℕ) (hn : 2 �
         [⟨0, .var 4⟩, ⟨1, .var 5⟩, ⟨2, .var 6⟩, ⟨3, .var 7⟩,
           ⟨4, .var 8⟩, ⟨5, .var 9⟩, ⟨6, .var 10⟩, ⟨7, .var 11⟩,
           ⟨8, .var 12⟩, ⟨9, .var 13⟩, ⟨10, .var 14⟩, ⟨11, .var 15⟩,
-          ⟨12, .const 0⟩] (downLevelImpl (node (Op := Op) (Tst := Tst))).body)
+          ⟨12, .const 0⟩] (downLevelBody (node (Op := Op) (Tst := Tst))))
       ([n, L, cap, d] ++ offs) ≤ 18 * (n * n) + 9 := by
     apply stmtPeak_frame_le (d := [n, L, cap, d])
     · simp [IExp.evalList, IExp.eval]
-    · exact fun os => stmtPeak_downLevelImpl_zero_le n L cap d os hn
+    · exact fun os => stmtPeak_downLevelBody_zero_le n L cap d os hn
   simp [IExp.eval] at hb ⊢
   omega
 

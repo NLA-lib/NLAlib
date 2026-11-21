@@ -43,7 +43,8 @@ local notation "region" => (fun d => downLevelOutputFp n d lv su sg ma ua qa ea 
 
 /-- The eleven allocated arena capacities and separation imply total correctness of the
 complete downward traversal. Every local node and fresh-scratch obligation is derived from
-this layout; no per-level execution or geometry callback is assumed. -/
+this layout; no per-level execution or geometry callback is assumed.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_downwardPass_of_arenas (hS : IsScalar M I) (hL : IsIndexLit M I)
     (hC : IsCmp dec I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) (hQR : IsMatrixQR (EntryCodec.pair K) qr I)
@@ -61,7 +62,7 @@ theorem writes_downwardPass_of_arenas (hS : IsScalar M I) (hL : IsIndexLit M I)
     (hAP : Fp.Apart (arenaOperands c ma ua qa ea sz kd kp lv su sg) (arenaLengths n L))
     (hPar : Fp.Disj (Store.inBlock par.1 par.2 3)
       (Fp.blocks (arenaOperands c ma ua qa ea sz kd kp lv su sg) (arenaLengths n L))) :
-    Writes .total I τ (downwardPass (node (Op := Op) (Tst := Tst))).body
+    Writes .total I τ (downwardPass (node (Op := Op) (Tst := Tst)))
       (Env.frame [n, L, fuel] [par, lv, su, sg, ma, ua, qa, ea, sz, kd, kp, c])
       (Fp.loopPrefix region (L + 1))
       (fun ν => ν.pos = base + (L + 1) * levelSampleSize n ∧

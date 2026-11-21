@@ -29,7 +29,8 @@ open Ops
 
 /-- Actual upward iteration returns every node's assembled mathematical result. The spatial
 hypotheses protect sizes, shifts, future node inputs and child outputs from earlier parent
-writes. All node operation contracts and metadata bounds are explicit. -/
+writes. All node operation contracts and metadata bounds are explicit.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_upNodes {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     [Has MatrixOp Op] [Has IdxTst Tst] {M : Machine K} {dec : K → ℝ}
     (mm : MatMulMap (K × K)) (qr : QRMap (K × K)) (unif : K → Su → K) (normal : Sg → K × K)
@@ -66,7 +67,7 @@ theorem writes_upNodes {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
       Fp.Disj (resultLevelFootprint n d ks ua ea)
         (Fp.blocks (resultOperands n (d + 1) ((steps lo).childSlot lo b) ua ea)
           (resultLengths ((steps lo).childSize b)))) :
-    Writes .total I τ (upNodesImpl (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (upNodes (Op := Op) (Tst := Tst))
       (Env.frame [n, d] [ua, qa, ea, sz, kd, kp, t]) (resultLevelFootprint n d ks ua ea)
       (fun m' => m'.pos = m.pos ∧ ∀ lo < n,
         StoresResult n d lo ua ea

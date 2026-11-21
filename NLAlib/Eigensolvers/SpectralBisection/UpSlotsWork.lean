@@ -27,7 +27,7 @@ namespace NLAlib.SpectralBisection
 open Ops
 
 private abbrev upSlotsBody : Stmt DenseOp (CmpTst ⊕ IdxTst) :=
-  match (upNodesImpl (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body with
+  match (upNodes (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) with
   | .loop _ body => body
   | _ => .abort
 
@@ -43,7 +43,7 @@ private theorem round_weight {K : Type} {I : Interp DenseOp (CmpTst ⊕ IdxTst) 
     Dense.kernelWeight T b.cost ≤ Dense.kernelWeight T a.cost + 2 * T k := by
   have hidx := hQ.index_eq_of_decode_nat (m := a.mem)
     (x := (sz.1, sz.2 + n * d + lo)) hSize hDecode
-  dsimp only [upSlotsBody, upNodesImpl] at hr
+  dsimp only [upSlotsBody, upNodes] at hr
   rw [evalCounted] at hr
   simp only [Operand.evalList, Operand.eval, Env.pushIdx, Env.frame, List.map_cons, List.map_nil,
     List.cons_append, List.nil_append, List.length_cons, List.length_nil, zero_add, Nat.reduceAdd,
@@ -140,7 +140,7 @@ from arbitrary prior counts and live scratch. The total word theorem supplies te
 separately; this auxiliary bound concerns that same existing counted evaluator. -/
 theorem upNodes_kernelWeight_le_of_exec (T : ℕ → ℕ) (W : DenseOp → List ℕ → ℕ)
     {a b : St DenseOp (CmpTst ⊕ IdxTst) K} (hmem : a.mem = m)
-    (hr : evalCounted I W τ (upNodesImpl (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body
+    (hr : evalCounted I W τ (upNodes (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))
       (Env.frame [n, d] [ua, qa, ea, sz, kd, kp, t]) a = some b) :
     Dense.kernelWeight T b.cost ≤ Dense.kernelWeight T a.cost +
       ∑ lo ∈ Finset.range n, 2 * T (ks lo) := by

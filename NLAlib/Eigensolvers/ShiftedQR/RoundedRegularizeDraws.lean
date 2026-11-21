@@ -71,7 +71,7 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O
 /-- **One random perturbation of a shift**: a polar sample $w$ of the radius word `Rd` into the
 pair `Z`, then the pair `S` becomes $\mathrm{fl}(S + w)$ componentwise. The interface is
 `[] (Rd, S) → (Z, S)`. -/
-def regularizeDraw : Impl O Q := opsImpl% [] (Rd, S) → (Z, S) {
+def regularizeDraw : Stmt O Q := ops% [] (Rd, S) → (Z, S) {
   call (Has.inj DiskSampleOp.polar) [] (Rd) → (Z);
   call (Has.inj ScalarOp.add) [] (S, Z) → (S);
   call (Has.inj ScalarOp.add) [] (S[1], Z[1]) → (S[1])
@@ -80,9 +80,9 @@ def regularizeDraw : Impl O Q := opsImpl% [] (Rd, S) → (Z, S) {
 /-- **The $k$ random perturbations**: `NLAlib.ShiftedQR.regularizeDraw` on each of the $k$ pairs
 of `S`, with the radius word `Rd` and the scratch pair `Z`. The interface is
 `[k] (Rd) → (Z, S)`. -/
-def regularizeDraws : Impl O Q := opsImpl% [k] (Rd) → (Z, S) {
+def regularizeDraws : Stmt O Q := ops% [k] (Rd) → (Z, S) {
   for i < k {
-    run regularizeDraw.body [] (Rd, S[2 * i], Z, S[2 * i])
+    run regularizeDraw [] (Rd, S[2 * i], Z, S[2 * i])
   }
 }
 
@@ -96,14 +96,16 @@ variable {O Q : Type} [Has ScalarOp O] [Has DiskSampleOp O]
 `s`: from the radius word $R$ at `Rd` and the pair $r$ at `S`, `NLAlib.ShiftedQR.regularizeDraw`
 stores at `S` the rounded $\mathrm{fl}(r + w)$ (`NLAlib.ShiftedQR.excCentreWord`) of the polar
 sample $w$ of radius $R$ read at the start position, writes only `S` and the scratch pair `Z`,
-and advances the position by two. -/
+and advances the position by two.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem regularizeDraw_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I) {s : ℕ}
     (hD : IsPolarDiskSampler s I) {τ : Tape ℝ} {m : Mem ℝ} {rd sp z : ℕ × ℕ} {r : ℂ} {R : ℝ}
     (hrd : m.store.get rd.1 rd.2 = some R)
     (hs : m.store.readBlock sp.1 sp.2 2 = some [r.re, r.im])
     (hz : z.2 + 2 ≤ m.store.len z.1)
     (hzs : Fp.Disj (Store.inBlock z.1 z.2 2) (Store.inBlock sp.1 sp.2 2)) :
-    Writes .total I τ (regularizeDraw (O := O) (Q := Q)).body (Env.frame [] [rd, sp, z, sp])
+    Writes .total I τ (regularizeDraw (O := O) (Q := Q)) (Env.frame [] [rd, sp, z, sp])
       (Store.inBlock sp.1 sp.2 2 ⊔ Store.inBlock z.1 z.2 2)
       (fun m' => m'.pos = m.pos + 2 ∧ m'.store.readBlock sp.1 sp.2 2 =
         some [(excCentreWord M r (excSample τ s m.pos R)).1,
@@ -230,7 +232,9 @@ def DrawsInv (u β R η : ℝ) {k N : ℕ} (Lam : (Fin k → ℂ) → Prop) (e :
 /-- One perturbation as a probabilistic block: under an exact polar sampler on a stream `s₀`
 uniform on $[0, 1]$, the perturbation of pair $i$ keeps `NLAlib.ShiftedQR.DrawsInv` from $i$ to
 $i + 1$, except with probability at most $\varphi/(2k)$ (`regularize_bad_window_le`), for
-$\eta = R\sqrt{\varphi/(2k)}$ and $\lambda$'s whose distinct values are $4R$ apart. -/
+$\eta = R\sqrt{\varphi/(2k)}$ and $\lambda$'s whose distinct values are $4R$ apart.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem regularizeDraw_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) {law : ℕ → Measure ℝ} {s₀ : ℕ} (hD : IsPolarDiskSampler s₀ I)
     (hU : law s₀ = volume.restrict (Set.Icc 0 1)) {k N : ℕ} (hk : 0 < k)
@@ -239,7 +243,7 @@ theorem regularizeDraw_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} 
     (hzs : Fp.Disj (Store.inBlock z.1 z.2 2) (Store.inBlock s.1 s.2 (2 * k)))
     (hzr : Fp.Disj (Store.inBlock z.1 z.2 2) (Store.inBlock rd.1 rd.2 1))
     (hsr : Fp.Disj (Store.inBlock s.1 s.2 (2 * k)) (Store.inBlock rd.1 rd.2 1)) (i : Fin k) :
-    PWrites law I (regularizeDraw (O := O) (Q := Q)).body
+    PWrites law I (regularizeDraw (O := O) (Q := Q))
       (Env.frame [] [rd, (s.1, s.2 + 2 * i), z, (s.1, s.2 + 2 * i)])
       (Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock z.1 z.2 2)
       (DrawsInv u β R (R * √(φ / (2 * k))) Lam e rd z s i)
@@ -317,7 +321,9 @@ with probability at most $\varphi/2$, $0 \le \varphi \le 1$, stores pairs within
 $\beta + R + \delta_j$ of the $\lambda_j$ and at distance at least
 $R\sqrt{\varphi/(2k)} - \delta_j$ from every $e_l$, $\delta_j =
 2\boldsymbol{u}(\lvert\lambda_j\rvert + \beta + R)$, provided the distinct $e_l$ are $4R$
-apart ([BanksGarzaVargasSrivastava2022, Lemma 3.10], one draw at a time). -/
+apart ([BanksGarzaVargasSrivastava2022, Lemma 3.10], one draw at a time).
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem regularizeDraws_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) {law : ℕ → Measure ℝ} {s₀ : ℕ}
@@ -327,7 +333,7 @@ theorem regularizeDraws_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hzs : Fp.Disj (Store.inBlock z.1 z.2 2) (Store.inBlock s.1 s.2 (2 * k)))
     (hzr : Fp.Disj (Store.inBlock z.1 z.2 2) (Store.inBlock rd.1 rd.2 1))
     (hsr : Fp.Disj (Store.inBlock s.1 s.2 (2 * k)) (Store.inBlock rd.1 rd.2 1)) :
-    PWrites law I (regularizeDraws (O := O) (Q := Q)).body (Env.frame [k] [rd, z, s])
+    PWrites law I (regularizeDraws (O := O) (Q := Q)) (Env.frame [k] [rd, z, s])
       (Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock z.1 z.2 2)
       (DrawsInv u β R (R * √(φ / (2 * k))) Lam e rd z s 0)
       (DrawsInv u β R (R * √(φ / (2 * k))) Lam e rd z s k) (φ / 2) := by

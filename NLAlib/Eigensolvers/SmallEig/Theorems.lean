@@ -199,13 +199,15 @@ theorem SmallEigScratch.of_alloc {n : ℕ} {qs : List ℝ} {w q o : ℕ × ℕ}
 /-- `NLAlib.SmallEig.smallEigProg` on a block of order at most $1$ copies its diagonal: on a scalar
 machine, from a matrix $\mathbf{B}$ of order $d \le 1$ at `w` with room for the $2d$ output words
 at `o`, apart, on every tape the run writes only the output and stores the diagonal of
-$\mathbf{B}$. -/
+$\mathbf{B}$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem smallEigProg_writes_of_le_one {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar Mch I)
     (sG : ℕ) {d nq T : ℕ} (hd : d ≤ 1) {w q o : ℕ × ℕ} {τ : Tape ℝ} {μ : Mem ℝ}
     {B : Matrix (Fin d) (Fin d) ℂ} (hB : HoldsMatrix w B μ.store) (hl : μ.Live [w, q, o])
     (hroom : o.2 + 2 * d ≤ μ.store.len o.1)
     (hwo : Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d))) (Store.inBlock o.1 o.2 (2 * d))) :
-    Writes .total I τ (smallEigProg (O := O) (Q := Q) sG).body (Env.frame [d, nq, T] [w, q, o])
+    Writes .total I τ (smallEigProg (O := O) (Q := Q) sG) (Env.frame [d, nq, T] [w, q, o])
       (Store.inBlock o.1 o.2 (2 * d))
       (fun μ' => HoldsMatrix o (Matrix.of fun i (_ : Fin 1) => B i i) μ'.store) μ := by
   unfold smallEigProg
@@ -227,11 +229,12 @@ theorem isEigenvalueListing_diag_of_le_one {d : ℕ} (hd : d ≤ 1) (B : Matrix 
   simpa using hT.isEigenvalueListing_diag
 
 omit [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] in
-/-- The copy step of `NLAlib.SmallEig.smallEigProg`: on a scalar machine, with the output apart
-from the matrix and the words, from the scratch memory (`NLAlib.SmallEig.SmallEigScratch`) with
-the threshold word copied, on every tape the copy of $\mathbf{M}$ from `w` to the work matrix at
-`(L, 0)` writes only above $L$, keeps the scratch memory and the threshold word and stores
-$\mathbf{M}$ at `(L, 0)`. -/
+/-- The copy step of `NLAlib.SmallEig.smallEigProg`: on a scalar machine, with the output apart from
+the matrix and the words, from the scratch memory (`NLAlib.SmallEig.SmallEigScratch`) with the
+threshold word copied, on every tape the copy of $\mathbf{M}$ from `w` to the work matrix at `(L,
+0)` writes only above $L$, keeps the scratch memory and the threshold word and stores $\mathbf{M}$
+at `(L, 0)`.
+A step in the proof of `smallEigProg_pwrites`. -/
 theorem smallEigProg_copy_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar Mch I)
     {law : ℕ → Measure ℝ} {n L : ℕ} {qs : List ℝ} {w q o : ℕ × ℕ}
     {M : Matrix (Fin (n + 1 + 1)) (Fin (n + 1 + 1)) ℂ}
@@ -241,7 +244,7 @@ theorem smallEigProg_copy_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS :
     {ρ : Env} {ds : List IExp} {args : List Operand}
     (hd : IExp.evalList ρ.idx ds = some [2 * ((n + 1 + 1) * (n + 1 + 1))])
     (ha : Operand.evalList ρ args = some [w, (L, 0)]) :
-    PWrites law I (.frame ds args (unaryMap (Tst := Q) (Has.inj ScalarOp.copy : O)).body) ρ
+    PWrites law I (.frame ds args (unaryMap (Tst := Q) (Has.inj ScalarOp.copy : O))) ρ
       (Store.inBlock o.1 o.2 (2 * (n + 1 + 1)) ⊔ Fp.above L)
       (fun μ => SmallEigScratch n L qs w q o M μ ∧ μ.store.get (L + 2) 0 = some (qs.getD 6 0))
       (fun μ => (SmallEigScratch n L qs w q o M μ ∧
@@ -260,16 +263,16 @@ theorem smallEigProg_copy_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS :
 omit [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- The perturbation step of `NLAlib.SmallEig.smallEigProg`: on a scalar machine with the standard
 model at $\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{SmallEig}}$, index literals, a measurable
-interpretation reading the tape only in its windows whose draws store the tape entry, a stream
-`sG` with the standard real Gaussian law and the tails $c_1$, $c_2$ of the gap and the condition
-of a complex Ginibre perturbation with $b_1, b_2 > 0$: let $n + 2 \le n_{\max}$,
-$0 < \delta \le \Sigma$, $0 < \varphi \le 1$, $\|\mathbf{M}\|_2 \le \Sigma$, and the output apart
-from the matrix and the words. From the scratch memory (`NLAlib.SmallEig.SmallEigScratch`) with
-the threshold word copied and $\mathbf{M}$ at `(L, 0)`, except with probability at most
-$3\varphi/4$ the call writes only above $L$ and stores $\mathbf{M} + \mathbf{E}$,
-$\|\mathbf{E}\|_2 \le \delta/2$, with a diagonalization of condition at most $2/t_2$ and
-eigenvalues separated by $t_1/2$ (`NLAlib.SmallEig.smallEigCond`, `NLAlib.SmallEig.smallEigGap`).
--/
+interpretation reading the tape only in its windows whose draws store the tape entry, a stream `sG`
+with the standard real Gaussian law and the tails $c_1$, $c_2$ of the gap and the condition of a
+complex Ginibre perturbation with $b_1, b_2 > 0$: let $n + 2 \le n_{\max}$, $0 < \delta \le \Sigma$,
+$0 < \varphi \le 1$, $\|\mathbf{M}\|_2 \le \Sigma$, and the output apart from the matrix and the
+words. From the scratch memory (`NLAlib.SmallEig.SmallEigScratch`) with the threshold word copied
+and $\mathbf{M}$ at `(L, 0)`, except with probability at most $3\varphi/4$ the call writes only
+above $L$ and stores $\mathbf{M} + \mathbf{E}$, $\|\mathbf{E}\|_2 \le \delta/2$, with a
+diagonalization of condition at most $2/t_2$ and eigenvalues separated by $t_1/2$
+(`NLAlib.SmallEig.smallEigCond`, `NLAlib.SmallEig.smallEigGap`).
+A step in the proof of `smallEigProg_pwrites`. -/
 theorem smallEigProg_perturb_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I) (hSmp : IsSample I)
     {law : ℕ → Measure ℝ} {sG : ℕ} (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail}
@@ -285,7 +288,7 @@ theorem smallEigProg_perturb_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
     {args : List Operand}
     (hd : IExp.evalList ρ.idx ds = some [n + 1 + 1, (smallEigParams nmax S δ φ c₁ c₂).length])
     (ha : Operand.evalList ρ args = some [(L, 0), q, (L, 0)]) :
-    PWrites law I (.frame ds args (ginibrePerturb (O := O) (Q := Q) sG).body) ρ
+    PWrites law I (.frame ds args (ginibrePerturb (O := O) (Q := Q) sG)) ρ
       (Store.inBlock o.1 o.2 (2 * (n + 1 + 1)) ⊔ Fp.above L)
       (fun μ => (SmallEigScratch n L (smallEigParams nmax S δ φ c₁ c₂) w q o M μ ∧
         μ.store.get (L + 2) 0 = some ((smallEigParams nmax S δ φ c₁ c₂).getD 6 0)) ∧
@@ -359,17 +362,18 @@ theorem smallEigProg_reduce_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u 
     hqo hH (hfr.keep (Store.readsOnly_get _ _ _) (Fp.disj_inBlock_of_ne (by omega)) hTh) hq',
     hM'⟩
 
-/-- The last step of `NLAlib.SmallEig.smallEigProg`: on a scalar machine with the standard
-model at $\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{SmallEig}}$, index literals, exact natural
-literals up to $n + 2 \le n_{\max}$, exact comparisons and conversion, a measurable interpretation
-reading the tape only in its windows whose draws store the tape entry, a Gaussian stream `sG` and
-an exact polar sampler on a uniform stream `sU`, tail records with $b_1, b_2 > 0$,
-$0 < \delta \le \Sigma$ and $0 < \varphi \le 1$: from a memory whose work matrix at `(L, 0)` is
-in the class of the core relative to $\mathbf{M}$ (`NLAlib.SmallEig.SmallEigCoreClass`), set up
-for the core (`NLAlib.SmallEig.SmallEigCoreInput`) and still holding $\mathbf{M}$ at `w`, the call
-of the core writes only the output and above $L$ and, except with probability at most
-$\varphi/4$, lists the spectrum of $\mathbf{M} + \mathbf{E}$ for some
-$\|\mathbf{E}\|_2 \le \delta$: the backward errors $5\delta/8$ and $\delta/4$ add. -/
+/-- The last step of `NLAlib.SmallEig.smallEigProg`: on a scalar machine with the standard model at
+$\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{SmallEig}}$, index literals, exact natural literals up
+to $n + 2 \le n_{\max}$, exact comparisons and conversion, a measurable interpretation reading the
+tape only in its windows whose draws store the tape entry, a Gaussian stream `sG` and an exact polar
+sampler on a uniform stream `sU`, tail records with $b_1, b_2 > 0$, $0 < \delta \le \Sigma$ and $0 <
+\varphi \le 1$: from a memory whose work matrix at `(L, 0)` is in the class of the core relative to
+$\mathbf{M}$ (`NLAlib.SmallEig.SmallEigCoreClass`), set up for the core
+(`NLAlib.SmallEig.SmallEigCoreInput`) and still holding $\mathbf{M}$ at `w`, the call of the core
+writes only the output and above $L$ and, except with probability at most $\varphi/4$, lists the
+spectrum of $\mathbf{M} + \mathbf{E}$ for some $\|\mathbf{E}\|_2 \le \delta$: the backward errors
+$5\delta/8$ and $\delta/4$ add.
+A step in the proof of `smallEigProg_pwrites`. -/
 theorem smallEigProg_core_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I) {n : ℕ}
     (hNat : IsExactNatLit id Mch (n + 1 + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
@@ -384,7 +388,7 @@ theorem smallEigProg_core_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : 
     (hd : IExp.evalList ρ.idx ds = some [n + 1 + 1, 1, (smallEigParams nmax S δ φ c₁ c₂).length,
       smallEigCap nmax S δ φ c₁ c₂, smallEigCap nmax S δ φ c₁ c₂])
     (ha : Operand.evalList ρ args = some [(L, 0), (L + 2, 0), q, o, (L + 1, 0)]) :
-    PWrites law I (.frame ds args (smallEigCore (O := O) (Q := Q) sG).body) ρ
+    PWrites law I (.frame ds args (smallEigCore (O := O) (Q := Q) sG)) ρ
       (Store.inBlock o.1 o.2 (2 * (n + 1 + 1)) ⊔ Fp.above L)
       (fun μ => ∃ x : {H // SmallEigCoreClass nmax S δ φ c₁ c₂ M H},
         SmallEigCoreInput (smallEigParams nmax S δ φ c₁ c₂) (L, 0) (L + 2, 0) q o (L + 1, 0) x.1
@@ -448,7 +452,9 @@ $\mathbf{M} + \mathbf{E}$ for some $\|\mathbf{E}\|_2 \le \delta$
 (`NLAlib.SmallEig.ginibrePerturb_pwrites`, $3\varphi/4$), the reduction
 (`NLAlib.SmallEig.smallEigProg_reduce_pwrites`) and the core
 (`NLAlib.SmallEig.smallEigProg_core_pwrites`, $\varphi/4$) compose by `NLAlib.Ops.PWrites.seq`;
-the backward errors $\delta/2 + \delta/8 + \delta/4$ add. -/
+the backward errors $\delta/2 + \delta/8 + \delta/4$ add.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem smallEigProg_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
@@ -461,7 +467,7 @@ theorem smallEigProg_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {S δ φ : ℝ} (hMS : specNorm M ≤ S)
     (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
     (hu : u ≤ uSmallEig nmax S δ φ c₁ c₂) (w q o : ℕ × ℕ) :
-    PWrites law I (smallEigProg (O := O) (Q := Q) sG).body
+    PWrites law I (smallEigProg (O := O) (Q := Q) sG)
       (Env.frame (smallEigDims n nmax S δ φ c₁ c₂) [w, q, o])
       (Store.inBlock o.1 o.2 (2 * (n + 1))) (SmallEigInput nmax S δ φ c₁ c₂ w q o M)
       (SmallEigSpectrum o M δ) φ := by
@@ -609,7 +615,7 @@ theorem smallEig_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp O Q
     (hu : u ≤ uSmallEig nmax S δ φ c₁ c₂)
     {w q o : ℕ × ℕ} {μ : Mem ℝ} (hin : SmallEigInput nmax S δ φ c₁ c₂ w q o M μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG)
       (Env.frame (smallEigDims n nmax S δ φ c₁ c₂) [w, q, o])
       (Store.inBlock o.1 o.2 (2 * (n + 1))) (SmallEigSpectrum o M δ) μ} ≤ φ :=
   (smallEigProg_pwrites hS hM hL hNat hQ hC hI hloc hSmp hDisk hU hG hA hB hb₁ hb₂ hn hMS hδ hδS hφ
@@ -643,7 +649,7 @@ theorem smallEig_relative {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hφ1 : φ ≤ 1) (hu : u ≤ uSmallEig nmax S (ε * S / c) φ c₁ c₂)
     {w q o : ℕ × ℕ} {μ : Mem ℝ} (hin : SmallEigInput nmax S (ε * S / c) φ c₁ c₂ w q o M μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG)
       (Env.frame (smallEigDims n nmax S (ε * S / c) φ c₁ c₂) [w, q, o])
       (Store.inBlock o.1 o.2 (2 * (n + 1))) (SmallEigSpectrum o M (ε * specNorm M)) μ} ≤ φ := by
   have hc0 : 0 < c := by linarith
@@ -722,7 +728,7 @@ theorem smallEig_measureReal_not_forward_le {Mch : Machine ℝ} {I : Interp O Q 
     {M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hMS : specNorm M ≤ S) {w q o : ℕ × ℕ}
     {μ : Mem ℝ} (hin : SmallEigInput kmax S (forwardBackwardError kmax S β) φ c₁ c₂ w q o M μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG)
       (Env.frame (smallEigDims n kmax S (forwardBackwardError kmax S β) φ c₁ c₂) [w, q, o])
       (Store.inBlock o.1 o.2 (2 * (n + 1)))
       (fun μ' => ∃ roots ev : Fin (n + 1) → ℂ, IsEigenvalueListing M ev ∧
@@ -743,10 +749,10 @@ $n$ in its last term (its erratum N5). The monomial bound of the tree
 `NLAlib.SmallEig.smallEigWork` is larger because its instrumentation also counts the structural
 instructions. -/
 theorem smallEig_work_le (sG : ℕ) : ∃ c : ℕ, ∀ n nq T : ℕ,
-    Count.size (stmtCost (smallEigProg (O := O) (Q := Q) sG).body [n + 1, nq, T]) ≤
+    Count.size (stmtCost (smallEigProg (O := O) (Q := Q) sG) [n + 1, nq, T]) ≤
       c * (n + 1) ^ 4 * (T + 1) ^ 2 := by
   refine ⟨3473, fun n nq T => ?_⟩
-  have hw : stmtWorkMono (smallEigProg (O := O) (Q := Q) sG).body
+  have hw : stmtWorkMono (smallEigProg (O := O) (Q := Q) sG)
       [⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩] = ⟨3473, [4, 0, 2]⟩ := by
     kernel_rfl
   have hσ : SlotsLe [n + 1, nq + 1, T + 1] [n + 1, nq, T]
@@ -779,7 +785,7 @@ theorem smallEig_measureReal_not_spectrum_le_unconditional {Mch : Machine ℝ} {
     {w q o : ℕ × ℕ} {μ : Mem ℝ} (hin : SmallEigInput nmax S δ φ ginibreGapTail
       ginibreConditionTail w q o M μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG)
       (Env.frame (smallEigDims n nmax S δ φ ginibreGapTail
         ginibreConditionTail) [w, q, o])
       (Store.inBlock o.1 o.2 (2 * (n + 1))) (SmallEigSpectrum o M δ) μ} ≤ φ := by
@@ -808,7 +814,7 @@ theorem smallEig_relative_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ}
     {w q o : ℕ × ℕ} {μ : Mem ℝ} (hin : SmallEigInput nmax S (ε * S / c) φ
       ginibreGapTail ginibreConditionTail w q o M μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG)
       (Env.frame (smallEigDims n nmax S (ε * S / c) φ ginibreGapTail
         ginibreConditionTail) [w, q, o])
       (Store.inBlock o.1 o.2 (2 * (n + 1))) (SmallEigSpectrum o M (ε * specNorm M)) μ} ≤ φ := by
@@ -862,7 +868,7 @@ theorem smallEig_measureReal_not_forward_le_unconditional {Mch : Machine ℝ} {I
     {μ : Mem ℝ} (hin : SmallEigInput kmax S (forwardBackwardError kmax S β) φ
       ginibreGapTail ginibreConditionTail w q o M μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG)
       (Env.frame (smallEigDims n kmax S (forwardBackwardError kmax S β) φ
         ginibreGapTail ginibreConditionTail) [w, q, o])
       (Store.inBlock o.1 o.2 (2 * (n + 1)))

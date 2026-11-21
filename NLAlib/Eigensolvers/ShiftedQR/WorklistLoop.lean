@@ -101,17 +101,20 @@ variable {O Q : Type} [Has CmpTst Q]
 
 /-- The actual count-controlled worklist traversal. The supplied range-processing body is a
 fixed implementation, not an operation or a primitive contract. -/
-def worklistLoop (round : Impl O Q) : Impl O Q :=
-  opsImpl% [N, m, k, F, M] (A, Params, St) → (Out, W, R) {
+def worklistLoop (round : Stmt O Q) : Stmt O Q :=
+  ops% [N, m, k, F, M] (A, Params, St) → (Out, W, R) {
     while j < 2 * N, (Has.inj CmpTst.isPos) [] (St) {
-      run round.body [N, m, k, F, M] (A, Params, St, Out, W, R)
+      run round [N, m, k, F, M] (A, Params, St, Out, W, R)
     } then { skip }
   }
 
 /-- A total local range-processing proof composes into a stopped worklist. The invariant's
 partition and progress measure exclude active work at the cap, rather than assuming success
-or assuming that the loop has stopped. -/
-theorem worklistLoop_writes (round : Impl O Q) {I : Interp O Q ℝ} (hC : IsCmp id I)
+or assuming that the loop has stopped.
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`,
+`NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrRoutine`,
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+theorem worklistLoop_writes (round : Stmt O Q) {I : Interp O Q ℝ} (hC : IsCmp id I)
     {tape : Tape ℝ} {μ : Mem ℝ} {n m k F M : ℕ} {a p stack out w r : ℕ × ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {τ : ℝ}
     (hl : μ.Live [a, p, stack, out, w, r]) (hInv : WorklistInv H τ a stack out 0 μ)
@@ -119,10 +122,10 @@ theorem worklistLoop_writes (round : Impl O Q) {I : Interp O Q ℝ} (hC : IsCmp 
       μ.store.EqOff (worklistFp (n + 1) a stack out w r) μ'.store →
       WorklistInv H τ a stack out j μ' → ∀ count : ℕ,
       μ'.store.get stack.1 stack.2 = some (count : ℝ) → 0 < count →
-      Writes .total I tape round.body (Env.frame [n + 1, m, k, F, M] [a, p, stack, out, w, r])
+      Writes .total I tape round (Env.frame [n + 1, m, k, F, M] [a, p, stack, out, w, r])
         (worklistFp (n + 1) a stack out w r)
         (fun μ'' => μ''.pos = μ'.pos ∧ WorklistInv H τ a stack out (j + 1) μ'') μ') :
-    Writes .total I tape (worklistLoop round).body
+    Writes .total I tape (worklistLoop round)
       (Env.frame [n + 1, m, k, F, M] [a, p, stack, out, w, r])
       (worklistFp (n + 1) a stack out w r)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ j, WorklistInv H τ a stack out j μ' ∧

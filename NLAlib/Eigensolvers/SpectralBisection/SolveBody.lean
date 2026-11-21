@@ -43,7 +43,8 @@ local notation "RES" => eighAux F n fuel R0 beta (L + 1) A R0 eps L
 local notation "ARENA" => Fp.blocks (arenaOperands c ma ua qa ea sz kd kp lv su sg)
   (arenaLengths n L)
 
-/-- Initialization and the two actual traversals return exactly the mathematical solver. -/
+/-- Initialization and the two actual traversals return exactly the mathematical solver.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
 theorem writes_solveBody {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndexLit M I)
     (hC : IsCmp dec I) (hMM : IsMatrixMul (EntryCodec.pair K) mm I)
     (hQR : IsMatrixQR (EntryCodec.pair K) qr I) (hQ : IsToNat dec I) (hSample : IsSample I)
@@ -55,7 +56,6 @@ theorem writes_solveBody {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndex
     (hRoom : μ.Room (arenaOperands c ma ua qa ea sz kd kp lv su sg) (arenaLengths n L))
     (hOutRoom : μ.Room [u, dv] [2 * (n * n), n])
     (hAP : Fp.Apart (arenaOperands c ma ua qa ea sz kd kp lv su sg) (arenaLengths n L))
-    (hSource : Fp.Disj (Store.inBlock a.1 a.2 (2 * (n * n))) (Store.inBlock par.1 par.2 3))
     (hOutput : Fp.Disj (Store.inBlock u.1 u.2 (2 * (n * n))) (Store.inBlock dv.1 dv.2 n))
     (hProtect : Fp.Disj ARENA (Fp.blocks [a, par, u, dv] [2 * (n * n), 3, 2 * (n * n), n])) :
     Writes .total I τ (solveBody (node (Op := Op) (Tst := Tst)))
@@ -71,7 +71,7 @@ theorem writes_solveBody {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndex
   have hOutputs : Fp.Disj ARENA (Fp.blocks [u, dv] [2 * (n * n), n]) :=
     hProtect.mono le_rfl (by fp_sub)
   have hInit := writes_initializeArenas_stored (μ := μ) (τ := τ)
-    M F fuel R0 eps beta A hS hL (by room) hRoom hAP hSource hInputs hA hPar
+    M F fuel R0 eps beta A hS hL (by room) hRoom hAP hInputs hA hPar
   refine hInit.frame_seq_le rfl rfl (by room) le_sup_left ?_
   clear hInit
   intro μ₁ hfr₁ ⟨hp₁, hPar₁, hC₁, hLevel₁, hZero₁⟩

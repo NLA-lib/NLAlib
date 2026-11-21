@@ -114,17 +114,18 @@ theorem foldWords_mul (M : Machine ℝ) (w : ℕ → ℝ) (j : ℕ) :
 the pair `x` into the three scratch words `t`, then the accumulator word `p` combined in place
 with the third of them. -/
 def normSqOpRound (o : ScalarOp) (x t p : Operand) : Stmt Op Tst :=
-  .seq (.frame [] [x, t] PairScalar.normSq.body)
+  .seq (.frame [] [x, t] PairScalar.normSq)
     (.call (Has.inj o) [] [p, ⟨t.buf, t.off + .const 2⟩] [p])
 
 /-- One round of a product of squared moduli. -/
 abbrev normSqMulRound (x t p : Operand) : Stmt Op Tst := normSqOpRound .mul x t p
 
-/-- The fold loop of squared moduli on any scalar machine: let the scalar operation `o` be
-the machine function `g`. If, in round $i < N$, the operand `x` addresses a pair holding $z_i$,
-inside a region `R` apart from the scratch view `t` (three words) and the accumulator word `p`,
-and `p` holds $v$, then the loop stores in `p` the fold `NLAlib.ShiftedQR.foldWords` by `g` of
-$v$ and the machine squared moduli of $z_0, \dots, z_{N-1}$, and writes only `p` and `t`. -/
+/-- The fold loop of squared moduli on any scalar machine: let the scalar operation `o` be the
+machine function `g`. If, in round $i < N$, the operand `x` addresses a pair holding $z_i$, inside a
+region `R` apart from the scratch view `t` (three words) and the accumulator word `p`, and `p` holds
+$v$, then the loop stores in `p` the fold `NLAlib.ShiftedQR.foldWords` by `g` of $v$ and the machine
+squared moduli of $z_0, \dots, z_{N-1}$, and writes only `p` and `t`.
+A step in the proof of `writes_loop_normSqMulRound`, `pairVecNormWithScratch_writes_word`. -/
 theorem writes_loop_normSqOpRound {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsScalar M I)
     {o : ScalarOp} {g : ℝ → ℝ → ℝ} (hg : M.fn o = .bin fun a b => some (g a b))
     {τ : Tape ℝ} {m : Mem ℝ} {ρ : Env} {cnt : IExp} {N : ℕ} (hN : cnt.eval ρ.idx = some N)
@@ -176,7 +177,8 @@ theorem writes_loop_normSqOpRound {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS 
 
 /-- The product loop of squared moduli on any scalar machine: the fold loop
 (`NLAlib.ShiftedQR.writes_loop_normSqOpRound`) by the multiplication stores the rounded product
-`NLAlib.prodWords` of $v$ and the machine squared moduli of $z_0, \dots, z_{N-1}$. -/
+`NLAlib.prodWords` of $v$ and the machine squared moduli of $z_0, \dots, z_{N-1}$.
+A step in the proof of `subdiagProductWithScratch_writes_word`, `comptau_writes_word`. -/
 theorem writes_loop_normSqMulRound {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {m : Mem ℝ} {ρ : Env} {cnt : IExp} {N : ℕ} (hN : cnt.eval ρ.idx = some N)
     {x t p : Operand} {xs : ℕ → ℕ × ℕ} {tl pl : ℕ × ℕ} {R : Fp} {z : ℕ → ℂ} {v : ℝ}
@@ -467,10 +469,10 @@ theorem abs_sqrt_sumNormSq_sub_le {M : Machine ℝ} {u : ℝ} (hM : StdModel u i
 /-- **The rounded Euclidean norm of a stored complex vector** of length $k$ at `D`, with three
 caller-owned scratch words `T`: the exact literal $0$, plus the machine squared moduli of the
 $k$ pairs, then one square root, into the word `P`. The interface is `[k] (D, T) → (P)`. -/
-def pairVecNormWithScratch : Impl Op Tst := opsImpl% [k] (D, T) → (P) {
+def pairVecNormWithScratch : Stmt Op Tst := ops% [k] (D, T) → (P) {
   call (Has.inj (ScalarOp.lit 0)) [] () → (P);
   for j < k {
-    run PairScalar.normSq.body [] (D[2 * j], T);
+    run PairScalar.normSq [] (D[2 * j], T);
     call (Has.inj ScalarOp.add) [] (P, T[2]) → (P)
   };
   call (Has.inj ScalarOp.sqrt) [] (P) → (P)
@@ -483,7 +485,9 @@ def pairVecNormWord (M : Machine ℝ) {N : ℕ} (r : Fin N → ℂ) : ℝ :=
 /-- The rounded Euclidean norm on any scalar machine: with the vector $\mathbf{r}$ stored at `D`
 and the three scratch words and the output word apart from it and from each other,
 `pairVecNormWithScratch` stores `NLAlib.ShiftedQR.pairVecNormWord` and writes only the output
-and the scratch. -/
+and the scratch.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem pairVecNormWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {N : ℕ} {r : Fin N → ℂ} {d t p : ℕ × ℕ}
     (hD : HoldsMatrix d (Matrix.replicateCol (Fin 1) r) m.store)
@@ -491,7 +495,7 @@ theorem pairVecNormWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst 
     (hdt : Fp.Disj (Store.inBlock d.1 d.2 (2 * (1 * N))) (Store.inBlock t.1 t.2 3))
     (hdp : Fp.Disj (Store.inBlock d.1 d.2 (2 * (1 * N))) (Store.inBlock p.1 p.2 1))
     (htp : Fp.Disj (Store.inBlock t.1 t.2 3) (Store.inBlock p.1 p.2 1)) :
-    Writes .total I τ pairVecNormWithScratch.body (Env.frame [N] [d, t, p])
+    Writes .total I τ pairVecNormWithScratch (Env.frame [N] [d, t, p])
       (Store.inBlock p.1 p.2 1 ⊔ Store.inBlock t.1 t.2 3)
       (fun m' => m'.pos = m.pos ∧ m'.store.get p.1 p.2 = some (pairVecNormWord M r)) m := by
   unfold pairVecNormWithScratch

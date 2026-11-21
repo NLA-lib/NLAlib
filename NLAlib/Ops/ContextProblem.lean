@@ -6,7 +6,9 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Certification
-public import NLAlib.Ops.Logic.ContextSnapshot
+public import NLAlib.Ops.Contract
+public import NLAlib.Ops.ContextRun
+public import NLAlib.Ops.Logic.Allocation
 public import Mathlib.Data.List.OfFn
 
 /-!

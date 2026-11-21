@@ -50,7 +50,7 @@ the rounded worklist `NLAlib.ShiftedQR.solveRoundedWith` with the decoupler
 `NLAlib.SmallEig.smallEigDecoupler` and the leaf `NLAlib.SmallEig.copyLeaf`. Run at the bottom
 width $k = 1$. The interface is `[N, k, np, F, T] (A, Thr, P) → (Out, Fl)`.
 Algorithm: small-eig -/
-def smallEigCore (sG : ℕ) : Impl O Q :=
+def smallEigCore (sG : ℕ) : Stmt O Q :=
   solveRoundedWith (smallEigDecoupler (O := O) (Q := Q) sG) (copyLeaf (O := O) (Q := Q))
 
 end Program
@@ -63,7 +63,7 @@ def SmallEigCoreInput {n : ℕ} (qs : List ℝ) (a t p out f : ℕ × ℕ)
     (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (μ : Mem ℝ) : Prop :=
   μ.Live [a, t, p, out, f] ∧
     μ.Room [a, t, p, out, f] [2 * ((n + 1) * (n + 1)), 1, qs.length, 2 * (n + 1), 1] ∧
-    Fp.Apart [a, t, p, out, f] [2 * ((n + 1) * (n + 1)), 1, qs.length, 2 * (n + 1), 1] ∧
+    ShQRViewsApart (n + 1) qs.length a t p out f ∧
     HoldsMatrix a H μ.store ∧ μ.store.get t.1 t.2 = some (qs.getD 6 0) ∧
     μ.store.readBlock p.1 p.2 qs.length = some qs
 
@@ -156,7 +156,9 @@ $\|\mathbf{H}\|_2 \le \Sigma + 3\delta/4$, stored with the words
 `NLAlib.SmallEig.smallEigParams` (`NLAlib.SmallEig.SmallEigCoreInput`). Then, except with
 probability at most $\varphi/4$, `NLAlib.SmallEig.smallEigCore` at the bottom width $1$ writes
 only the matrix, the output and the failure word, sets the failure word to $0$ and stores all
-eigenvalues of $\mathbf{H} + \mathbf{E}$ for some $\|\mathbf{E}\|_2 \le \delta/4$. -/
+eigenvalues of $\mathbf{H} + \mathbf{E}$ for some $\|\mathbf{E}\|_2 \le \delta/4$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem smallEigCore_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I) {n : ℕ}
     (hNat : IsExactNatLit id Mch (n + 1)) {nmax : ℕ} (hQ : IsToNat id I) (hC : IsCmp id I)
@@ -171,7 +173,7 @@ theorem smallEigCore_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hκ : pseudoConditionNumber V ≤ smallEigCondition nmax S δ φ c₂)
     (hgap : ∀ i j, i ≠ j → smallEigSeparation nmax S δ φ c₁ ≤ ‖d i - d j‖)
     (hHS : specNorm H ≤ S + 3 * δ / 4) {a t p out f : ℕ × ℕ} :
-    PWrites law I (smallEigCore (O := O) (Q := Q) sG).body
+    PWrites law I (smallEigCore (O := O) (Q := Q) sG)
       (Env.frame [n + 1, 1, (smallEigParams nmax S δ φ c₁ c₂).length,
         smallEigCap nmax S δ φ c₁ c₂, smallEigCap nmax S δ φ c₁ c₂] [a, t, p, out, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
@@ -278,7 +280,7 @@ theorem smallEigCore_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp
     (hHS : specNorm H ≤ S + 3 * δ / 4) {a t p out f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : SmallEigCoreInput (smallEigParams nmax S δ φ c₁ c₂) a t p out f H μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω' | ¬ Writes .total I (ξ ω') (smallEigCore (O := O) (Q := Q) sG).body
+    P.real {ω' | ¬ Writes .total I (ξ ω') (smallEigCore (O := O) (Q := Q) sG)
       (Env.frame [n + 1, 1, (smallEigParams nmax S δ φ c₁ c₂).length,
         smallEigCap nmax S δ φ c₁ c₂, smallEigCap nmax S δ φ c₁ c₂] [a, t, p, out, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
@@ -303,7 +305,7 @@ theorem smallEigCore_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : I
     {T F : ℕ} {qs : List ℝ} (hqs : SmallEigCaps T qs) (hlen : 12 ≤ qs.length)
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {tape : Tape ℝ} {a t p out f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : SmallEigCoreInput qs a t p out f H μ) :
-    Writes .total I tape (smallEigCore (O := O) (Q := Q) sG).body
+    Writes .total I tape (smallEigCore (O := O) (Q := Q) sG)
       (Env.frame [n + 1, 1, qs.length, F, T] [a, t, p, out, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock out.1 out.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)
@@ -322,7 +324,7 @@ theorem smallEigCore_terminates_stored {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hDisk : IsPolarDiskSampler sU I) {T F : ℕ} {qs : List ℝ} (hqs : SmallEigCaps T qs)
     (hlen : 12 ≤ qs.length) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {tape : Tape ℝ}
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ} (hin : SmallEigCoreInput qs a t p out f H μ) :
-    Writes .total I tape (smallEigCore (O := O) (Q := Q) sG).body
+    Writes .total I tape (smallEigCore (O := O) (Q := Q) sG)
       (Env.frame [n + 1, 1, qs.length, F, T] [a, t, p, out, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock out.1 out.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)

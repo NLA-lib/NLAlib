@@ -32,29 +32,29 @@ namespace NLAlib.Ops.PairMatrix
 variable {Op Tst : Type} [Has ScalarOp Op]
 
 /-- Copy an interleaved rectangular matrix with one scalar copy per stored word. -/
-def copy : Impl Op Tst := opsImpl% [rows, cols] (X) → (Y) {
-  run (unaryMap (Has.inj ScalarOp.copy)).body [2 * (rows * cols)] (X, Y)
+def copy : Stmt Op Tst := ops% [rows, cols] (X) → (Y) {
+  run (unaryMap (Has.inj ScalarOp.copy)) [2 * (rows * cols)] (X, Y)
 }
 
 /-- The named copy program is definitionally the generic unary-map frame, so the builder
 introduces no new execution mechanism and retains the caller's explicit offsets. -/
 theorem body_copy_eq_frame :
-    (copy (Op := Op) (Tst := Tst)).body =
+    (copy (Op := Op) (Tst := Tst)) =
       .frame [.const 2 * (.var 0 * .var 1)] [⟨0, .var 2⟩, ⟨1, .var 3⟩]
-        (unaryMap (Has.inj ScalarOp.copy)).body := rfl
+        (unaryMap (Has.inj ScalarOp.copy)) := rfl
 
 /-- Conjugate-transpose an interleaved rectangular matrix by scalar copies and negations. -/
-def conjTranspose : Impl Op Tst := opsImpl% [rows, cols] (X) → (Y) {
+def conjTranspose : Stmt Op Tst := ops% [rows, cols] (X) → (Y) {
   for j < cols {
     for i < rows {
-      run (Hermitian.conjugatePair).body []
+      run (Hermitian.conjugatePair) []
         (X[2 * (j * rows + i)], Y[2 * (i * cols + j)])
     }
   }
 }
 
 /-- Accumulate the real diagonal by the machine's additions, starting from literal zero. -/
-def traceRe : Impl Op Tst := opsImpl% [n] (X) → (out) {
+def traceRe : Stmt Op Tst := ops% [n] (X) → (out) {
   call (Has.inj (ScalarOp.lit 0)) [] () → (out);
   for i < n { call (Has.inj ScalarOp.add) [] (out, X[2 * (i * n + i)]) → (out) }
 }
@@ -71,7 +71,7 @@ theorem writes_traceRe {K : Type} {M : Machine K} {I : Interp Op Tst K}
     (hI : IsScalar M I) {τ : Tape K} {m : Mem K} {n : ℕ} {x y : ℕ × ℕ} {v : ℕ → K}
     (hx : m.store.HoldsVec x.1 x.2 (2 * (n * n)) v) (hy : y.2 < m.store.len y.1)
     (hdisj : Fp.Disj (Store.inBlock y.1 y.2 1) (Store.inBlock x.1 x.2 (2 * (n * n)))) :
-    Writes .total I τ (traceRe (Op := Op) (Tst := Tst)).body (Env.frame [n] [x, y])
+    Writes .total I τ (traceRe (Op := Op) (Tst := Tst)) (Env.frame [n] [x, y])
       (Store.inBlock y.1 y.2 1)
       (fun m' => m'.store.get y.1 y.2 = some (traceReF M n v n) ∧ m'.pos = m.pos) m := by
   have hzero : Writes .total I τ
@@ -94,7 +94,7 @@ theorem writes_traceRe {K : Type} {M : Machine K} {I : Interp Op Tst K}
     Store.get_upd_self hz _, hpos⟩
 
 /-- Extract the real diagonal words of an interleaved square matrix. -/
-def diagonalReal : Impl Op Tst := opsImpl% [n] (X) → (Y) {
+def diagonalReal : Stmt Op Tst := ops% [n] (X) → (Y) {
   for i < n { call (Has.inj ScalarOp.copy) [] (X[2 * (i * n + i)]) → (Y[i]) }
 }
 
@@ -105,7 +105,7 @@ theorem writes_diagonalReal {K : Type} {M : Machine K} {I : Interp Op Tst K}
     (hx : m.store.HoldsVec x.1 x.2 (2 * (n * n)) v)
     (hy : y.2 + n ≤ m.store.len y.1)
     (hdisj : Fp.Disj (Store.inBlock y.1 y.2 n) (Store.inBlock x.1 x.2 (2 * (n * n)))) :
-    Writes .total I τ (diagonalReal (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (diagonalReal (Op := Op) (Tst := Tst))
       (Env.frame [n] [x, y]) (Store.inBlock y.1 y.2 n)
       (fun m' => m'.store.HoldsVec y.1 y.2 n (fun i => v (2 * (i * n + i))) ∧
         m'.pos = m.pos) m := by
@@ -120,7 +120,7 @@ theorem writes_diagonalReal {K : Type} {M : Machine K} {I : Interp Op Tst K}
     Store.get_upd_self hz _, hpos⟩
 
 /-- Initialize an interleaved square identity using explicit scalar literals. -/
-def identity : Impl Op Tst := opsImpl% [n] () → (Y) {
+def identity : Stmt Op Tst := ops% [n] () → (Y) {
   for q < 2 * (n * n) { call (Has.inj (ScalarOp.lit 0)) [] () → (Y[q]) };
   for i < n { call (Has.inj (ScalarOp.lit 1)) [] () → (Y[2 * (i * n + i)]) }
 }
@@ -131,7 +131,7 @@ The statement concerns the actual machine words and does not assume exact arithm
 theorem writes_identity {K : Type} {M : Machine K} {I : Interp Op Tst K}
     (hI : IsScalar M I) {τ : Tape K} {m : Mem K} {n b off : ℕ}
     (hroom : off + 2 * (n * n) ≤ m.store.len b) :
-    Writes .total I τ (identity (Op := Op) (Tst := Tst)).body (Env.frame [n] [(b, off)])
+    Writes .total I τ (identity (Op := Op) (Tst := Tst)) (Env.frame [n] [(b, off)])
       (Store.inBlock b off (2 * (n * n)))
       (fun m' => m'.store.HoldsVec b off (2 * (n * n))
         (fun q => if ∃ j < n, q = 2 * (j * n + j) then M.lit 1 else M.lit 0) ∧
@@ -219,14 +219,14 @@ theorem holdsEntries_of_holdsVec {K : Type} {M : Machine K} {s : Store K} {n b o
 
 /-- Identity writes one zero literal per word and one one literal per diagonal entry. -/
 theorem stmtCost_identity (n y : ℕ) :
-    stmtCost (identity (Op := Op) (Tst := Tst)).body [n, y] =
+    stmtCost (identity (Op := Op) (Tst := Tst)) [n, y] =
       (2 * (n * n)) • Count.one (Has.inj (ScalarOp.lit 0)) [] +
         n • Count.one (Has.inj (ScalarOp.lit 1)) [] := by
   simp [identity, stmtCost, useCost]
 
 /-- Identity needs only the larger literal implementation workspace, with no allocated buffer. -/
 theorem stmtPeak_identity_le (W : Op → List ℕ → ℕ) (n y : ℕ) :
-    stmtPeak W (identity (Op := Op) (Tst := Tst)).body [n, y] ≤
+    stmtPeak W (identity (Op := Op) (Tst := Tst)) [n, y] ≤
       max (W (Has.inj (ScalarOp.lit 0)) []) (W (Has.inj (ScalarOp.lit 1)) []) := by
   simp only [identity, stmtPeak]
   exact max_le (Finset.sup_le fun _ _ => le_max_left _ _)

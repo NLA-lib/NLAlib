@@ -128,8 +128,8 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has
 /-- The threshold word of the `comptau` test: the stored word `C` times the rounded square root
 of the rounded bottom product of the order-$n$ matrix `A` (`NLAlib.ShiftedQR.optimalThresholdWord`).
 The interface is `[n, k] (A, C) → (P)`. -/
-def shThreshold : Impl O Q := opsImpl% [n, k] (A, C) → (P) {
-  run subdiagProduct.body [n, k] (A, P);
+def shThreshold : Stmt O Q := ops% [n, k] (A, C) → (P) {
+  run subdiagProduct [n, k] (A, P);
   call (Has.inj ScalarOp.sqrt) [] (P) → (P);
   call (Has.inj ScalarOp.mul) [] (C, P) → (P)
 }
@@ -138,11 +138,11 @@ def shThreshold : Impl O Q := opsImpl% [n, k] (A, C) → (P) {
 `Z` repeated on a copy `T` of the order-$N$ matrix `A` (`SR` the repeated shifts), its `comptau`
 into `P0`, and the threshold with the word `Cg` into `P1`. The interface is
 `[N, k] (A, Z, Cg) → (T, SR, P0, P1)`. -/
-def shTestStep : Impl O Q := opsImpl% [N, k] (A, Z, Cg) → (T, SR, P0, P1) {
-  run (unaryMap (Has.inj ScalarOp.copy)).body [2 * (N * N)] (A, T);
-  run replicatePair.body [k] (Z, SR);
-  run (stepComptau (O := O) (Q := Q)).body [N, k] (T, SR, T, P0);
-  run shThreshold.body [N, k] (A, Cg, P1)
+def shTestStep : Stmt O Q := ops% [N, k] (A, Z, Cg) → (T, SR, P0, P1) {
+  run (unaryMap (Has.inj ScalarOp.copy)) [2 * (N * N)] (A, T);
+  run replicatePair [k] (Z, SR);
+  run (stepComptau (O := O) (Q := Q)) [N, k] (T, SR, T, P0);
+  run shThreshold [N, k] (A, Cg, P1)
 }
 
 /-- The deterministic start of `Sh`: the rounded potential $\tilde\psi$ of the order-$N$ matrix
@@ -150,10 +150,10 @@ def shTestStep : Impl O Q := opsImpl% [N, k] (A, Z, Cg) → (T, SR, P0, P1) {
 the $k = 2^m$ shifts `SS` into `Z`, and the computation of the `comptau` test
 (`NLAlib.ShiftedQR.shTestStep`, word `Cg`) into `P0`, `P1`. The interface is
 `[N, m, k] (A, SS, Cg) → (Z, Rt, P0, P1, T, SR)`. -/
-def shPrefix : Impl O Q := opsImpl% [N, m, k] (A, SS, Cg) → (Z, Rt, P0, P1, T, SR) {
-  run roundedPotential.body [N, k, m] (A, Rt);
-  run (findRounded (comptauHalf (O := O) (Q := Q))).body [N, m, k] (A, SS, Z);
-  run shTestStep.body [N, k] (A, Z, Cg, T, SR, P0, P1)
+def shPrefix : Stmt O Q := ops% [N, m, k] (A, SS, Cg) → (Z, Rt, P0, P1, T, SR) {
+  run roundedPotential [N, k, m] (A, Rt);
+  run (findRounded (comptauHalf (O := O) (Q := Q))) [N, m, k] (A, SS, Z);
+  run shTestStep [N, k] (A, Z, Cg, T, SR, P0, P1)
 }
 
 /-- The decision of `Sh`: below the threshold (`P0 < P1`) the step `T` is accepted
@@ -161,13 +161,13 @@ def shPrefix : Impl O Q := opsImpl% [N, m, k] (A, SS, Cg) → (Z, Rt, P0, P1, T,
 (`NLAlib.ShiftedQR.shExc`). The interface is
 `[N, k, q, n0] (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss) → (A, Gw, Fl)`.
 -/
-def shDecide : Impl O Q :=
-  opsImpl% [N, k, q, n0] (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss) →
+def shDecide : Stmt O Q :=
+  ops% [N, k, q, n0] (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss) →
       (A, Gw, Fl) {
     if (Has.inj CmpTst.lt) [] (P0, P1) {
-      run trialAccept.body [N] (T, A, Gw, Fl)
+      run trialAccept [N] (T, A, Gw, Fl)
     } else {
-      run shExc.body [N, k, q, n0]
+      run shExc [N, k, q, n0]
         (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, T, SR, Ds, Rg, P2, Ss, A, Gw, Fl)
     }
   }
@@ -176,11 +176,11 @@ def shDecide : Impl O Q :=
 (`NLAlib.ShiftedQR.shDecide`). The interface is
 `[N, m, k, n0] (A, SS, Cg, Cr, Cw, Cp, G, Thr, Z, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss, Gw) →
 (A, Fl)`. -/
-def shStepWithScratch : Impl O Q :=
-  opsImpl% [N, m, k, n0]
+def shStepWithScratch : Stmt O Q :=
+  ops% [N, m, k, n0]
       (A, SS, Cg, Cr, Cw, Cp, G, Thr, Z, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss, Gw) → (A, Fl) {
-    run shPrefix.body [N, m, k] (A, SS, Cg, Z, Rt, P0, P1, T, SR);
-    run shDecide.body [N, k, m, n0]
+    run shPrefix [N, m, k] (A, SS, Cg, Z, Rt, P0, P1, T, SR);
+    run shDecide [N, k, m, n0]
       (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss, A, Gw, Fl)
   }
 
@@ -191,7 +191,7 @@ factor $2^{1/k}\theta\alpha B^{1/k}$), `Cw` ($\varepsilon/2$), `Cp` ($1.0015(1 -
 `G` of $n_0$ points and the scan threshold `Thr`, store a step at `A` and set the flag `Fl` to $1$,
 or set it to $2$ if no trial succeeded. All scratch is scoped. The interface is
 `[N, m, k, n0] (A, SS, Cg, Cr, Cw, Cp, G, Thr) → (A, Fl)`. -/
-def shStep : Impl O Q := opsImpl% [N, m, k, n0] (A, SS, Cg, Cr, Cw, Cp, G, Thr) → (A, Fl) {
+def shStep : Stmt O Q := ops% [N, m, k, n0] (A, SS, Cg, Cr, Cw, Cp, G, Thr) → (A, Fl) {
   let Z ← alloc 2;
   let Rt ← alloc 1;
   let Pt ← alloc 1;
@@ -204,7 +204,7 @@ def shStep : Impl O Q := opsImpl% [N, m, k, n0] (A, SS, Cg, Cr, Cw, Cp, G, Thr) 
   let P2 ← alloc 1;
   let Ss ← alloc (2 * n0);
   let Gw ← alloc 1;
-  run shStepWithScratch.body [N, m, k, n0]
+  run shStepWithScratch [N, m, k, n0]
     (A, SS, Cg, Cr, Cw, Cp, G, Thr, Z, Rt, Pt, P0, P1, T, SR, Ds, Rg, P2, Ss, Gw, A, Fl)
 }
 
@@ -224,14 +224,16 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has
 omit [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- The threshold of the `comptau` test on any scalar machine stores
 `NLAlib.ShiftedQR.optimalThresholdWord` and writes only its output word, which is apart from the
-matrix and the word `C`. -/
+matrix and the word `C`.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem shThreshold_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I) {τ : Tape ℝ}
     {m : Mem ℝ} {n k : ℕ} {a c p : ℕ × ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {cv : ℝ}
     (hk : k ≤ n) (hH : HoldsMatrix a H m.store) (hc : m.store.get c.1 c.2 = some cv)
     (hp : p.2 < m.store.len p.1)
     (hap : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock p.1 p.2 1))
     (hcp : Fp.Disj (Store.inBlock c.1 c.2 1) (Store.inBlock p.1 p.2 1)) :
-    Writes .total I τ (shThreshold (O := O) (Q := Q)).body (Env.frame [n + 1, k] [a, c, p])
+    Writes .total I τ (shThreshold (O := O) (Q := Q)) (Env.frame [n + 1, k] [a, c, p])
       (Store.inBlock p.1 p.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.get p.1 p.2 = some (optimalThresholdWord M H k cv))
       m := by
@@ -265,7 +267,9 @@ $300(n+1)^2\boldsymbol{u} \le (8004\kappa)^{-1}(d/((2 + 2C)\|\mathbf{H}\|_2))^k$
 $k$ step $\widehat{\mathbf{H}}$ with the shift $r$ repeated (relative error
 $300(n+1)^2\boldsymbol{u}$), upper Hessenberg, at `P0` a value within $0.001$, relatively, of
 $\|\mathbf{e}_n^{\mathsf T}(\mathbf{H} - r)^{-k}\|^{-1}$, and at `P1` the threshold
-`NLAlib.ShiftedQR.optimalThresholdWord`. -/
+`NLAlib.ShiftedQR.optimalThresholdWord`.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem shTestStep_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hCmp : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {n k : ℕ}
     {C κ d : ℝ} {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e : Fin (n + 1) → ℂ} {r : ℂ}
@@ -290,7 +294,7 @@ theorem shTestStep_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
       (Store.inBlock p0.1 p0.2 1))
     (hp1 : Fp.Disj (Store.inBlock p1.1 p1.2 1)
       (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock p0.1 p0.2 1)) :
-    Writes .total I τ (shTestStep (O := O) (Q := Q)).body
+    Writes .total I τ (shTestStep (O := O) (Q := Q))
       (Env.frame [n + 1, k] [a, z, cg, t, sr, p0, p1])
       (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock sr.1 sr.2 (2 * k) ⊔
         Store.inBlock p0.1 p0.2 1 ⊔ Store.inBlock p1.1 p1.2 1)
@@ -469,14 +473,16 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has
 omit [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- The rounded potential of `Sh` (`NLAlib.ShiftedQR.roundedPotential_writes`) reaches
 `NLAlib.ShiftedQR.ShState1`, for
-$k = 2^q \le n$ and $20000k\boldsymbol{u} \le 1$. -/
+$k = 2^q \le n$ and $20000k\boldsymbol{u} \le 1$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem shPotential_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) {τ : Tape ℝ} {m : Mem ℝ} {L k q : ℕ} (hkq : k = 2 ^ q) (hkn : k ≤ n)
     (hu : 20000 * k * u ≤ 1) {ε : ℝ} {a s wg wr ww wp g thr f : ℕ × ℕ}
     (hv : ShViews L n k ε a s wg wr ww wp g thr f) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {ss : List ℂ} {cg cr cw cp tv : ℝ}
     (hm : ShCtx L k ε H ss cg cr cw cp tv a s wg wr ww wp g thr f m) :
-    Writes .total I τ (roundedPotential (Op := O) (Tst := Q)).body
+    Writes .total I τ (roundedPotential (Op := O) (Tst := Q))
       (Env.frame [n + 1, k, q] [a, (L + 1, 0)]) (Store.inBlock (L + 1) 0 1)
       (ShState1 u L k ε H ss cg cr cw cp tv a s wg wr ww wp g thr f) m := by
   obtain ⟨⟨ha, hs, hwg, hwr, hww, hwp, hg, hthl, hfl⟩, -, -⟩ := hv
@@ -495,7 +501,9 @@ upper Hessenberg, $\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{
 $\kappa(\mathbf{V}) \le B$, $(n + 1)\boldsymbol{u} \le 1/2500$,
 $30000(\lfloor k/2 \rfloor + 1)\boldsymbol{u} \le 1$ and
 $300(n+1)^2\boldsymbol{u} \le (8004B)^{-1}(d/((2 + 2C)\|\mathbf{H}\|_2))^{\lfloor k/2 \rfloor}$, the
-stored shift is $(1.01B)^{4m/2^m}$-promising. -/
+stored shift is $(1.01B)^{4m/2^m}$-promising.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem shFind_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I) (hQ : IsToNat id I)
     (hNat : IsExactNatLit id M (n + 1)) {τ : Tape ℝ} {m : Mem ℝ} {L k q : ℕ} (hkq : k = 2 ^ q)
@@ -509,7 +517,7 @@ theorem shFind_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsS
     (hxu : 300 * (n + 1) ^ 2 * u ≤
       (8004 * B)⁻¹ * (d / ((2 + 2 * C) * specNorm H)) ^ (k / 2))
     (hm : ShState1 u L k ε H ss cg cr cw cp tv a s wg wr ww wp g thr f m) :
-    Writes .total I τ (findRounded (comptauHalf (O := O) (Q := Q))).body
+    Writes .total I τ (findRounded (comptauHalf (O := O) (Q := Q)))
       (Env.frame [n + 1, q, k] [a, s, (L, 0)]) (Store.inBlock L 0 2)
       (ShState2 u L k ε H V e ss ((1.01 * B) ^ ((4 * q : ℝ) / 2 ^ q)) cg cr cw cp tv
         a s wg wr ww wp g thr f) m := by
@@ -530,7 +538,9 @@ theorem shFind_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsS
 omit [Has IndexOp O] [Has DiskSampleOp O] [Has IdxTst Q] in
 /-- The computation of the `comptau` test of `Sh` (`NLAlib.ShiftedQR.shTestStep_writes`) reaches
 `NLAlib.ShiftedQR.ShState3` from `NLAlib.ShiftedQR.ShState2`, for $1 \le k \le n$ and shifts at
-distance at least $d > 0$ from the spectrum and in $\mathbb{D}(0, C\|\mathbf{H}\|_2)$. -/
+distance at least $d > 0$ from the spectrum and in $\mathbb{D}(0, C\|\mathbf{H}\|_2)$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem shTest_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {L k : ℕ} (hk0 : 0 < k)
     (hkn : k ≤ n) {ε : ℝ} {a s wg wr ww wp g thr f : ℕ × ℕ}
@@ -542,7 +552,7 @@ theorem shTest_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsS
     (hnu : (n + 1 : ℝ) * u ≤ 1 / 2500) (hu : 30000 * (k + 1) * u ≤ 1)
     (hxu : 300 * (n + 1) ^ 2 * u ≤ (8004 * B)⁻¹ * (d / ((2 + 2 * C) * specNorm H)) ^ k)
     (hm : ShState2 u L k ε H V e ss α cg cr cw cp tv a s wg wr ww wp g thr f m) :
-    Writes .total I τ (shTestStep (O := O) (Q := Q)).body
+    Writes .total I τ (shTestStep (O := O) (Q := Q))
       (Env.frame [n + 1, k] [a, (L, 0), wg, (L + 5, 0), (L + 6, 0), (L + 3, 0), (L + 4, 0)])
       (Store.inBlock (L + 5) 0 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 6) 0 (2 * k) ⊔
         Store.inBlock (L + 3) 0 1 ⊔ Store.inBlock (L + 4) 0 1)
@@ -571,7 +581,9 @@ distance at least $d > 0$ from every $e_i$, $\omega > 0$,
 $x = 300(n+1)^2\boldsymbol{u} \le (16B)^{-1}(d/((2 + 2C)S))^k$,
 $(66 + 2C)BS((2 + 2C)S/d)^k\sqrt{n + 1}\,x \le 0.001\,\omega$, $2 \le k \le n$,
 $10^5k\boldsymbol{u} \le 1$, $\gamma \le 1$ and the scan threshold is at least
-$(1 + \boldsymbol{u})^2\omega^2$. -/
+$(1 + \boldsymbol{u})^2\omega^2$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrRoutine` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem shAccept_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hNat : IsExactNatLit id M 1) {τ : Tape ℝ} {m : Mem ℝ} {L k : ℕ}
     (hk : 2 ≤ k) (hkn : k ≤ n) (hku : 100000 * k * u ≤ 1) {ε : ℝ}
@@ -587,7 +599,7 @@ theorem shAccept_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : I
     (hm : ShState3 M u L k ε H V e ss α ((1 - γ) ^ k) cr cw cp tv a s wg wr ww wp g thr f m)
     (hlt : ∀ tc, m.store.get (L + 3) 0 = some tc →
       tc < optimalThresholdWord M H k ((1 - γ) ^ k)) :
-    Writes .total I τ (trialAccept (O := O) (Q := Q)).body
+    Writes .total I τ (trialAccept (O := O) (Q := Q))
       (Env.frame [n + 1] [(L + 5, 0), a, (L + 11, 0), f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 11) 0 1 ⊔
         Store.inBlock f.1 f.2 1)

@@ -40,11 +40,11 @@ interval. The output depends only on the input words and the same fixed scalar m
 theorem isFn_dot_seq {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) :
     (I.link (Blas.seq (Op := Op) (Tst := Tst)).table).IsFn .total
       (Has.inj Blas1Op.dot) (dotSeqFn M) (OutApart (fun _ => True)) := by
-  refine Interp.link_meets
-    (R := ⟨1, 2, 1, dotSum.body.link Blas.sumSeqTable⟩) ?_ ?_
+  refine Interp.link_satisfies
+    (E := ⟨1, 2, 1, dotSum.link Blas.sumSeqTable⟩) ?_ ?_
   · simp [Blas.seq, Profile.over, Blas.level1, Blas.level1Table, Blas.sumSeq,
-      Table.comp, dotSum]
-  · refine Impl.meets_rel fun d ins outs tape mem vals hnd hadm hl hr _ hz => ?_
+      Table.comp, dotSumRoutine, Routine.impl, routineNF, Routine.nin, Routine.nout]
+  · refine Impl.satisfies_rel fun d ins outs tape mem vals hnd hadm hl hr _ hz => ?_
     obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
     obtain ⟨x, y, xs, ys, rfl, hx, hy, rfl⟩ := Mem.readBlocks_two hr
     obtain ⟨z, rfl, hz'⟩ := Mem.room_one hz

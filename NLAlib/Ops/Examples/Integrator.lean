@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Routine
+public import NLAlib.Ops.RoutineProblem
 public import NLAlib.Ops.RoutineLink
 public import NLAlib.Ops.RoutineSyntax
 public import NLAlib.Ops.Logic.RoutineIntro
@@ -325,24 +326,26 @@ theorem myIntegrate_meets (A : (n : ℕ) → Matrix (Fin n) (Fin n) ℝ) (δ e :
 
 /-! ### The problem, the resources and the model -/
 
-/-- Every size `n = d 0`, `N = d 1`; the input is the step `h` (one cell) and the initial vector
-$x_0$ ($n$ cells). -/
-def myProblem : Problem ℝ 2 2 where
-  formats _ := .cell
+/-- The admitted inputs of the integrator: at every size `n = d 0`, `N = d 1`, every step `h`
+(one cell) and every initial vector $x_0$ ($n$ cells), each held by its operand. -/
+def myDomain : myIntegrate.Domain ℝ 2 2 where
   valid _ := True
-  Data d := ℝ × (Fin (d 0) → ℝ)
-  admissible _ x buffers := buffers = ![[some x.1], (List.ofFn x.2).map some]
+  In d := ℝ × (Fin (d 0) → ℝ)
+  accepts _ _ := True
+  slot d := ![.stored Codec.scalar Prod.fst, .stored (Codec.vector (d 0)) Prod.snd]
+  fits := by domain_fits
+  faithful d x y h := by
+    have h0 := h 0
+    have h1 := h 1
+    simp only [Slot.input, Matrix.cons_val_zero, Matrix.cons_val_one, Option.some.injEq] at h0 h1
+    exact Prod.ext (Codec.scalar.encode_injective h0)
+      ((Codec.vector (d 0)).encode_injective h1)
   admitted := ⟨fun _ => 0, trivial⟩
-  supply _ _ := ⟨(0, fun _ => 0), _, rfl⟩
+  inhabited _ _ := ⟨(0, fun _ => 0), trivial⟩
 
-/-- The initial memory holds the supplied buffers. -/
-theorem initial_myProblem (d : Fin 2 → ℕ) (x : myProblem.Input d) :
-    myProblem.initial d x =
-      ⟨[[some x.val.1.1], (List.ofFn x.val.1.2).map some], 0⟩ := by
-  obtain ⟨⟨x, buffers⟩, h⟩ := x
-  change buffers = ![[some x.1], (List.ofFn x.2).map some] at h
-  subst buffers
-  rfl
+/-- The problem of the integrator: the step and the initial vector, and nothing else. Every
+step and every vector is admitted (`NLAlib.Ops.Routine.Domain.covers`). -/
+def myProblem : Problem ℝ 2 2 := myDomain.problem
 
 /-- The weight of a call: $2 n^2$ for a product, $2 n$ for an update. -/
 def myWork : MyOperation → List ℕ → ℕ
@@ -541,51 +544,36 @@ noncomputable def mySpec (A : (n : ℕ) → Matrix (Fin n) (Fin n) ℝ) (δ e : 
 
 /-- The blocks the integrator reads: `h` and $x_0$. -/
 def myBlocks (d : Fin 2 → ℕ) (x : myProblem.Input d) : List (List ℝ) :=
-  [[x.val.1.1], List.ofFn x.val.1.2]
+  myDomain.blocks d x.val.1
 
-/-- A supplied vector is read back from its buffer. -/
-theorem readBlock_ofFn_map_some {n : ℕ} (v : Fin n → ℝ) (s : Store ℝ) (b : ℕ)
-    (hb : s[b]? = some ((List.ofFn v).map some)) :
-    s.readBlock b 0 n = some (List.ofFn v) := by
-  rw [Store.readBlock_eq_some_iff]
-  refine ⟨List.length_ofFn, fun j hj => ?_⟩
-  simp [Store.get, hb, hj]
+/-- The blocks read are the step and the vector, as lists. -/
+theorem myBlocks_eq (d : Fin 2 → ℕ) (x : myProblem.Input d) :
+    myBlocks d x = [[x.val.1.1], List.ofFn x.val.1.2] := rfl
 
 /-- The input occupies $1 + n$ cells. -/
 theorem initialBytes_myProblem (d : Fin 2 → ℕ) (x : myProblem.Input d) :
     myProblem.initialBytes d x = 1 + d 0 := by
-  rw [Problem.initialBytes]
-  obtain ⟨⟨x, buffers⟩, h⟩ := x
-  change buffers = ![[some x.1], (List.ofFn x.2).map some] at h
-  subst buffers
-  simp only [myProblem, List.ofFn_succ, List.ofFn_zero, StorageFormat.bytes_cell, one_mul,
-    Fin.isValue, Matrix.cons_val_zero, Matrix.cons_val_succ, List.length_map,
-    List.length_cons, List.length_nil, List.sum_cons, List.sum_nil, List.length_ofFn]
-  omega
+  refine (myDomain.initialBytes_eq x).trans ?_
+  simp [myDomain, Slot.len, Codec.vector, Codec.scalar, List.ofFn_succ]
 
 /-- The certificate, from the judgment of the integrator. -/
 noncomputable def myAlgorithm (A : (n : ℕ) → Matrix (Fin n) (Fin n) ℝ) (δ e : ℝ)
     (hδ : 0 ≤ δ) (he : 0 ≤ e) :
     Algorithm (myModel A δ e hδ he) (mySpec A δ e) :=
-  myIntegrate.algorithm (fun _ _ => myIntegrateSpec A δ e) myBlocks
+  myDomain.algorithm (fun _ _ => myIntegrateSpec A δ e)
     (fun _ _ _ _ hI => myIntegrate_meets A δ e hδ he (hI.1 .matvec) (hI.1 .axpy))
-    (fun d _ x => by
-      rw [initial_myProblem]
-      refine ⟨?_, fun _ => trivial, ?_⟩
-      · exact Mem.readBlocks_of_cons (Store.readBlock_one_of_get (by simp [Store.get]))
-          (Mem.readBlocks_of_cons (readBlock_ofFn_map_some _ _ 1 rfl) rfl)
-      · change Mem.Room _ [(1, 0)] [d 0]
-        simp [Mem.Room, Store.len])
+    (fun _ _ _ _ _ => trivial)
     (fun d _ x τ m' _ _ ys hys hpost c _ => by
       read_outputs hys as (zs)
       refine ⟨zs, hzs, ?_⟩
-      have h := (myIntegrateSpec_post (n := d 0) (N := d 1)).mp hpost
+      have h := (myIntegrateSpec_post (n := d 0) (N := d 1) (a := x.val.1.1)
+        (x₀ := List.ofFn x.val.1.2)).mp hpost
       rw [decv_ofFn] at h
       exact h)
     (fun _ _ => le_rfl) (fun d _ => myProgram_peak d) (fun d _ => (work_myProgram d).le)
     (fun d _ => (span_myProgram d).le)
     (fun d _ x => by
-      rw [initialBytes_myProblem]
+      refine (Nat.add_le_add_right (initialBytes_myProblem d x).le _).trans ?_
       change 1 + d 0 + d 0 ≤ 1 + 2 * d 0
       omega)
 

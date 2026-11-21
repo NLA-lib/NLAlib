@@ -8,6 +8,7 @@ module
 public import NLAlib.Matrix.Factorizations.MGS.Routine
 public import NLAlib.Matrix.Factorizations.MGS.Resources
 public import NLAlib.Ops.Certification
+public import NLAlib.Ops.RoutineProblem
 public import NLAlib.Ops.Profiles.Standard
 
 /-!
@@ -34,23 +35,29 @@ variable {𝕜 : Type} [RCLike 𝕜]
 /-- Zero supplies the default needed to read packed scalar entries. -/
 local instance instInhabited : Inhabited 𝕜 := ⟨0⟩
 
-/-- The supplied buffer represents the mathematical matrix directly; no initializer is run. -/
-def problem : Problem 𝕜 2 1 where
-  formats _ := .cell
+/-- The admitted inputs of the factorization: every matrix, at every size, stored column by
+column in the one operand, which is updated in place. -/
+def inputs : (factorRoutine (Op := RCLikeBlas.Operation) (Tst := CmpTst)).Domain 𝕜 2 1 where
   valid _ := True
-  Data d := Matrix (Fin (d 0)) (Fin (d 1)) 𝕜
-  admissible _ A buffers := buffers 0 = ((EntryCodec.scalar 𝕜).packFinMatrix A).map some
+  In d := Matrix (Fin (d 0)) (Fin (d 1)) 𝕜
+  accepts _ _ := True
+  slot d := ![.stored (Codec.matrix (EntryCodec.scalar 𝕜) (d 0) (d 1)) id]
+  fits := by domain_fits
+  faithful d x y h := (Codec.matrix (EntryCodec.scalar 𝕜) (d 0) (d 1)).encode_injective (by
+    have h0 := h 0
+    simpa only [Slot.input, Matrix.cons_val_zero, Option.some.injEq, id] using h0)
   admitted := ⟨fun _ => 0, trivial⟩
-  supply d _ := ⟨0, fun _ => ((EntryCodec.scalar 𝕜).packFinMatrix
-    (0 : Matrix (Fin (d 0)) (Fin (d 1)) 𝕜)).map some, rfl⟩
+  inhabited _ _ := ⟨0, trivial⟩
+
+/-- The supplied buffer holds the matrix, and nothing else is supplied. Every matrix is
+admitted (`NLAlib.Ops.Routine.Domain.covers`). -/
+abbrev problem : Problem 𝕜 2 1 := (inputs (𝕜 := 𝕜)).problem
 
 /-- The supplied matrix occupies exactly its declared column-major payload. -/
 theorem initialBytes_problem (d : Fin 2 → ℕ) (x : (problem (𝕜 := 𝕜)).Input d) :
     problem.initialBytes d x = d 1 * d 0 := by
-  change 1 * (x.val.2 0).length + 0 = _
-  rw [one_mul, Nat.add_zero, x.property, List.length_map]
-  exact (EntryCodec.length_packFinMatrix (EntryCodec.scalar 𝕜) x.val.1).trans
-    (by simp)
+  refine ((inputs (𝕜 := 𝕜)).initialBytes_eq x).trans ?_
+  simp [inputs, Slot.len, Codec.matrix, List.ofFn_succ]
 
 /-- Scalar/BLAS calls share their standard signatures; all bookkeeping is charged. -/
 noncomputable def resources (cost : Standard.Costing) :
@@ -131,27 +138,11 @@ noncomputable def specification (cost : Standard.Costing) :
 The actual program performs all sweeps, comparisons, normalizations and scoped cleanup. -/
 noncomputable def algorithm (cost : Standard.Costing) :
     Algorithm (model (𝕜 := 𝕜) cost) (specification cost) := by
-  refine Routine.algorithm (r := 2) (b := 1) factorRoutine (fun _ _ => factorSpec 𝕜)
-    (fun _ x => [(EntryCodec.scalar 𝕜).packFinMatrix x.val.1]) ?_ ?_ ?_ (hmemory := ?_)
+  refine (inputs (𝕜 := 𝕜)).algorithm (fun _ _ => factorSpec 𝕜) ?_ (fun _ _ _ _ _ => trivial)
+    ?_ (hmemory := ?_)
   · intro d _ x I hI
     obtain ⟨hS, hB, hC⟩ := laws hI
     exact factorRoutine_meets hS hB hC
-  · intro d _ x
-    let μ := (problem (𝕜 := 𝕜)).initial d x
-    have hRead := Problem.initial_readBlock d x (0 : Fin 1) x.property
-    have hLen := Problem.initial_len (P := problem (𝕜 := 𝕜)) d x (0 : Fin 1)
-    have hLength : ((EntryCodec.scalar 𝕜).packFinMatrix x.val.1).length = d 1 * d 0 := by
-      exact (EntryCodec.length_packFinMatrix (EntryCodec.scalar 𝕜) x.val.1).trans
-        (by simp)
-    rw [hLength] at hRead
-    have hCap : μ.store.len 0 = d 1 * d 0 := by
-      change _ = _ at hLen
-      rw [x.property, List.length_map, hLength] at hLen
-      exact hLen
-    refine ⟨Mem.readBlocks_of_cons hRead rfl, fun _ => trivial, ?_⟩
-    change μ.Room [(0, 0)] [d 1 * d 0]
-    simp only [Mem.room_cons, Mem.room_nil, and_true, Nat.zero_add]
-    exact hCap.ge
   · intro d _ x τ m' _ hpos ys hys hrel c _
     read_outputs hys as (qs)
     have hqs' : qs = (EntryCodec.scalar 𝕜).packFinMatrix (gramSchmidtQ x.val.1) := by

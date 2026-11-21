@@ -1230,6 +1230,7 @@ public import NLAlib.Ops.Examples.Resources
 public import NLAlib.Ops.Examples.Routine
 public import NLAlib.Ops.Examples.RoutineCertification
 public import NLAlib.Ops.Examples.RoutineLink
+public import NLAlib.Ops.Examples.RoutineProblem
 public import NLAlib.Ops.Examples.Split
 public import NLAlib.Ops.Examples.StochRound
 public import NLAlib.Ops.Examples.Strided
@@ -1328,6 +1329,7 @@ public import NLAlib.Ops.Routine
 public import NLAlib.Ops.RoutineData
 public import NLAlib.Ops.RoutineInterface
 public import NLAlib.Ops.RoutineLink
+public import NLAlib.Ops.RoutineProblem
 public import NLAlib.Ops.RoutineSyntax
 public import NLAlib.Ops.Rules
 public import NLAlib.Ops.RunMeasurable

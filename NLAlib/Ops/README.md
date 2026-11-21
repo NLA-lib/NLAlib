@@ -329,7 +329,40 @@ The interface in detail:
   construction for a routine whose certificate states exactly its specification. No statement
   about cost is taken from the author of the routine.
 
-A reviewer of a certified routine reads its `Routine.Spec`, the problem (what is supplied), the
+- **The problem.** A certificate is about a problem: the sizes admitted, the inputs admitted
+  and the buffers supplied. `Routine.Domain` (`RoutineProblem.lean`) builds it from the interface
+  of the routine, and its author states mathematics only:
+  - `valid`, the admitted sizes; `In d`, the type of the inputs (vectors, matrices, parameters);
+    `accepts`, the admitted inputs;
+  - a slot for every operand: `stored c get` (the buffer holds the encoding by the `Codec` `c`
+    of the component `get` of the inputs), `derived len f` (the buffer holds words computed
+    from the inputs, a threshold say), or `blank len` (uninitialised cells). A `Codec` (scalar,
+    vector, matrix by an `EntryCodec`, pair, raw words) encodes and decodes bijectively at its
+    length.
+
+  The slots follow the interface (`fits`, proved by `domain_fits`): an operand that is read is
+  `stored` or `derived`, an operand that is only written is `blank`, and the lengths are those
+  of the ports. The inputs are determined by the stored buffers (`faithful`), so no input is in
+  no buffer; a quantity that is in no buffer belongs in `accepts`, as an existential, or is a
+  parameter of the certificate (the matrix of a matrix-free solver, which reaches the routine
+  only through the model). A buffer depends on the inputs in no other way than these, and
+  `Routine.Domain.derived` lists the operands whose buffer is computed from them.
+
+  `D.problem` is the problem: exactly the buffers of the slots. An input of the problem is an
+  admitted tuple of inputs and conversely (`Routine.Domain.inputEquiv`, `Routine.Domain.covers`):
+  the certificate covers every input that satisfies `accepts`. `D.algorithm` is
+  `Routine.algorithm` on that problem; that the supplied buffers hold the blocks read and have
+  room for the blocks written is proved once (`readBlocks_initial`, `room_initial`), not by the
+  author. `D.checked` states what a certificate says for the admitted inputs, in terms of the
+  evaluator: for every admitted size and tuple of inputs, every interpretation satisfying the
+  contracts and every tape, the run from the buffers of the slots (`D.memory`) succeeds within
+  the resources of the specification and satisfies its output condition. Each family states
+  its `_checked` theorem from it, with the inputs as vectors and matrices.
+  `Examples/RoutineProblem.lean` shows every kind of slot. A problem written by hand with
+  `Routine.algorithm` remains possible; the families are being moved to `Routine.Domain`.
+
+A reviewer of a certified routine reads its `Routine.Spec`, the problem (`valid`, `accepts` and
+any `derived` operand of its `Routine.Domain`), the
 model (which operations exist and what each costs) and the stated work. `Examples/Routine.lean`
 and `Examples/RoutineCertification.lean` are a complete small case, ending in a statement in
 terms of the evaluator alone.
@@ -533,6 +566,7 @@ source guard never becomes an omitted runtime operation. See the
 | `Logic/KernelRfl.lean` | `kernel_rfl`: closed computations (instruction polynomials) checked by the kernel |
 | `Certification.lean` | Adapters for certificates: reading supplied buffers, counts without structural instructions |
 | `RoutineLink.lean` | A routine as the implementation of an operation contract; specifications read off a contract |
+| `RoutineProblem.lean` | The problem of a routine: codecs of operands, slots, `Routine.Domain`, coverage, the certificate on the derived problem and its evaluator-level statement |
 | `RoutineData.lean` | A routine on stored data (`Routine.withData`), its specification (`Spec.onData`) and judgment (`Meets.withData`) |
 | `Link.lean`, `Transfer.lean` | Fixed implementation tables, count projections and explicit weights |
 | `Logic.lean`, `Rules.lean`, `Counted.lean` | Conditional proof rules |

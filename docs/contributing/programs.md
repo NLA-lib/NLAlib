@@ -113,8 +113,17 @@ dense and coordinate representations require their own packing and validity cond
    A routine on stored data (a matrix forwarded to the products of a matrix-free routine) is
    `R.withData lens T`, specified with `Ops.Routine.Spec.onData`, and its judgment is
    `Ops.Routine.Meets.withData` applied to the judgment of `R`; do not reprove the linked tree.
-7. Derive the public certificate from the routine with `Ops.Routine.algorithm` against a
-   stated `Specification`. A counted certificate, `countedAlgorithm`, is that certificate with
+7. State the problem with `Ops.Routine.Domain` (`NLAlib/Ops/RoutineProblem.lean`): the admitted
+   sizes, the type of the inputs, the admitted inputs, and for each operand whether its buffer
+   holds an input (with its `Ops.Codec`), words computed from the inputs, or blank cells. Do
+   not write a `Problem` by hand: its admissibility relation is then the author's, and a reader
+   cannot see what is covered. Name it `inputs` and the problem `problem` (an `abbrev` of
+   `(inputs …).problem`, so that the two are interchangeable in proofs). Every input satisfying
+   the acceptance predicate is covered (`Ops.Routine.Domain.covers`); a restriction on the
+   inputs belongs in that predicate, where the `_checked` theorem shows it as a hypothesis.
+   Derive the public certificate with `Ops.Routine.Domain.algorithm` against a
+   stated `Specification`, and state what it says with `Ops.Routine.Domain.checked`: a
+   `_checked` theorem whose inputs are vectors and matrices. A counted certificate, `countedAlgorithm`, is that certificate with
    the work as a bound on the instruction polynomial of the tree
    (`Ops.Algorithm.withCountPoly`), for models whose weights are at most one; check the closed
    form of that polynomial with the kernel reflexivity tactic of

@@ -6,14 +6,16 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Krylov.CG.HSCG.StoredRoutine
-public import NLAlib.Krylov.CG.StoredProblem
+public import NLAlib.Ops.RoutineProblem
+public import NLAlib.Ops.Catalog.StoredOperator
 public import NLAlib.Ops.Blas.Fill
 public import NLAlib.Ops.Profiles.ExactBlas
 
 /-!
 # Canonical stored dense Hestenes–Stiefel CG
 
-The supplied matrix and RHS are raw input. Zero initialization is executed, and every matrix
+The inputs are a matrix, stored column by column, and a right-hand side (`inputs`); the problem
+is derived from the routine. Zero initialization is executed, and every matrix
 application runs scalar dense loops. Positive definiteness and the grade bound on the
 prescribed horizon are mathematical admission. All counts, work, span and memory refer to
 the actual transformed tree.
@@ -29,19 +31,48 @@ namespace NLAlib.Krylov.CG.HSCG.Stored.Certification
 
 open Ops
 
-/-- Positive definiteness concerns the actual raw matrix. The horizon is no greater than
-the initial Krylov grade. -/
-def accepts (d : Fin 2 → ℕ) (raw rhs : List ℝ) : Prop :=
-  (StoredOperator.denseMatrix (d 0) (d 0) raw).PosDef ∧
-    d 1 ≤ krylovGrade (StoredOperator.denseMatrix (d 0) (d 0) raw) (decv id (d 0) rhs)
+/-- A matrix stored column by column, one word per entry, decodes to itself. -/
+theorem denseMatrix_packFinMatrix {n : ℕ} (A : Matrix (Fin n) (Fin n) ℝ) :
+    StoredOperator.denseMatrix n n ((EntryCodec.scalar ℝ).packFinMatrix A) = A := by
+  have h : StoredOperator.denseMatrix n n ((EntryCodec.scalar ℝ).packFinMatrix A) =
+      (EntryCodec.scalar ℝ).matrix n n ((EntryCodec.scalar ℝ).packFinMatrix A) := by
+    funext i j
+    simp only [StoredOperator.denseMatrix, EntryCodec.matrix, EntryCodec.scalar_entry, vec,
+      Matrix.of_apply]
+    rfl
+  rw [h, EntryCodec.matrix_packFinMatrix]
+
+/-- The admitted systems: a positive-definite matrix and a right-hand side whose Krylov grade
+is at least the horizon. -/
+def accepts (d : Fin 2 → ℕ)
+    (x : Matrix (Fin (d 0)) (Fin (d 0)) ℝ × (Fin (d 0) → ℝ)) : Prop :=
+  x.1.PosDef ∧ d 1 ≤ krylovGrade x.1 x.2
 
 variable (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d)
-  (supply : ∀ d, domain d → ∃ raw rhs : List ℝ,
-    raw.length = d 0 * d 0 ∧ rhs.length = d 0 ∧ accepts d raw rhs)
+  (supply : ∀ d, domain d →
+    ∃ x : Matrix (Fin (d 0)) (Fin (d 0)) ℝ × (Fin (d 0) → ℝ), accepts d x)
 
-/-- A declared dense matrix prefix, raw RHS and supplied uninitialized state capacities. -/
-abbrev problem : Problem ℝ 2 5 :=
-  StoredProblem.problem (fun d => ![0, d 0, d 0, d 0]) domain admitted accepts supply
+/-- The admitted inputs of conjugate gradient on a stored matrix: at the sizes of `domain`,
+every positive-definite matrix, stored column by column, with every right-hand side whose
+Krylov grade is at least the horizon; the iterate, the residual and the direction are blank. -/
+noncomputable def inputs : zeroStartRoutine.Domain ℝ 2 5 where
+  valid := domain
+  In d := Matrix (Fin (d 0)) (Fin (d 0)) ℝ × (Fin (d 0) → ℝ)
+  accepts := accepts
+  slot d := ![.stored (Codec.matrix (EntryCodec.scalar ℝ) (d 0) (d 0)) Prod.fst,
+    .stored (Codec.vector (d 0)) Prod.snd, .blank (d 0), .blank (d 0), .blank (d 0)]
+  fits := by domain_fits
+  faithful d x y h := by
+    have h0 := h 0
+    have h1 := h 1
+    simp only [Slot.input, Matrix.cons_val_zero, Matrix.cons_val_one, Option.some.injEq] at h0 h1
+    exact Prod.ext ((Codec.matrix (EntryCodec.scalar ℝ) (d 0) (d 0)).encode_injective h0)
+      ((Codec.vector (d 0)).encode_injective h1)
+  admitted := admitted
+  inhabited := supply
+
+/-- The stored matrix, the right-hand side and three blank state vectors. -/
+noncomputable abbrev problem : Problem ℝ 2 5 := (inputs domain admitted supply).problem
 
 /-- The fixed tree initializes the iterate and forwards the matrix to each scalar matvec. -/
 def program : Program RCLikeBlas.Operation CmpTst 2 5 := zeroStartRoutine.close 2 5
@@ -49,10 +80,8 @@ def program : Program RCLikeBlas.Operation CmpTst 2 5 := zeroStartRoutine.close 
 /-- Resident memory counts the matrix words, RHS and all supplied output capacity. -/
 theorem initialBytes_problem (d : Fin 2 → ℕ) (x : (problem domain admitted supply).Input d) :
     (problem domain admitted supply).initialBytes d x = d 0 * d 0 + (4 * d 0) := by
-  have h := Problem.withContext.initialBytes_eq d x
-  refine h.trans ?_
-  rw [RawProblem.initialBytes_eq]
-  simp [List.ofFn_succ]
+  refine ((inputs domain admitted supply).initialBytes_eq x).trans ?_
+  simp [inputs, Slot.len, Codec.vector, Codec.matrix, List.ofFn_succ]
   omega
 
 /-- Canonical resources and the exact physical CG state at the prescribed horizon. -/
@@ -64,34 +93,34 @@ noncomputable def specification (cost : Standard.Costing) :
   span d := (ExactBlas.resources cost).span (staticCost program d)
   memory d := d 0 * d 0 + (4 * d 0) + staticPeak (ExactBlas.resources cost) program d
   good d x _ _ m := m.pos = 0 ∧ HSCG.StoresState id (d 0) (2, 0) (3, 0) (4, 0)
-    (cgState (StoredProblem.matrix x) (decv id (d 0) x.val.1.2) 0
-      (d 1)) m
+    (cgState x.val.1.1 x.val.1.2 0 (d 1)) m
 
 /-- A jointly realized scalar/vector model certifies every admitted raw SPD matrix and RHS.
 There is no successful-run, oracle matrix or numerical-output callback in the assumptions. -/
 noncomputable def algorithm (cost : Standard.Costing) :
     Algorithm (ExactBlas.model (problem domain admitted supply) cost)
       (specification domain admitted supply cost) := by
-  refine Routine.algorithm (r := 2) (b := 5) (P := problem domain admitted supply) zeroStartRoutine
-    (fun d _ => zeroStartSpec (d 0)) (fun _ x => [x.val.1.1 0, x.val.1.2])
-    ?_ ?_ ?_
-    (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) ?_
+  refine (inputs domain admitted supply).algorithm (fun d _ => zeroStartSpec (d 0))
+    ?_ ?_ ?_ (hmemory := ?_)
   · intro d _ x I hI
     obtain ⟨hS, hB, hC⟩ := ExactBlas.laws hI
     exact zeroStartRoutine_meets hS hB hC
-  · intro d _ x
-    let μ := (problem domain admitted supply).initial d x
-    have hlen (i : Fin 4) := StoredProblem.initial_len d x i
-    refine ⟨Mem.readBlocks_of_cons (StoredProblem.initial_matrix d x)
-        (Mem.readBlocks_of_cons (StoredProblem.initial_rhs d x) rfl),
-      fun _ => ⟨rfl, Problem.withContext.extra_input x⟩, ?_⟩
-    change μ.Room [(2, 0), (3, 0), (4, 0)] [d 0, d 0, d 0]
-    simp only [Mem.room_cons, Mem.room_nil, and_true, Nat.zero_add]
-    exact ⟨by simpa [μ] using (hlen 1).ge, by simpa [μ] using (hlen 2).ge,
-      by simpa [μ] using (hlen 3).ge⟩
+  · intro d _ x hx τ
+    refine ⟨rfl, ?_⟩
+    change (StoredOperator.denseMatrix (d 0) (d 0)
+        ((EntryCodec.scalar ℝ).packFinMatrix x.1)).PosDef ∧
+      d 1 ≤ krylovGrade (StoredOperator.denseMatrix (d 0) (d 0)
+        ((EntryCodec.scalar ℝ).packFinMatrix x.1)) (decv id (d 0) (List.ofFn x.2))
+    rw [denseMatrix_packFinMatrix, decv_ofFn]
+    exact hx
   · intro d _ x τ m' _ hpos ys hys hrel c _
     read_outputs hys as (xs', rs, ps)
-    exact ⟨hpos, xs', rs, ps, hys, hrel⟩
+    have h : HSCG.decodedState id (d 0) xs' rs ps =
+        cgState (StoredOperator.denseMatrix (d 0) (d 0)
+          ((EntryCodec.scalar ℝ).packFinMatrix x.val.1.1))
+          (decv id (d 0) (List.ofFn x.val.1.2)) 0 (d 1) := hrel
+    rw [denseMatrix_packFinMatrix, decv_ofFn] at h
+    exact ⟨hpos, xs', rs, ps, hys, h⟩
   · intro d _ x
     rw [initialBytes_problem]
     exact le_rfl
@@ -137,30 +166,31 @@ noncomputable def countedAlgorithm :
     (fun d _ => (eval_countPoly_program d).le)
 
 /-- What the certificate states, with no reference to routines or contracts. For every order
-$n$ and horizon $k$, every positive-definite matrix stored as $n^2$ words in the first buffer and
-right-hand side in the second whose Krylov grade is at least $k$, every interpretation of exact
-scalar arithmetic and exact level-one vector operations, and every tape, the counted run of the
-fixed program succeeds, executes at most
+$n$ and horizon $k$, every positive-definite matrix $\mathbf{A}$ and every right-hand side $b$
+whose Krylov grade is at least $k$, every interpretation of exact scalar arithmetic and exact
+level-one vector operations, and every tape, the counted run of the fixed program from
+$\mathbf{A}$ stored column by column, $b$ and three blank vectors succeeds, executes at most
 $33 n^2 k + 23 n k + 156 k + 33 n^2 + 29 n + 125$ instructions (each vector operation counting
-one; products with the matrix are executed and counted), and leaves in the last three buffers
-the iterate, residual and direction of conjugate gradient after $k$ steps from the zero
-iterate. -/
+one; products with the matrix are executed and counted), and leaves in the three vectors the
+iterate, residual and direction of conjugate gradient after $k$ steps from the zero iterate.
+Every such system is admitted (`NLAlib.Ops.Routine.Domain.covers`). -/
 theorem stored_checked (d : Fin 2 → ℕ) (hd : domain d)
-    (x : (problem domain admitted supply).Input d) (I : Interp RCLikeBlas.Operation CmpTst ℝ)
-    (hI : (ExactBlas.model (problem domain admitted supply) .unit).contracts d x I)
+    (A : Matrix (Fin (d 0)) (Fin (d 0)) ℝ) (rhs : Fin (d 0) → ℝ) (hA : A.PosDef)
+    (hrhs : d 1 ≤ krylovGrade A rhs) (I : Interp RCLikeBlas.Operation CmpTst ℝ)
+    (hI : (ExactBlas.model (problem domain admitted supply) .unit).contracts d
+      ((inputs domain admitted supply).input d (A, rhs) ⟨hA, hrhs⟩) I)
     (τ : Tape ℝ) :
     ∃ st, exec program I (ExactBlas.model (problem domain admitted supply) .unit).resources
-        (problem domain admitted supply).formats τ d
-        ((problem domain admitted supply).initial d x) = some st ∧
+        (inputs domain admitted supply).formats τ d
+        ((inputs domain admitted supply).memory d (A, rhs)) = some st ∧
       (ExactBlas.model (problem domain admitted supply) .unit).resources.work st.cost ≤
         operationCount d ∧
       ∃ xs rs ps, st.mem.readBlocks [(2, 0), (3, 0), (4, 0)] [d 0, d 0, d 0] =
           some [xs, rs, ps] ∧
-        HSCG.decodedState id (d 0) xs rs ps =
-          cgState (StoredOperator.denseMatrix (d 0) (d 0) (x.val.1.1 0))
-            (decv id (d 0) x.val.1.2) 0 (d 1) := by
-  obtain ⟨st, hr, -, -, hw, -, -, -, xs, rs, ps, hys, hst⟩ :=
-    (countedAlgorithm domain admitted supply).correct d hd x I hI τ
+        HSCG.decodedState id (d 0) xs rs ps = cgState A rhs 0 (d 1) := by
+  obtain ⟨st, hr, -, -, hw, -, -, xs, rs, ps, hys, hst⟩ :=
+    (inputs domain admitted supply).checked (countedAlgorithm domain admitted supply)
+      d hd (A, rhs) ⟨hA, hrhs⟩ I hI τ
   exact ⟨st, hr, hw, xs, rs, ps, hys, hst⟩
 
 end NLAlib.Krylov.CG.HSCG.Stored.Certification

@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Examples.Routine
+public import NLAlib.Ops.RoutineProblem
 public import NLAlib.Ops.Profiles.RoundedScalarBlas
 
 /-!
@@ -31,36 +32,34 @@ instruction count is computed by the kernel from the tree.
 
 namespace NLAlib.Ops.Examples.Routines
 
-/-- Two real vectors of length `d 0` and two uninitialized cells. -/
-def sum2Problem : Problem ℝ 1 4 where
-  formats _ := .cell
+/-- The admitted inputs of `sum2`: every pair of real vectors of length `d 0`, each in its
+buffer; the two cells are blank. -/
+def sum2Domain : (sum2 (Op := ScalarOp) (Tst := CmpTst)).Domain ℝ 1 4 where
   valid _ := True
-  Data d := (Fin (d 0) → ℝ) × (Fin (d 0) → ℝ)
-  admissible _ x buffers :=
-    buffers = ![(List.ofFn x.1).map some, (List.ofFn x.2).map some, [none], [none]]
+  In d := (Fin (d 0) → ℝ) × (Fin (d 0) → ℝ)
+  accepts _ _ := True
+  slot d := ![.stored (Codec.vector (d 0)) Prod.fst, .stored (Codec.vector (d 0)) Prod.snd,
+    .blank 1, .blank 1]
+  fits := by domain_fits
+  faithful d x y h := by
+    have h0 := h 0
+    have h1 := h 1
+    simp only [Slot.input, Matrix.cons_val_zero, Matrix.cons_val_one, Option.some.injEq] at h0 h1
+    exact Prod.ext ((Codec.vector (d 0)).encode_injective h0)
+      ((Codec.vector (d 0)).encode_injective h1)
   admitted := ⟨fun _ => 0, trivial⟩
-  supply _ _ := ⟨(fun _ => 0, fun _ => 0), _, rfl⟩
+  inhabited _ _ := ⟨(fun _ => 0, fun _ => 0), trivial⟩
 
-/-- Admissibility states exactly which raw buffers have been supplied. -/
-theorem initial_sum2Problem (d : Fin 1 → ℕ) (x : sum2Problem.Input d) :
-    sum2Problem.initial d x =
-      ⟨[(List.ofFn x.val.1.1).map some, (List.ofFn x.val.1.2).map some, [none], [none]], 0⟩ := by
-  obtain ⟨⟨x, buffers⟩, h⟩ := x
-  change buffers = ![(List.ofFn x.1).map some, (List.ofFn x.2).map some, [none], [none]] at h
-  subst buffers
-  rfl
-
-/-- A supplied vector is read back from its buffer. -/
-theorem readBlock_ofFn_map_some {n : ℕ} (v : Fin n → ℝ) (s : Store ℝ) (b : ℕ)
-    (hb : s[b]? = some ((List.ofFn v).map some)) :
-    s.readBlock b 0 n = some (List.ofFn v) := by
-  rw [Store.readBlock_eq_some_iff]
-  refine ⟨List.length_ofFn, fun j hj => ?_⟩
-  simp [Store.get, hb, hj]
+/-- Two real vectors of length `d 0` and two uninitialized cells: the problem of `sum2`. -/
+def sum2Problem : Problem ℝ 1 4 := sum2Domain.problem
 
 /-- The blocks read: the two supplied vectors. -/
 def sum2Input (d : Fin 1 → ℕ) (x : sum2Problem.Input d) : List (List ℝ) :=
-  [List.ofFn x.val.1.1, List.ofFn x.val.1.2]
+  sum2Domain.blocks d x.val.1
+
+/-- The blocks read are the two vectors, as lists. -/
+theorem sum2Input_eq (d : Fin 1 → ℕ) (x : sum2Problem.Input d) :
+    sum2Input d x = [List.ofFn x.val.1.1, List.ofFn x.val.1.2] := rfl
 
 /-- The scalar-only model with unit weights, for a scalar machine `M`. -/
 noncomputable abbrev sum2Model (M : Machine ℝ) : AccessModel ScalarOp CmpTst sum2Problem :=
@@ -94,23 +93,11 @@ noncomputable def sum2Algorithm (M : Machine ℝ) (u : ℝ) (hM : StdModel u id 
         (fun d => 2 * d 0 + 2) sum2Work) :=
   Routine.certify sum2 (fun _ _ => sum2Spec id u) sum2Input (fun d => 2 * d 0 + 2) sum2Work
     (fun _ _ _ _ hI => sum2_meets (RoundedScalarBlas.model_laws hI).1 hM hu)
+    (fun d _ x => ⟨sum2Domain.readBlocks_initial x, fun _ => trivial,
+      sum2Domain.room_initial x⟩)
     (fun d _ x => by
-      rw [initial_sum2Problem]
-      refine ⟨?_, fun _ => trivial, ?_⟩
-      · exact Mem.readBlocks_of_cons (readBlock_ofFn_map_some _ _ 0 rfl)
-          (Mem.readBlocks_of_cons (readBlock_ofFn_map_some _ _ 1 rfl) rfl)
-      · change Mem.Room _ [(2, 0), (3, 0)] [1, 1]
-        simp [Mem.Room, Store.len])
-    (fun d _ x => by
-      rw [Problem.initialBytes]
-      obtain ⟨⟨x, buffers⟩, h⟩ := x
-      change buffers = ![(List.ofFn x.1).map some, (List.ofFn x.2).map some, [none], [none]] at h
-      subst buffers
-      simp only [sum2Problem, List.ofFn_succ, List.ofFn_zero, StorageFormat.bytes_cell, one_mul,
-        Fin.isValue, Matrix.cons_val_zero, Matrix.cons_val_succ, List.length_map,
-        List.length_cons, List.length_nil, List.sum_cons, List.sum_nil]
-      have h1 : (List.ofFn x.1).length = d 0 := List.length_ofFn (n := d 0) (f := x.1)
-      have h2 : (List.ofFn x.2).length = d 0 := List.length_ofFn (n := d 0) (f := x.2)
+      refine (sum2Domain.initialBytes_eq x).le.trans (le_of_eq ?_)
+      simp [sum2Domain, Slot.len, Codec.vector, List.ofFn_succ]
       omega)
     (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl)
     (fun d _ => (eval_countPoly_sum2Program d).le)
@@ -129,34 +116,34 @@ theorem sum_range_abs_vec_ofFn {n : ℕ} (f : Fin n → ℝ) :
 
 /-- What the certificate states, with no reference to routines or contracts. Let `M` be a
 scalar machine satisfying the standard model of arithmetic at unit roundoff $u \ge 0$. For every
-length `n = d 0`, every pair of real vectors $x, y$ supplied in the first two buffers, every
-interpretation `I` of the scalar operations of the model, and every tape, the counted run of the
-fixed program succeeds, its work is at most $24 n + 63$ instructions, and the third buffer holds
-a value $v$ with
+length `n = d 0`, every pair of real vectors $x, y$, every interpretation `I` of the scalar
+operations of the model, and every tape, the counted run of the fixed program from the two
+vectors and two blank cells succeeds, its work is at most $24 n + 63$ instructions, and the
+third buffer holds a value $v$ with
 $$\lvert v - (\textstyle\sum_i x_i + \sum_i y_i) \rvert \le
   \bigl((1 + u)(1 + u)^{n - 1} - 1\bigr) \bigl(\textstyle\sum_i \lvert x_i \rvert +
-  \sum_i \lvert y_i \rvert\bigr).$$ -/
+  \sum_i \lvert y_i \rvert\bigr).$$
+Every pair of vectors is admitted (`NLAlib.Ops.Routine.Domain.covers`). -/
 theorem sum2_checked (M : Machine ℝ) (u : ℝ) (hM : StdModel u id M) (hu : 0 ≤ u)
-    (d : Fin 1 → ℕ) (x : sum2Problem.Input d) (I : Interp ScalarOp CmpTst ℝ)
-    (hI : (sum2Model M).contracts d x I) (τ : Tape ℝ) :
-    ∃ st, exec sum2Program I (sum2Model M).resources sum2Problem.formats τ d
-        (sum2Problem.initial d x) = some st ∧
+    (d : Fin 1 → ℕ) (x y : Fin (d 0) → ℝ) (I : Interp ScalarOp CmpTst ℝ)
+    (hI : (sum2Model M).contracts d (sum2Domain.input d (x, y) trivial) I) (τ : Tape ℝ) :
+    ∃ st, exec sum2Program I (sum2Model M).resources sum2Domain.formats τ d
+        (sum2Domain.memory d (x, y)) = some st ∧
       (sum2Model M).resources.work st.cost ≤ 24 * d 0 + 63 ∧
       ∃ v, st.mem.store.get 2 0 = some v ∧
-        |v - (∑ i, x.val.1.1 i + ∑ i, x.val.1.2 i)| ≤
-          ((1 + u) * (1 + u) ^ (d 0 - 1) - 1) *
-            (∑ i, |x.val.1.1 i| + ∑ i, |x.val.1.2 i|) := by
-  obtain ⟨st, hr, -, -, hw, -, -, -, ys, hys, hpost⟩ :=
-    (sum2Algorithm M u hM hu).correct d trivial x I hI τ
+        |v - (∑ i, x i + ∑ i, y i)| ≤
+          ((1 + u) * (1 + u) ^ (d 0 - 1) - 1) * (∑ i, |x i| + ∑ i, |y i|) := by
+  obtain ⟨st, hr, -, -, hw, -, -, ys, hys, hpost⟩ :=
+    sum2Domain.checked (sum2Algorithm M u hM hu) d trivial (x, y) trivial I hI τ
   refine ⟨st, hr, hw, ?_⟩
   read_outputs hys as (zs)
   obtain ⟨v, hv, rfl⟩ := Store.readBlock_one_eq_some.mp hzs
   refine ⟨v, hv, ?_⟩
-  have h : |v - (∑ k ∈ Finset.range (d 0), vec (List.ofFn x.val.1.1) k +
-      ∑ k ∈ Finset.range (d 0), vec (List.ofFn x.val.1.2) k)| ≤
+  have h : |v - (∑ k ∈ Finset.range (d 0), vec (List.ofFn x) k +
+      ∑ k ∈ Finset.range (d 0), vec (List.ofFn y) k)| ≤
       ((1 + u) * (1 + u) ^ (d 0 - 1) - 1) *
-        (∑ k ∈ Finset.range (d 0), |vec (List.ofFn x.val.1.1) k| +
-          ∑ k ∈ Finset.range (d 0), |vec (List.ofFn x.val.1.2) k|) := hpost
+        (∑ k ∈ Finset.range (d 0), |vec (List.ofFn x) k| +
+          ∑ k ∈ Finset.range (d 0), |vec (List.ofFn y) k|) := hpost
   rw [sum_range_vec_ofFn, sum_range_vec_ofFn, sum_range_abs_vec_ofFn,
     sum_range_abs_vec_ofFn] at h
   exact h

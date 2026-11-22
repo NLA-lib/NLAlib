@@ -9,6 +9,8 @@ public import NLAlib.Ops.Logic.Builder
 public import NLAlib.Ops.Logic.Scalar
 public import NLAlib.Ops.Logic.Writes
 public import NLAlib.Ops.Logic.SpatialScalar
+public import NLAlib.Ops.Logic.RoutineIntro
+public import NLAlib.Ops.RoutineSyntax
 
 /-!
 # Scalar operations on stored word pairs
@@ -18,10 +20,13 @@ the actual updated memory and supports disjoint source and destination regions o
 
 ## Main results
 
-* `NLAlib.Ops.Pair.multiply`: multiply both component words by one stored scalar.
-* `NLAlib.Ops.Pair.multiply_wp`: exact functional execution under scalar multiplication contracts.
-* `NLAlib.Ops.Pair.linearCombination`: actual scalar computation of two complex products and a sum.
-* `NLAlib.Ops.Pair.linearCombination_writes`: the rounded word pair and its spatial write frame.
+* `NLAlib.Ops.Pair.multiplyRoutine`, `NLAlib.Ops.Pair.multiplyRoutine_meets`: multiply both
+  component words by one stored scalar, `[] (x : 2, c : 1) → (z : 2)`, and its judgment.
+* `NLAlib.Ops.Pair.linearCombinationRoutine`, `NLAlib.Ops.Pair.linearCombinationRoutine_meets`:
+  two complex products and a sum, `[] (a : 2, b : 2, x : 2, y : 2) → (t : 2, z : 2)` with `t`
+  scratch, and its judgment.
+* `NLAlib.Ops.Pair.multiply_writes`, `NLAlib.Ops.Pair.linearCombination_writes`: the judgments
+  read at cells.
 * `NLAlib.Ops.Pair.readBlocks_updCells_pairs`: recovery of two in-place output pairs after scratch.
 -/
 
@@ -38,13 +43,9 @@ def multiply : Stmt Op Tst := ops% [] (x, c) → (z) {
   call (Has.inj ScalarOp.mul) [] (x[1], c) → (z[1])
 }
 
-/-- Component multiplication writes the actual two machine products. The input pair and
-scalar cell are disjoint from the output pair, including spatially within one buffer.
-Shared by the trees of `NLAlib.Deflation.sampleMatrix`, `NLAlib.SpectralBisection.deflateSamples`,
-`NLAlib.matMulOn`.
-The run without its frame; `NLAlib.Ops.Pair.multiply_writes`, the primary statement, is proved
-from it. -/
-theorem multiply_wp {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+/-- Component multiplication writes the actual two machine products, as an exact final memory.
+A step in the proof of `NLAlib.Ops.Pair.multiplyRoutine_meets`; callers use that judgment. -/
+private theorem multiply_wp {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {x c z : ℕ × ℕ} {ar ai a : K}
     (hxz : Fp.Disj (Store.inBlock x.1 x.2 2) (Store.inBlock z.1 z.2 2))
     (hcz : Fp.Disj (Store.inBlock c.1 c.2 1) (Store.inBlock z.1 z.2 2))
@@ -67,10 +68,44 @@ theorem multiply_wp {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
   · simpa using (show z.2 + 1 < m.store.len z.1 from by omega)
   · simpa [Mem.updBlock, Store.updBlock, Mem.upd] using hQ
 
-/-- The same pair multiplication WP supplies its output frame through the generic exact-update
-rule; no separate scalar-call or component-preservation argument is needed.
-Shared by the trees of `NLAlib.Deflation.sampleMatrix`, `NLAlib.SpectralBisection.deflateSamples`,
-`NLAlib.matMulOn`. -/
+/-- Multiply a pair by a stored scalar: `[] (x : 2, c : 1) → (z : 2)`, the output block apart
+from the two inputs; all three may be in one buffer. -/
+def multiplyRoutine : Routine Op Tst :=
+  routine% [] (x : 2, c : 1) → (z : 2) by blocks := multiply
+
+/-- The written pair is the two machine products of the components with the scalar. -/
+def multiplySpec (M : Machine K) : Routine.Spec K :=
+  spec% [] ([ar, ai], [a]) → (zs) ensures zs = [M.mul ar a, M.mul ai a]
+
+/-- Component multiplication meets its specification on any scalar machine, one rounding per
+component. -/
+theorem multiplyRoutine_meets {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) :
+    (multiplyRoutine (Op := Op) (Tst := Tst)).Meets I (multiplySpec M) := by
+  routine_intro [] (x, c, z) reads (xs, cs)
+  obtain ⟨ar, ai, rfl⟩ := List.length_eq_two.mp (Store.length_of_readBlock hxs)
+  obtain ⟨a, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock hcs)
+  have hxr : m.store.get x.1 x.2 = some ar := by
+    simpa using Store.get_of_readBlock hxs (j := 0) (by omega) ar
+  have hxi : m.store.get x.1 (x.2 + 1) = some ai := by
+    simpa using Store.get_of_readBlock hxs (j := 1) (by omega) ar
+  have hc : m.store.get c.1 c.2 = some a := by
+    simpa using Store.get_of_readBlock hcs (j := 0) (by omega) a
+  have hd : Fp.Disj (Store.inBlock z.1 z.2 2) (Store.inBlock x.1 x.2 2) ∧
+      Fp.Disj (Store.inBlock z.1 z.2 2) (Store.inBlock c.1 c.2 1) := by
+    have h : Fp.Disj (Fp.blocks [z] [2]) (Fp.blocks [x, c] [2, 1]) := hblocks.2.1
+    exact Fp.disj_sup_right.mp (by simpa [Fp.blocks] using h)
+  have key : Writes .total I τ (multiply (Op := Op) (Tst := Tst)) (Env.frame [] [x, c, z])
+      (Store.inBlock z.1 z.2 2) (fun m' => m' = m.updBlock z [M.mul ar a, M.mul ai a]) m :=
+    Writes.of_wp_eq_updBlock (multiply_wp hI hd.1.symm hd.2.symm hxr hxi hc hroom rfl)
+  refine key.mono (by fp_sub) fun m' _ he => ?_
+  subst he
+  exact ⟨rfl, [_], Mem.readBlocks_of_cons
+    (Store.readBlock_updBlock_self (s := m.store) (b := z.1) (off := z.2)
+      (xs := [M.mul ar a, M.mul ai a]) (by simpa using hroom)) rfl, rfl⟩
+
+/-- The judgment of `NLAlib.Ops.Pair.multiplyRoutine` read at cells: the output pair holds the
+two machine products. A corollary of `NLAlib.Ops.Pair.multiplyRoutine_meets`, kept because its
+caller holds the input pair as two cells of a matrix entry inside a fill rule. -/
 theorem multiply_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {x c z : ℕ × ℕ} {ar ai a : K}
     (hxz : Fp.Disj (Store.inBlock x.1 x.2 2) (Store.inBlock z.1 z.2 2))
@@ -80,8 +115,25 @@ theorem multiply_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I
     (hc : m.store.get c.1 c.2 = some a) (hz : z.2 + 2 ≤ m.store.len z.1) :
     Writes md I τ (multiply (Op := Op) (Tst := Tst)) (Env.frame [] [x, c, z])
       (Store.inBlock z.1 z.2 2)
-      (fun m' => m' = m.updBlock z [M.mul ar a, M.mul ai a]) m :=
-  Writes.of_wp_eq_updBlock (multiply_wp hI hxz hcz hxr hxi hc hz rfl)
+      (fun m' => m'.pos = m.pos ∧
+        m'.store.readBlock z.1 z.2 2 = some [M.mul ar a, M.mul ai a]) m := by
+  have hl : m.Live [x, c, z] := by
+    simp only [Mem.live_cons, Mem.live_nil, and_true]
+    exact ⟨Store.lt_length_of_get hxr, Store.lt_length_of_get hc,
+      Store.lt_length_of_lt_len (show z.2 < m.store.len z.1 by omega)⟩
+  have hx : m.store.readBlock x.1 x.2 2 = some [ar, ai] :=
+    Store.readBlock_succ_of (Store.readBlock_one_of_get hxr) hxi
+  have hroom : m.Room [z] [2] := by
+    simpa only [Mem.room_cons, Mem.room_nil, and_true] using hz
+  have h := multiplyRoutine_meets (Op := Op) (Tst := Tst) hI [] [x, c, z] τ m [[ar, ai], [a]]
+    rfl rfl hl (by routine_sep)
+    (Mem.readBlocks_of_cons hx (Mem.readBlocks_of_cons (Store.readBlock_one_of_get hc) rfl))
+    trivial hroom
+  refine Writes.of_total (h.mono (by fp_sub) fun m' _ ⟨hpos, ys, hys, hpost⟩ => ?_)
+  routine_nf at hys hpos
+  split_reads hys as (zs)
+  obtain rfl : zs = _ := hpost
+  exact ⟨hpos, hzs⟩
 
 
 /-- The actual machine products and sums for a complex linear combination of word pairs.
@@ -214,9 +266,114 @@ private theorem eval_linearCombination {M : Machine K} {m : Mem K} {a b x y t z 
       Option.bind_some, Option.map_some,
       and_false, if_true, if_false, Nat.add_eq_left, Nat.left_eq_add, Nat.reduceEqDiff, *]
 
-/-- The linear combination stores its actual rounded word pair and preserves all cells
-outside the output and two scratch cells. Source pairs may share buffers or coincide.
-Shared by the trees of `NLAlib.ShiftedQR.rowEntry`, `NLAlib.matMulOn`, `NLAlib.matMulLBody`. -/
+/-- A list of two words is the word list of a pair. A step in the proof of
+`NLAlib.Ops.Pair.linearCombinationRoutine_meets`. -/
+private theorem exists_pair_of_length {l : List K} (h : l.length = 2) :
+    ∃ v : K × K, l = [v.1, v.2] := by
+  obtain ⟨p, q, rfl⟩ := List.length_eq_two.mp h
+  exact ⟨(p, q), rfl⟩
+
+/-- A block holding the words of a pair holds them at its two cells. A step in the proof of
+`NLAlib.Ops.Pair.linearCombinationRoutine_meets`. -/
+private theorem get_of_readBlock_pair {m : Mem K} {u : ℕ × ℕ} {v : K × K}
+    (h : m.store.readBlock u.1 u.2 2 = some [v.1, v.2]) :
+    m.store.get u.1 u.2 = some v.1 ∧ m.store.get u.1 (u.2 + 1) = some v.2 :=
+  ⟨by simpa using Store.get_of_readBlock h (j := 0) (by omega) v.1,
+    by simpa using Store.get_of_readBlock h (j := 1) (by omega) v.1⟩
+
+/-- A complex linear combination of pairs: `[] (a : 2, b : 2, x : 2, y : 2) → (t : 2, z : 2)`.
+The scratch pair `t` and the output `z` are apart from each other and from the four inputs,
+which may coincide; the final contents of `t` are not reported. -/
+def linearCombinationRoutine : Routine Op Tst :=
+  routine% [] (a : 2, b : 2, x : 2, y : 2) → (unreported t : 2, z : 2) by blocks :=
+    linearCombination
+
+/-- The written pair is the rounded word pair `NLAlib.Ops.Pair.linearWords` of the four pairs
+read. -/
+def linearCombinationSpec (M : Machine K) : Routine.Spec K :=
+  spec% [] ([a₀, a₁], [b₀, b₁], [x₀, x₁], [y₀, y₁]) → (zs) ensures
+    zs = [(linearWords M (a₀, a₁) (b₀, b₁) (x₀, x₁) (y₀, y₁)).1,
+      (linearWords M (a₀, a₁) (b₀, b₁) (x₀, x₁) (y₀, y₁)).2]
+
+/-- The linear combination meets its specification on any scalar machine: fourteen scalar
+operations, with source pairs that may share buffers or coincide. -/
+theorem linearCombinationRoutine_meets {M : Machine K} {I : Interp Op Tst K}
+    (hI : IsScalar M I) :
+    (linearCombinationRoutine (Op := Op) (Tst := Tst)).Meets I (linearCombinationSpec M) := by
+  routine_intro [] (a, b, x, y, t, z) reads (as, bs, xs, ys)
+  obtain ⟨av, rfl⟩ := exists_pair_of_length (Store.length_of_readBlock has)
+  obtain ⟨bv, rfl⟩ := exists_pair_of_length (Store.length_of_readBlock hbs)
+  obtain ⟨xv, rfl⟩ := exists_pair_of_length (Store.length_of_readBlock hxs)
+  obtain ⟨yv, rfl⟩ := exists_pair_of_length (Store.length_of_readBlock hys)
+  obtain ⟨ha₀, ha₁⟩ := get_of_readBlock_pair has
+  obtain ⟨hb₀, hb₁⟩ := get_of_readBlock_pair hbs
+  obtain ⟨hx₀, hx₁⟩ := get_of_readBlock_pair hxs
+  obtain ⟨hy₀, hy₁⟩ := get_of_readBlock_pair hys
+  have hw : Fp.Disj (Fp.blocks [t, z] [2, 2]) (Fp.blocks [a, b, x, y] [2, 2, 2, 2]) :=
+    hblocks.2.1
+  have ht : Fp.Disj (Store.inBlock t.1 t.2 2) (Fp.blocks [a, b, x, y] [2, 2, 2, 2]) :=
+    hw.mono (by fp_sub) le_rfl
+  have hz : Fp.Disj (Store.inBlock z.1 z.2 2) (Fp.blocks [a, b, x, y] [2, 2, 2, 2]) :=
+    hw.mono (by fp_sub) le_rfl
+  have htz : Fp.Disj (Store.inBlock t.1 t.2 2) (Store.inBlock z.1 z.2 2) := by
+    have h : Fp.Apart [t, z] [2, 2] := hblocks.1
+    simpa [Fp.Apart, Fp.blocks] using h
+  have htroom := hroom.1
+  have hzroom := hroom.2
+  have key : Writes .total I τ linearCombination (Env.frame [] [a, b, x, y, t, z])
+      (Store.inBlock t.1 t.2 2 ⊔ Store.inBlock z.1 z.2 2)
+      (fun μ => μ.pos = m.pos ∧ μ.store.readBlock z.1 z.2 2 =
+        some [(linearWords M av bv xv yv).1, (linearWords M av bv xv yv).2]) m := by
+    let xs := linearInstructions ⟨0, .var 0⟩ ⟨1, .var 1⟩ ⟨2, .var 2⟩
+        ⟨3, .var 3⟩ ⟨4, .var 4⟩ ⟨5, .var 5⟩
+    let ws := linearTrace M t z av bv xv yv
+    have hev := eval_linearCombination (M := M) ht hz htz ha₀ ha₁ hb₀ hb₁ hx₀ hx₁ hy₀ hy₁
+    have hroom : ∀ w ∈ ws, w.1.2 < m.store.len w.1.1 := by
+      intro w hw
+      simp only [ws, linearTrace, List.mem_cons, List.not_mem_nil, or_false] at hw
+      rcases hw with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
+        rfl | rfl | rfl | rfl <;> dsimp <;> omega
+    have h := writes_machineScalarBlock (τ := τ) hI hev hroom
+    change Writes .total I τ linearCombination _ _ _ m at h
+    refine h.mono ?_ ?_
+    · intro b i hi
+      simp only [linearTrace, List.map_cons, List.map_nil, Fp.cells, List.mem_cons,
+        List.not_mem_nil, or_false, Prod.mk.injEq] at hi
+      rcases hi with h | h | h | h | h | h | h | h | h | h | h | h | h | h <;>
+        obtain ⟨rfl, rfl⟩ := h <;> first | exact Or.inl ⟨rfl, by omega, by omega⟩ |
+          exact Or.inr ⟨rfl, by omega, by omega⟩
+    · rintro μ _ rfl
+      have hz₀ : z.2 < m.store.len z.1 := by omega
+      have hz₁ : z.2 + 1 < m.store.len z.1 := by omega
+      have hzt0 : z ≠ t := by
+        simpa only [Nat.add_zero, Prod.eta] using
+          htz.symm.ne_offsets (i := 0) (j := 0) (by omega) (by omega)
+      have hzt1 : z ≠ (t.1, t.2 + 1) := by
+        simpa only [Nat.add_zero, Prod.eta] using
+          htz.symm.ne_offsets (i := 0) (j := 1) (by omega) (by omega)
+      have hzz : z ≠ (z.1, z.2 + 1) := by
+        intro h
+        have he := congrArg Prod.snd h
+        omega
+      have h0 : (m.updCells ws).store.get z.1 z.2 =
+          some (linearWords M av bv xv yv).1 :=
+        get_updCells (ws₁ := ws.take 9) (ws₂ := ws.drop 10) hz₀
+          (by simp [ws, linearTrace, hzt0, hzt1, hzz])
+      have h1 : (m.updCells ws).store.get z.1 (z.2 + 1) =
+          some (linearWords M av bv xv yv).2 :=
+        get_updCells (ws₁ := ws.take 13) (ws₂ := []) hz₁ (by simp)
+      refine ⟨rfl, Store.readBlock_eq_some_iff.mpr ⟨rfl, ?_⟩⟩
+      intro i hi
+      have hi' : i = 0 ∨ i = 1 := by omega
+      rcases hi' with rfl | rfl
+      · simpa using h0
+      · simpa using h1
+  exact key.mono (by fp_sub) fun μ _ ⟨hp, hrd⟩ =>
+    ⟨hp, [_], Mem.readBlocks_of_cons hrd rfl, rfl⟩
+
+/-- The judgment of `NLAlib.Ops.Pair.linearCombinationRoutine` read at cells. A corollary of
+`NLAlib.Ops.Pair.linearCombinationRoutine_meets`, kept because its callers hold the four input
+pairs as cells of matrix entries inside loop rules. -/
 theorem linearCombination_writes {M : Machine K} {I : Interp Op Tst K}
     (hI : IsScalar M I) {τ : Tape K} {m : Mem K} {a b x y t z : ℕ × ℕ}
     {av bv xv yv : K × K}
@@ -236,50 +393,33 @@ theorem linearCombination_writes {M : Machine K} {I : Interp Op Tst K}
       (Store.inBlock t.1 t.2 2 ⊔ Store.inBlock z.1 z.2 2)
       (fun μ => μ.pos = m.pos ∧ μ.store.readBlock z.1 z.2 2 =
         some [(linearWords M av bv xv yv).1, (linearWords M av bv xv yv).2]) m := by
-  let xs := linearInstructions ⟨0, .var 0⟩ ⟨1, .var 1⟩ ⟨2, .var 2⟩
-      ⟨3, .var 3⟩ ⟨4, .var 4⟩ ⟨5, .var 5⟩
-  let ws := linearTrace M t z av bv xv yv
-  have hev := eval_linearCombination (M := M) ht hz htz ha₀ ha₁ hb₀ hb₁ hx₀ hx₁ hy₀ hy₁
-  have hroom : ∀ w ∈ ws, w.1.2 < m.store.len w.1.1 := by
-    intro w hw
-    simp only [ws, linearTrace, List.mem_cons, List.not_mem_nil, or_false] at hw
-    rcases hw with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
-      rfl | rfl | rfl | rfl <;> dsimp <;> omega
-  have h := writes_machineScalarBlock (τ := τ) hI hev hroom
-  change Writes .total I τ linearCombination _ _ _ m at h
-  refine h.mono ?_ ?_
-  · intro b i hi
-    simp only [linearTrace, List.map_cons, List.map_nil, Fp.cells, List.mem_cons,
-      List.not_mem_nil, or_false, Prod.mk.injEq] at hi
-    rcases hi with h | h | h | h | h | h | h | h | h | h | h | h | h | h <;>
-      obtain ⟨rfl, rfl⟩ := h <;> first | exact Or.inl ⟨rfl, by omega, by omega⟩ |
-        exact Or.inr ⟨rfl, by omega, by omega⟩
-  · rintro μ _ rfl
-    have hz₀ : z.2 < m.store.len z.1 := by omega
-    have hz₁ : z.2 + 1 < m.store.len z.1 := by omega
-    have hzt0 : z ≠ t := by
-      simpa only [Nat.add_zero, Prod.eta] using
-        htz.symm.ne_offsets (i := 0) (j := 0) (by omega) (by omega)
-    have hzt1 : z ≠ (t.1, t.2 + 1) := by
-      simpa only [Nat.add_zero, Prod.eta] using
-        htz.symm.ne_offsets (i := 0) (j := 1) (by omega) (by omega)
-    have hzz : z ≠ (z.1, z.2 + 1) := by
-      intro h
-      have he := congrArg Prod.snd h
-      omega
-    have h0 : (m.updCells ws).store.get z.1 z.2 =
-        some (linearWords M av bv xv yv).1 :=
-      get_updCells (ws₁ := ws.take 9) (ws₂ := ws.drop 10) hz₀
-        (by simp [ws, linearTrace, hzt0, hzt1, hzz])
-    have h1 : (m.updCells ws).store.get z.1 (z.2 + 1) =
-        some (linearWords M av bv xv yv).2 :=
-      get_updCells (ws₁ := ws.take 13) (ws₂ := []) hz₁ (by simp)
-    refine ⟨rfl, Store.readBlock_eq_some_iff.mpr ⟨rfl, ?_⟩⟩
-    intro i hi
-    have hi' : i = 0 ∨ i = 1 := by omega
-    rcases hi' with rfl | rfl
-    · simpa using h0
-    · simpa using h1
+  have hl : m.Live [a, b, x, y, t, z] := by
+    simp only [Mem.live_cons, Mem.live_nil, and_true]
+    exact ⟨Store.lt_length_of_get ha₀, Store.lt_length_of_get hb₀, Store.lt_length_of_get hx₀,
+      Store.lt_length_of_get hy₀,
+      Store.lt_length_of_lt_len (show t.2 < m.store.len t.1 by omega),
+      Store.lt_length_of_lt_len (show z.2 < m.store.len z.1 by omega)⟩
+  have rd : ∀ {u : ℕ × ℕ} {v : K × K}, m.store.get u.1 u.2 = some v.1 →
+      m.store.get u.1 (u.2 + 1) = some v.2 → m.store.readBlock u.1 u.2 2 = some [v.1, v.2] :=
+    fun h₀ h₁ => Store.readBlock_succ_of (Store.readBlock_one_of_get h₀) h₁
+  have hroom : m.Room [t, z] [2, 2] := by
+    simp only [Mem.room_cons, Mem.room_nil, and_true]
+    exact ⟨htroom, hzroom⟩
+  have hw : Fp.Disj (Fp.blocks [t, z] [2, 2]) (Fp.blocks [a, b, x, y] [2, 2, 2, 2]) := by
+    simpa [Fp.blocks] using Fp.disj_sup_left.mpr ⟨ht, hz⟩
+  have hap : Fp.Apart [t, z] [2, 2] := by simpa [Fp.Apart, Fp.blocks] using htz
+  have h := linearCombinationRoutine_meets (Op := Op) (Tst := Tst) hI [] [a, b, x, y, t, z] τ m
+    [[av.1, av.2], [bv.1, bv.2], [xv.1, xv.2], [yv.1, yv.2]] rfl rfl hl
+    (Routine.separatedAt_of_blocks rfl (Routine.separatedBlocks_of_noIsolated
+      (by simp [linearCombinationRoutine, Access.isIsolated]) hap hw))
+    (Mem.readBlocks_of_cons (rd ha₀ ha₁) (Mem.readBlocks_of_cons (rd hb₀ hb₁)
+      (Mem.readBlocks_of_cons (rd hx₀ hx₁) (Mem.readBlocks_of_cons (rd hy₀ hy₁) rfl))))
+    trivial hroom
+  refine h.mono (by fp_sub) fun μ _ ⟨hpos, ys, hys, hpost⟩ => ?_
+  routine_nf at hys hpos
+  split_reads hys as (zs)
+  obtain rfl : zs = _ := hpost
+  exact ⟨hpos, hzs⟩
 
 /-- The last two component writes recover a packed pair independently of prior scratch writes. -/
 theorem readBlock_updCells_pair {m : Mem K} {prior : List ((ℕ × ℕ) × K)}

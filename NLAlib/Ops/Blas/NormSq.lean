@@ -7,6 +7,8 @@ module
 
 public import NLAlib.Ops.Logic.Builder
 public import NLAlib.Ops.Logic.Tactic
+public import NLAlib.Ops.Logic.RoutineIntro
+public import NLAlib.Ops.RoutineSyntax
 
 /-!
 # Squared modulus of an interleaved scalar pair
@@ -17,9 +19,11 @@ view for their outputs.
 
 ## Main results
 
-* `NLAlib.Ops.PairScalar.normSq`: the scalar implementation.
-* `NLAlib.Ops.PairScalar.normSq_writes_word`: its total word guarantee on any scalar machine.
-* `NLAlib.Ops.PairScalar.normSq_writes`: its total exact word guarantee.
+* `NLAlib.Ops.PairScalar.normSqRoutine`: the routine `[] (X : 2) → (T : 3)`, on the tree
+  `NLAlib.Ops.PairScalar.normSq`.
+* `NLAlib.Ops.PairScalar.normSqRoutine_meets`: its judgment, on any scalar machine.
+* `NLAlib.Ops.PairScalar.normSq_writes_word`, `NLAlib.Ops.PairScalar.normSq_writes`: the
+  judgment read at cells.
 -/
 
 @[expose] public section
@@ -35,11 +39,58 @@ def normSq : Stmt Op Tst := ops% [] (X) → (T) {
   call (Has.inj ScalarOp.add) [] (T, T[1]) → (T[2])
 }
 
-/-- Two scalar squares and one addition store the machine word `fl(fl(xr·xr) + fl(xi·xi))` in
-output cell two, on any scalar machine. The input pair and the three-word output view are
-spatially separate; both may share a buffer.
-Shared by the trees of `NLAlib.ShiftedQR.subdiagProductRound`, `NLAlib.ShiftedQR.normSqOpRound`,
-`NLAlib.ShiftedQR.pairVecNormWithScratch` and 2 more. -/
+/-- The squared modulus of a pair as a routine: `[] (X : 2) → (T : 3)`, the two blocks apart;
+they may be in one buffer. -/
+def normSqRoutine : Routine Op Tst :=
+  routine% [] (X : 2) → (T : 3) by blocks := normSq
+
+/-- The three written words are the two machine squares and their machine sum
+`fl(fl(xr·xr) + fl(xi·xi))`. -/
+def normSqSpec (M : Machine ℝ) : Routine.Spec ℝ :=
+  spec% [] ([xr, xi]) → (ts) ensures
+    ts = [M.mul xr xr, M.mul xi xi, M.add (M.mul xr xr) (M.mul xi xi)]
+
+/-- The squared modulus meets its specification on any scalar machine: two squares and one
+addition, with no accuracy hypothesis. -/
+theorem normSqRoutine_meets {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsScalar M I) :
+    (normSqRoutine (Op := Op) (Tst := Tst)).Meets I (normSqSpec M) := by
+  routine_intro [] (x, t) reads (xs)
+  obtain ⟨xr, xi, rfl⟩ : ∃ xr xi, xs = [xr, xi] := by
+    have h := Store.length_of_readBlock hxs
+    match xs, h with
+    | [a, b], _ => exact ⟨a, b, rfl⟩
+  have hxr : m.store.get x.1 x.2 = some xr := by
+    simpa using Store.get_of_readBlock hxs (j := 0) (by omega) 0
+  have hxi : m.store.get x.1 (x.2 + 1) = some xi := by
+    simpa using Store.get_of_readBlock hxs (j := 1) (by omega) 0
+  have hsep' : Fp.Disj (Store.inBlock x.1 x.2 2) (Store.inBlock t.1 t.2 3) := by
+    have h : Fp.Disj (Fp.blocks [t] [3]) (Fp.blocks [x] [2]) := hblocks.2.1
+    simpa [Fp.blocks] using h.symm
+  have hxLive := Store.lt_length_of_get hxr
+  have htLive := Store.lt_length_of_lt_len (show t.2 < m.store.len t.1 by omega)
+  unfold normSq
+  refine (writes_call_bin (hS .mul) rfl rfl trivial hxr hxr rfl
+    (fun _ => ⟨by room, by room⟩)).seq_le (by fp_sub) ?_
+  intro m₁ hfr₁ ⟨hp₁, hRe⟩
+  have hxi₁ := hfr₁.keep (Store.readsOnly_get _ _ _)
+    (hsep'.symm.mono (by fp_sub) (by fp_sub)) hxi
+  refine (writes_call_bin (hS .mul) rfl rfl trivial hxi₁ hxi₁ rfl
+    (fun _ => ⟨by room, by room⟩)).seq_le (by fp_sub) ?_
+  intro m₂ hfr₂ ⟨hp₂, hIm⟩
+  have hRe₂ := hfr₂.keep (Store.readsOnly_get _ _ _) (by disjoint) hRe
+  refine (writes_call_bin (hS .add) rfl rfl trivial hRe₂ hIm rfl
+    (fun _ => ⟨by room, by room⟩)).mono (by fp_sub) ?_
+  intro m₃ hfr₃ ⟨hp₃, hSum⟩
+  have hRe₃ := hfr₃.keep (Store.readsOnly_get _ _ _) (by disjoint) hRe₂
+  have hIm₃ := hfr₃.keep (Store.readsOnly_get _ _ _) (by disjoint) hIm
+  refine ⟨hp₃.trans (hp₂.trans hp₁), [_], Mem.readBlocks_of_cons
+    (Store.readBlock_succ_of (Store.readBlock_succ_of (Store.readBlock_one_of_get hRe₃) hIm₃)
+      hSum) rfl, rfl⟩
+
+/-- The judgment of `NLAlib.Ops.PairScalar.normSqRoutine` read at cells: output cell two holds
+the machine word `fl(fl(xr·xr) + fl(xi·xi))`. A corollary of
+`NLAlib.Ops.PairScalar.normSqRoutine_meets`, kept because its callers hold the two input words
+as cells of a matrix entry inside a loop rule, and read only the third output cell. -/
 theorem normSq_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {x t : ℕ × ℕ} {xr xi : ℝ}
@@ -51,27 +102,25 @@ theorem normSq_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (Store.inBlock t.1 t.2 3)
       (fun m' => m'.pos = m.pos ∧
         m'.store.get t.1 (t.2 + 2) = some (M.add (M.mul xr xr) (M.mul xi xi))) m := by
-  have hxLive := Store.lt_length_of_get hxr
-  have htLive := Store.lt_length_of_lt_len (show t.2 < m.store.len t.1 by omega)
-  unfold normSq
-  refine (writes_call_bin (hS .mul) rfl rfl trivial hxr hxr rfl
-    (fun _ => ⟨by room, by room⟩)).seq_le (by fp_sub) ?_
-  intro m₁ hfr₁ ⟨hp₁, hRe⟩
-  have hxi₁ := hfr₁.keep (Store.readsOnly_get _ _ _)
-    (hsep.symm.mono (by fp_sub) (by fp_sub)) hxi
-  refine (writes_call_bin (hS .mul) rfl rfl trivial hxi₁ hxi₁ rfl
-    (fun _ => ⟨by room, by room⟩)).seq_le (by fp_sub) ?_
-  intro m₂ hfr₂ ⟨hp₂, hIm⟩
-  have hRe₂ := hfr₂.keep (Store.readsOnly_get _ _ _) (by disjoint) hRe
-  refine (writes_call_bin (hS .add) rfl rfl trivial hRe₂ hIm rfl
-    (fun _ => ⟨by room, by room⟩)).mono (by fp_sub) ?_
-  intro m₃ _ ⟨hp₃, hSum⟩
-  exact ⟨hp₃.trans (hp₂.trans hp₁), hSum⟩
+  have hl : m.Live [x, t] := by
+    simp only [Mem.live_cons, Mem.live_nil, and_true]
+    exact ⟨Store.lt_length_of_get hxr,
+      Store.lt_length_of_lt_len (show t.2 < m.store.len t.1 by omega)⟩
+  have hx : m.store.readBlock x.1 x.2 2 = some [xr, xi] :=
+    Store.readBlock_succ_of (Store.readBlock_one_of_get hxr) hxi
+  have hrooms : m.Room [t] [3] := by
+    simpa only [Mem.room_cons, Mem.room_nil, and_true] using hroom
+  have h := normSqRoutine_meets (Op := Op) (Tst := Tst) hS [] [x, t] τ m [[xr, xi]] rfl rfl
+    hl (by routine_sep) (Mem.readBlocks_of_cons hx rfl) trivial hrooms
+  refine h.mono (by fp_sub) fun m' _ ⟨hpos, ys, hys, hpost⟩ => ?_
+  routine_nf at hys hpos
+  split_reads hys as (zs)
+  obtain rfl : zs = _ := hpost
+  exact ⟨hpos, by simpa using Store.get_of_readBlock hzs (j := 2) (by omega) 0⟩
 
-/-- Two scalar squares and one addition return the exact sum of squares in output cell two.
-The input pair and the three-word output view are spatially separate; both may share a buffer.
-Shared by the trees of `NLAlib.ShiftedQR.subdiagProductRound`, `NLAlib.ShiftedQR.normSqOpRound`,
-`NLAlib.ShiftedQR.pairVecNormWithScratch` and 2 more. -/
+/-- The same reading under an exact machine: output cell two holds $x_r^2 + x_i^2$. A corollary
+of `NLAlib.Ops.PairScalar.normSqRoutine_meets`, kept for the same callers as
+`NLAlib.Ops.PairScalar.normSq_writes_word`. -/
 theorem normSq_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {x t : ℕ × ℕ} {xr xi : ℝ}

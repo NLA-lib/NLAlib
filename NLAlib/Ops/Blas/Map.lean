@@ -50,8 +50,10 @@ theorem stmtPeak_unaryMap_le (o : Op) (W : Op → List ℕ → ℕ) (n x y : ℕ
 /-- The unary map writes the mapped input vector to the output buffer and preserves all other
 memory and the random-tape position. Inputs are stored words and the output has room;
 operands may coincide exactly or occupy disjoint blocks of the same buffer.
-Shared by the trees of `NLAlib.ShiftedQR.initializeParametersWithScratch`,
-`NLAlib.ShiftedQR.searchAndCopyWith`, `NLAlib.ShiftedQR.stepInPlaceWithScratch` and 21 more. -/
+The run without its frame, as an exact final memory: a step in the proof of
+`NLAlib.Ops.unaryMap_writes_of_disj_or_eq`, the common proof of the two routines of this tree,
+and used directly by the entry kernels of `NLAlib/Ops/Blas/Hermitian.lean` and the matrix
+copy. -/
 theorem unaryMap_wp_of_disj_or_eq {o : Op} {f : K → K} {I : Interp Op Tst K}
     (hI : I.IsFn .total o (.un fun x => some (f x)) AnyOperands) {md : Mode}
     {τ : Tape K} {n : ℕ} {x y : ℕ × ℕ} {m : Mem K} {xs : List K}
@@ -94,8 +96,8 @@ theorem unaryMap_wp_of_disj_or_eq {o : Op} {f : K → K} {I : Interp Op Tst K}
 /-- A unary map between distinct buffers, or exactly in place, is a specialization of the
 block-disjoint rule. The complete output memory and tape position are unchanged by this
 specialization; no new execution proof is needed.
-Shared by the trees of `NLAlib.ShiftedQR.initializeParametersWithScratch`,
-`NLAlib.ShiftedQR.searchAndCopyWith`, `NLAlib.ShiftedQR.stepInPlaceWithScratch` and 21 more. -/
+The same step for operands in distinct buffers or equal, used by
+`NLAlib.Ops.Hermitian.negate`. -/
 theorem unaryMap_wp {o : Op} {f : K → K} {I : Interp Op Tst K}
     (hI : I.IsFn .total o (.un fun x => some (f x)) AnyOperands) {md : Mode}
     {τ : Tape K} {n : ℕ} {x y : ℕ × ℕ} {m : Mem K} {xs : List K}

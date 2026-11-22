@@ -105,14 +105,10 @@ theorem deflateSamples_writes {M : Machine K} {I : Interp Op Tst K} (hS : IsScal
       (by simpa [C, Nat.mul_comm n] using hxr)
       (by simpa [C, Nat.mul_comm n] using hxi) hscale hspace
     refine writes_frame rfl rfl (by simpa [Mem.Live] using hl.congr hfr.length_eq) ?_
-    refine hw.mono le_rfl fun m'' _ he => ?_
-    subst m''
-    refine ⟨?_, hp⟩
+    refine hw.mono le_rfl fun m'' _ ⟨hpos, hread⟩ => ?_
+    refine ⟨?_, hpos.trans hp⟩
     intro z
-    have hg' := Store.get_updBlock (s := m'.store) (b := g.1)
-      (off := g.2 + 2 * (j * k + i))
-      (xs := [M.mul (S i (2 * (lo + j) + side)).1 a, M.mul (S i (2 * (lo + j) + side)).2 a])
-      (by simpa using hspace) z.isLt
+    have hg' := Store.get_of_readBlock hread z.isLt a
     fin_cases z <;> simpa [C, A] using hg'
 
 /-- Deflation executes sample scaling, the supplied multiplication and QR routines, and

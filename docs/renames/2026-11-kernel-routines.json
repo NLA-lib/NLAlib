@@ -1,0 +1,33 @@
+{
+ "date": "2026-11-22",
+ "note": "Shared kernels of NLAlib/Ops/Blas and the scoped Givens kernels become routines with one judgment each (unaryMapRoutine, scalarBroadcastRoutine, PairScalar.normSqRoutine, Pair.multiplyRoutine, Pair.linearCombinationRoutine, clampRoutine, Hermitian.shiftRoutine, Hermitian.scaleRoutine, Hermitian.averageRoutine, rotateRowsRoutine, rotateColumnsRoutine, coefficientsRoutine). No tree changes. Statements that only stated a run without its frame become private steps of the judgment; the clamp's operand-form statements are removed, its one caller uses the judgment.",
+ "renames": [
+  {
+   "old": "NLAlib.Ops.clamp_wp",
+   "new": "NLAlib.Ops.clampRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.clamp_writes",
+   "new": "NLAlib.Ops.clampRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.clamp_writes_bindIdx",
+   "new": "NLAlib.Ops.toNatFn_clampWord",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.Pair.multiply_wp",
+   "new": "NLAlib.Ops.Pair.multiplyRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  }
+ ],
+ "statementChanged": [
+  "NLAlib.Ops.Pair.multiply_writes"
+ ]
+}

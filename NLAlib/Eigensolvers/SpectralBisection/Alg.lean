@@ -159,7 +159,7 @@ def bottomLevel : Stmt Op Tst := ops% [n, D] (Sz) → (Ua, Ea) {
 /-- Reconstruct a one-child node from its complete child output and stored signed shift. -/
 def upShiftResult : Stmt Op Tst := ops% [k] (Uc, ec, sigma) → (U, E) {
   run PairMatrix.copyRoutine [k, k] (Uc, U);
-  run (scalarBroadcast (Has.inj ScalarOp.add)) [k] (ec, sigma, E)
+  run (scalarBroadcastRoutine (Has.inj ScalarOp.add)) [k] (ec, sigma, E)
 }
 
 /-- Reconstruct a split from the two child outputs and the stored half-radius. -/
@@ -167,8 +167,8 @@ def upSplitResult : Stmt Op Tst :=
     ops% [k, kp] (Qp, Qm, Up, Um, ep, em, sigma) → (U, E) {
   call (Has.inj MatrixOp.mul) [k, kp, kp] (Qp, Up) → (U);
   call (Has.inj MatrixOp.mul) [k, k - kp, k - kp] (Qm, Um) → (U[2 * (k * kp)]);
-  run (scalarBroadcast (Has.inj ScalarOp.add)) [kp] (ep, sigma, E);
-  run (scalarBroadcast (Has.inj ScalarOp.sub)) [k - kp] (em, sigma, E[kp])
+  run (scalarBroadcastRoutine (Has.inj ScalarOp.add)) [kp] (ep, sigma, E);
+  run (scalarBroadcastRoutine (Has.inj ScalarOp.sub)) [k - kp] (em, sigma, E[kp])
 }
 
 /-- Reconstruct one node from its actual stored kind and split size. The signed half-radius

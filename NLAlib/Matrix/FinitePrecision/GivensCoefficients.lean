@@ -11,6 +11,8 @@ public import NLAlib.Ops.Logic.Allocation
 public import NLAlib.Ops.Catalog.Compare
 public import NLAlib.Matrix.Factorizations.Givens
 public import NLAlib.Matrix.FinitePrecision.GivensRounded
+public import NLAlib.Ops.Logic.RoutineIntro
+public import NLAlib.Ops.RoutineSyntax
 
 /-!
 # Givens coefficients computed from real scalar words
@@ -32,6 +34,9 @@ divides conjugated components by the positive radius. No rotation operation is a
   are their corollaries.
 * `NLAlib.coefficientsWithScratch_writes` proves the caller-scratch routine total.
 * `NLAlib.coefficients_writes` proves the scoped routine computes `givensCoeffs`.
+* `NLAlib.coefficientsRoutine`: the scoped computation as a routine
+  `[] (a : 2, b : 2) → (c : 2, s : 2)`, with its judgment `NLAlib.coefficientsRoutine_meets`
+  on any machine.
 -/
 
 @[expose] public section
@@ -460,7 +465,10 @@ The actual radius test covers the zero pair without a division by zero.
 Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
 `NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
 `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
-`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch.
+The run stated on cells, for inputs and outputs that may overlap: a step in the proof of
+`NLAlib.coefficientsRoutine_meets` (outputs apart from the inputs), and the form in which the
+trees above, which read the pair from two entries of a matrix, use it. -/
 theorem coefficients_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {a b c s : ℕ × ℕ} {u v : ℂ}
@@ -542,5 +550,43 @@ theorem coefficients_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
           [(givensCoeffs u v).2.re, (givensCoeffs u v).2.im]]) m := by
   simpa only [roundedGivensCoeffs_eq_givensCoeffs hE] using
     coefficients_writes_word (τ := τ) hS hCmp hcs hu0 hu1 hv0 hv1 hc hs
+
+/-- The two Givens coefficients of a pair of complex words:
+`[] (a : 2, b : 2) → (c : 2, s : 2)`, the two outputs apart from each other and from the
+inputs. The scratch is allocated and released by the tree `NLAlib.coefficients`, which is also
+correct with an output on an input (`NLAlib.coefficients_writes_word`). -/
+def coefficientsRoutine : Routine Op Tst :=
+  routine% [] (a : 2, b : 2) → (c : 2, s : 2) by blocks := coefficients
+
+/-- The written pairs are the words of `NLAlib.roundedGivensCoeffs` of the two complex numbers
+read. -/
+noncomputable def coefficientsSpec (M : Machine ℝ) : Routine.Spec ℝ :=
+  spec% [] ([ur, ui], [vr, vi]) → (cs, ss) ensures
+    cs = [(roundedGivensCoeffs M ⟨ur, ui⟩ ⟨vr, vi⟩).1.re,
+        (roundedGivensCoeffs M ⟨ur, ui⟩ ⟨vr, vi⟩).1.im] ∧
+      ss = [(roundedGivensCoeffs M ⟨ur, ui⟩ ⟨vr, vi⟩).2.re,
+        (roundedGivensCoeffs M ⟨ur, ui⟩ ⟨vr, vi⟩).2.im]
+
+/-- The coefficient computation meets its specification on any scalar machine with an exact
+zero test; the zero pair is covered without a division by zero. -/
+theorem coefficientsRoutine_meets {M : Machine ℝ} {I : Interp Op Tst ℝ}
+    (hS : IsScalar M I) (hCmp : IsCmp id I) :
+    (coefficientsRoutine (Op := Op) (Tst := Tst)).Meets I (coefficientsSpec M) := by
+  routine_intro [] (a, b, c, s) reads (us, vs)
+  obtain ⟨ur, ui, rfl⟩ := List.length_eq_two.mp (Store.length_of_readBlock hus)
+  obtain ⟨vr, vi, rfl⟩ := List.length_eq_two.mp (Store.length_of_readBlock hvs)
+  have hu0 : m.store.get a.1 a.2 = some ur := by
+    simpa using Store.get_of_readBlock hus (j := 0) (by omega) 0
+  have hu1 : m.store.get a.1 (a.2 + 1) = some ui := by
+    simpa using Store.get_of_readBlock hus (j := 1) (by omega) 0
+  have hv0 : m.store.get b.1 b.2 = some vr := by
+    simpa using Store.get_of_readBlock hvs (j := 0) (by omega) 0
+  have hv1 : m.store.get b.1 (b.2 + 1) = some vi := by
+    simpa using Store.get_of_readBlock hvs (j := 1) (by omega) 0
+  have hcs : Fp.Disj (Store.inBlock c.1 c.2 2) (Store.inBlock s.1 s.2 2) := by
+    have h : Fp.Apart [c, s] [2, 2] := hblocks.1
+    simpa [Fp.Apart, Fp.blocks] using h
+  exact (coefficients_writes_word (u := ⟨ur, ui⟩) (v := ⟨vr, vi⟩) hS hCmp hcs hu0 hu1 hv0 hv1
+    hroom.1 hroom.2).mono le_rfl fun m' _ ⟨hp, hr⟩ => ⟨hp, _, hr, rfl, rfl⟩
 
 end NLAlib

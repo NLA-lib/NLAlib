@@ -625,6 +625,8 @@ names its certificate, so no annotation is needed.
 The supported surface, which changes only with a recorded rename or a migration note:
 
 * **Writing trees and routines**: `routine%`, `ops%`, `spec%` and their clauses and marks;
+  `noted_of%`, `Stmt.pretty` and `Routine.pretty` for reading a tree with its names (the name
+  `foo._noted` of the copy is not part of the surface; use `noted_of% foo`);
   `Routine`, `Port` through `Port.read`/`write`/`update`/`isolated` and `every`;
   `Routine.Spec`, `Spec.ofRel`, `Spec.terminates`.
 * **The judgment and its use**: `Routine.Meets`; in a tree `run R [dims] (operands)`; in a proof
@@ -666,19 +668,39 @@ certified count depends on one. Notes are the only place where a tree holds meta
 kind of metadata is a new constructor of `Note`; the type of trees does not change.
 `Stmt.erase` removes every note, with the same run, count and scratch (`Notes.lean`).
 
-The builder attaches notes to the trees written under `noted%`:
-`def foo : Routine Op Tst := noted% routine% [n] (x : n) → (z : 1) { … }` records the names of
-the header, of each loop variable, scratch buffer and index binding, and of the routine or tree
-that each `run` frames. Without `noted%` a tree has no note. Proofs are the same in both cases:
-`routine_intro`, `step`, `call` and `loop_inv` remove the notes of the goal first
-(`strip_notes`, which is also the tactic to use after unfolding a noted tree by hand, before a
-rule that matches the shape of the tree). The library's trees are written without `noted%`
-where their proofs apply such rules by hand.
+Every tree written with `ops%` or `routine%` keeps its source names, beside the certified
+value. `def foo : Routine Op Tst := routine% [n] (x : n) → (z : 1) { … }` defines `foo`, whose
+tree has no note, and a second definition `foo._noted`, the noted copy: the same routine whose
+tree records the names of the header, of each loop variable, scratch buffer and index binding,
+and of the routine or tree that each `run` frames. The builder elaborates the same source twice,
+once without notes and once with them, so erasing the notes of the copy gives the tree of `foo`,
+by `rfl` (`Examples/Notes.lean`). A `run` in the copy frames the noted copy of what it runs, so
+names are kept at every depth. Judgments, counts and certificates are stated and proved on
+`foo`; nothing refers to `foo._noted`, and a rule that matches the shape of a tree never meets
+a note.
 
-`Stmt.pretty` (`Notes.lean`) reads a tree back as pseudocode with those names, and shows a
-noted `run` as `run name [dims] (operands)` in place of the tree of the routine;
-`Examples/Notes.lean` checks its output on the integrator. It is a reading aid for people and
-tools. It is not a code emitter, and nothing is proved about its output.
+`noted_of% foo` is the noted copy of `foo`. `Stmt.pretty` (`Notes.lean`) and `Routine.pretty`
+(`RoutineSyntax.lean`) read a tree back as pseudocode with those names, and show a noted `run`
+as `run name [dims] (operands)` in place of the tree of the routine:
+
+```lean
+#eval IO.println (noted_of% Krylov.CG.HSCG.roundsRoutine : Routine Signature Empty).pretty
+-- for i < k {
+--   run NLAlib.Krylov.CG.HSCG.stepRoutine [n] (X, R, P)
+-- }
+```
+
+The catalog and the test type need `Repr` instances, and the parameters of the routine are
+given by position or by the expected type. `Examples/Notes.lean` checks the output on the
+example routines, and `NLAlibTools/OpsNotes.lean` on the conjugate gradient step and loop, the
+modified Gram–Schmidt factorization and the Hutch++ estimator. The output is a reading aid for
+people and tools. It is not a code emitter, and nothing is proved about it.
+
+`noted% t` puts the notes in the value itself instead: under it `ops%` and `routine%` build the
+noted tree and make no copy. Proofs on such a tree are the same, because `routine_intro`,
+`step`, `call` and `loop_inv` remove the notes of the goal first (`strip_notes`, which is also
+the tactic to use after unfolding a noted tree by hand). The library does not use `noted%`;
+three example routines do, to check that.
 
 ## Proof construction
 

@@ -19,10 +19,14 @@ tree built with the notation is `rfl`-equal to the positional one (the examples 
 `NLAlib.Ops.Examples.Built`). There is no compile function in the kernel and no kernel `rfl` of a
 compiled tree.
 
-Under `noted% t` the trees built inside the term `t` also carry the names of the source as notes
-(`NLAlib.Ops.Stmt.note`): the names of the header, of each loop variable, scratch buffer and
-index binding, and of the routine or tree that each `run` frames. A note changes no run, count
-or judgment; `NLAlib.Ops.Stmt.pretty` reads the names back.
+The names are kept beside the tree. A declaration `foo` whose value is written with `ops%` or
+`routine%` gets a second definition `foo._noted`, the noted copy: the same tree with the names of
+the source as notes (`NLAlib.Ops.Stmt.note`), namely the names of the header, of each loop
+variable, scratch buffer and index binding, and of the routine or tree that each `run` frames.
+`noted_of% foo` is that copy, `NLAlib.Ops.Stmt.pretty` reads it as pseudocode, and erasing its
+notes (`NLAlib.Ops.Stmt.erase`) gives the tree of `foo`. The value of `foo` has no note, so no
+rule, count or certificate sees one. `noted% t` puts the notes in the value itself; the library
+does not use it.
 
 ## The header
 
@@ -326,9 +330,11 @@ meta def argL (sc : Scope) (as : Array (TSyntax `opsArg)) : MacroM (TSyntax `ter
   let ts ← as.mapM (argE sc)
   `([$ts,*])
 
-/-- **`noted% t`** elaborates the term `t` with notes: the trees that `ops%` and `routine%` build
-inside `t` carry the names of their header, of each bound variable and of the routine each `run`
-frames, as `NLAlib.Ops.Stmt.note`. Without `noted%` a tree has no note. -/
+/-- **`noted% t`** elaborates the term `t` with notes in the value: the trees that `ops%` and
+`routine%` build inside `t` carry the names of their header, of each bound variable and of the
+routine each `run` frames, as `NLAlib.Ops.Stmt.note`. Without `noted%` the value has no note and
+the names are in the noted copy (`ops_named%`). The library's trees are written without `noted%`;
+`NLAlib.Ops.Examples.Notes` uses it to show that proofs on a noted tree are the same. -/
 syntax (name := opsNoted) "noted% " term : term
 
 open Lean Elab Term in
@@ -338,7 +344,8 @@ open Lean Elab Term in
   | `(noted% $t) => withOptions (·.setBool `ops.notes true) (elabTerm t expected?)
   | _ => throwUnsupportedSyntax
 
-/-- `ops_note% n s` is `Stmt.note n s` under `noted%`, and `s` otherwise. -/
+/-- `ops_note% n s` is `Stmt.note n s` when notes are on (under `noted%`, and in the noted copy
+that `ops_named%` elaborates), and `s` otherwise. -/
 syntax (name := opsNote) "ops_note% " term:max term:max : term
 
 open Lean Elab Term in
@@ -372,6 +379,97 @@ open Lean Elab Term Meta in
       let lit : TSyntax `term := ⟨Syntax.mkStrLit (toString name)⟩
       elabTerm (← `(Stmt.note (Note.routine $lit $ds $as) $s)) expected?
     | none => elabTerm s expected?
+  | _ => throwUnsupportedSyntax
+
+/-- `ops_named% t` is `t`. When `t` is elaborated without `noted%` inside a declaration `foo`, the
+same term is elaborated once more with notes and stored as the definition `foo._noted` (then
+`foo._noted1`, … for further trees of the declaration), with the parameters of `foo` that the
+tree uses. The value of `foo` has no note; `foo._noted` is the same tree with the names of its
+source, for `NLAlib.Ops.Stmt.pretty` and for tools. When the second elaboration fails or leaves
+a metavariable nothing is stored, and an information message names the declaration and the
+reason: the declaration is unchanged, and `noted_of% foo` is then `foo`, without names. -/
+syntax (name := opsNamed) "ops_named% " term:max : term
+
+open Lean Elab Term Meta in
+/-- Elaborate `ops_named%`. The state of the elaborator after the term is restored, apart from
+the environment, so the noted copy cannot influence the declaration being elaborated. -/
+@[term_elab opsNamed] meta def elabOpsNamed : TermElab := fun stx expected? => do
+  match stx with
+  | `(ops_named% $t) =>
+    let e ← elabTerm t expected?
+    if (← getOptions).getBool `ops.notes false then return e
+    let some decl ← getDeclName? | return e
+    let saved ← saveState
+    try
+      let eN ← withoutErrToSorry <| withEnableInfoTree false <|
+        withSynthesize (postpone := .no) <|
+          withOptions (·.setBool `ops.notes true) (elabTermEnsuringType t expected?)
+      let eN ← instantiateMVars eN
+      if eN.hasMVar then throwError "ops_named%: the noted tree has a metavariable"
+      let mut name := decl ++ `_noted
+      let mut k := 1
+      while (← getEnv).contains name do
+        name := decl ++ Name.mkSimple s!"_noted{k}"
+        k := k + 1
+      discard <| mkAuxDefinitionFor name eN
+      let env ← getEnv
+      saved.restore
+      setEnv env
+    catch ex =>
+      saved.restore
+      logInfo (m!"ops%: no named copy `{decl}._noted` is stored, the elaboration with the " ++
+        m!"names failed:{indentD ex.toMessageData}")
+    return e
+  | _ => throwUnsupportedSyntax
+
+/-- `ops_tree% t` is `t`, a tree defined elsewhere. Under notes, when `t` is a constant `foo`
+(possibly applied) that has a noted copy `foo._noted`, it is that copy at the same arguments. -/
+syntax (name := opsTree) "ops_tree% " term:max : term
+
+open Lean Elab Term Meta in
+/-- Elaborate `ops_tree%`. -/
+@[term_elab opsTree] meta def elabOpsTree : TermElab := fun stx expected? => do
+  match stx with
+  | `(ops_tree% $t) =>
+    unless (← getOptions).getBool `ops.notes false do return ← elabTerm t expected?
+    let head : Syntax := match t.raw with
+      | `(($f:ident $_*)) => f
+      | `(($f:ident)) => f
+      | `($f:ident $_*) => f
+      | `($f:ident) => f
+      | _ => Syntax.missing
+    if head.isIdent then
+      let noted := mkIdentFrom head (head.getId ++ `_noted)
+      let t' : Syntax := t.raw.replaceM (m := Id) fun s => if s == head then some noted else none
+      let saved ← saveState
+      try
+        return ← withoutErrToSorry (elabTermEnsuringType t' expected?)
+      catch _ => saved.restore
+    elabTerm t expected?
+  | _ => throwUnsupportedSyntax
+
+/-- `noted_of% foo` is the noted copy `foo._noted` of the tree or routine `foo`, when there is
+one, and `foo` otherwise. Every declaration of the library written with `ops%` or `routine%`
+has a copy, except:
+
+* a declaration written with `noted%`, which carries its notes itself and gets no copy
+  (`NLAlib.Ops.Examples.Integrator.myStep`, `NLAlib.Ops.Examples.Integrator.myIntegrate` and
+  `NLAlib.Ops.Examples.Routines.sum2`): `noted_of% foo` is `foo`, with its notes;
+* a tree in an `example` or outside a declaration: there is no name to store a copy under;
+* a declaration whose elaboration with the names fails: `ops_named%` reports it with an
+  information message when the declaration is compiled (none in the library). -/
+syntax:max (name := opsNotedOf) "noted_of% " ident : term
+
+open Lean Elab Term in
+/-- Elaborate `noted_of%`. -/
+@[term_elab opsNotedOf] meta def elabOpsNotedOf : TermElab := fun stx expected? => do
+  match stx with
+  | `(noted_of% $f:ident) =>
+    let saved ← saveState
+    try
+      return ← withoutErrToSorry (elabTerm (mkIdentFrom f (f.getId ++ `_noted)) expected?)
+    catch _ => saved.restore
+    elabTerm f expected?
   | _ => throwUnsupportedSyntax
 
 /-- A list of names as a term: the strings of a note. -/
@@ -478,7 +576,7 @@ macro_rules
       let names (xs : Array Ident) := xs.map fun x => toString x.getId
       let tree ← Builder.blockE (← Builder.header ds.getElems ins.getElems outs.getElems)
         Builder.depth b
-      `(ops_note% (Note.header $(← Builder.strL (names ds.getElems))
-        $(← Builder.strL (names (ins.getElems ++ outs.getElems)))) $tree)
+      `(ops_named% (ops_note% (Note.header $(← Builder.strL (names ds.getElems))
+        $(← Builder.strL (names (ins.getElems ++ outs.getElems)))) $tree))
 
 end NLAlib.Ops

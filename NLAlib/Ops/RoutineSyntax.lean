@@ -7,6 +7,7 @@ module
 
 public import NLAlib.Ops.Routine
 public import NLAlib.Ops.Logic.Builder
+public import NLAlib.Ops.Notes
 
 /-!
 # Writing a routine and its specification
@@ -14,8 +15,9 @@ public import NLAlib.Ops.Logic.Builder
 `routine% [n, k] (b : n, x : n) → (x, r : n, p : n) { … }` is a **term** whose value is a plain
 `NLAlib.Ops.Routine`: the header is the interface, and the body is a program of the builder
 (`NLAlib/Ops/Logic/Builder.lean`) in which the dimensions and the operands are named. Nothing of
-the notation survives in the value, unless the term is written under `noted%`, which records the
-names in the tree as notes (`NLAlib.Ops.Stmt.note`).
+the notation survives in the value. The names are kept in the noted copy of the declaration
+(`foo._noted`, read with `noted_of% foo`): the same routine whose tree carries the names as notes
+(`NLAlib.Ops.Stmt.note`). `(noted_of% foo).pretty` reads it as pseudocode.
 
 ## The header
 
@@ -300,11 +302,13 @@ end Builder
 
 open Lean Builder in
 macro_rules
-  | `(routine% [$ds,*] ($ins,*) → ($outs,*) $cs:routineClause* $b:opsBlock) =>
-    routineE ds.getElems ins.getElems outs.getElems cs fun ins outs => do
+  | `(routine% [$ds,*] ($ins,*) → ($outs,*) $cs:routineClause* $b:opsBlock) => do
+    let r ← routineE ds.getElems ins.getElems outs.getElems cs fun ins outs => do
       blockE (← header ds.getElems ins outs) depth b
-  | `(routine% [$ds,*] ($ins,*) → ($outs,*) $cs:routineClause* := $t:term) =>
-    routineE ds.getElems ins.getElems outs.getElems cs fun _ _ => pure t
+    `(ops_named% ($r))
+  | `(routine% [$ds,*] ($ins,*) → ($outs,*) $cs:routineClause* := $t:term) => do
+    let r ← routineE ds.getElems ins.getElems outs.getElems cs fun _ _ => `(ops_tree% ($t))
+    `(ops_named% ($r))
 
 open Lean Builder in
 macro_rules
@@ -323,5 +327,10 @@ macro_rules
         post := fun d $ω':ident X Y => match d, X, Y with
           | [$dp,*], [$xp,*], [$yp,*] => $Q
           | _, _, _ => False })
+
+/-- The tree of a routine as pseudocode (`NLAlib.Ops.Stmt.pretty`). The names are those of the
+notes, so read a library routine `foo` through its noted copy: `(noted_of% foo).pretty`. -/
+def Routine.pretty {Op Tst : Type} [Repr Op] [Repr Tst] (R : Routine Op Tst) : String :=
+  R.body.pretty
 
 end NLAlib.Ops

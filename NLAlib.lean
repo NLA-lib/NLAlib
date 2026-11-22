@@ -1257,6 +1257,7 @@ public import NLAlib.Ops.Examples.RoutineProblem
 public import NLAlib.Ops.Examples.Split
 public import NLAlib.Ops.Examples.StochRound
 public import NLAlib.Ops.Examples.Strided
+public import NLAlib.Ops.Examples.VectorSum
 public import NLAlib.Ops.Exec
 public import NLAlib.Ops.Frame
 public import NLAlib.Ops.IndexDegrees

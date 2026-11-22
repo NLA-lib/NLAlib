@@ -102,12 +102,19 @@ theorem prepare_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
   have hlG : m₁.Live [(b.1, b.2 + n * k)] := by
     simp only [Mem.live_cons, Mem.live_nil]
     exact ⟨(hl.congr hfr₁.length_eq) b (by simp), trivial⟩
-  refine Writes.seq_le ((sampleVector_writes hSample stream
-    (by change b.2 + n * k + n * ell ≤ m₁.store.len b.1
-        rw [hfr₁.len_eq]
-        rw [hsize] at hb
-        omega)).in_frame rfl rfl hlG) htail ?_
-  intro m₂ hfr₂ ⟨hProbe, hp₂⟩
+  have hroomG : m₁.Room [(b.1, b.2 + n * k)] [n * ell] := by
+    simp only [Mem.room_cons, Mem.room_nil, and_true]
+    rw [hfr₁.len_eq]
+    rw [hsize] at hb
+    omega
+  call (sampleRoutine_meets hSample stream) [n * ell] ((b.1, b.2 + n * k)) as m₂ hfr₂ hp₂ (ws) hpost
+  have hfr₂ : m₁.store.EqOff (Store.inBlock b.1 (b.2 + n * k) (n * ell)) m₂.store :=
+    hfr₂.mono (by fp_sub)
+  have hProbe : m₂.store.readBlock b.1 (b.2 + n * k) (n * ell) =
+      some (τ.window stream m₁.pos (n * ell)) := by
+    have h : ws = (τ.shift m₁.pos).window stream 0 (n * ell) := hpost
+    rw [h, Tape.window_shift] at hws
+    exact hws
   have hImage₂ := hfr₂.keep (Store.readsOnly_readBlock _ _ _ _) hdis.symm hImage
   let S := (EntryCodec.scalar 𝕜).matrix n k (τ.window stream m.pos (n * k))
   let G := (EntryCodec.scalar 𝕜).matrix n ell (τ.window stream (m.pos + n * k) (n * ell))

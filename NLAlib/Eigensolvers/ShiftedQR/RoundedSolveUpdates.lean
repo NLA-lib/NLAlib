@@ -217,7 +217,9 @@ omit [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
 for the block $[lo, lo + d)$ of order-$N$ matrices $\mathbf{A}$ at `a` and $\mathbf{U}$ at `uo` and
 the leaf accumulator $\mathbf{U}_b$ at `ub` (three blocks apart), `roundedLeafUpdate` writes only
 the matrix and the accumulator, and stores `NLAlib.ShiftedQR.leafUpdateMatrix` and
-`NLAlib.ShiftedQR.leafUpdateAccumulator`. -/
+`NLAlib.ShiftedQR.leafUpdateAccumulator`.
+Shared by the trees of `NLAlib.ShiftedQR.roundedProcessLargeWith`,
+`NLAlib.ShiftedQR.roundedProcessRangeWith`, `NLAlib.ShiftedQR.roundedLeafRest`. -/
 theorem roundedLeafUpdate_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {μ : Mem ℝ} {N lo d : ℕ} (hN : lo + d ≤ N)
     {ub a uo : ℕ × ℕ} {Ub : Matrix (Fin d) (Fin d) ℂ} {A U : Matrix (Fin N) (Fin N) ℂ}
@@ -286,7 +288,9 @@ log at `lg` of `ns` slots of `w` entries whose entries have their two planes `lo
 inside the order $N$, and the order-$N$ matrices $\mathbf{A}$ at `a` and $\mathbf{U}$ at `uo`
 (three blocks apart), `roundedDecoupleUpdate` writes only the matrix and the accumulator and
 stores `NLAlib.ShiftedQR.decoupleUpdateMatrix` and the log replayed on the columns of
-$\mathbf{U}$. -/
+$\mathbf{U}$.
+Shared by the trees of `NLAlib.ShiftedQR.roundedLeafUpdate`,
+`NLAlib.ShiftedQR.roundedProcessLargeWith`, `NLAlib.ShiftedQR.roundedLargeRest`. -/
 theorem roundedDecoupleUpdate_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hQ : IsToNat id I) (hC : IsCmp id I) {τ : Tape ℝ} {μ : Mem ℝ} {N lo d i ns w : ℕ}
     (hN : lo + d ≤ N) (hi : i + 1 < d) {L : List (Option (List GivensEntry))}

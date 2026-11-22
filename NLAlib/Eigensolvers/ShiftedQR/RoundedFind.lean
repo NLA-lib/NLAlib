@@ -430,7 +430,9 @@ def findRounded (Tau : Stmt O Q) : Stmt O Q := ops% [d, m, k] (H, SS) → (Cente
 
 omit [Has ScalarOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- A dimension literal up to an exact bound stores the natural as an exact real word. The rule for
-one call of the operation. -/
+one call of the operation.
+A step in the proof of `NLAlib.ShiftedQR.findRitzInitialize_writes_of_exactNatLit`,
+`NLAlib.ShiftedQR.findRitzDecision_writes_of_exactNatLit`. -/
 private theorem indexNat_writes_of_exactNatLit {M : Machine ℝ} {I : Interp O Q ℝ}
     (hL : IsIndexLit M I) {B : ℕ} (hNat : IsExactNatLit id M B) {τ : Tape ℝ} {m : Mem ℝ}
     {ρ : Env} {e : IExp} {out : Operand} {n : ℕ} {z : ℕ × ℕ}
@@ -536,7 +538,8 @@ local notation "τinv" H:max l:max e:max =>
 omit [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- The two comparison values of a level: the first half's in `R[4]`, the second half's in `R[3]`,
 each within $0.0011$ of its inverse norm. Only these two words are written. A fragment: its tree
-runs only inside the tree of `NLAlib.ShiftedQR.findRoundedLevel`. -/
+runs only inside the tree of `NLAlib.ShiftedQR.findRoundedLevel`.
+A fragment of the tree `NLAlib.ShiftedQR.findRoundedLevel`. -/
 private theorem findRoundedNorms_writes {I : Interp O Q ℝ} {Tau : Stmt O Q} {n : ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {shifts : List ℂ}
     (hTau : IsHalfTau H shifts Tau I) {τ : Tape ℝ} {m : Mem ℝ} {k a h e : ℕ}
@@ -623,7 +626,8 @@ private theorem findRoundedState_succ {n : ℕ} {H : Matrix (Fin (n + 1)) (Fin (
 omit [Has ScalarOp O] in
 /-- **One level of `Find` with computed values**: from the state after `j < m` levels, the level
 advances the search words to the state after `j + 1` levels, writing only the six search words. A
-fragment: its tree runs only inside the tree of `NLAlib.ShiftedQR.findRoundedWithScratch`. -/
+fragment: its tree runs only inside the tree of `NLAlib.ShiftedQR.findRoundedWithScratch`.
+A fragment of the tree `NLAlib.ShiftedQR.findRoundedWithScratch`. -/
 private theorem findRoundedLevel_writes {M : Machine ℝ} {I : Interp O Q ℝ} {Tau : Stmt O Q}
     (hL : IsIndexLit M I) (hCmp : IsCmp id I) (hQ : IsToNat id I) {n m k j : ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {shifts : List ℂ}

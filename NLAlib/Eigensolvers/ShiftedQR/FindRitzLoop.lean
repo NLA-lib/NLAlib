@@ -31,7 +31,8 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op]
 /-- The actual level loop reaches the mathematical selected index while retaining the source blocks.
 Every runtime natural-index bound follows from the power-of-two window.
 [BanksGarzaVargasSrivastava2021, §4.3]. A fragment: its tree runs only inside the tree of
-`NLAlib.ShiftedQR.findRitzSearchWithScratch`. -/
+`NLAlib.ShiftedQR.findRitzSearchWithScratch`.
+A fragment of the tree `NLAlib.ShiftedQR.findRitzSearchWithScratch`. -/
 theorem findRitzLevels_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I)
     (hCmp : IsCmp id I) (hToNat : IsToNat id I)

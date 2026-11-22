@@ -74,12 +74,17 @@ theorem leaf_writes [Has IndexOp Op] {M : Machine K} {I : Interp Op Tst K} (hI :
   simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right,
     Fp.disj_bot_right, and_true] at hap
   obtain ⟨⟨hUE, hUK, hUA⟩, ⟨hEK, hEA⟩, -⟩ := hap
-  have hU := writes_frame (τ := τ) (ρ := Env.frame [n] [a, u, e, kind])
-    (ds := [.var 0]) (args := [⟨1, .var 2⟩]) rfl rfl (show m.Live [u] from fun z hz => hl z (by
-      obtain rfl := List.mem_singleton.mp hz
-      simp))
-    (PairMatrix.identity_writes hI hu)
-  refine hU.seq fun m₁ hfr₁ ⟨hU₁, hp₁⟩ => ?_
+  have hlU : m.Live [u] := fun z hz => hl z (by
+    obtain rfl := List.mem_singleton.mp hz
+    simp)
+  have hroomU : m.Room [u] [2 * (n * n)] := by
+    simpa only [Mem.room_cons, Mem.room_nil, and_true] using hu
+  call (PairMatrix.identityRoutine_meets hI) [n] (u) as m₁ hfr₁ hp₁ (us) hpost
+  have hfr₁ : m.store.EqOff (Store.inBlock u.1 u.2 (2 * (n * n))) m₁.store :=
+    hfr₁.mono (by fp_sub)
+  have hU₁ := PairMatrix.holdsVec_of_identitySpec hus hpost
+  refine Writes.mono (F := Store.inBlock e.1 e.2 n ⊔ Store.inBlock kind.1 kind.2 1) ?_
+    le_sup_right fun _ _ h => h
   have hA₁ := hfr₁.keep (Store.readsOnly_holdsVec a.1 a.2 (2 * (n * n)) v) hUA ha
   have hE := writes_frame (τ := τ) (ρ := Env.frame [n] [a, u, e, kind])
     (ds := [.var 0]) (args := [⟨0, .var 1⟩, ⟨2, .var 3⟩]) rfl rfl

@@ -30,6 +30,7 @@ It provides a closed dimension/fuel/grid expression for the same total execution
 * `NLAlib.ShiftedQR.exactWorkCoefficient`: the fixed structural coefficient.
 * `NLAlib.ShiftedQR.exactWorkDegree`: the fixed polynomial loop degree.
 * `NLAlib.ShiftedQR.exactPolynomialWork`: explicit parameter and finite-kernel expression.
+* `NLAlib.ShiftedQR.exactTreeWork`: the same majorant read off the tree.
 * `NLAlib.ShiftedQR.exactPolynomialWork_eq`: the kernel-checked numeric expression.
 * `NLAlib.ShiftedQR.exactAlgorithm_runs_with_work_le`: total same-run work and output.
 * `NLAlib.ShiftedQR.countedDeflationAlgorithm`: canonical certificate with this work field.
@@ -85,23 +86,36 @@ def spectralWorkEnvelope (kernelWork : EigenvalueKernelOp → List ℕ → ℕ)
     (arity extent : ℕ) : ℕ :=
   weightEnvelope (fun ds => max (kernelWork .ritz ds) (kernelWork .smallEig ds)) arity extent
 
-/-- Full work majorant: a fixed-degree polynomial in the five natural parameters, multiplied
-by one plus the explicit finite spectral-cost envelope. The coefficient is computed from the
-fixed instruction tree. -/
-def exactPolynomialWork (kernelWork : EigenvalueKernelOp → List ℕ → ℕ)
+/-- The work majorant read off the fixed instruction tree: its structural coefficient and loop
+degree, its primitive arity and dimension degree. -/
+def exactTreeWork (kernelWork : EigenvalueKernelOp → List ℕ → ℕ)
     (d : Fin 5 → ℕ) : ℕ :=
   exactWorkCoefficient * exactWorkBase d ^ exactWorkDegree *
     (1 + spectralWorkEnvelope kernelWork exactCallArity (exactWorkBase d ^ exactCallDegree))
 
+/-- Full work majorant: a polynomial of degree fourteen in the five natural parameters with
+coefficient 17109, multiplied by one plus the explicit finite spectral-cost envelope at primitive
+arity two and dimension degree five. It is stated with its numerals, so the bound of a
+certificate is an explicit expression in the sizes. -/
+def exactPolynomialWork (kernelWork : EigenvalueKernelOp → List ℕ → ℕ)
+    (d : Fin 5 → ℕ) : ℕ :=
+  17109 * exactWorkBase d ^ 14 *
+    (1 + spectralWorkEnvelope kernelWork 2 (exactWorkBase d ^ 5))
+
+/-- The numerals of the work majorant are those of the actual instrumented tree: coefficient,
+work degree, primitive arity and primitive dimension degree are kernel-checked reductions of
+it. -/
+theorem exactTreeWork_eq (kernelWork : EigenvalueKernelOp → List ℕ → ℕ)
+    (d : Fin 5 → ℕ) : exactTreeWork kernelWork d = exactPolynomialWork kernelWork d := by
+  simp only [exactTreeWork, exactPolynomialWork, exactWorkCoefficient_eq, exactWorkDegree_eq,
+    exactCallArity_eq, exactCallDegree_eq]
+
 /-- The complete numeric work expression has coefficient 17109, work degree fourteen,
-primitive arity two and primitive dimension degree five. All four values are kernel-checked
-reductions of the same actual instrumented tree. -/
+primitive arity two and primitive dimension degree five. -/
 theorem exactPolynomialWork_eq (kernelWork : EigenvalueKernelOp → List ℕ → ℕ)
     (d : Fin 5 → ℕ) :
     exactPolynomialWork kernelWork d = 17109 * exactWorkBase d ^ 14 *
-      (1 + spectralWorkEnvelope kernelWork 2 (exactWorkBase d ^ 5)) := by
-  simp only [exactPolynomialWork, exactWorkCoefficient_eq, exactWorkDegree_eq,
-    exactCallArity_eq, exactCallDegree_eq]
+      (1 + spectralWorkEnvelope kernelWork 2 (exactWorkBase d ^ 5)) := rfl
 
 private theorem exact_initial_indices_le (d : Fin 5 → ℕ) :
     List.Forall₂ (fun v e => v ≤ exactWorkBase d ^ e)
@@ -158,10 +172,11 @@ theorem exactAlgorithm_runs_with_work_le
     (exactDeflationAlgorithm kernelWork kernelWorkspace).correct d hd x I hI tape
   have hwork : (resources kernelWork kernelWorkspace).work st.cost ≤
       exactPolynomialWork kernelWork d :=
-    Program.exec_work_le_coefficient_mul_pow (deflationProgram scalarDecouple)
-      (resources kernelWork kernelWorkspace) (base := exactWorkBase d)
-      (by dsimp [exactWorkBase]; omega)
-      (exact_initial_indices_le d) (exact_work_envelope kernelWork kernelWorkspace d) hr
+    exactTreeWork_eq kernelWork d ▸
+      Program.exec_work_le_coefficient_mul_pow (deflationProgram scalarDecouple)
+        (resources kernelWork kernelWorkspace) (base := exactWorkBase d)
+        (by dsimp [exactWorkBase]; omega)
+        (exact_initial_indices_le d) (exact_work_envelope kernelWork kernelWorkspace d) hr
   exact ⟨st, hr, hwork,
     ((resources kernelWork kernelWorkspace).span_le_work st.cost).trans hwork, hg⟩
 

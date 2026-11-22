@@ -88,6 +88,7 @@ The rules are in topic guides under `docs/contributing/`, each short enough to r
 | [statements](docs/contributing/statements.md) | types, statement shape, numerical bounds, hypothesis interfaces |
 | [vocabulary](docs/contributing/vocabulary.md) | one spelling per concept, with its Mathlib bridge |
 | [programs](docs/contributing/programs.md) | fixed programs, operation models, total certificates and counted resources |
+| [routines](docs/contributing/routines.md) | writing, proving and certifying a routine: the layers, one worked example, the pitfalls |
 | [docstrings](docs/contributing/docstrings.md) | docstrings, citations, result ids, algorithm tags, LaTeX notation |
 | [proofs](docs/contributing/proofs.md) | proof style and what each library may contain |
 | [design](docs/contributing/design.md) | design notes for new material, Mathlib deviations |
@@ -128,13 +129,16 @@ It runs, in order:
    [proofs](docs/contributing/proofs.md)) and its fixtures `scripts/replay_fixtures.sh`;
 4. fixed-program checks `scripts/OpsPrograms.lean` (E2), the line of every Ops certificate
    against `scripts/ops_certificates.txt` (model, resource fields, problem, oracles, randomized
-   claim; [checks](docs/contributing/checks.md)) and kernel-checked structural/accounting
+   claim; [checks](docs/contributing/checks.md)), the script's own fixtures for that
+   classification, and kernel-checked structural/accounting
    fixtures ([programs](docs/contributing/programs.md));
 5. `scripts/check_refs.py` (citations, result ids, `Asymptotic:` and `Algorithm:` tags),
-   `scripts/gen_rules_md.py --check` (the generated rule files are current),
+   `scripts/gen_rules_md.py --check` (the generated rule files are current), the unit tests of
+   the check scripts (`python3 -m unittest discover -s scripts -p 'test_*.py'`),
    `scripts/check_constants.py` (named-bound values, [statements](docs/contributing/statements.md)
-   §2), and `scripts/check_latex.mjs` (docstring LaTeX renders with KaTeX; skipped with a message
-   if KaTeX is not installed: `npm install --no-save --no-package-lock katex@0.16.22`);
+   §2), and `scripts/check_latex.mjs` with its tests `scripts/test_check_latex.mjs` (docstring
+   LaTeX renders with KaTeX; skipped with a message if KaTeX is not installed:
+   `npm install --no-save --no-package-lock katex@0.16.22`);
 6. the declaration extraction (`scripts/Explore.lean`) and `scripts/check_rules.py` on it: every
    rule with an id, the naming rules N1–N18 included, against the ratchet
    ([checks](docs/contributing/checks.md) §1);
@@ -142,10 +146,10 @@ It runs, in order:
 
 `scripts/stage_check.sh EXCLUDE_REGEX` leaves out the modules matching the regex from steps 1
 and 6, for files you are still editing. CI (`.github/workflows/ci.yml`) runs the same checks on
-every push and PR, and in addition the unit tests of the checks
-(`python3 -m unittest discover -s scripts -p 'test_*.py'` and
-`node --test scripts/test_check_latex.mjs`, also on Windows) and `mk_all --check` for
-`NLAlibTools`; run the unit tests too if you touched `scripts/`.
+every push and PR, and in addition the unit tests of the checks on Windows and
+`mk_all --check` for `NLAlibTools`. One of those unit tests requires
+`NLAlib/Ops/Tools/LintAll.lean` to import every module in a subdirectory of `NLAlib/Ops` other
+than `Logic/` and `Tools/`: add the import when you add such a module.
 
 While working, the fast checks are `lake lean <file>` and
 `python3 scripts/check_rules.py --files <the files you changed>`, which checks the source-text

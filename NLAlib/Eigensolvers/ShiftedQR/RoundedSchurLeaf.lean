@@ -61,7 +61,9 @@ $\|\mathbf{H}\|_2 \le \Sigma$, except with probability $\varphi$ the run of
 upper triangular matrix and an accumulator tracked from $(\mathbf{U}, \mathbf{H})$ with the
 backward error $\delta$ (`NLAlib.ShiftedQR.solveRoundedWith_pwrites` with the decoupler of
 `NLAlib.ShiftedQR.roundedDecoupleWith_randomDecouplingRoutineContract_of_le_uShQR_at` and the
-budget `NLAlib.ShiftedQR.shqrSchurError_le`). -/
+budget `NLAlib.ShiftedQR.shqrSchurError_le`).
+Shared by the trees of `NLAlib.ShiftedQR.roundedShQRSmallEig`,
+`NLAlib.ShiftedQR.roundedShQRSchurWith`. -/
 theorem roundedShQRWith_pwrites_of_le {Mch : Machine ℝ} {I : Interp O Q ℝ}
     {u : ℝ} {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)

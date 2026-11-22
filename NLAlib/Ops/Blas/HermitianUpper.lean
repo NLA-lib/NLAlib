@@ -26,7 +26,8 @@ namespace NLAlib.Ops.Hermitian
 variable {K Op Tst : Type} [Has ScalarOp Op]
 
 /-- Copying the strict upper triangle returns the same stored entries and preserves every
-other cell. Input and output blocks are disjoint, including within one live arena buffer. -/
+other cell. Input and output blocks are disjoint, including within one live arena buffer.
+An end statement in operand form: no other declaration of the library is proved from it. -/
 theorem copyTriangle_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {τ : Tape K} {n : ℕ} {x y : ℕ × ℕ} {m : Mem K} {A : ℕ → ℕ → K × K}
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (n * n)))
@@ -72,7 +73,9 @@ theorem copyTriangle_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar
 omit [Has ScalarOp Op] in
 /-- A triangular entry procedure needs only a word-level transition specification. The shared
 matrix rule supplies its actual entry, transposed entry, scalar, output room, and all framing.
-The procedure is fixed before matrix sizes and values are chosen. -/
+The procedure is fixed before matrix sizes and values are chosen.
+Shared by the trees of `NLAlib.Ops.Hermitian.copyTriangle`, `NLAlib.Ops.Hermitian.diagonal`,
+`NLAlib.Ops.Hermitian.upper` and 4 more. -/
 theorem triangle_writes {I : Interp Op Tst K} {τ : Tape K} (entry : Stmt Op Tst)
     (F : (K × K) → (K × K) → K → K × K)
     (hentry : ∀ (μ : Mem K) (x xt c z : ℕ × ℕ) (a aT : K × K) (d : K),
@@ -135,7 +138,9 @@ theorem triangle_writes {I : Interp Op Tst K} {τ : Tape K} (entry : Stmt Op Tst
 
 omit [Has ScalarOp Op] in
 /-- A diagonal entry procedure is lifted to all diagonal positions by the injective-region
-rule. Its matrix-level proof supplies no partial-output invariant or component framing. -/
+rule. Its matrix-level proof supplies no partial-output invariant or component framing.
+Shared by the trees of `NLAlib.ShiftedQR.stepComptau`,
+`NLAlib.ShiftedQR.RandomDecouplingRoutineContract`, `NLAlib.ShiftedQR.replicatePair` and 16 more. -/
 theorem diagonal_writes {I : Interp Op Tst K} {τ : Tape K} (entry : Stmt Op Tst)
     (F : (K × K) → K → K × K)
     (hentry : ∀ (μ : Mem K) (x c z : ℕ × ℕ) (a : K × K) (d : K),
@@ -200,7 +205,9 @@ theorem diagonal_writes {I : Interp Op Tst K} {τ : Tape K} (entry : Stmt Op Tst
 
 omit [Has ScalarOp Op] in
 /-- Strict-upper and diagonal procedure specifications compose into one inclusive upper
-matrix specification. Region disjointness preserves the strict-upper entries automatically. -/
+matrix specification. Region disjointness preserves the strict-upper entries automatically.
+Shared by the trees of `NLAlib.Schur.RandomRegularizerContract`,
+`NLAlib.Schur.HessenbergReducerContract`, `NLAlib.Schur.TerminatingSchurCore` and 27 more. -/
 theorem upper_writes {I : Interp Op Tst K} {τ : Tape K}
     (offDiagonal diagonalEntry : Stmt Op Tst) {n : ℕ} {x c y : ℕ × ℕ} {m : Mem K}
     (U : ℕ → ℕ → K × K) (D : ℕ → K × K)
@@ -245,7 +252,8 @@ theorem upper_writes {I : Interp Op Tst K} {τ : Tape K}
   exact ⟨Store.HoldsRowEntries.of_upper_and_diagonal h.2 h.1.1, h.1.2.trans hp.2⟩
 
 /-- Shifting the upper triangle writes the copied strict-upper words and the machine-rounded
-diagonal difference, with zero imaginary diagonal. Disjoint regions of one arena are allowed. -/
+diagonal difference, with zero imaginary diagonal. Disjoint regions of one arena are allowed.
+A fragment of the tree `NLAlib.Ops.Hermitian.shift`. -/
 theorem shiftUpper_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {τ : Tape K} {n : ℕ} {x c y : ℕ × ℕ} {m : Mem K} {A : ℕ → ℕ → K × K} {d : K}
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (n * n)))
@@ -272,7 +280,8 @@ theorem shiftUpper_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M
     exact shiftDiagonal_wp hI hr hc hz rfl) hxy hcy hX' hc' hY' hl'
 
 /-- Scaling the upper triangle writes actual rounded quotients and zero imaginary diagonal.
-Input/output matrices may share an arena when their word regions are disjoint. -/
+Input/output matrices may share an arena when their word regions are disjoint.
+A fragment of the tree `NLAlib.Ops.Hermitian.scale`. -/
 theorem scaleUpper_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {τ : Tape K} {n : ℕ} {x c y : ℕ × ℕ} {m : Mem K} {A : ℕ → ℕ → K × K} {d : K}
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (n * n)))
@@ -301,7 +310,8 @@ theorem scaleUpper_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M
     exact scaleDiagonal_wp hI hr hc hz rfl) hxy hcy hX' hc' hY' hl'
 
 /-- Hermitian averaging writes the two actual rounded operations per component, with zero
-imaginary diagonal. Every transposed input word belongs to the same supplied matrix. -/
+imaginary diagonal. Every transposed input word belongs to the same supplied matrix.
+A fragment of the tree `NLAlib.Ops.Hermitian.average`. -/
 theorem averageUpper_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {τ : Tape K} {n : ℕ} {x c y : ℕ × ℕ} {m : Mem K} {A : ℕ → ℕ → K × K} {d : K}
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (n * n)))

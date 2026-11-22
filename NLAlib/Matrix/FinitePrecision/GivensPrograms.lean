@@ -627,7 +627,8 @@ def machineColRotationOn {n : ℕ} (M : Machine ℝ) (i j : Fin n) (c s : ℂ) (
 
 /-- Scalar pair rotations of the rows $k, k + 1$ over the columns $j_0, \dots, j_0 + n_c - 1$
 store `NLAlib.machineRowRotationOn`, on any machine; the conditions are those of
-`NLAlib.rotateRowsWithScratch_writes_word`. [GolubVanLoan2013, §5.1.8]. -/
+`NLAlib.rotateRowsWithScratch_writes_word`. [GolubVanLoan2013, §5.1.8].
+Shared by the trees of `NLAlib.givensReplayWith`, `NLAlib.givensReplayRows`. -/
 theorem rotateRowsOn_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {n k j0 nc : ℕ} {a c s t : ℕ × ℕ} {H : Matrix (Fin n) (Fin n) ℂ} {cv sv : ℂ}
@@ -691,7 +692,8 @@ theorem rotateRowsOn_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 /-- Scalar pair rotations of the columns $k, k + 1$ over the rows $i_0, \dots, i_0 + n_r - 1$
 store `NLAlib.machineColRotationOn`, on any machine; the conditions are those of
-`NLAlib.rotateColumnsWithScratch_writes_word`. [GolubVanLoan2013, §5.1.8]. -/
+`NLAlib.rotateColumnsWithScratch_writes_word`. [GolubVanLoan2013, §5.1.8].
+Shared by the trees of `NLAlib.givensReplayRows`, `NLAlib.givensReplayColumns`. -/
 theorem rotateColumnsOn_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {n k i0 nr : ℕ} {a c s t : ℕ × ℕ} {H : Matrix (Fin n) (Fin n) ℂ} {cv sv : ℂ}

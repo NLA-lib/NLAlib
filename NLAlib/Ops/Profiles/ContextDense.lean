@@ -55,7 +55,9 @@ theorem eval_frameOperand (d : List ℕ) (args : List (ℕ × ℕ)) (i : Fin arg
   simp [Operand.eval, Env.frame, IExp.eval]
 
 /-- Context forwarding preserves the actual dense execution and its output footprint.
-No abstract matrix-vector call is executed by this leaf. -/
+No abstract matrix-vector call is executed by this leaf.
+Shared by the trees of `NLAlib.Ops.Examples.splitTable`, `NLAlib.Ops.Blas.level1Table`,
+`NLAlib.Ops.Blas.sumSeqTable` and 8 more. -/
 theorem impl_writes_word {I : Interp Op Tst ℝ} {tape : Tape ℝ} {mem : Mem ℝ}
     {M : Machine ℝ} (hS : IsScalar M I) (context : List (ℕ × ℕ))
     (index : Fin context.length) {m n : ℕ} {x y : ℕ × ℕ} (ds xs : List ℝ)
@@ -92,7 +94,9 @@ theorem impl_writes_word {I : Interp Op Tst ℝ} {tape : Tape ℝ} {mem : Mem �
       (fun a ha => hl a (by simp at ha ⊢; aesop)) hD hX hYD hYX hy)
 
 /-- Context forwarding preserves the actual dense execution and its output footprint.
-No abstract matrix-vector call is executed by this leaf. -/
+No abstract matrix-vector call is executed by this leaf.
+Shared by the trees of `NLAlib.Ops.Examples.splitTable`, `NLAlib.Ops.Blas.level1Table`,
+`NLAlib.Ops.Blas.sumSeqTable` and 8 more. -/
 theorem impl_writes {I : Interp Op Tst ℝ} {tape : Tape ℝ} {mem : Mem ℝ}
     (hS : IsScalar RCLikeBlas.machine I) (context : List (ℕ × ℕ))
     (index : Fin context.length) {m n : ℕ} {x y : ℕ × ℕ} (ds xs : List ℝ)

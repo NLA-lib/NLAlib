@@ -525,11 +525,12 @@ room for the written blocks (`hinit`); the output of `S` follows from the postco
 declared draws and the frame of the run (`hgood`); the resource fields of `S` bound the static
 count and scratch of the tree as in `NLAlib.Ops.Algorithm.ofWp`.
 
-This is the one constructor of certificates from routines. A certificate normally uses it
-through `NLAlib.Ops.Routine.Domain.algorithm`, on the problem derived from the routine, where
-`hinit` holds by construction; used directly it serves a problem that is not derived from a
-routine. Liveness and separation of the supplied buffers are not hypotheses: they hold for
-every problem
+This is the one construction of certificates from routines. Every certificate of the library
+uses it through `NLAlib.Ops.Routine.Domain.algorithmAt` (or its special case
+`NLAlib.Ops.Routine.Domain.algorithm`), on the problem derived from the routine, where
+`hinit` holds by construction; no certificate calls it directly. It is stated for any problem
+so that the derived problem is one instance and not a separate proof. Liveness and
+separation of the supplied buffers are not hypotheses: they hold for every problem
 (`NLAlib.Ops.Problem.live_slots`, `NLAlib.Ops.Routine.separated_slots`). When the budget, the
 scratch, the work and the span of `S` are those of the tree (`staticCost`, `staticPeak` and their
 weights, as in `NLAlib.Ops.Routine.manifest`), `hcost`, `hspace`, `hwork` and `hspan` hold by

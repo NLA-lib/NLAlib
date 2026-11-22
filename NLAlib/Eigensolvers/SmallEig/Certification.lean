@@ -424,7 +424,8 @@ noncomputable def smallEigSpecification (Mch : Machine ℝ) (nmax : ℕ) (c₁ c
   good d x _ _ m := SmallEigFrame d ((smallEigProblem Mch nmax c₁ c₂ admitted).initial d x) m
 
 /-- The program terminates on every admitted input, tape and interpretation of the model, writes
-only the output and leaves it stored. -/
+only the output and leaves it stored.
+A fragment of the tree `NLAlib.SmallEig.smallEigSpecification`. -/
 theorem smallEigProgram_wp {sU sG : ℕ} {d : Fin 3 → ℕ} (hd : SmallEigSizes Mch nmax c₁ c₂ d)
     (x : (smallEigProblem Mch nmax c₁ c₂ admitted).Input d) {I : Interp SmallEigOp Tst ℝ}
     (hI : (smallEigModel (smallEigProblem Mch nmax c₁ c₂ admitted) Mch sU).contracts d x I)
@@ -613,8 +614,8 @@ interpretation that is measurable and reads the tape only in its windows, the co
 only the matrix and the output and lists the spectrum of a matrix within $\delta$ of the input,
 except with probability at most $\varphi$. The tails $c_1$, $c_2$ of a complex Ginibre
 perturbation are hypotheses; `NLAlib.SmallEig.smallEigGinibreClaim` has them proved. -/
-noncomputable def smallEigClaim (admitted : ∃ d, SmallEigSizes Mch nmax c₁ c₂ d) (sU sG : ℕ)
-    {u : ℝ} (hM : StdModel u id Mch) (hA : c₁.BoundsGinibreGap)
+noncomputable def smallEigClaim (admitted : ∃ d, SmallEigSizes Mch nmax c₁ c₂ d)
+    (sU sG : ℕ) (hs : sU ≠ sG) {u : ℝ} (hM : StdModel u id Mch) (hA : c₁.BoundsGinibreGap)
     (hB : c₂.BoundsGinibreCondition) (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) :
     RandomizedClaim (smallEigAlgorithm Mch nmax c₁ c₂ admitted sU sG) where
   law _ _ := TapeModel.streams [(sU, volume.restrict (Set.Icc 0 1)), (sG, gaussianReal 0 1)]
@@ -627,8 +628,9 @@ noncomputable def smallEigClaim (admitted : ∃ d, SmallEigSizes Mch nmax c₁ c
         Store.inBlock 2 0 (2 * ((d 0 + 1) * (d 0 + 1)))) m.store ∧
     SmallEigSpectrum (0, 0) (2, 0) x.val.1.matrix x.val.1.δ m
   bound _ x := x.val.1.φ
+  realizable _ _ _ _ := TapeModel.realizable_uniform_gaussian hs
   holds := fun d hd x hx I hI hint Ω _ μ _ tape hlaw => by
-    obtain ⟨law, hfix, hξ⟩ := hlaw
+    obtain ⟨-, law, hfix, hξ⟩ := hlaw
     obtain ⟨hIm, win, hloc⟩ := hint
     obtain ⟨hMS, hδ, hδS, hφ, hφ1, hu⟩ := hx
     exact smallEig_algorithm_measureReal_not_accepts_le hM (hfix _ (List.Mem.head _))
@@ -640,16 +642,17 @@ the records `NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1
 `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$:
 `NLAlib.SmallEig.smallEigClaim` with no hypothesis on a random matrix. -/
 noncomputable def smallEigGinibreClaim
-    (admitted : ∃ d, SmallEigSizes Mch nmax ginibreGapTail ginibreConditionTail d) (sU sG : ℕ)
-    {u : ℝ} (hM : StdModel u id Mch) :
+    (admitted : ∃ d, SmallEigSizes Mch nmax ginibreGapTail ginibreConditionTail d)
+    (sU sG : ℕ) (hs : sU ≠ sG) {u : ℝ} (hM : StdModel u id Mch) :
     RandomizedClaim (smallEigAlgorithm Mch nmax ginibreGapTail ginibreConditionTail admitted
       sU sG) :=
-  smallEigClaim admitted sU sG hM boundsGinibreGap_ginibreGapTail
+  smallEigClaim admitted sU sG hs hM boundsGinibreGap_ginibreGapTail
     boundsGinibreCondition_ginibreConditionTail ginibreGapTail_b_pos ginibreConditionTail_b_pos
 
 /-- What the certificate states: at every admitted size, for every admitted input, every
 interpretation satisfying the contracts of the model and every tape, the run of the fixed program
-from the supplied buffers succeeds within the scratch, the budget, the work and the span of the
+from the supplied buffers succeeds within the scratch, the budget, the work, the span and the
+memory of the
 specification (`NLAlib.Ops.Routine.Domain.Checked`). The deterministic claim is termination
 within the footprint only; the accuracy of the computed spectrum holds with probability over the
 draws: `NLAlib.SmallEig.smallEig_algorithm_measureReal_not_accepts_le`. -/

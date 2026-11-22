@@ -44,7 +44,8 @@ def halfRounds : Stmt Op Tst := ops% [n, k, a, h, e] (H, SS, V, Flag) → (V, Fl
 
 /-- One segment computes its inverse-row fold or retains a witnessed singular candidate. All source
 words are preserved and no unused shift is tested. [BanksGarzaVargasSrivastava2021, §4.3]. A
-fragment: its tree runs only inside the tree of `NLAlib.ShiftedQR.halfRounds`. -/
+fragment: its tree runs only inside the tree of `NLAlib.ShiftedQR.halfRounds`.
+A fragment of the tree `NLAlib.ShiftedQR.halfRounds`. -/
 theorem halfRound_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k a h : ℕ} {b ss v f : ℕ × ℕ}
@@ -97,7 +98,8 @@ theorem halfRound_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 /-- The exponent loop computes the inverse-polynomial row or certifies a singular candidate. An
 exponent of zero does not inspect any selected shift. [BanksGarzaVargasSrivastava2021, §4.3]. A
-fragment: its tree runs only inside the tree of `NLAlib.ShiftedQR.halfNormAfterInit`. -/
+fragment: its tree runs only inside the tree of `NLAlib.ShiftedQR.halfNormAfterInit`.
+A fragment of the tree `NLAlib.ShiftedQR.halfNormAfterInit`. -/
 theorem halfRounds_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k a h e : ℕ} {b ss v f : ℕ × ℕ}

@@ -70,7 +70,9 @@ theorem row_eq (m n : ℕ) (data x : List 𝕜) (i : Fin m) :
 variable {I : Interp Op Tst 𝕜} {tape : Tape 𝕜} {mem : Mem 𝕜}
 
 /-- The streamed dense body returns all rows with one caller-owned temporary. The input
-matrix and vector may overlap each other; both remain separate from output and temporary. -/
+matrix and vector may overlap each other; both remain separate from output and temporary.
+Shared by the trees of `NLAlib.Deflation.program`, `NLAlib.ShiftedQR.deflationInputs`,
+`NLAlib.ShiftedQR.factorCoefficients` and 2 more. -/
 theorem apply_writes_word {M : Machine 𝕜} (hS : IsScalar M I)
     {m n : ℕ} {data x t y : ℕ × ℕ} (ds xs : List 𝕜)
     (hl : mem.Live [data, x, t, y])
@@ -139,7 +141,9 @@ theorem apply_writes_word {M : Machine 𝕜} (hS : IsScalar M I)
     exact ⟨h.2, Store.holdsVec_iff_readBlock.mp h.1⟩
 
 /-- The streamed dense body returns all rows with one caller-owned temporary. The input
-matrix and vector may overlap each other; both remain separate from output and temporary. -/
+matrix and vector may overlap each other; both remain separate from output and temporary.
+Shared by the trees of `NLAlib.Deflation.program`, `NLAlib.ShiftedQR.deflationInputs`,
+`NLAlib.ShiftedQR.factorCoefficients` and 2 more. -/
 theorem apply_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     {m n : ℕ} {data x t y : ℕ × ℕ} (ds xs : List 𝕜)
     (hl : mem.Live [data, x, t, y])

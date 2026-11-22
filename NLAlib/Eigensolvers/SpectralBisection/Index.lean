@@ -57,10 +57,25 @@ theorem nodeSplitIndex_writes {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarO
   have hpp := hl pp (by simp)
   have hc := hl c (by simp)
   have ht := hl t (by simp)
-  refine (writes_frame rfl rfl (by room) (PairMatrix.traceRe_writes_packed
-    (dec := dec) (mm := mm) (qr := qr) (unif := unif) (normal := normal) hS Pp hPp
-    (by room) (hsep.mono (by fp_sub) (by fp_sub)))).seq_le (by fp_sub [indexCells]) ?_
-  intro μ₁ hfr₁ ⟨hp₁, htrace⟩
+  have hlT : μ.Live [pp, (t.1, t.2 + 5)] := by
+    simp only [Mem.live_cons, Mem.live_nil, and_true]
+    exact ⟨hpp, ht⟩
+  have hroomT : μ.Room [(t.1, t.2 + 5)] [1] := by
+    simp only [Mem.room_cons, Mem.room_nil, and_true]
+    omega
+  have hdT : Fp.Disj (Store.inBlock t.1 (t.2 + 5) 1) (Store.inBlock pp.1 pp.2 (2 * (k * k))) :=
+    hsep.mono (by fp_sub) (by fp_sub)
+  simp only [indexCells]
+  call (PairMatrix.traceReRoutine_meets hS) [k] (pp, (t.1, t.2 + 5)) as μ₁ hfr₁ hp₁ (ws) hpost
+  have hfr₁ : μ.store.EqOff (Store.inBlock t.1 (t.2 + 5) 1) μ₁.store := hfr₁.mono (by fp_sub)
+  have htrace : μ₁.store.get t.1 (t.2 + 5) =
+      some ((M.toFloatMachine dec mm qr unif normal).traceRe Pp) := by
+    obtain rfl := hpost
+    have h := Store.get_of_readBlock hws (show 0 < 1 by omega) (M.lit 0)
+    simp only [List.getD_cons_zero, Nat.add_zero] at h
+    rw [PairMatrix.traceReF_packFinMatrix (dec := dec) (mm := mm) (qr := qr) (unif := unif)
+      (normal := normal)] at h
+    exact h
   have hhalf₁ := hfr₁.keep (Store.readsOnly_get c.1 (c.2 + 2) half)
     (hsep.mono (by fp_sub) (by fp_sub)) hhalf
   refine (writes_call_bin (hS .add) rfl rfl trivial htrace hhalf₁ rfl

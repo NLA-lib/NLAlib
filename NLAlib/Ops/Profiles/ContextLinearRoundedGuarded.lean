@@ -33,7 +33,8 @@ open scoped Matrix
 variable {Op Tst : Type} [Has ScalarOp Op]
 
 /-- Functional refinement of the isolated dense leaf. The function is the actual scalar
-word recurrence, and its operands retain the matrix product's separate-output admission. -/
+word recurrence, and its operands retain the matrix product's separate-output admission.
+A step in the proof of `NLAlib.Ops.ContextDenseRounded.callS_source_fn_of_ne`. -/
 theorem source_wp_fn_of_ne {I : Interp Op Tst ℝ} {tape : Tape ℝ} {mem : Mem ℝ}
     {M : Machine ℝ} (hS : IsScalar M I) (context : List (ℕ × ℕ))
     (index : Fin context.length) {n : ℕ} (raw : List ℝ)
@@ -100,7 +101,9 @@ theorem callS_source_fn_of_ne {Src : Type} {I : Interp Op Tst ℝ}
 
 /-- A isolated data capability implements the original exact operator contract. Its
 matrix is decoded from the words actually read, while the ordinary output stays outside
-the buffer of the data. The premise is a local primitive precondition, never a successful run. -/
+the buffer of the data. The premise is a local primitive precondition, never a successful run.
+A step in the proof of `NLAlib.Ops.ContextDense.callS_source_of_ne`,
+`NLAlib.Ops.ContextDenseRounded.callS_source_of_ne`. -/
 theorem source_wp_of_ne {I : Interp Op Tst ℝ} {tape : Tape ℝ} {mem : Mem ℝ}
     {M : Machine ℝ} (hS : IsScalar M I) (context : List (ℕ × ℕ))
     (index : Fin context.length) {n : ℕ} {error : ℝ} (raw : List ℝ)

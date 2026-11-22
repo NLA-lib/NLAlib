@@ -75,7 +75,10 @@ theorem residualCache_error {M : Machine K} {dec : K → ℝ} {u eta B : ℝ}
 
 /-- The actual scalar-lowered CG cache kernel is total under ordinary storage conditions.
 Only input values enter the range condition. The result includes the exact update, its
-mixed error and the small-residual consequence of a computed zero; no successful run is assumed. -/
+mixed error and the small-residual consequence of a computed zero; no successful run is assumed.
+A step in the proof of `NLAlib.Krylov.CG.residualCache_wp_float64`,
+`NLAlib.Krylov.CG.residualCache_wp_binaryQuantized`,
+`NLAlib.Krylov.CG.residualCache_wp_fixedPoint`. -/
 theorem residualCache_wp [Inhabited K] {Op Tst : Type} [Has ScalarOp Op] [Has Blas1Op Op]
     [Apart Blas1Op ScalarOp Op] {M : Machine K} {dec : K → ℝ} {u eta B : ℝ}
     {safe : ℝ → Prop} {I : Interp Op Tst K} (hI : IsScalar M I)

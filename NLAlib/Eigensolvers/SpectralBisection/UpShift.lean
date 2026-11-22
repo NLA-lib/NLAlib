@@ -51,7 +51,7 @@ theorem upShiftResult_writes {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
       (Fp.blocks [e] [k]) := by simpa using hd 0 1 (by simp)
   simp only [Mem.live_cons, Mem.live_nil, and_true] at hl
   refine (writes_frame rfl rfl (by room) (PairMatrix.copy_writes hS (by room)
-    (Or.inl (by simpa using hd 2 0 (by simp))) hU hu)).seq_readBlock hUE ?_
+    (by simpa using hd 2 0 (by simp)) hU hu)).seq_readBlock hUE ?_
   intro m₁ hfr _ _
   have hE₁ := hfr.keep (Store.readsOnly_readBlock _ _ _ _) (by
     simpa using hd 0 3 (by simp)) hE

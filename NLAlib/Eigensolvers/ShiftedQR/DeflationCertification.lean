@@ -101,7 +101,8 @@ noncomputable def deflationAlgorithm (D : Stmt Op Tst)
 
 /-- What the certificate states: at every admitted size, for every admitted input, every
 interpretation satisfying the contracts of the model and every tape, the run of the fixed program
-from the supplied buffers succeeds within the scratch, the budget, the work and the span of the
+from the supplied buffers succeeds within the scratch, the budget, the work, the span and the
+memory of the
 specification, and its final memory satisfies the output condition
 (`NLAlib.Ops.Routine.Domain.Checked`). -/
 theorem deflation_checked (D : Stmt Op Tst)

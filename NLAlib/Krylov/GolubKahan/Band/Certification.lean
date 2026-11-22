@@ -153,7 +153,7 @@ the counts depend on the dimensions only. -/
 theorem stmtCost_solve (stream m n b q u v g r s : ℕ) :
     stmtCost (solve (Op := Op) (Tst := Tst) stream) [m, n, b, q, u, v, g, r, s] =
       solveCount stream m n b q := by
-  simp [solve, stmtCost, useCost, stmtCost_sampleVector, stmtCost_step, solveCount,
+  simp [solve, stmtCost, useCost, sampleRoutine, stmtCost_sampleVector, stmtCost_step, solveCount,
     Finset.sum_add_distrib, ← mul_nsmul']
   module
 
@@ -171,7 +171,7 @@ theorem stmtPeak_solve_le (W : Op → List ℕ → ℕ) (w : ℕ) (hW : ∀ o ds
   have hStep (idx : List ℕ) := stmtPeak_zero_of_allocationFree
     (s := (step (Op := Op) (Tst := Tst))) (idx := idx) (by rfl)
   have hz (t : Finset ℕ) : (t.sup fun _ => (0 : ℕ)) = 0 := Finset.sup_bot t
-  simp [solve, stmtPeak, Stmt.alloc, hSample, hStep, hz]
+  simp [solve, stmtPeak, Stmt.alloc, sampleRoutine, hSample, hStep, hz]
 
 /-- The largest workspace of a primitive call of a run at the dimensions $(m, n, b, q)$, for the
 workspace `W` of every call: the maximum over a draw, a product with $\mathbf{A}$ at `[m, n]`, a
@@ -576,21 +576,19 @@ theorem staticPeak_solveProgram_le_solvePeak (R : ResourceModel Operation CmpTst
     (stmtPeak_solve_le_solvePeak R.workspace stream (d 0) (d 1) (d 2) (d 3) 0 0 0 0 0) _
 
 /-- The specification of the exact certificate: the full static count as budget; as scratch the
-closed form `NLAlib.Krylov.GolubKahan.Band.solvePeak` (the block of $\max(m, n)\,b$ words of the
-products plus the largest workspace of a primitive call of the run) plus the reservation of the
-queries; work and span of the budget; resident memory of the five output blocks plus the scratch;
-and the postcondition `NLAlib.Krylov.GolubKahan.Band.Certification.Good` at the supplied
-matrix. -/
+closed form `NLAlib.Krylov.GolubKahan.Band.solvePeak` (the block of $\max(m, n)\,b$ words of
+the products plus the largest workspace of a primitive call of the run; the comparisons of this
+model need no workspace, so nothing is reserved for them); work and span of the budget;
+resident memory of the five output blocks plus the scratch; and the postcondition
+`NLAlib.Krylov.GolubKahan.Band.Certification.Good` at the supplied matrix. -/
 noncomputable def specification (work workspace : Operation → List ℕ → ℕ) (stream : ℕ) :
     Specification Operation CmpTst problem where
   budget := staticBudget stream
-  scratch d := solvePeak (resources work workspace).workspace stream (d 0) (d 1) (d 2) (d 3) +
-    (resources work workspace).queryReserve (staticBudget stream d)
+  scratch d := solvePeak (resources work workspace).workspace stream (d 0) (d 1) (d 2) (d 3)
   work d := (resources work workspace).work (staticBudget stream d)
   span d := (resources work workspace).span (staticBudget stream d)
   memory d := (outLens (d 0) (d 1) (d 2) (d 3)).sum +
-    (solvePeak (resources work workspace).workspace stream (d 0) (d 1) (d 2) (d 3) +
-      (resources work workspace).queryReserve (staticBudget stream d))
+    solvePeak (resources work workspace).workspace stream (d 0) (d 1) (d 2) (d 3)
   good d x τ _ μ := Good stream d x.val.1 τ μ
 
 /-! ### The certificate -/
@@ -635,7 +633,8 @@ noncomputable def algorithm (work workspace : Operation → List ℕ → ℕ) (s
   refine (inputs.cast (solveRoutine stream) rfl rfl).algorithm
     (fun _ A => solveSpec stream id A)
     (ht := wellTyped_solveProgram work workspace stream) ?_ ?_ ?_
-    (hspace := fun d _ => staticPeak_solveProgram_le_solvePeak _ stream d) (hmemory := ?_)
+    (hspace := fun d _ => (staticPeak_solveProgram_le_solvePeak _ stream d).trans (le_of_eq (by
+      rw [ResourceModel.queryReserve_of_zero _ (fun _ _ => rfl)]; rfl))) (hmemory := ?_)
   · intro d _ x I hI
     obtain ⟨hA, hO, hSample⟩ := laws hI
     exact solveRoutine_meets hA hO hSample stream
@@ -681,7 +680,8 @@ theorem certifies (work workspace : Operation → List ℕ → ℕ) (stream : �
 
 /-- What the certificate states: at every admitted size, for every admitted input, every
 interpretation satisfying the contracts of the model and every tape, the run of the fixed program
-from the supplied buffers succeeds within the scratch, the budget, the work and the span of the
+from the supplied buffers succeeds within the scratch, the budget, the work, the span and the
+memory of the
 specification, and its final memory satisfies the output condition
 (`NLAlib.Ops.Routine.Domain.Checked`). The matrix is not in memory: it is reached only
 through the two products of the model (`NLAlib.Krylov.GolubKahan.Band.Certification.oracles`),

@@ -255,7 +255,8 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has
 
 omit [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- Two more stored words: if the first $2i$ words at `o` are stored and the words $2i$ and
-$2i + 1$ are written one after the other, the first $2(i + 1)$ words are stored. -/
+$2i + 1$ are written one after the other, the first $2(i + 1)$ words are stored.
+A step in the proof of `NLAlib.ShiftedQR.CompletingLeafRoutine.terminatingSmallEigAt_schurDiag`. -/
 private theorem isSome_two_writes {s s₁ s₂ : Store ℝ} {o : ℕ × ℕ} {i : ℕ} {v₁ v₂ : ℝ}
     (h : ∀ j < 2 * i, (s.get o.1 (o.2 + j)).isSome)
     (hfr₁ : s.EqOff (Store.inBlock o.1 (o.2 + 2 * i) 1) s₁)
@@ -485,7 +486,9 @@ theorem exists_isEigenvalueListing_norm_sub_le_of_tracked {d kmax : ℕ} (hd : d
 omit [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- The diagonal copy of `NLAlib.ShiftedQR.schurDiag`: from a memory holding $\mathbf{T}_b$ at
 the first scratch buffer `Lc` with room for $2d$ words at `o`, the loop writes the diagonal of
-$\mathbf{T}_b$ to `o`; a listing of a spectrum within $\beta$ of that diagonal carries over. -/
+$\mathbf{T}_b$ to `o`; a listing of a spectrum within $\beta$ of that diagonal carries over.
+A step in the proof of
+`_root_.NLAlib.Schur.RandomSchurLeafContract.randomSmallEigContractAt_schurDiag`. -/
 theorem schurDiag_loop_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar Mch I)
     {d T Lc : ℕ} {w q o : ℕ × ℕ} {B Tb : Matrix (Fin d) (Fin d) ℂ} {β : ℝ} {ev : Fin d → ℂ}
     (hev : IsEigenvalueListing B ev) (hb : ∀ i, ‖Tb i i - ev i‖ ≤ β) {τ : Tape ℝ} {μ : Mem ℝ}

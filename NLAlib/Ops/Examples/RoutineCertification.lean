@@ -79,10 +79,7 @@ theorem countPoly_sum2Program : sum2Program.countPoly = [(24, [0]), (63, [])] :=
 theorem eval_countPoly_sum2Program (d : Fin 1 → ℕ) :
     CountPoly.eval (List.ofFn d) sum2Program.countPoly = sum2Work d := by
   rw [countPoly_sum2Program]
-  simp only [CountPoly.eval, CountPoly.monoEval, sum2Work, List.ofFn_succ, List.ofFn_zero,
-    List.map_cons, List.map_nil, List.sum_cons, List.sum_nil, List.prod_cons, List.prod_nil,
-    List.getD_cons_zero]
-  ring
+  poly_eval [sum2Work]
 
 /-- **The certificate of the composite routine**, over the scalar-only model with unit weights
 and the standard model of arithmetic at unit roundoff `u`: the counted certificate of the
@@ -113,7 +110,8 @@ theorem sum_range_abs_vec_ofFn {n : ℕ} (f : Fin n → ℝ) :
 scalar machine satisfying the standard model of arithmetic at unit roundoff $u \ge 0$. For every
 length `n = d 0`, every pair of real vectors $x, y$, every interpretation `I` of the scalar
 operations of the model, and every tape, the counted run of the fixed program from the two
-vectors and two blank cells succeeds, its work is at most $24 n + 63$ instructions, and the
+vectors and two blank cells succeeds, its work is at most $24 n + 63$ instructions, its resident
+memory is at most the payload of the four buffers plus the static scratch of the tree, and the
 third buffer holds a value $v$ with
 $$\lvert v - (\textstyle\sum_i x_i + \sum_i y_i) \rvert \le
   \bigl((1 + u)(1 + u)^{n - 1} - 1\bigr) \bigl(\textstyle\sum_i \lvert x_i \rvert +
@@ -125,13 +123,15 @@ theorem sum2_checked (M : Machine ℝ) (u : ℝ) (hM : StdModel u id M) (hu : 0 
     ∃ st, exec sum2Program I (sum2Model M).resources sum2Domain.formats τ d
         (sum2Domain.memory d (x, y)) = some st ∧
       (sum2Model M).resources.work st.cost ≤ 24 * d 0 + 63 ∧
+      sum2Domain.bytes d + st.peak ≤
+        sum2Domain.bytes d + staticPeak (sum2Model M).resources sum2Program d ∧
       ∃ v, st.mem.Holds Codec.scalar 2 v ∧
         |v - (∑ i, x i + ∑ i, y i)| ≤
           ((1 + u) * (1 + u) ^ (d 0 - 1) - 1) * (∑ i, |x i| + ∑ i, |y i|) := by
-  obtain ⟨st, hr, hw, ys, hys, hpost⟩ :=
+  obtain ⟨st, hr, hw, hm, ys, hys, hpost⟩ :=
     sum2Domain.checked_post (Sp := fun _ _ => sum2Spec id u) (work := sum2Work)
       (sum2Algorithm M u hM hu) d trivial (x, y) trivial I hI τ
-  refine ⟨st, hr, hw, ?_⟩
+  refine ⟨st, hr, hw, hm, ?_⟩
   read_outputs hys as (zs)
   obtain ⟨v, hv, rfl⟩ := Store.readBlock_one_eq_some.mp hzs
   refine ⟨v, hzs, ?_⟩

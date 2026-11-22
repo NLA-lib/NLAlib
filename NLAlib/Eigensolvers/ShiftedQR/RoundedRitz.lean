@@ -223,7 +223,8 @@ def roundedPotentialWord (M : Machine ℝ) {n : ℕ} (H : Matrix (Fin (n + 1)) (
     (prodWords M (normSqFactors M (M.lit 1) fun j => subdiagEntry H (n - k + j)) k)
 
 /-- The program of the rounded potential stores `NLAlib.ShiftedQR.roundedPotentialWord` on any
-scalar machine, and writes only its output word. -/
+scalar machine, and writes only its output word.
+Shared by the trees of `NLAlib.ShiftedQR.shPrefix`, `NLAlib.ShiftedQR.shPotentialAccept`. -/
 theorem roundedPotential_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {μ : Mem ℝ}
     {n k q : ℕ} {a p : ℕ × ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
@@ -315,7 +316,8 @@ The relative error $20\boldsymbol{u}$ is exposed, not the paper's $0.001/k$ (whi
 here): the radius word $\mathrm{fl}(2^{1/k}\theta\alpha B^{1/k}\tilde\psi)$ meets the exceptional
 radius window $[1.998^{1/k}, 2.002^{1/k}]\,\theta\alpha B^{1/k}\psi_k$ for every $k \ge 1$ under,
 for instance, $10^5 k\boldsymbol{u} \le 1$, which $0.001/k$ does not give for $k \ge 2$. Matrix
-and output are disjoint views. -/
+and output are disjoint views.
+Shared by the trees of `NLAlib.ShiftedQR.shPrefix`, `NLAlib.ShiftedQR.shPotentialAccept`. -/
 theorem roundedPotential_writes {M : Machine ℝ} {I : Interp Op Tst ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) {τ : Tape ℝ} {μ : Mem ℝ}
     {n k q : ℕ} {a p : ℕ × ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
@@ -530,7 +532,8 @@ open Classical in
 /-- The decision of `Optimal` on any scalar machine with exact comparisons: `optimalDecide` sets
 the flag to the literal $1$ if the rounded norm `NLAlib.ShiftedQR.pairVecNormWord` of the stored
 row is below `NLAlib.ShiftedQR.optimalThresholdWord`, to the literal $0$ otherwise, and writes only
-the flag and its scratch. -/
+the flag and its scratch.
+A fragment of the tree `NLAlib.ShiftedQR.optimalTestWithScratch`. -/
 theorem optimalDecide_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {n k : ℕ}
     {a c v w q f : ℕ × ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {r : Fin (n + 1) → ℂ}
@@ -635,7 +638,8 @@ noncomputable def optimalTestWord (M : Machine ℝ) {n : ℕ} (H : Matrix (Fin (
 
 /-- `Optimal` with scratch in fresh buffers `L, …, L + 7` (offset $0$, as an allocation gives
 them) on any scalar machine with exact comparisons: it stores `NLAlib.ShiftedQR.optimalTestWord`
-in `F` and writes only `F` and the scratch. -/
+in `F` and writes only `F` and the scratch.
+A fragment of the tree `NLAlib.ShiftedQR.optimalTest`. -/
 theorem optimalTestWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {n L : ℕ}
     {a s c f : ℕ × ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ss : List ℂ} {cv : ℝ}
@@ -694,7 +698,8 @@ theorem optimalTestWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst 
 /-- `Optimal` on any scalar machine with exact comparisons: with the order-$(n+1)$ matrix
 $\mathbf{H}$ at `A`, the shifts `ss` ($k \le n$ of them) stored as pairs at `S`, the word $c$ at
 `C`, and the flag word apart from these, `optimalTest` stores
-`NLAlib.ShiftedQR.optimalTestWord` in `F` and writes only `F`. -/
+`NLAlib.ShiftedQR.optimalTestWord` in `F` and writes only `F`.
+A fragment of the tree `NLAlib.ShiftedQR.regularizeDecide`. -/
 theorem optimalTest_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ}
     {a s c f : ℕ × ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {ss : List ℂ} {cv : ℝ}
@@ -955,7 +960,8 @@ $0.998^{1/k}\theta$-optimal. The computed norm, shifted by the threshold's round
 $0.0009(\theta\psi_k)^k$ hypothesis of `NLAlib.isOptimalRitzValues_of_lt` and
 `NLAlib.not_isOptimalRitzValues_of_le`. The paper's precision
 $(2 \cdot 10^3 n^2)^{-1}(\psi_k/(\theta(2 + 2C)\|\mathbf{H}\|_2))^k$ rests on the constant $2n^2$,
-which its proof does not give ($n + kn^{3/2}$); here $kN^{3/2}$. -/
+which its proof does not give ($n + kn^{3/2}$); here $kN^{3/2}$.
+A fragment of the tree `NLAlib.ShiftedQR.regularizeDecide`. -/
 theorem optimalTest_writes {M : Machine ℝ} {I : Interp Op Tst ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hNat : IsExactNatLit id M 1) (hC : IsCmp id I)
     {τ : Tape ℝ} {μ : Mem ℝ} {n : ℕ} {a s c f : ℕ × ℕ}

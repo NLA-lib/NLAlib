@@ -203,7 +203,8 @@ omit [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- The start of the exceptional branch on a scalar machine with exact natural literals up to
 $2$: from the words $c_r$, $c_p$ and $p$ at `Cr`, `Cp`, `Rt`, `NLAlib.ShiftedQR.shExcInit`
 stores $\mathrm{fl}(c_r p)$ at `Rt`, $\mathrm{fl}(c_p p)$ at `Pt`, $1$ at `Gw` and $2$ at
-`Fl`, and writes only these. -/
+`Fl`, and writes only these.
+A fragment of the tree `NLAlib.ShiftedQR.shExc`. -/
 theorem shExcInit_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hNat : IsExactNatLit id M 2) {τ : Tape ℝ} {m : Mem ℝ}
     {cr cp rt pt gw f : ℕ × ℕ} {crv cpv p : ℝ} (hcr : m.store.get cr.1 cr.2 = some crv)
@@ -632,7 +633,8 @@ $6\boldsymbol{u}(1.1\Sigma + 3R_{\mathrm{hi}}) \le
 From the state `NLAlib.ShiftedQR.ShExcMid1` the shifts `NLAlib.ShiftedQR.excShifts` reach the state
 `NLAlib.ShiftedQR.ShExcMid2` except with probability at most $\varphi$. The random shifts form one
 probabilistic block per centre and radius; their outcome is the measurable set
-`NLAlib.ShiftedQR.measurableSet_excOutcome`. -/
+`NLAlib.ShiftedQR.measurableSet_excOutcome`.
+A step in the proof of `NLAlib.ShiftedQR.shExc_pwrites`. -/
 theorem shExcShifts_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hI : I.IsMeasurable)
     {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) (hS : IsScalar M I)
     (hM : StdModel u id M) {law : ℕ → Measure ℝ} {s₀ : ℕ} (hD : IsPolarDiskSampler s₀ I)

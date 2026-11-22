@@ -44,7 +44,8 @@ index reads of $m$ and $n_0$ from the parameter words (`NLAlib.Ops.PWrites.alloc
 `NLAlib.Ops.PWrites.bindIdx`) carry a probabilistic specification of
 `NLAlib.ShiftedQR.roundedDecoupleLoopWith` at every fresh buffer to
 `NLAlib.ShiftedQR.roundedDecoupleWith` from the precondition of
-`NLAlib.ShiftedQR.RandomDecouplingRoutineContract`. -/
+`NLAlib.ShiftedQR.RandomDecouplingRoutineContract`.
+A step in the proof of `NLAlib.ShiftedQR.roundedDecoupleWith_randomDecouplingRoutineContract_at`. -/
 theorem roundedDecouple_pwrites_of_loop {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) (hQ : IsToNat id I) {law : ℕ → Measure ℝ}

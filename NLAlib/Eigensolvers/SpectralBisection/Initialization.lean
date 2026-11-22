@@ -74,9 +74,9 @@ theorem initializeArenas_writes {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op
   have hfr01 := hfr0.trans' hfr1
   have hInputs := hfr01.keep hSource (Fp.disj_sup_left.mpr
     ⟨Fp.disj_sup_right.mpr ⟨hca, hcp⟩, Fp.disj_sup_right.mpr ⟨hsa, hsp⟩⟩) ⟨hA, hPar⟩
-  have hMa := PairMatrix.copy_writes (md := .total) (τ := τ) (x := a) (y := ma)
+  have hMa := PairMatrix.copy_writes (τ := τ) (x := a) (y := ma)
     (rows := n) (cols := n) hS
-    (by room) (Or.inl hma'.symm) hInputs.1
+    (by room) hma'.symm hInputs.1
     (by rw [hfr01.len_eq]; exact hma)
   refine (writes_frame rfl rfl (by room) hMa).seq_readBlock hOut.2.2.1
     fun χ hfr2 _ _ => ?_

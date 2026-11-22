@@ -67,7 +67,8 @@ open Classical in
 /-- The scan returns its actual machine literal for the all-words interval predicate. Inputs
 are spatially disjoint from the output flag; they may share its buffer at other offsets.
 The output cell needs capacity, and no output initialization or scalar literal exactness is
-assumed. Every other cell and the tape position are preserved. -/
+assumed. Every other cell and the tape position are preserved.
+A fragment of the tree `NLAlib.Ops.Hermitian.boxTest`. -/
 theorem intervalScan_writes {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hC : IsCmp dec I) {md : Mode} {τ : Tape K} {m : Mem K}
     {n : ℕ} {x lo hi z : ℕ × ℕ} {a b : K} (v : ℕ → K)

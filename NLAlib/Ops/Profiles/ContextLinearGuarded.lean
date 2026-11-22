@@ -35,7 +35,9 @@ variable {Op Tst : Type} [Has ScalarOp Op]
 
 /-- A isolated data capability implements the original exact operator contract. Its
 matrix is decoded from the words actually read, while the ordinary output stays outside
-the buffer of the data. The premise is a local primitive precondition, never a successful run. -/
+the buffer of the data. The premise is a local primitive precondition, never a successful run.
+A step in the proof of `NLAlib.Ops.ContextDense.callS_source_of_ne`,
+`NLAlib.Ops.ContextDenseRounded.callS_source_of_ne`. -/
 theorem source_wp_of_ne {I : Interp Op Tst ℝ} {tape : Tape ℝ} {mem : Mem ℝ}
     (hS : IsScalar RCLikeBlas.machine I) (context : List (ℕ × ℕ))
     (index : Fin context.length) {n : ℕ} (raw : List ℝ)

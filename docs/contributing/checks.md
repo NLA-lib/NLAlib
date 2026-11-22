@@ -79,18 +79,51 @@ confined model, closed-form work and a derived problem, or a reviewed line):
   choice). `unknown` counts as `manifest` wherever `closed` is required;
 * `problem`, `derived`, `unstored`: whether the problem is derived from a `Routine.Domain`, how
   many operands hold words computed from the inputs, and whether inputs are held by no buffer;
-* `oracles`: for a model that is not uniform, whether a `Routine.Domain.Oracles` declaration
-  exists;
-* `claim`: the `RandomizedClaim`s of the certificate; a certificate whose routine specification
-  is termination only must have one.
+* `oracles`: for a model that is not uniform, `declared` when a `Routine.Domain.Oracles`
+  declaration unifies with the domain and the model of this certificate, `related` when one
+  exists for the same domain constant (below `cast` and `castOps`) but does not;
+* `claim`: the `RandomizedClaim`s whose certificate, with the claim's binders instantiated, is
+  this certificate at its own parameters; `related:<name>` when a claim is about the same
+  declaration at other arguments. A certificate whose routine specification is termination
+  only must have a claim that applies. `related` values do not satisfy that rule and do not
+  keep `oracles=declared` or a claim in the ratchet.
 
 `OPS_CERTIFICATES_REPORT=1` (or `=Name`) prints what each certificate states, as written:
-admitted sizes, acceptance predicate, slots, oracles, contracts and weights of the operations,
-hypotheses, resource fields, output condition and randomized claims. It writes nothing;
+admitted sizes, acceptance predicate, slots, the model with the contracts and weights of its
+operations and queries, every binder of the certificate, resource fields and output condition;
+and for each oracle declaration and randomized claim whether it applies to this instance, the
+binders it fixes, its hypotheses that are not hypotheses of the certificate, and for a claim
+the law (realizable by a field of the claim), `admits`, `interprets`, event and bound. It
+writes nothing;
 `OPS_CERTIFICATES_REPORT_FILE=path` sends the report to a file. `OPS_CERTIFICATES_WRITE=1`
 rewrites the fixture, and `OPS_CERTIFICATES_FILE=path` compares with another file. The supported
 surface of the layer is listed in the [Ops README](../../NLAlib/Ops/README.md), "What client
 code may depend on".
+
+The classification is tested by the script itself, each time it runs (so by the CI step
+`lake env lean scripts/OpsPrograms.lean` and by `scripts/stage_check.sh`). The namespace
+`OpsCertificates.Fixtures` of the script declares artificial certificates, claims and oracle
+declarations, with postulated proofs, one per case: a claim for the certificate, for a
+specialisation of it and with further hypotheses; two models on one domain with oracles for one;
+oracles with a further hypothesis, for no model, and on a domain read through `castOps`;
+resource fields that are explicit, read off a tree (directly and two definitions down),
+non-constructive, an axiom or an opaque constant, and a specification that does not unfold; the
+three answers of the model classes; termination-only certificates with no claim, a related
+claim, a claim and an exemption; derived (also through `cast` and `castOps`) and hand-written
+problems. The table `expectations` gives, for each fixture certificate, its line, the errors it
+gives as an unrecorded certificate and pieces of text its report must contain; the table
+`ratchet` gives, field by field, which changes from a recorded line are errors. A difference is
+an error that names the fixture, what was expected and what was computed, and the run ends with
+`ops report fixtures: N cases`. The fixtures are constants of the script, not of the library:
+the inventory of the library reads imported constants only, so no fixture is in
+`scripts/ops_certificates.txt`.
+
+To add a case, declare the certificate in `OpsCertificates.Fixtures` (`cert _ _` proves any
+certificate; `claim _` and `oracles _ _` give a claim and an oracle declaration) and add its
+row to `expectations`, writing only the fields that differ from a certificate in good order; a
+fixture certificate without a row is an error. Write the row from what the case should give,
+then run the script; to check that the case tests something, change the code it exercises in
+a copy of the script and see the row fail.
 
 It rejects imports of the retired execution core. Structural rejection
 and accounting regressions are kernel-checked modules in `NLAlib/Ops/Examples/Certification.lean`

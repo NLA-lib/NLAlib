@@ -193,7 +193,8 @@ theorem size_stmtCost_schurPipelineWith_le [Has ScalarOp O] [Has IndexOp O] [Has
   have hsup : ∀ x y : Count (O ⊕ Bookkeeping) Q,
       Count.size (x ⊔ y) = Count.size x + Count.size y - Count.size (x ⊓ y) := fun x y => by
     rw [← size_sup_add_size_inf]; omega
-  simp only [schurPipelineWith, Stmt.alloc, Stmt.instrument, PairMatrix.identity, tally,
+  simp only [schurPipelineWith, Stmt.alloc, Stmt.instrument, PairMatrix.identityRoutine,
+    PairMatrix.identity, tally,
     indexBookkeeping, operandBookkeeping, IExp.bookkeeping, List.flatMap_cons, List.flatMap_nil,
     List.cons_append, List.nil_append, List.append_nil, stmtCost, useCost, testCost,
     IExp.evalList, IExp.eval, List.map_cons, List.map_nil, List.getElem?_cons_succ,

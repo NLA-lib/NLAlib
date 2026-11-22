@@ -243,6 +243,7 @@ noncomputable def gaussianClaim (alg : Algorithm L S) (stream : ℕ)
           Δ⁻¹ ^ (2 * (t - 1)) * ((t : ℝ) ^ 3 / δ ^ 3) *
           frobNorm ((matrix x) - truncatedSVD (matrix x) t) ^ 2
   bound _ _ := δ
+  realizable _ _ _ _ := TapeModel.realizable_packed _ _
   holds := fun d _ x hx I hI _ Ω _ μ _ tape hlaw => by
     obtain ⟨X, hX, rfl⟩ := hlaw
     exact measureReal_not_accepts_le_of_hasLaw_gaussianMatrix alg stream hgood hx.1 x I hI μ X

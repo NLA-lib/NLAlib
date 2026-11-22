@@ -497,7 +497,8 @@ and the word $\eta_2$ at `qw[4]` of at least six words: from the frame
 `NLAlib.SmallEig.OneEigFrame`, except with probability at most $((\eta_1 + \varepsilon)/\eta_2)^2$,
 the start writes only the point, the flag and the scratch and ends in the loop invariant
 `NLAlib.SmallEig.OneEigLoopInv` before round $0$. A fragment: its tree runs only inside the tree of
-`NLAlib.SmallEig.oneEig`. -/
+`NLAlib.SmallEig.oneEig`.
+A fragment of the tree `NLAlib.SmallEig.oneEig`. -/
 theorem oneEigStart_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hL : IsIndexLit M I) (h0 : M.lit 0 = 0) {sU : ℕ} (hDisk : IsPolarDiskSampler sU I)
     {law : ℕ → Measure ℝ} (hU : law sU = volume.restrict (Set.Icc 0 1))
@@ -542,7 +543,8 @@ distance at least $\eta_1$ from the $d_i$, $\lvert d_i\rvert \le \Sigma$, $0 < \
 from the loop invariant `NLAlib.SmallEig.OneEigLoopInv` with an estimate above $0.9\beta$ ends in
 the invariant before round $i + 1$, writing only the point, the flag and the scratch, except with
 probability at most $6((\eta_1 + 40\boldsymbol{u}\Sigma)/\eta_2)^2$. A fragment: its tree runs only
-inside the tree of `NLAlib.SmallEig.oneEig`. -/
+inside the tree of `NLAlib.SmallEig.oneEig`.
+A fragment of the tree `NLAlib.SmallEig.oneEig`. -/
 theorem oneEigRound_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hu0 : 0 ≤ u) (hu : u ≤ 1 / 5000) (hL : IsIndexLit M I)
     (h0 : M.lit 0 = 0) (h1 : M.lit 1 = 1) (hCmp : IsCmp id I) {sU : ℕ}
@@ -661,7 +663,8 @@ words `qs` with $\eta_2$ at $4$ and $0.9\beta$ at $5$: from `NLAlib.SmallEig.One
 with probability at most $(6t + 1)((\eta_1 + 40\boldsymbol{u}\Sigma)/\eta_2)^2$, the run writes only
 the pair and the flag, sets the flag to $0$ and stores a point $z$ with $\eta_1 \le \min_i\lvert z -
 d_i\rvert \le \beta$. A fragment: its tree runs only inside the tree of
-`NLAlib.SmallEig.smallEigDecoupler`. -/
+`NLAlib.SmallEig.smallEigDecoupler`.
+A fragment of the tree `NLAlib.SmallEig.smallEigDecoupler`. -/
 theorem oneEig_pwrites_of {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hu0 : 0 ≤ u) (hu : u ≤ 1 / 5000) (hL : IsIndexLit M I)
     (h0 : M.lit 0 = 0) (h1 : M.lit 1 = 1) (hCmp : IsCmp id I) (hI : I.IsMeasurable)

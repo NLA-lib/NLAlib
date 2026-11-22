@@ -39,7 +39,11 @@ def multiply : Stmt Op Tst := ops% [] (x, c) → (z) {
 }
 
 /-- Component multiplication writes the actual two machine products. The input pair and
-scalar cell are disjoint from the output pair, including spatially within one buffer. -/
+scalar cell are disjoint from the output pair, including spatially within one buffer.
+Shared by the trees of `NLAlib.Deflation.sampleMatrix`, `NLAlib.SpectralBisection.deflateSamples`,
+`NLAlib.matMulOn`.
+The run without its frame; `NLAlib.Ops.Pair.multiply_writes`, the primary statement, is proved
+from it. -/
 theorem multiply_wp {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {x c z : ℕ × ℕ} {ar ai a : K}
     (hxz : Fp.Disj (Store.inBlock x.1 x.2 2) (Store.inBlock z.1 z.2 2))
@@ -64,7 +68,9 @@ theorem multiply_wp {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
   · simpa [Mem.updBlock, Store.updBlock, Mem.upd] using hQ
 
 /-- The same pair multiplication WP supplies its output frame through the generic exact-update
-rule; no separate scalar-call or component-preservation argument is needed. -/
+rule; no separate scalar-call or component-preservation argument is needed.
+Shared by the trees of `NLAlib.Deflation.sampleMatrix`, `NLAlib.SpectralBisection.deflateSamples`,
+`NLAlib.matMulOn`. -/
 theorem multiply_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {x c z : ℕ × ℕ} {ar ai a : K}
     (hxz : Fp.Disj (Store.inBlock x.1 x.2 2) (Store.inBlock z.1 z.2 2))
@@ -209,7 +215,8 @@ private theorem eval_linearCombination {M : Machine K} {m : Mem K} {a b x y t z 
       and_false, if_true, if_false, Nat.add_eq_left, Nat.left_eq_add, Nat.reduceEqDiff, *]
 
 /-- The linear combination stores its actual rounded word pair and preserves all cells
-outside the output and two scratch cells. Source pairs may share buffers or coincide. -/
+outside the output and two scratch cells. Source pairs may share buffers or coincide.
+Shared by the trees of `NLAlib.ShiftedQR.rowEntry`, `NLAlib.matMulOn`, `NLAlib.matMulLBody`. -/
 theorem linearCombination_writes {M : Machine K} {I : Interp Op Tst K}
     (hI : IsScalar M I) {τ : Tape K} {m : Mem K} {a b x y t z : ℕ × ℕ}
     {av bv xv yv : K × K}

@@ -37,7 +37,9 @@ def normSq : Stmt Op Tst := ops% [] (X) → (T) {
 
 /-- Two scalar squares and one addition store the machine word `fl(fl(xr·xr) + fl(xi·xi))` in
 output cell two, on any scalar machine. The input pair and the three-word output view are
-spatially separate; both may share a buffer. -/
+spatially separate; both may share a buffer.
+Shared by the trees of `NLAlib.ShiftedQR.subdiagProductRound`, `NLAlib.ShiftedQR.normSqOpRound`,
+`NLAlib.ShiftedQR.pairVecNormWithScratch` and 2 more. -/
 theorem normSq_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {x t : ℕ × ℕ} {xr xi : ℝ}
@@ -67,7 +69,9 @@ theorem normSq_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
   exact ⟨hp₃.trans (hp₂.trans hp₁), hSum⟩
 
 /-- Two scalar squares and one addition return the exact sum of squares in output cell two.
-The input pair and the three-word output view are spatially separate; both may share a buffer. -/
+The input pair and the three-word output view are spatially separate; both may share a buffer.
+Shared by the trees of `NLAlib.ShiftedQR.subdiagProductRound`, `NLAlib.ShiftedQR.normSqOpRound`,
+`NLAlib.ShiftedQR.pairVecNormWithScratch` and 2 more. -/
 theorem normSq_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {x t : ℕ × ℕ} {xr xi : ℝ}

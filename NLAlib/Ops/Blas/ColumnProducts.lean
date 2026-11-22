@@ -46,7 +46,9 @@ def sum : Stmt Op Tst := ops% [n, k] (X, Y, t) → (out) {
 variable {𝕜 : Type} [RCLike 𝕜] {I : Interp Op Tst 𝕜} {τ : Tape 𝕜} {m : Mem 𝕜}
 
 /-- A local contraction step writes the old accumulator plus the exact Hermitian product.
-The input vectors may overlap; the temporary cell must preserve the accumulator. -/
+The input vectors may overlap; the temporary cell must preserve the accumulator.
+Shared by the trees of `NLAlib.reduceLastStep`, `NLAlib.hessenbergReduceLast`,
+`NLAlib.ShiftedQR.shiftedStep` and 44 more. -/
 theorem step_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hB : RCLikeBlas.IsExact I) {n : ℕ} {x y t out : ℕ × ℕ} (xs ys : List 𝕜) (a : 𝕜)
     (hl : m.Live [x, y, t, out])
@@ -79,7 +81,9 @@ theorem step_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
   exact ⟨hp₂.trans hp, ha⟩
 
 /-- Sum the actual column inner products with one caller-owned temporary cell.
-Readable inputs are retained through the two-cell output footprint, including shared buffers. -/
+Readable inputs are retained through the two-cell output footprint, including shared buffers.
+Shared by the trees of `NLAlib.HutchPlusPlus.projectProbes`, `NLAlib.HutchPlusPlus.accumulate`,
+`NLAlib.CGS2.cgs2ExtendFinish` and 17 more. -/
 theorem sum_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hB : RCLikeBlas.IsExact I) {n k : ℕ} {x y t out : ℕ × ℕ}
     (xs ys : ℕ → List 𝕜) (hl : m.Live [x, y, t, out])

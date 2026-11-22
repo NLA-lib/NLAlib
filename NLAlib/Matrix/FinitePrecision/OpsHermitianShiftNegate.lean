@@ -28,7 +28,9 @@ variable {K Op Tst Su Sg : Type} [Inhabited K] [Has ScalarOp Op]
   {unif : K → Su → K} {normal : Sg → K × K}
 
 /-- The two explicit matrix subprograms return the actual machine negation of its rounded
-Hermitian shift. Disjoint input/output word regions may belong to the same arena. -/
+Hermitian shift. Disjoint input/output word regions may belong to the same arena.
+Shared by the trees of `NLAlib.Sign.step`, `NLAlib.SpectralBisection.nodeProjectors`,
+`NLAlib.SpectralBisection.projectorTail`. -/
 theorem shiftNegate_writes_packed {I : Interp Op Tst K} (hI : IsScalar M I)
     {τ : Tape K} {n : ℕ} (A : Matrix (Fin n) (Fin n) (K × K)) (d : K)
     {x c y : ℕ × ℕ} {μ : Mem K}

@@ -326,6 +326,36 @@ noncomputable def schurPipelineAlgorithm (sU : ℕ) (Nm Reg Red Core : Stmt Smal
       Nat.add_le_add_right (schurPipelineProblem_initialBytes (admitted := admitted) d x).le _)
     (ht := ht)
 
+/-- What the generic certificate states: at every admitted size, for every admitted input, every
+interpretation satisfying the contracts of the model and every tape, the run of the fixed program
+from the supplied buffers succeeds within the scratch, the budget, the work, the span and the
+memory of the
+specification, and its final memory satisfies the output condition
+(`NLAlib.Ops.Routine.Domain.Checked`). The deterministic claim is termination within the
+footprint only. The accuracy is a statement about the stages, with probability over the draws:
+for the dense instance it is `NLAlib.Schur.denseSchurClaim`. -/
+theorem schurPipeline_checked (sU : ℕ) (Nm Reg Red Core : Stmt SmallEigOp Tst)
+    (WNm WReg WRed WCore : (Fin 6 → ℕ) → ℕ)
+    (hNm : ∀ d, Count.size (stmtCost Nm.instrument [d 0 + 1, 0, 0]) ≤ WNm d)
+    (hReg : ∀ d, Count.size (stmtCost Reg.instrument [d 0 + 1, d 1, 0, 0, 0]) ≤ WReg d)
+    (hRed : ∀ d, Count.size (stmtCost Red.instrument [d 0 + 1, 0, 0, 0, 0]) ≤ WRed d)
+    (hCore : ∀ d, Count.size (stmtCost Core.instrument
+      [d 0 + 1, d 2, d 3, d 4, d 5, 0, d 1, 0, 0, 0, 0]) ≤ WCore d)
+    (hwords : ∀ n δ φ, (words n δ φ).length = sizes n δ φ 1 + sizes n δ φ 2)
+    (ht : (schurPipelineProgram Nm Reg Red Core).wellTyped smallEigResources
+      (schurPipelineProblem Mch words sizes admitted).formats = true)
+    (hmeets : ∀ d, SchurSizes Mch sizes d →
+      ∀ (x : (schurPipelineProblem Mch words sizes admitted).Input d) (I : Interp SmallEigOp Tst ℝ),
+      (smallEigModel (schurPipelineProblem Mch words sizes admitted) Mch sU).contracts d x I →
+      (schurPipelineRoutine Nm Reg Red Core).Meets I
+        (schurPipelineSpec (words (d 0) x.val.1.δ x.val.1.φ) (List.ofFn d))) :
+    ((schurPipelineInputs Mch words sizes admitted).cast (schurPipelineRoutine Nm Reg Red Core)
+      rfl rfl).Checked
+      (schurPipelineAlgorithm sU Nm Reg Red Core WNm WReg WRed WCore hNm hReg hRed hCore hwords
+        ht hmeets) :=
+  ((schurPipelineInputs Mch words sizes admitted).cast (schurPipelineRoutine Nm Reg Red Core)
+    rfl rfl).checked_all _
+
 end Generic
 
 /-! ### The instance -/
@@ -388,7 +418,8 @@ theorem denseSchurProgram_wellTyped (sG : ℕ) {Mch : Machine ℝ}
 
 /-- The dense Schur program terminates on every admitted input, interpretation of the model and
 tape, and writes only the matrix, the accumulator and the flag
-(`NLAlib.Schur.denseSchur_completes`, no rounding model). -/
+(`NLAlib.Schur.denseSchur_completes`, no rounding model).
+An end statement in operand form: no other declaration of the library is proved from it. -/
 theorem denseSchurProgram_wp {Mch : Machine ℝ} {admitted : ∃ d, SchurSizes Mch denseSchurSizes d}
     {sU sG : ℕ} {d : Fin 6 → ℕ} (hd : SchurSizes Mch denseSchurSizes d)
     (x : (denseSchurProblem Mch admitted).Input d) {I : Interp SmallEigOp Tst ℝ}
@@ -545,7 +576,8 @@ theorem denseSchur_algorithm_measureReal_not_accepts_le {Mch : Machine ℝ}
 
 /-- What the certificate states: at every admitted size, for every admitted input, every
 interpretation satisfying the contracts of the model and every tape, the run of the fixed program
-from the supplied buffers succeeds within the scratch, the budget, the work and the span of the
+from the supplied buffers succeeds within the scratch, the budget, the work, the span and the
+memory of the
 specification, and its final memory satisfies the output condition
 (`NLAlib.Ops.Routine.Domain.Checked`). The deterministic claim is termination within the
 footprint only; the accuracy of the stored Schur form holds with probability over the draws:
@@ -572,7 +604,7 @@ $\widehat{\mathbf{T}}$ and a $\widehat{\mathbf{U}}$ within $58 R \boldsymbol{u}$
 whose product is within $\delta \|\mathbf{A}\|_2$ of $\mathbf{A}$, except with probability at
 most $\varphi$. -/
 noncomputable def denseSchurClaim (Mch : Machine ℝ)
-    (admitted : ∃ d, SchurSizes Mch denseSchurSizes d) (sU sG : ℕ) {u : ℝ}
+    (admitted : ∃ d, SchurSizes Mch denseSchurSizes d) (sU sG : ℕ) (hs : sU ≠ sG) {u : ℝ}
     (hM : StdModel u id Mch) : RandomizedClaim (denseSchurAlgorithm Mch admitted sU sG) where
   law _ _ := TapeModel.streams [(sU, volume.restrict (Set.Icc 0 1)), (sG, gaussianReal 0 1)]
   admits d x := 0 < x.val.1.δ ∧ x.val.1.δ ≤ 1 ∧ 0 < x.val.1.φ ∧ x.val.1.φ ≤ 1 ∧
@@ -584,8 +616,9 @@ noncomputable def denseSchurClaim (Mch : Machine ℝ)
     SchurOutput (0, 0) (2, 0) (3, 0) x.val.1.matrix x.val.1.δ
       (58 * denseSchurRotations (d 0) x.val.1.δ x.val.1.φ * u) m
   bound _ x := x.val.1.φ
+  realizable _ _ _ _ := TapeModel.realizable_uniform_gaussian hs
   holds := fun d hd x hx I hI hint Ω _ μ _ tape hlaw => by
-    obtain ⟨law, hfix, hξ⟩ := hlaw
+    obtain ⟨-, law, hfix, hξ⟩ := hlaw
     obtain ⟨hIm, win, hloc⟩ := hint
     obtain ⟨hδ, hδ1, hφ, hφ1, hu⟩ := hx
     exact denseSchur_algorithm_measureReal_not_accepts_le hM (hfix _ (List.Mem.head _))

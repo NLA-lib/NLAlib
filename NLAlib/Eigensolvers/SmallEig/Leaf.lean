@@ -60,7 +60,8 @@ def identityLeaf : Stmt O Q := ops% [d, np, T] (Bk, P) → (Bk, Ub) {
 
 /-- `NLAlib.SmallEig.identityLeaf` on a scalar machine with the literal $0$ exact, and $1$ exact
 when $d > 0$, at any order $d$: with room for $2d^2$ words at `ub`, on every tape, it writes only
-those words and stores the identity of order $d$. -/
+those words and stores the identity of order $d$.
+Shared by the trees of `NLAlib.SmallEig.smallEigCore`, `NLAlib.SmallEig.smallEigProg`. -/
 theorem identityLeaf_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (h0 : M.lit 0 = 0) {d : ℕ} (h1 : 0 < d → M.lit 1 = 1) {τ : Tape ℝ} {μ : Mem ℝ}
     {w p ub : ℕ × ℕ} {ps : List ℝ} {T : ℕ} (hroom : ub.2 + 2 * (d * d) ≤ μ.store.len ub.1) :

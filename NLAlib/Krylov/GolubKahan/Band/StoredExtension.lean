@@ -184,7 +184,9 @@ readable block `ws` of `b` columns at `W`, in three distinct buffers with room f
 directly after the basis and for the coefficients at `C`, a call of an operation that satisfies the
 contract of a basis extension for the predicate `Ext` at admitted dimensions `[r, k, b]` writes
 only its three output blocks, does not move the tape, and leaves a stored extension by the
-decoded block `ws`. -/
+decoded block `ws`.
+Shared by the trees of `NLAlib.Krylov.GolubKahan.Band.step`,
+`NLAlib.Krylov.GolubKahan.Band.solve`. -/
 theorem extend_writes {dec : K → ℝ} {Ext : ExtendPred ℝ} {ok : ℕ → ℕ → ℕ → Prop}
     {I : Interp Op Tst K} {o : Op}
     (hO : I.Satisfies .total o ((extendRelOf dec ok Ext).spec ExtendOperands))
@@ -319,7 +321,9 @@ room for the new block directly after the basis and for the coefficients at `C`,
 `ws` be related by `Rel` to the decoded readable block `xs` at `X`, no cell of which is an output
 cell of the call. Then a call of an operation that satisfies the contract of a basis extension for
 the predicate `Ext` at admitted dimensions `[r, k, b]` writes only its three output blocks, does
-not move the tape, and leaves a stored extension by a block related to the block at `X`. -/
+not move the tape, and leaves a stored extension by a block related to the block at `X`.
+Shared by the trees of `NLAlib.Krylov.GolubKahan.Band.step`,
+`NLAlib.Krylov.GolubKahan.Band.solve`. -/
 theorem extend_writes_product {dec : K → ℝ} {Ext : ExtendPred ℝ} {ok : ℕ → ℕ → ℕ → Prop}
     {I : Interp Op Tst K} {o : Op}
     (hO : I.Satisfies .total o ((extendRelOf dec ok Ext).spec ExtendOperands))

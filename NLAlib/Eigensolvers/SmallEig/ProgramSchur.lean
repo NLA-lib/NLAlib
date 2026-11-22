@@ -362,7 +362,9 @@ accumulator $\mathbf{X}$, the pair $(\mathbf{X}, \mathbf{H})$ tracked from $(\ma
 the block, the accumulator and the failure word and, except with probability at most
 $\varphi/4$, stores an upper triangular $\widehat{\mathbf{T}}_b$ and $\widehat{\mathbf{U}}_b$
 tracked from $(\mathbf{I}, \mathbf{M})$ with errors $((1 + 24\boldsymbol{u})^R - 1, \delta)$. The
-replay errors are absorbed by `NLAlib.SmallEig.smallEigReplay_le_omega`. -/
+replay errors are absorbed by `NLAlib.SmallEig.smallEigReplay_le_omega`.
+A step in the proof of `NLAlib.SmallEig.SmallEigScratch.of_alloc`,
+`NLAlib.SmallEig.smallEigProg_tail_pwrites`, `NLAlib.SmallEig.smallEigProg_pwrites_schur`. -/
 theorem smallEigProg_core_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I) {n : ℕ}
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
@@ -467,7 +469,9 @@ omit [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has I
 /-- **The identity accumulator of `NLAlib.SmallEig.smallEigProg`**: from the memory of the input
 (`NLAlib.SmallEig.SmallEigInput`), on a scalar machine with the literals $0$ and $1$ exact,
 `NLAlib.SmallEig.identityLeaf` writes only the output block, stores the identity there and keeps
-the input. -/
+the input.
+Shared by the trees of `NLAlib.hessenbergReduceLast`, `NLAlib.Schur.schurPipelineWith`,
+`NLAlib.SmallEig.identityLeaf` and 6 more. -/
 theorem SmallEigInput.identity_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (h0 : Mch.lit 0 = 0) (h1 : Mch.lit 1 = 1) {nmax n T : ℕ}
     {S δ φ : ℝ} {c₁ c₂ : PolyLogTail} {w q o : ℕ × ℕ} {M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
@@ -511,7 +515,8 @@ class of `NLAlib.SmallEig.ginibrePerturb_pwrites`, an upper triangular
 $\widehat{\mathbf{T}}_b$ and $\widehat{\mathbf{U}}_b$ tracked from $(\mathbf{I}, \mathbf{M})$:
 the reduction keeps the class (`NLAlib.SmallEig.smallEigCoreClass_hessenbergReduceLastWord`) and
 the replay is within $(1 + 24\boldsymbol{u})^{(n+1)^2} - 1$ of its unitary. The frames are given
-by their evaluations. -/
+by their evaluations.
+A step in the proof of `NLAlib.SmallEig.smallEigProg_pwrites_schur`. -/
 theorem smallEigProg_tail_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I) {n : ℕ} (hn0' : 1 ≤ n)
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
@@ -594,7 +599,9 @@ upper triangular $\widehat{\mathbf{T}}_b$ and $\widehat{\mathbf{U}}_b$ with
 $\|\widehat{\mathbf{U}}_b - \mathbf{V}\|_2 \le (1 + 24\boldsymbol{u})^{R} - 1$ and
 $\widehat{\mathbf{T}}_b = \mathbf{V}^{\mathsf H}(\mathbf{M} + \mathbf{E})\mathbf{V}$ for an exact
 unitary $\mathbf{V}$ and some $\|\mathbf{E}\|_2 \le \delta$, $R$ =
-`NLAlib.SmallEig.smallEigLeafRotations` at $n_{\max}$ and the cap. -/
+`NLAlib.SmallEig.smallEigLeafRotations` at $n_{\max}$ and the cap.
+Shared by the trees of `NLAlib.Schur.denseSchurWith`, `NLAlib.Schur.denseSchur`,
+`NLAlib.ShiftedQR.roundedShQRSmallEig` and 2 more. -/
 theorem smallEigProg_pwrites_schur {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch)
     (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I)

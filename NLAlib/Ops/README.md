@@ -84,7 +84,9 @@ computes one line for every certificate and compares it with `scripts/ops_certif
 recorded certificate may not get weaker in any field, and a new one must have a confined model,
 closed-form work and a derived problem, or be added to that file. A family of certificates
 indexed by a parameter that fixes the admitted size is not one certificate; the check lists
-parametrised programs.
+parametrised programs. The script tests its own classification each time it runs, on artificial
+certificates declared in it (`OpsCertificates.Fixtures`, with the expected line and report of
+each; see `docs/contributing/checks.md`), and prints `ops report fixtures: N cases`.
 
 **The line of a certificate.**
 
@@ -96,8 +98,8 @@ parametrised programs.
 | `problem` | `derived`, `handwritten` | the problem is that of a `Routine.Domain`, or a hand-written `Problem` |
 | `derived` | a number, `?`, `-` | the operands whose buffer holds words computed from the inputs |
 | `unstored` | `yes`, `no`, `-` | the domain declares inputs that no buffer holds |
-| `oracles` | `declared`, `missing`, `none` | for a model that is not uniform, a `Routine.Domain.Oracles` declaration exists; `none` for a uniform model |
-| `claim` | names, `exempt`, `none`, `required-missing` | the `RandomizedClaim`s of the certificate |
+| `oracles` | `declared`, `related`, `missing`, `none` | for a model that is not uniform, a `Routine.Domain.Oracles` declaration unifies with this domain and model (`declared`), or exists only for another instance of the domain (`related`); `none` for a uniform model |
+| `claim` | names, `related:` names, `exempt`, `none`, `required-missing` | the `RandomizedClaim`s that are about this certificate at its own parameters; `related:` for claims about the same declaration at other arguments |
 
 A resource field is classified by everything it depends on, through every definition of the
 library (proofs are not searched):
@@ -120,9 +122,24 @@ A scratch bound that adds the query reserve of the static count
 certificates whose name contains `Name`) prints, for each certificate and without writing
 anything: its line with the reason of every `manifest` or `unknown`; the admitted sizes and the
 acceptance predicate as written; the slots, with the formulas of the derived ones; the unstored
-inputs with the operations declared to reach them; the contracts and the weights of the
-operations of the model; the hypotheses of the certificate; its resource fields and its output
-condition; and its randomized claims with their law, event and bound.
+inputs; the model, with the contracts of its operations and of its queries and the three
+weights (`operationWork`, `queryWork`, `coreWork`), whether the model is uniform or not; every
+binder of the certificate, parameters and hypotheses; its resource fields and its output
+condition.
+
+For oracle declarations and randomized claims the report distinguishes two levels. A
+declaration *applies to this instance* when its binders can be instantiated so that its type is
+about this certificate: `RandomizedClaim A` with `A` this certificate at its own parameters,
+`Oracles D M` with `D` the domain of the problem and `M` the model. Only then does the line of
+the certificate say `claim=<name>` or `oracles=declared`. A declaration about the same
+certificate declaration at other arguments (a claim for the real field only, or for operations
+taken from a bundle) is *related*: the line says `claim=related:<name>` or `oracles=related`,
+which satisfies neither the rule for termination-only certificates nor the ratchet, and the
+report prints the instance it is about and the arguments where it differs. For a declaration
+that applies the report prints the binders this instance fixes, the parameters that remain,
+the hypotheses it shares with the certificate, and the hypotheses that are **not** hypotheses
+of the certificate; for a claim, also the law of the tape (its realizability is a field of the
+claim, so it is proved), `admits`, `interprets`, the event and the bound.
 `OPS_CERTIFICATES_REPORT_FILE=path` writes the report to a file.
 
 ```
@@ -143,6 +160,10 @@ program against a separately realized lower model and specification, including i
 and allocations. `Algorithm.runsLaw` observes the output of the same certified execution.
 
 ## Writing a routine and certifying it
+
+[Writing, proving and certifying a routine](../../docs/contributing/routines.md) is the guided
+path: the layers, one example from the tree to the line of the certificate report, and the
+pitfalls. This section is the reference.
 
 A routine (`Routine.lean`) is a fixed tree with an interface, and is the unit that is written,
 called, linked and certified. It is written with `routine%` (`RoutineSyntax.lean`), whose header
@@ -189,13 +210,19 @@ is a fragment: a plain `Stmt` written with `ops%`, with one statement of its run
 that routine.
 
 The library does not yet follow this rule everywhere. Kernels that several routines run, each on
-operands of its own, are by the rule routines, but some are still plain trees with operand-form
-statements, from before routines existed: the rotation and coefficient kernels of shifted QR,
-the small-eigenvalue solver and Hessenberg reduction (`rotateRows` and the trees their docstrings
-describe as "shared by the trees of …"), and the matrix kernels of `Blas/` (`Hermitian`,
-`Matrix`, `Pair`, `ColumnProducts`, `Clamp`, …). Some of them have a word-level and a decoded
-statement. They are to become routines with one judgment each; until then their docstrings say
-which trees share them. The Krylov families, Hutch++, MGS and the level-1 leaves follow the rule.
+operands of its own, are by the rule routines. The fill (`fillRoutine`), the batch of draws
+(`sampleRoutine`) and the matrix copy, identity and real trace (`PairMatrix.copyRoutine`,
+`PairMatrix.identityRoutine`, `PairMatrix.traceReRoutine`) are, and their callers run them by
+interface. The others are still plain trees with operand-form statements, from before routines
+existed: the row and column rotations and the Givens coefficient kernels of shifted QR, the
+small-eigenvalue solver and Hessenberg reduction, and these kernels of `Blas/`: `unaryMap`,
+the `Hermitian` family, `scalarBroadcast`, `normSq`, `Pair.multiply`,
+`Pair.linearCombination`, `copyStrided`, `clamp`. They address sub-blocks of
+one matrix buffer at computed offsets, and several have a word-level and a decoded statement;
+they are to become routines, separated by block, with one judgment each. Until then every
+statement in operand form says in its docstring what it is: a fragment of one named tree, shared
+by the named trees, a step in the proof of a named theorem, or an end statement that nothing is
+proved from. The Krylov families, Hutch++, MGS and the level-1 leaves follow the rule.
 
 **One statement per routine.** A routine has one correctness statement, `XRoutine_meets`. A
 caller uses it with `call`; it is not restated in operand form, and no lemma lists which
@@ -417,7 +444,9 @@ The interface in detail:
   author. `D.checked` states what a certificate says for the admitted inputs, in terms of the
   evaluator: for every admitted size and tuple of inputs, every interpretation satisfying the
   contracts and every tape, the run from the buffers of the slots (`D.memory`) succeeds within
-  the resources of the specification and satisfies its output condition. `D.Checked A` is
+  the resources of the specification — scratch, budget, work, span, and resident memory: the
+  words of the inputs `D.bytes d` plus the peak of the run are at most `S.memory d` — and
+  satisfies its output condition. `D.Checked A` is
   that statement as one proposition, and `D.checked_all` proves it of every certificate. A
   family's `_checked` theorem is either that proposition (`algorithm_checked`, `sign_checked`,
   `smallEig_checked`, …) or a form with the output written on values: `Mem.Holds c i a` says
@@ -443,7 +472,8 @@ A reviewer of a certified routine reads its `Routine.Spec`, the problem (`valid`
 any `derived` operand of its `Routine.Domain`), the
 model (which operations exist and what each costs) and the stated work. `Examples/Routine.lean`
 and `Examples/RoutineCertification.lean` are a complete small case, ending in a statement in
-terms of the evaluator alone.
+terms of the evaluator alone; `Examples/VectorSum.lean` is the same chain in one file for a loop
+over the cells of a block.
 
 The names of routines, specifications, judgments, certificates and their files follow one
 convention in every family, stated in
@@ -538,7 +568,9 @@ some solvers the certificate itself claims only termination (`Routine.Spec.termi
 
 * `law`: the law of the tape, as a `TapeModel` — the sample spaces, measures and random tapes
   the claim covers. Two forms are named. `TapeModel.streams [(s, ν), …]` says the entries of the
-  tape are independent and an entry of the stream `s` has the law `ν` (`IsTapeLaw`).
+  tape are independent and an entry of the stream `s` has the law `ν` (`IsTapeLaw`); the
+  stream identifiers of the list must be distinct, which is part of the law, so a list naming
+  one stream twice describes no tape.
   `TapeModel.packed ν pack` says the tape is the packing `pack` of a random object with the law
   `ν`. A claim may also state its law directly, as Hutch++ does for two independent Gaussian
   matrices and spectral bisection for a rounded tape;
@@ -548,12 +580,26 @@ some solvers the certificate itself claims only termination (`Routine.Spec.termi
   (measurability, reading the tape only in its windows), where the proof needs them;
 * `event`: the accuracy event, a property of the tape, the count and the final memory of the run;
 * `bound`: the failure probability, a function of the size and the input;
+* `realizable`: for every admitted size and input satisfying `admits`, the law is
+  `TapeModel.Realizable`: some probability space carries a tape with it. Without this field a
+  claim whose law no tape has would hold vacuously. `TapeModel.realizable_streams` (distinct
+  streams, probability laws), `realizable_packed` and `realizable_uniform_gaussian` prove it
+  for the named forms. The claims over a uniform and a Gaussian stream `sU`, `sG` take the
+  hypothesis `sU ≠ sG` for it;
 * `holds`: the statement `Algorithm.FailsAtMost`: for every admitted size and input satisfying
   `admits`, every interpretation satisfying the contracts and `interprets`, and every finite
   measure and tape with the law, the probability that the counted run of the program of `A`
   fails, exceeds a resource bound of the specification, or ends outside `event` is at most
   `bound`. The run is that of the certificate: the same program from the initial memory of the
   problem, so success and every resource bound are part of the event.
+
+`admits` and `interprets` are not required to be satisfiable. They are numerical conditions in
+the parameters of a claim (a unit roundoff below a threshold, a measurable interpretation
+reading the tape in its windows); whether some input and some interpretation meet them depends
+on those parameters, and a field demanding it could only be discharged by a further hypothesis
+of the claim. They are stated in the claim and printed by the certificate report, where a
+reader sees for which inputs and implementations the bound is claimed. `holds` quantifies over
+every finite measure, of which the probability measures of `realizable` are instances.
 
 `RandomizedClaim.ofReference` and `RandomizedClaim.ofWp` build a claim from the two transfers of
 `Probability.lean`: from a reference event of the sample space, and from the probabilistic
@@ -565,12 +611,12 @@ The claims of the library:
 
 | Certificate | Claim | Law of the tape |
 |---|---|---|
-| `HutchPlusPlus.Certification.algorithm` | `HutchPlusPlus.Certification.claim` | packing of two independent Gaussian matrices |
-| `Deflation.deflateAlgorithm` | `Deflation.deflateClaim` | packing of a complex Gaussian matrix |
+| `HutchPlusPlus.Certification.algorithm` over `ℝ` | `HutchPlusPlus.Certification.claim` | packing of two independent Gaussian matrices |
+| `Deflation.deflateAlgorithm` with the product and QR of a `FloatMachine` | `Deflation.deflateClaim` | packing of a complex Gaussian matrix |
 | any certificate of block Golub–Kahan | `BlockKrylov.gaussianClaim` | packing of a Gaussian start block |
 | `SpectralBisection.countedBisectionAlgorithm` | `SpectralBisection.countedBisectionClaim` | rounding of independent uniform and Gaussian streams |
-| `SmallEig.smallEigAlgorithm` | `SmallEig.smallEigClaim`, `smallEigGinibreClaim` | independent uniform and Gaussian streams |
-| `ShiftedQR.shqrSmallEigAlgorithm` | `ShiftedQR.shqrSmallEigClaim`, `shqrSmallEigGinibreClaim` | independent uniform and Gaussian streams |
+| `SmallEig.smallEigAlgorithm` | `SmallEig.smallEigClaim`; `smallEigGinibreClaim` at the Ginibre tails | independent uniform and Gaussian streams |
+| `ShiftedQR.shqrSmallEigAlgorithm` | `ShiftedQR.shqrSmallEigClaim`; `shqrSmallEigGinibreClaim` at the Ginibre tails | independent uniform and Gaussian streams |
 | `Schur.denseSchurAlgorithm` | `Schur.denseSchurClaim` | independent uniform and Gaussian streams |
 
 **Every termination-only certificate has a claim.** The certificate check
@@ -586,6 +632,8 @@ names its certificate, so no annotation is needed.
 The supported surface, which changes only with a recorded rename or a migration note:
 
 * **Writing trees and routines**: `routine%`, `ops%`, `spec%` and their clauses and marks;
+  `noted_of%`, `Stmt.pretty` and `Routine.pretty` for reading a tree with its names (the name
+  `foo._noted` of the copy is not part of the surface; use `noted_of% foo`);
   `Routine`, `Port` through `Port.read`/`write`/`update`/`isolated` and `every`;
   `Routine.Spec`, `Spec.ofRel`, `Spec.terminates`.
 * **The judgment and its use**: `Routine.Meets`; in a tree `run R [dims] (operands)`; in a proof
@@ -627,19 +675,42 @@ certified count depends on one. Notes are the only place where a tree holds meta
 kind of metadata is a new constructor of `Note`; the type of trees does not change.
 `Stmt.erase` removes every note, with the same run, count and scratch (`Notes.lean`).
 
-The builder attaches notes to the trees written under `noted%`:
-`def foo : Routine Op Tst := noted% routine% [n] (x : n) → (z : 1) { … }` records the names of
-the header, of each loop variable, scratch buffer and index binding, and of the routine or tree
-that each `run` frames. Without `noted%` a tree has no note. Proofs are the same in both cases:
-`routine_intro`, `step`, `call` and `loop_inv` remove the notes of the goal first
-(`strip_notes`, which is also the tactic to use after unfolding a noted tree by hand, before a
-rule that matches the shape of the tree). The library's trees are written without `noted%`
-where their proofs apply such rules by hand.
+Every tree written with `ops%` or `routine%` keeps its source names, beside the certified
+value. `def foo : Routine Op Tst := routine% [n] (x : n) → (z : 1) { … }` defines `foo`, whose
+tree has no note, and a second definition `foo._noted`, the noted copy: the same routine whose
+tree records the names of the header, of each loop variable, scratch buffer and index binding,
+and of the routine or tree that each `run` frames. The builder elaborates the same source twice,
+once without notes and once with them, so erasing the notes of the copy gives the tree of `foo`,
+by `rfl` (`Examples/Notes.lean`). A `run` in the copy frames the noted copy of what it runs, so
+names are kept at every depth. Judgments, counts and certificates are stated and proved on
+`foo`; nothing refers to `foo._noted`, and a rule that matches the shape of a tree never meets
+a note.
 
-`Stmt.pretty` (`Notes.lean`) reads a tree back as pseudocode with those names, and shows a
-noted `run` as `run name [dims] (operands)` in place of the tree of the routine;
-`Examples/Notes.lean` checks its output on the integrator. It is a reading aid for people and
-tools. It is not a code emitter, and nothing is proved about its output.
+`noted_of% foo` is the noted copy of `foo`, and `foo` itself when there is none: a declaration
+written with `noted%` (its value has the notes), a tree in an `example`, or a declaration whose
+elaboration with the names failed, which the builder reports with an information message when
+the declaration is compiled (no declaration of the library is in that case). `Stmt.pretty` (`Notes.lean`) and `Routine.pretty`
+(`RoutineSyntax.lean`) read a tree back as pseudocode with those names, and show a noted `run`
+as `run name [dims] (operands)` in place of the tree of the routine:
+
+```lean
+#eval IO.println (noted_of% Krylov.CG.HSCG.roundsRoutine : Routine Signature Empty).pretty
+-- for i < k {
+--   run NLAlib.Krylov.CG.HSCG.stepRoutine [n] (X, R, P)
+-- }
+```
+
+The catalog and the test type need `Repr` instances, and the parameters of the routine are
+given by position or by the expected type. `Examples/Notes.lean` checks the output on the
+example routines, and `NLAlibTools/OpsNotes.lean` on the conjugate gradient step and loop, the
+modified Gram–Schmidt factorization and the Hutch++ estimator. The output is a reading aid for
+people and tools. It is not a code emitter, and nothing is proved about it.
+
+`noted% t` puts the notes in the value itself instead: under it `ops%` and `routine%` build the
+noted tree and make no copy. Proofs on such a tree are the same, because `routine_intro`,
+`step`, `call` and `loop_inv` remove the notes of the goal first (`strip_notes`, which is also
+the tactic to use after unfolding a noted tree by hand). The library does not use `noted%`;
+three example routines do, to check that.
 
 ## Proof construction
 

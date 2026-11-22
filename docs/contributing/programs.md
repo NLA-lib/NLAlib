@@ -65,6 +65,10 @@ dense and coordinate representations require their own packing and validity cond
 
 ## Proving programs as mathematics
 
+[Writing, proving and certifying a routine](routines.md) carries one example through every
+step below, with the tactics and the pitfalls; read it before writing a routine. This section
+states the rules.
+
 1. State the pure function and its mathematical properties independently of memory. A program
    proof then identifies its actual stored output with that function.
 2. Use `Ops.Writes` for a total or liberal postcondition with an explicit write footprint.
@@ -90,10 +94,16 @@ dense and coordinate representations require their own packing and validity cond
    routine allocates, or at offsets computed inside its operands, is a fragment: a plain `Stmt`
    written with `ops%`, with one statement of its run in operand form, used only inside the
    proof of the routine that contains it, and its docstring names that routine. A kernel that
-   several routines run on operands of its own is a routine; the rotation and coefficient
-   kernels of shifted QR and the small-eigenvalue solver and the matrix kernels of
-   `NLAlib/Ops/Blas` are still operand-form trees from before routines existed, and are to be
-   converted, so do not take them as a model. A caller runs a routine by its interface,
+   several routines run on operands of its own is a routine, as the fill, the batch of draws
+   and the matrix copy, identity and real trace are (`Ops.fillRoutine`, `Ops.sampleRoutine`,
+   `Ops.PairMatrix.copyRoutine`, `Ops.PairMatrix.identityRoutine`,
+   `Ops.PairMatrix.traceReRoutine`); the rotation and coefficient kernels of shifted QR and
+   the small-eigenvalue solver and the other kernels of `NLAlib/Ops/Blas` (`unaryMap`, the
+   `Hermitian` family, `scalarBroadcast`, `normSq`, `Pair.multiply`, `Pair.linearCombination`,
+   `copyStrided`, `clamp`) are still operand-form trees from before routines existed, and are
+   to be converted, so do not take them as a model. Every statement in operand form says in
+   its docstring what it is: a
+   fragment of a named tree, shared by named trees, or a step in the proof of a named theorem. A caller runs a routine by its interface,
    `run R [dims] (operands)`, and a fragment by its buffer variables. State its specification
    with `spec%` on named
    dimensions and blocks, or with `Ops.Routine.Spec.ofRel` when the routine implements an
@@ -136,7 +146,8 @@ dense and coordinate representations require their own packing and validity cond
    of such a certificate is a count of calls of them.
    Derive the public certificate with `Ops.Routine.Domain.algorithm` against a
    stated `Specification`, and state what it says in a `_checked` theorem: the proposition
-   `Ops.Routine.Domain.Checked` of the certificate (proved by `Ops.Routine.Domain.checked_all`),
+   `Ops.Routine.Domain.Checked` of the certificate (proved by `Ops.Routine.Domain.checked_all`;
+   it includes every resource bound, the resident memory among them),
    or a form with the output on values (`Ops.Mem.Holds`: a buffer holds a value). Its docstring
    says what a reader checks beyond it: the declared oracles, or the probability theorem that
    carries the accuracy when the deterministic claim is termination. A counted certificate,
@@ -182,8 +193,12 @@ State the result as a `Ops.RandomizedClaim` of the certificate (`NLAlib/Ops/Rand
 named for the certificate with the suffix `Claim` (`claim` in a `Certification` namespace). Its
 fields are what a reader checks: the law of the tape (`Ops.TapeModel.streams` for independent
 entries with stated stream laws, `Ops.TapeModel.packed` for a packed random object, or the law
-written out), the hypotheses on the input and on the interpretation, the accuracy event and the
-failure bound. A certificate whose routine has the specification `Ops.Routine.Spec.terminates`
+written out), the hypotheses on the input and on the interpretation, the accuracy event, the
+failure bound, and the proof that the law is realizable (`Ops.TapeModel.Realizable`; the
+streams of `streams` must be distinct). State the claim about the certificate at its own
+parameters: a claim about the certificate at a fixed field or a bundle of operations is
+recorded as `claim=related:…`, which is not a claim of the certificate. A certificate whose
+routine has the specification `Ops.Routine.Spec.terminates`
 must have a claim; the certificate check `scripts/OpsPrograms.lean` fails otherwise. The
 headline theorem may stay as the statement the claim's proof applies.
 
@@ -263,5 +278,5 @@ records an earlier design.
 
 During development, check only the edited modules and relevant dependents. The shared gate
 `scripts/ops/lean_gated.sh` serializes Lean work on a shared host. Run the full
-`scripts/stage_check.sh` once sources are stable, followed by the check-script unit tests when
-scripts change. The complete validation procedure is in [CONTRIBUTING](../../CONTRIBUTING.md).
+`scripts/stage_check.sh` once sources are stable; it includes the check-script unit tests. The
+complete validation procedure is in [CONTRIBUTING](../../CONTRIBUTING.md).

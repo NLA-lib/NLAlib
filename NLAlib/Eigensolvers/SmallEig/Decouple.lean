@@ -216,7 +216,9 @@ omit [Has IdxTst Q] in
 /-- One more rounded step with the shift $\lambda$ (`NLAlib.ShiftedQR.multiStepStable` at degree
 $1$, recording its rotations in the pending slot of the log), from the ends of a stable chain
 by a named unitary $\mathbf{Q}$: a chain of one more step by $\mathbf{Q}$ times the unitary of
-the recorded entries. -/
+the recorded entries.
+Shared by the trees of `NLAlib.ShiftedQR.stepComptau`, `NLAlib.ShiftedQR.trialStep`,
+`NLAlib.SmallEig.decoupleLast`. -/
 private theorem multiStepStable_writes_by {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hC : IsCmp id I)
     (hL : IsIndexLit M I) {n i : ℕ} (hNat : IsExactNatLit id M (n + 1))
@@ -565,7 +567,8 @@ private theorem decoupleLast_exit_by {M : Machine ℝ} {I : Interp O Q ℝ} {u t
 
 omit [Has IdxTst Q] in
 /-- `NLAlib.SmallEig.decoupleLast_writes_scans` with the log and the unitary of its entries
-(the log of the rounds). -/
+(the log of the rounds).
+A fragment of the tree `NLAlib.SmallEig.smallEigDecoupler`. -/
 private theorem decoupleLast_writes_scansBy {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hL : IsIndexLit M I)
     (hC : IsCmp id I) {n m₂ : ℕ} (hNat : IsExactNatLit id M (n + 2))

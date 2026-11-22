@@ -103,12 +103,11 @@ noncomputable def specification
     (em E : (Fin 2 → ℕ) → ℝ) :
     Specification Standard.Operation CmpTst (problem (K := K) domain admitted) where
   budget := staticBudget
-  scratch d := solvePeak model.access.workspace (d 0) (d 1) +
-    model.resources.queryReserve (staticBudget d)
+  scratch d := solvePeak model.access.workspace (d 0) (d 1)
   work d := model.resources.work (staticBudget d)
   span d := model.resources.span (staticBudget d)
   memory d := d 0 + (d 1 + 1) * d 0 + (3 * d 1 + 2) +
-    (solvePeak model.access.workspace (d 0) (d 1) + model.resources.queryReserve (staticBudget d))
+    solvePeak model.access.workspace (d 0) (d 1)
   good d x _ _ m := m.pos = 0 ∧ ∃ vs cs,
     m.store.readBlock 1 0 ((d 1 + 1) * d 0) = some vs ∧
     m.store.readBlock 2 0 (3 * d 1 + 2) = some cs ∧
@@ -157,7 +156,11 @@ noncomputable def algorithm
           fun i => model.decode (x.val.1 i) := decv_ofFn_apply _ _
       exact ⟨hpos, vs, cs, hv, hc, hb ▸ hrel⟩)
     (fun _ _ => le_rfl)
-    (fun d _ => staticPeak_program_le model.resources d)
+    (fun d _ => by
+      have h0 : model.resources.queryReserve (staticBudget d) = 0 := by
+        rw [hresources]
+        exact ResourceModel.queryReserve_of_zero _ (fun _ _ => rfl) _
+      exact (staticPeak_program_le model.resources d).trans (le_of_eq (by rw [h0]; rfl)))
     (fun _ _ => le_rfl)
     (fun _ _ => le_rfl)
     (fun d _ x => by
@@ -221,7 +224,8 @@ noncomputable def exactReferenceAlgorithm (domain : (Fin 2 → ℕ) → Prop)
 
 /-- What the certificate states: at every admitted size, for every admitted input, every
 interpretation satisfying the contracts of the model and every tape, the run of the fixed program
-from the supplied buffers succeeds within the scratch, the budget, the work and the span of the
+from the supplied buffers succeeds within the scratch, the budget, the work, the span and the
+memory of the
 specification, and its final memory satisfies the output condition
 (`NLAlib.Ops.Routine.Domain.Checked`). The matrix is not in memory:
 it is reached only through the products of the model, and the work is counted in those

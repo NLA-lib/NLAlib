@@ -53,7 +53,8 @@ omit [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
 $j < 2(n + 1)$ on the range $(lo, d)$, $d \le k$, a Schur leaf meeting
 `NLAlib.Schur.RandomSchurLeafContract` on orders at most $\min(k, n + 1)$ and norms at most
 $N_0$ stores, except with probability at most $\varphi_L$, an upper triangular block and an
-accumulator tracked from the block before with errors $(\varepsilon_L, \beta)$. -/
+accumulator tracked from the block before with errors $(\varepsilon_L, \beta)$.
+A step in the proof of `NLAlib.ShiftedQR.roundedLeafBranch_pwrites`. -/
 theorem roundedLeafCall_pwrites {I : Interp O Q ℝ} (hI : I.IsMeasurable)
     {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
     {εL β φL N₀ u e : ℝ} {n k F T ns w m : ℕ} {ps : List ℝ} (L : Stmt O Q)
@@ -136,7 +137,8 @@ omit [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
 $j < 2(n + 1)$ on the range $(lo, d)$, $d \le k$, $d \le n + 1$, the leaf call
 (`NLAlib.ShiftedQR.roundedLeafCall_pwrites`) and the rest of the branch
 (`NLAlib.ShiftedQR.roundedLeafRest_reached`) reach the state before round $j + 1$, except with
-probability at most $\varphi_L$. -/
+probability at most $\varphi_L$.
+A step in the proof of `NLAlib.ShiftedQR.roundedRange_pwrites`. -/
 theorem roundedLeafBranch_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hu0 : 0 ≤ u) (hu : u ≤ 1 / 100)
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
@@ -213,7 +215,9 @@ by `NLAlib.DeflationInv.exists_pseudoConditionNumber_subBlock_le_and_le_norm_sub
 decoupler meeting `NLAlib.ShiftedQR.RandomDecouplingRoutineContract` returns, except with
 probability at most $\varphi_D$, the flag $0$, a closed log and an upper Hessenberg perturbed
 unitary similarity of the block by the log's unitary with error $\varepsilon(N_0)$ and a
-bottom-$k$ subdiagonal entry of modulus at most $\omega$. -/
+bottom-$k$ subdiagonal entry of modulus at most $\omega$.
+A step in the proof of `NLAlib.ShiftedQR.SchurReachedCore.of_below`,
+`NLAlib.ShiftedQR.roundedLarge_pwrites`. -/
 theorem roundedDecoupleCall_pwrites {I : Interp O Q ℝ} (hI : I.IsMeasurable)
     {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
     {B g φD N₀ u εL e ω : ℝ} {n k F T ns w m : ℕ} {ps : List ℝ} {ε : ℝ → ℝ} (D : Stmt O Q)

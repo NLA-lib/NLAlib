@@ -30,7 +30,8 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O
 
 /-- The actual top range is bounded-read and processed under the global input hypotheses. Persistent
 geometry supplies capacity for the stack, output and scratch before execution. A fragment: its tree
-runs only inside the tree of `NLAlib.ShiftedQR.worklistSolve`. -/
+runs only inside the tree of `NLAlib.ShiftedQR.worklistSolve`.
+A fragment of the tree `NLAlib.ShiftedQR.worklistSolve`. -/
 theorem worklistRound_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (hE : ExactModel id Mch) (hL : IsIndexLit Mch I) (hQ : IsToNat id I)
     {θ : ℝ} {K : KernelRoutines θ} (hK : IsEigenvalueKernels K I)

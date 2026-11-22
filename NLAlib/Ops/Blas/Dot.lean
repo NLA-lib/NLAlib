@@ -68,7 +68,8 @@ def prodLoop (n : IExp) (x y t : Operand) : Stmt Op Tst :=
   .loop n (.call (Has.inj ScalarOp.mul) [] [x, y] [t])
 
 /-- **The product loop** fills the block `t` from offset zero with the rounded products and
-writes nothing else. -/
+writes nothing else.
+Shared by the trees of `NLAlib.Ops.dotSum`, `NLAlib.Ops.nrm2Sum`. -/
 theorem prodLoop_wp {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I) {md : Mode}
     {τ : Tape K} {ρ : Env} {n : IExp} {x y t : Operand} {N bx by' bt ox oy : ℕ} {S : Store K}
     {p : ℕ} {a b : ℕ → K} (hn : n.eval ρ.idx = some N)

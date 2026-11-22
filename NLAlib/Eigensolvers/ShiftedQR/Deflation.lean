@@ -99,7 +99,8 @@ def finishRange : Stmt O Q := ops% [N, lo, d] (W) → (Out) {
 
 /-- Finishing returns every root of the actual local matrix, with multiplicity, in the reserved
 global output range. The global output need not be initialized. A fragment: its tree runs only
-inside the tree of `NLAlib.ShiftedQR.processRange`. -/
+inside the tree of `NLAlib.ShiftedQR.processRange`.
+A fragment of the tree `NLAlib.ShiftedQR.processRange`. -/
 theorem finishRange_writes {θ : ℝ} {K : KernelRoutines θ} {I : Interp O Q ℝ}
     (hK : IsEigenvalueKernels K I) {τ : Tape ℝ} {m : Mem ℝ} {N lo d : ℕ}
     {w out : ℕ × ℕ} {B : Matrix (Fin d) (Fin d) ℂ} (hl : m.Live [w, out])

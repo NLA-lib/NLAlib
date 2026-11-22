@@ -218,7 +218,8 @@ private theorem reduceLastStep_rotate {M : Machine ℝ} {I : Interp O Q ℝ} (hS
 comparisons stores the machine step `NLAlib.reduceLastStepWord` in place, for $c + 1 < N$ and
 $r < N$, appends its entry `NLAlib.reduceLastStepEntry` to the pending slot of the log, and writes
 only the matrix, its two scratch blocks (in buffers of their own) and the log (apart from the
-matrix). The plane is an exact natural (`hNat` up to $n_{\max} \ge c$). -/
+matrix). The plane is an exact natural (`hNat` up to $n_{\max} \ge c$).
+A fragment of the tree `NLAlib.hessenbergReduceLast`. -/
 theorem reduceLastStep_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hC : IsCmp id I) (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M nmax)
     {τ : Tape ℝ} {m : Mem ℝ} {N r c : ℕ} (hc : c + 1 < N) (hr : r < N) (hcn : c ≤ nmax)

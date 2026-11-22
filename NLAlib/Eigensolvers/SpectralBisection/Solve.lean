@@ -41,7 +41,8 @@ open Ops
 `NLAlib.SpectralBisection.bisectionRoutine_meets`, separate only to keep each proof short. It
 allocates the eleven arenas, runs the traversal of `NLAlib.SpectralBisection.solveBody_writes`
 in them, copies the root result and releases them. Outputs may overlap source regions because
-their final copies follow every traversal read. -/
+their final copies follow every traversal read.
+A step in the proof of `NLAlib.SpectralBisection.bisectionRoutine_meets`. -/
 private theorem allocatedSolve_writes {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     [Has IndexOp Op] [Has SampleOp Op] [Has MatrixOp Op] [Has CmpTst Tst] [Has IdxTst Tst]
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))

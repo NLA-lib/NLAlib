@@ -34,7 +34,9 @@ section Specs
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O]
 
 omit [Has IndexOp O] in
-/-- Opening a log stores the empty log, on any scalar machine whose literal $0$ is exact. -/
+/-- Opening a log stores the empty log, on any scalar machine whose literal $0$ is exact.
+Shared by the trees of `NLAlib.hessenbergReduceQ`, `NLAlib.ShiftedQR.roundedDecoupleLoopWith`,
+`NLAlib.ShiftedQR.roundedDecoupleWith` and 3 more. -/
 theorem slottedLogOpen_writes_of_lit_zero {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (h0 : Mch.lit 0 = 0) {ns w : ℕ} {lg : ℕ × ℕ} {τ : Tape ℝ}
     {μ : Mem ℝ} (hroom : lg.2 + ns * (1 + 5 * w) ≤ μ.store.len lg.1) :

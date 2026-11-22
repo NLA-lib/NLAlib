@@ -1249,6 +1249,7 @@ public import NLAlib.Ops.Examples.NoisyMath
 public import NLAlib.Ops.Examples.Notes
 public import NLAlib.Ops.Examples.Oracles
 public import NLAlib.Ops.Examples.RandomWitness
+public import NLAlib.Ops.Examples.Reference
 public import NLAlib.Ops.Examples.Resources
 public import NLAlib.Ops.Examples.Routine
 public import NLAlib.Ops.Examples.RoutineCertification
@@ -1352,6 +1353,10 @@ public import NLAlib.Ops.Profiles.StoredDenseRounded
 public import NLAlib.Ops.Profiles.StoredRoutine
 public import NLAlib.Ops.Profiles.StoredScalar
 public import NLAlib.Ops.Randomized
+public import NLAlib.Ops.Reference.Accounting
+public import NLAlib.Ops.Reference.Equivalence
+public import NLAlib.Ops.Reference.Probability
+public import NLAlib.Ops.Reference.Semantics
 public import NLAlib.Ops.Routine
 public import NLAlib.Ops.RoutineData
 public import NLAlib.Ops.RoutineInterface

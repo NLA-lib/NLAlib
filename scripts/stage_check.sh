@@ -11,7 +11,8 @@
 # and strictness of CI, after `lake build NLAlib NLAlibTools` and the freshness
 # check `lake build --no-build --rehash` of the same targets) and its fixtures
 # (scripts/replay_fixtures.sh), the program checks
-# (scripts/OpsPrograms.lean, E2 and fixed Ops certificate coverage), the reference check, the named-bound
+# (scripts/OpsPrograms.lean, E2, fixed Ops certificate coverage and the trusted base), the
+# reference check, the named-bound
 # value check (scripts/check_constants.py, on the whole library), the freshness of the generated
 # rule files (scripts/gen_rules_md.py --check), the unit tests of the check scripts
 # (scripts/test_*.py and scripts/test_check_latex.mjs, as CI runs them), the rules check
@@ -57,7 +58,7 @@ bash scripts/replay_fixtures.sh > "$tmp/replay-fixtures.log" 2>&1 || \
 echo "replay fixtures: $(grep -c ': ok' "$tmp/replay-fixtures.log") verdicts as expected"
 LEAN_NUM_THREADS=1 lake env lean -M 8000 scripts/OpsPrograms.lean > "$tmp/programs.log" 2>&1 || \
   { cat "$tmp/programs.log"; exit 1; }
-grep -E '^ops (programs|certificates|report fixtures):' "$tmp/programs.log"
+grep -E '^ops (programs|certificates|report fixtures|trusted base|trusted base fixtures):' "$tmp/programs.log"
 python3 scripts/check_refs.py | tail -1
 python3 scripts/gen_rules_md.py --check
 # the unit tests of the check scripts, as CI's "Documentation metadata regressions" step

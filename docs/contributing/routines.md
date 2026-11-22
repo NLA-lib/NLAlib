@@ -27,6 +27,12 @@ What a reviewer reads is short: the specification of the routine (`Routine.Spec`
 (`Routine.Domain`), the model (operations, contracts, costs) and the `_checked` theorem. The
 tree, the judgment and the count are checked by Lean.
 
+What "run" and "counted" mean is stated twice: by the evaluator, which the certificate is
+defined with, and by the reference rules of `NLAlib/Ops/Reference/Semantics.lean`, a readable
+restatement with the charge of each construct written in its rule. The two are proved to give
+the same outcome. The [reviewer's declaration map](../design/Ops-ReferenceReview.md) lists every
+definition such a reading depends on.
+
 **Routine or fragment.** A tree is a routine when it has operands of its own and something
 calls it through its interface: a `run` in another tree, a linking table, or a certificate. A
 tree that is a piece of one routine's tree, working on buffers that routine allocates or at

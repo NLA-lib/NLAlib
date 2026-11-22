@@ -1387,3 +1387,342 @@ run_cmd liftTermElabM do
 #check NLAlib.Ops.Algorithm.not_nonempty
 #check NLAlib.Ops.Algorithm.body_ne_abort
 #check NLAlib.Ops.Algorithm.run_ne_none
+
+/-! # The trusted base of an Ops certificate
+
+A certificate is checked by Lean's kernel, so its proof need not be read. What a reader must
+believe is what its statement means: the definitions the statement is made of. This section
+computes them and compares them with `scripts/ops_trusted_base.txt`, so that the set is known,
+has a size, and cannot change without the change being seen.
+
+## The roots
+
+The roots are the forms a claim of the library takes, for every problem, model and bound:
+
+* `Ops.Algorithm` (a certificate), with `Ops.Program.Certifies`, `Ops.Specification`,
+  `Ops.Problem`, `Ops.AccessModel` and `Ops.exec` (they are reached from it; they are named so
+  that a renaming is noticed);
+* `Ops.Reference.Execution` and `Ops.Reference.Accepts`: the same execution stated by inference
+  rules, which a reader may use in place of the evaluator
+  (`Ops.Reference.execution_iff_exec`);
+* `Ops.RandomizedClaim`, with `Ops.Algorithm.FailsAtMost` and `Ops.TapeModel.Realizable`;
+* `Ops.Routine.Domain`, `Ops.Routine.Domain.problem`, `Ops.Routine.Domain.Oracles` and
+  `Ops.Routine.Domain.Checked`: a derived problem, declared unstored inputs, and the form of
+  the readable `_checked` statements;
+* `Ops.AccessModel.Uniform`, `.Confined`, `.Charged`: the properties of a model that the
+  certificate report prints.
+
+What a particular certificate adds (its codecs, its tape law, its machine and the contracts of
+its operations, its bounds) is not here: it is read with that certificate, and
+`OPS_CERTIFICATES_REPORT` prints it. Tactics, static bounds, routines, their judgment and
+linking are not here either: they produce certificates, which are checked against these roots.
+
+## The closure
+
+From a declaration the closure follows the constants of its type and, for a definition, of its
+body; for an inductive type or a structure, of the types of its constructors. A theorem is not
+followed and not listed: no statement depends on a proof. A constructor, projection or recursor
+stands for its type. Declarations that Lean generates (matchers, recursion auxiliaries,
+`casesOn`, derived `decEq`) are followed and not listed, and their content is hashed with the
+declaration they belong to. Only declarations of the library are listed; Mathlib and Lean are
+counted.
+
+## The file
+
+One line for each declaration, sorted:
+
+`Name kind=… module=… root=yes|no route=… type=… body=…`
+
+* `route`: `evaluator` if the declaration is reached from `Ops.exec` and not from
+  `Ops.Reference.Execution`; `reference` for the converse; `execution` if from both; `claim`
+  if from neither (problems, models, specifications, randomized claims);
+* `type`, `body`: hashes of the statement and of the content. A changed `type` is a changed
+  statement; a changed `body` alone is a changed definition with the same statement.
+
+The check fails when the computed lines differ from the file, naming each declaration that
+entered, left or changed. `OPS_TRUSTED_BASE_WRITE=1` rewrites the file; `OPS_TRUSTED_BASE_FILE`
+names another file. Source lines are reported in the summary and not recorded, so that editing
+a docstring does not change the file. -/
+
+namespace OpsTrustedBase
+
+/-- The roots: the forms of the claims of the library (see the section docstring). -/
+def roots : List Name := [
+  `NLAlib.Ops.Algorithm, `NLAlib.Ops.Program.Certifies, `NLAlib.Ops.Specification,
+  `NLAlib.Ops.Problem, `NLAlib.Ops.AccessModel, `NLAlib.Ops.exec,
+  `NLAlib.Ops.Reference.Execution, `NLAlib.Ops.Reference.Accepts,
+  `NLAlib.Ops.RandomizedClaim, `NLAlib.Ops.Algorithm.FailsAtMost,
+  `NLAlib.Ops.TapeModel.Realizable,
+  `NLAlib.Ops.Routine.Domain, `NLAlib.Ops.Routine.Domain.problem,
+  `NLAlib.Ops.Routine.Domain.Oracles, `NLAlib.Ops.Routine.Domain.Checked,
+  `NLAlib.Ops.AccessModel.Uniform, `NLAlib.Ops.AccessModel.Confined,
+  `NLAlib.Ops.AccessModel.Charged]
+
+/-- The execution by the evaluator. -/
+def evaluatorRoot : Name := `NLAlib.Ops.exec
+/-- The execution by the reference rules. -/
+def referenceRoot : Name := `NLAlib.Ops.Reference.Execution
+
+/-- Whether Lean generated the declaration: it is followed and not listed. -/
+def generated (env : Environment) (c : Name) : Bool :=
+  c.isInternalDetail || isAuxRecursor env c || isNoConfusion env c || isRecCore env c ||
+  isMatcherCore env c || c.components.any (fun n => n == `brecOn || n == `below) ||
+  (match c with
+    | .str p s => s == "ctorIdx" || s == "toCtorIdx" || s == "sizeOf_spec" || s == "injEq" ||
+        s == "inj" || (s == "decEq" && (match p with
+          | .str _ t => t.startsWith "inst" | _ => false))
+    | _ => false)
+
+/-- The declaration a reader reads for the constant: a constructor, a projection or a recursor
+stands for its type. -/
+def owner (env : Environment) (c : Name) : Name :=
+  match env.find? c with
+  | some (.ctorInfo v) => v.induct
+  | some (.recInfo v) => v.getMajorInduct
+  | _ => match env.getProjectionFnInfo? c with
+    | some p => (match env.find? p.ctorName with | some (.ctorInfo v) => v.induct | _ => c)
+    | none => c
+
+/-- The expressions a declaration's meaning consists of: its type, and its body or the types
+of its constructors. -/
+def content (env : Environment) (ci : ConstantInfo) : Expr × List Expr :=
+  match ci with
+  | .inductInfo v => (ci.type, v.ctors.filterMap fun k => (env.find? k).map (·.type))
+  | .defnInfo v => (ci.type, [v.value])
+  | _ => (ci.type, [])
+
+/-- The result of a closure: the declarations of the library that were reached (generated ones
+included) and the constants outside it that they mention. -/
+structure Closure where
+  reached : NameSet := {}
+  outside : NameSet := {}
+
+/-- The closure from `todo`. `keep` says which constants are of the library; `stop` is not
+entered. -/
+partial def close (env : Environment) (keep : Name → Bool) (stop : NameSet) (todo : List Name)
+    (acc : Closure := {}) : Closure :=
+  match todo with
+  | [] => acc
+  | c :: rest =>
+    let c := owner env c
+    if acc.reached.contains c || stop.contains c then close env keep stop rest acc else
+    match env.find? c with
+    | none => close env keep stop rest acc
+    | some ci =>
+      if !keep c then close env keep stop rest { acc with outside := acc.outside.insert c } else
+      if ci.isTheorem then close env keep stop rest acc else
+      let (type, body) := content env ci
+      let used := (type :: body).foldl (fun l e => e.getUsedConstants.toList ++ l) []
+      close env keep stop (used ++ rest) { acc with reached := acc.reached.insert c }
+
+/-- The listed declarations of a closure, sorted. -/
+def Closure.listed (env : Environment) (c : Closure) : Array Name :=
+  (c.reached.toArray.filter (!generated env ·)).qsort (·.toString < ·.toString)
+
+/-- The generated declarations reached from `c` through generated declarations only. -/
+partial def generatedOf (env : Environment) (keep : Name → Bool) (c : Name)
+    (acc : NameSet := {}) : NameSet := Id.run do
+  let some ci := env.find? c | return acc
+  let (type, body) := content env ci
+  let mut acc := acc
+  for e in type :: body do
+    for u in e.getUsedConstants do
+      if keep u && generated env u && !acc.contains u then
+        acc := generatedOf env keep u (acc.insert u)
+  return acc
+
+/-- Eight hexadecimal digits of a hash. -/
+def hex (h : UInt64) : String :=
+  let s := String.ofList (Nat.toDigits 16 (h.toNat % 4294967296))
+  String.ofList (List.replicate (8 - s.length) '0') ++ s
+
+/-- The hashes of the statement and of the content of a declaration. The content includes the
+generated declarations that belong to it, in the order of their names. -/
+def hashes (env : Environment) (keep : Name → Bool) (c : Name) : UInt64 × UInt64 :=
+  match env.find? c with
+  | none => (0, 0)
+  | some ci =>
+    let (type, body) := content env ci
+    let own := body.foldl (fun h e => mixHash h e.hash) 7
+    let gens := (generatedOf env keep c).toArray.qsort (·.toString < ·.toString)
+    let all := gens.foldl (fun h g =>
+      match env.find? g with
+      | none => h
+      | some gi =>
+        let (t, b) := content env gi
+        (t :: b).foldl (fun h e => mixHash h e.hash) (mixHash h (hash g))) own
+    (type.hash, all)
+
+/-- One line of the file. -/
+structure Line where
+  name : Name
+  kind : String
+  modName : Name
+  root : Bool
+  route : String
+  type : String
+  body : String
+  deriving BEq
+
+/-- The line as it is written. -/
+def Line.format (l : Line) : String :=
+  s!"{l.name} kind={l.kind} module={l.modName} root={if l.root then "yes" else "no"} {""
+    }route={l.route} type={l.type} body={l.body}"
+
+/-- The line that was written. -/
+def Line.parse (s : String) : Option Line := do
+  let name :: rest := s.splitOn " " | none
+  let get (key : String) : Option String :=
+    rest.findSome? fun kv => match kv.splitOn "=" with
+      | [k, v] => if k == key then some v else none
+      | _ => none
+  some { name := name.toName, kind := ← get "kind", modName := (← get "module").toName,
+         root := (← get "root") == "yes", route := ← get "route", type := ← get "type",
+         body := ← get "body" }
+
+/-- The kind of a listed declaration. -/
+def kindOf (env : Environment) (c : Name) : MetaM String := do
+  match env.find? c with
+  | some (.inductInfo _) =>
+    return if isClass env c then "class" else if isStructure env c then "structure"
+      else "inductive"
+  | some (.defnInfo _) => return if ← isInstance c then "instance" else "def"
+  | some (.opaqueInfo _) => return "opaque"
+  | some (.axiomInfo _) => return "axiom"
+  | _ => return "other"
+
+/-- The number of source lines of a declaration, with its docstring; zero when unknown. -/
+def sourceLines (c : Name) : MetaM Nat := do
+  match ← findDeclarationRanges? c with
+  | some r => return r.range.endPos.line - r.range.pos.line + 1
+  | none => return 0
+
+/-- The differences between the recorded and the computed lines, as messages. -/
+def differences (path : String) (known computed : Array Line) : List String := Id.run do
+  let mut out : List String := []
+  for c in computed do
+    match known.find? (·.name == c.name) with
+    | none => out := s!"{c.name} entered the trusted base ({c.kind}, {c.modName})" :: out
+    | some k =>
+      if k.type != c.type then out := s!"the statement of {c.name} changed" :: out
+      else if k.body != c.body then
+        out := s!"the definition of {c.name} changed (same statement)" :: out
+      else if k != c then
+        out := s!"the line of {c.name} changed: {c.format}" :: out
+  for k in known do
+    unless computed.any (·.name == k.name) do
+      out := s!"{k.name} left the trusted base" :: out
+  if out.isEmpty then return []
+  return (s!"{path} is not the trusted base of the certificates. A reviewer reads the change, {""
+    }then OPS_TRUSTED_BASE_WRITE=1 records it (docs/contributing/checks.md, \"The trusted {""
+    }base\")") :: out.reverse
+
+namespace Fixtures
+
+/-- A type of the fixtures. -/
+inductive T | a | b
+/-- A definition by cases, with a generated matcher. -/
+def f : T → Nat | .a => 0 | .b => 1
+/-- The same statement and matcher, another value. -/
+def f' : T → Nat | .a => 0 | .b => 2
+/-- A definition that only a proof mentions. -/
+def onlyInProof : Nat := 3
+theorem proof : 0 = f .a := by have := onlyInProof; rfl
+/-- A definition whose body mentions a theorem. -/
+def k : { n : Nat // n = f .a } := ⟨0, proof⟩
+/-- A structure with a proof field. -/
+structure S where
+  x : T
+  h : f x = f x
+/-- A definition that is not reached. -/
+def unused : Nat := 5
+/-- The root: it uses a projection of `S`, a constructor of `T` and `k`. -/
+def root (s : S) : Nat := k.1 + f s.x + f T.b
+
+end Fixtures
+
+/-- The closure rule on the fixtures: a body is followed, a proof is not, a constructor and a
+projection stand for their type, generated declarations are not listed, and the content hash
+sees a changed value under the same statement. Returns the number of checks. -/
+def runFixtures (env : Environment) : Except String Nat := do
+  let keep (c : Name) : Bool := (`OpsTrustedBase.Fixtures).isPrefixOf c
+  let got := (close env keep {} [`OpsTrustedBase.Fixtures.root]).listed env
+  let want := #[`OpsTrustedBase.Fixtures.S, `OpsTrustedBase.Fixtures.T,
+    `OpsTrustedBase.Fixtures.f, `OpsTrustedBase.Fixtures.k, `OpsTrustedBase.Fixtures.root]
+  unless got == want do throw s!"closure of the fixture root: {got}, expected {want}"
+  let stopped := (close env keep (NameSet.empty.insert `OpsTrustedBase.Fixtures.k)
+    [`OpsTrustedBase.Fixtures.root]).listed env
+  unless stopped == want.filter (· != `OpsTrustedBase.Fixtures.k) do
+    throw s!"closure with a stop: {stopped}"
+  let (t, b) := hashes env keep `OpsTrustedBase.Fixtures.f
+  let (t', b') := hashes env keep `OpsTrustedBase.Fixtures.f'
+  unless t == t' do throw "the statements of f and f' have different hashes"
+  if b == b' then throw "the contents of f and f' have the same hash"
+  let line (n : Name) (ty bo : String) : Line :=
+    { name := n, kind := "def", modName := `M, root := false, route := "claim", type := ty,
+      body := bo }
+  let d := differences "file" #[line `a "1" "1", line `b "1" "1", line `c "1" "1"]
+    #[line `a "1" "1", line `b "2" "1", line `c "1" "2", line `d "1" "1"]
+  unless d.length == 4 do throw s!"differences: {d}"
+  unless (differences "file" #[line `a "1" "1"] #[line `a "1" "1"]).isEmpty do
+    throw "equal lines differ"
+  unless Line.parse (line `a "1" "2").format == some (line `a "1" "2") do
+    throw "a line does not parse to itself"
+  return 6
+
+end OpsTrustedBase
+
+open OpsTrustedBase in
+run_cmd liftTermElabM do
+  let env ← getEnv
+  let lib := OpsCertificates.libraryModules env
+  let keep := OpsCertificates.inLibrary lib env
+  for r in roots do
+    unless (env.find? r).isSome do logError m!"trusted base: the root {r} does not exist"
+  let all := close env keep {} roots
+  let evaluator := close env keep {} [evaluatorRoot]
+  let reference := close env keep {} [referenceRoot]
+  let names := all.listed env
+  let mut lines : Array Line := #[]
+  let mut total := 0
+  let mut evalOnly := (0, 0)
+  let mut refOnly := (0, 0)
+  let mut modules : NameSet := {}
+  for c in names do
+    let some i := env.getModuleIdxFor? c | continue
+    let modName := env.header.moduleNames[i.toNat]!
+    modules := modules.insert modName
+    let kind ← kindOf env c
+    if kind == "axiom" then logError m!"trusted base: {c} is an axiom"
+    let inE := evaluator.reached.contains c
+    let inR := reference.reached.contains c
+    let n ← sourceLines c
+    total := total + n
+    if inE && !inR then evalOnly := (evalOnly.1 + 1, evalOnly.2 + n)
+    if inR && !inE then refOnly := (refOnly.1 + 1, refOnly.2 + n)
+    let (t, b) := hashes env keep c
+    let route := if inE && inR then "execution" else if inE then "evaluator"
+      else if inR then "reference" else "claim"
+    let isRoot := roots.contains c
+    lines := lines.push
+      { name := c, kind := kind, modName := modName, root := isRoot, route := route,
+        type := hex t, body := hex b }
+  let path : System.FilePath := match ← IO.getEnv "OPS_TRUSTED_BASE_FILE" with
+    | some p => p
+    | none => "scripts" / "ops_trusted_base.txt"
+  if (← IO.getEnv "OPS_TRUSTED_BASE_WRITE").isSome then
+    IO.FS.writeFile path (String.intercalate "\n" (lines.map Line.format).toList ++ "\n")
+  let mut known : Array Line := #[]
+  if ← path.pathExists then
+    known := (← IO.FS.lines path).filterMap Line.parse
+  for e in differences path.toString known lines do logError m!"{e}"
+  -- the base if the reference rules were the definition: the evaluator is not entered
+  let withoutEvaluator := (close env keep (NameSet.empty.insert evaluatorRoot) roots).listed env
+  logInfo m!"ops trusted base: {lines.size} declarations in {modules.size} modules, {""
+    }{total} source lines, {all.outside.size} constants of Mathlib and Lean; {""
+    }the evaluator reaches {(evaluator.listed env).size} ({evalOnly.1} only it, {""
+    }{evalOnly.2} lines), the reference rules {(reference.listed env).size} ({refOnly.1} only {""
+    }they, {refOnly.2} lines); without the evaluator {withoutEvaluator.size}"
+  match runFixtures env with
+  | .ok n => logInfo m!"ops trusted base fixtures: {n} checks"
+  | .error e => logError m!"trusted base fixture: {e}"

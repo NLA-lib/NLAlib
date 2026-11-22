@@ -3,6 +3,12 @@
 The canonical API lives in the existing syntax, evaluator, contracts, static analysis and
 certification files. Lint is optional prover guidance; none of these guarantees depends on it.
 
+For semantic review, start with the [reviewer's declaration map](../../docs/design/Ops-ReferenceReview.md).
+It lists the declarations a reader must believe, the reference execution rules (`Reference/`: a
+readable restatement of execution, with a kernel-checked equivalence to the evaluator), the
+deterministic and probabilistic read-back theorems, and worked resource examples. The computed
+list of those declarations is `scripts/ops_trusted_base.txt` (see `docs/contributing/checks.md`).
+
 ## Execution and operation models
 
 `Program Op Tst r b` contains one first-order statement tree, fixed before runtime sizes or

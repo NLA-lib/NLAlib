@@ -117,8 +117,8 @@ def downNodes (node : Stmt Op Tst) : Stmt Op Tst :=
 /-- Compute the next parameters and store the two complete sampling batches in order. -/
 def downPrepare : Stmt Op Tst := ops% [n, L, d] (c, Lv, Su, Sg, t) → () {
   run levelParameters [L, d] (c, Lv, t, Lv, t);
-  run (sampleVector Stream.unif) [n] (Su);
-  run (sampleVector Stream.gauss) [4 * (n * n)] (Sg)
+  run (sampleRoutine Stream.unif) [n] (Su);
+  run (sampleRoutine Stream.gauss) [4 * (n * n)] (Sg)
 }
 
 /-- Prepare and visit a downward level using caller-owned scalar scratch storage. -/

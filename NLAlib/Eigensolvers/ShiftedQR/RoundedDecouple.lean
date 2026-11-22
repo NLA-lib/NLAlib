@@ -298,7 +298,9 @@ next round. An entry that passed the iteration's test,
 $(1 - \boldsymbol{u})^2\lvert h\rvert^2 \le t$, passes the loop's when
 $(1 + \boldsymbol{u})^2 t \le (1 - \boldsymbol{u})^2 t_L$, so a matrix the scan finds coupled has
 had its potential contracted.
-Also in the tree of `NLAlib.SmallEig.smallEigRoutine`. -/
+Also in the tree of `NLAlib.SmallEig.smallEigRoutine`.
+A step in the proof of `NLAlib.ShiftedQR.roundedDecoupleIteration_pwrites`,
+`NLAlib.ShiftedQR.roundedDecoupleLoop_pwrites`. -/
 theorem roundedDecoupleScan_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u < 1) (hL : IsIndexLit M I)
     (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {τ : Tape ℝ} {μ : Mem ℝ} {k L : ℕ}
@@ -501,7 +503,9 @@ unitary similarity with error $FE$ and a bottom entry of modulus at most $\omega
 ($t_L \le (1 - \boldsymbol{u})^2\omega_D^2$). At the cap the scan has passed: a coupled matrix
 has $\psi_k \le c^F\psi_k(\mathbf{H}) \le c^F N_{\max}$, and one of its bottom entries is at most
 $\psi_k$, which fails the loop's test when $(1 + \boldsymbol{u})^2(c^F N_{\max})^2 \le t_L$.
-Also in the tree of `NLAlib.SmallEig.smallEigRoutine`. -/
+Also in the tree of `NLAlib.SmallEig.smallEigRoutine`.
+Shared by the trees of `NLAlib.ShiftedQR.roundedDecoupleLoopWith`,
+`NLAlib.SmallEig.decoupleLast`. -/
 theorem roundedDecoupleExit_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hu1 : u < 1)
     (hL : IsIndexLit M I) (hC : IsCmp id I) (h0lit : M.lit (0 : ℚ) = 0) {τ : Tape ℝ}
     {μ : Mem ℝ} {k L i F : ℕ} (hk : 0 < k) (hkn : k ≤ n) {w p f : ℕ × ℕ} {ps : List ℝ}
@@ -547,7 +551,9 @@ omit [Has ScalarOp O] [Has IdxTst Q] in
 /-- The exit of the decoupling loop on any scan flag: on every tape, from any word at `r[3]`
 and room for the flag `f`, `NLAlib.ShiftedQR.roundedDecoupleExit` writes only the flag and
 stores a word there.
-Also in the tree of `NLAlib.SmallEig.smallEigRoutine`. -/
+Also in the tree of `NLAlib.SmallEig.smallEigRoutine`.
+Shared by the trees of `NLAlib.ShiftedQR.roundedDecoupleLoopWith`,
+`NLAlib.SmallEig.decoupleLast`. -/
 theorem roundedDecoupleExit_writes_word {M : Machine ℝ} {I : Interp O Q ℝ}
     (hL : IsIndexLit M I) (hC : IsCmp id I) {τ : Tape ℝ} {μ : Mem ℝ} {r f : ℕ × ℕ} {x : ℝ}
     (hx : μ.store.get r.1 (r.2 + 3) = some x) (hf : f.2 < μ.store.len f.1) :
@@ -578,7 +584,8 @@ with the scan flag $0$, the iterate is in the class of `NLAlib.ShiftedQR.shItera
 $\|\mathbf{H}\|_2 + iE \le S$, and $\psi_k \ge \omega$ because every bottom entry failed the
 loop's test), so the iteration reaches the state after round $i$ except with probability at most
 $\varphi_{\mathrm{se}} + \varphi_R/2 + \varphi$. One good set serves every iterate
-(`NLAlib.Ops.PWrites.pstep_of_forall`). -/
+(`NLAlib.Ops.PWrites.pstep_of_forall`).
+A step in the proof of `NLAlib.ShiftedQR.roundedDecoupleWith_randomDecouplingRoutineContract_at`. -/
 theorem roundedDecoupleIteration_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u < 1) (hL : IsIndexLit M I)
@@ -736,7 +743,8 @@ $\psi_k(\mathbf{H}) \le N_{\max}$ the initial scan, the at most $F$ rounds (iter
 `NLAlib.ShiftedQR.roundedDecoupleScan_writes`) and the exit
 (`NLAlib.ShiftedQR.roundedDecoupleExit_writes`) set the flag to $0$ and hold an upper Hessenberg
 perturbed unitary similarity with error $FE$ and a bottom entry of modulus at most $\omega_D$,
-except with probability at most $F\varphi$ (`NLAlib.Ops.PWrites.whileFuel`). -/
+except with probability at most $F\varphi$ (`NLAlib.Ops.PWrites.whileFuel`).
+A step in the proof of `NLAlib.ShiftedQR.roundedDecoupleWith_randomDecouplingRoutineContract_at`. -/
 theorem roundedDecoupleLoop_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u < 1) (hL : IsIndexLit M I)

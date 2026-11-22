@@ -46,7 +46,8 @@ private theorem block_rapidDecouplingHyps {n d lo : ℕ}
 /-- The actual large-range program decouples its raw block, binds the returned small-entry index,
 and commits the resulting two children. The global assumptions concern the input matrix and
 parameters; the decoupling proof is local to one fixed scalar implementation. A fragment: its tree
-runs only inside the tree of `NLAlib.ShiftedQR.processRange`. -/
+runs only inside the tree of `NLAlib.ShiftedQR.processRange`.
+A fragment of the tree `NLAlib.ShiftedQR.processRange`. -/
 theorem processLarge_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (hE : ExactModel id Mch) (hL : IsIndexLit Mch I) (hQ : IsToNat id I)
     {θ : ℝ} (D : Stmt O Q) (hD : DecouplingContract θ D I)

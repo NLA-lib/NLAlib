@@ -204,13 +204,18 @@ is a fragment: a plain `Stmt` written with `ops%`, with one statement of its run
 that routine.
 
 The library does not yet follow this rule everywhere. Kernels that several routines run, each on
-operands of its own, are by the rule routines, but some are still plain trees with operand-form
-statements, from before routines existed: the rotation and coefficient kernels of shifted QR,
-the small-eigenvalue solver and Hessenberg reduction (`rotateRows` and the trees their docstrings
-describe as "shared by the trees of …"), and the matrix kernels of `Blas/` (`Hermitian`,
-`Matrix`, `Pair`, `ColumnProducts`, `Clamp`, …). Some of them have a word-level and a decoded
-statement. They are to become routines with one judgment each; until then their docstrings say
-which trees share them. The Krylov families, Hutch++, MGS and the level-1 leaves follow the rule.
+operands of its own, are by the rule routines. The fill (`fillRoutine`) and the batch of draws
+(`sampleRoutine`) are, and their callers run them by interface. The others are still plain trees
+with operand-form statements, from before routines existed: the row and column rotations and
+the Givens coefficient kernels of shifted QR, the small-eigenvalue solver and Hessenberg
+reduction, and the matrix kernels of `Blas/` (`Matrix.copy`, `Matrix.identity`,
+`Matrix.traceRe`, `unaryMap`, the `Hermitian` family, `scalarBroadcast`, `normSq`,
+`Pair.multiply`, `Pair.linearCombination`, `copyStrided`, `clamp`). They address sub-blocks of
+one matrix buffer at computed offsets, and several have a word-level and a decoded statement;
+they are to become routines, separated by block, with one judgment each. Until then every
+statement in operand form says in its docstring what it is: a fragment of one named tree, shared
+by the named trees, a step in the proof of a named theorem, or an end statement that nothing is
+proved from. The Krylov families, Hutch++, MGS and the level-1 leaves follow the rule.
 
 **One statement per routine.** A routine has one correctness statement, `XRoutine_meets`. A
 caller uses it with `call`; it is not restated in operand form, and no lemma lists which

@@ -31,7 +31,8 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op] [Has CmpTst Tst]
 
 /-- Both actual norms and the actual comparison advance the stored window exactly.
 [BanksGarzaVargasSrivastava2021, §4.3]. A fragment: its tree runs only inside the tree of
-`NLAlib.ShiftedQR.findRitzLevel`. -/
+`NLAlib.ShiftedQR.findRitzLevel`.
+A fragment of the tree `NLAlib.ShiftedQR.findRitzLevel`. -/
 theorem findRitzWindow_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k a h e : ℕ} {b ss r : ℕ × ℕ}
@@ -68,7 +69,8 @@ variable [Has IdxTst Tst]
 /-- Bounded toNat queries read the actual stored start, half length and exponent before the same
 numerical window transition. Every query's runtime bound is proved explicitly.
 [BanksGarzaVargasSrivastava2021, §4.3]. A fragment: its tree runs only inside the tree of
-`NLAlib.ShiftedQR.findRitzLevels`. -/
+`NLAlib.ShiftedQR.findRitzLevels`.
+A fragment of the tree `NLAlib.ShiftedQR.findRitzLevels`. -/
 theorem findRitzLevel_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I)
     (hCmp : IsCmp id I) (hToNat : IsToNat id I)

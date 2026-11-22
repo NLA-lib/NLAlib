@@ -32,7 +32,8 @@ variable {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
 
 /-- Conjugate transpose writes exactly the mathematical machine's packed finite output.
 Readable input and disjoint writable output blocks suffice, including distinct regions of one
-buffer. No numerical accuracy or successful-execution premise is assumed. -/
+buffer. No numerical accuracy or successful-execution premise is assumed.
+A fragment of the tree `NLAlib.SpectralBisection.compress`. -/
 theorem conjTranspose_writes_packed {I : Interp Op Tst K} (hI : IsScalar M I) {τ : Tape K}
     {k r : ℕ} (Q : Matrix (Fin k) (Fin r) (K × K)) {x y : ℕ × ℕ} {μ : Mem K}
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (k * r)))
@@ -89,7 +90,8 @@ theorem traceReF_packFinMatrix {n : ℕ} (A : Matrix (Fin n) (Fin n) (K × K)) :
     (EntryCodec.pair K).vec_packFinMatrix A i i ⟨0, Nat.zero_lt_succ 1⟩
 
 /-- The actual packed trace kernel stores the existing machine's rounded finite trace.
-The accumulator need not be initialized, and disjoint regions of one buffer are supported. -/
+The accumulator need not be initialized, and disjoint regions of one buffer are supported.
+A fragment of the tree `NLAlib.SpectralBisection.nodeSplitIndex`. -/
 theorem traceRe_writes_packed {I : Interp Op Tst K} (hI : IsScalar M I) {τ : Tape K}
     {n : ℕ} (A : Matrix (Fin n) (Fin n) (K × K)) {x y : ℕ × ℕ} {μ : Mem K}
     (hA : μ.store.readBlock x.1 x.2 (2 * (n * n)) = some ((EntryCodec.pair K).packFinMatrix A))

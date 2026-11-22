@@ -53,7 +53,9 @@ variable {K : Type} {M : Machine K}
   {I : Interp Op Tst K} {tape : Tape K} {m : Mem K}
 
 /-- A streamed scalar step performs multiplication and addition, preserving the input
-accumulator through the disjoint temporary cell. -/
+accumulator through the disjoint temporary cell.
+Shared by the trees of `NLAlib.reduceLastStep`, `NLAlib.hessenbergReduceLast`,
+`NLAlib.ShiftedQR.shiftedStep` and 44 more. -/
 theorem step_writes_word (hS : IsScalar M I)
     {x y t out : ℕ × ℕ} (a b acc : K) (hl : m.Live [x, y, t, out])
     (hX : m.store.readBlock x.1 x.2 1 = some [a])
@@ -85,7 +87,9 @@ theorem step_writes_word (hS : IsScalar M I)
 
 /-- The streamed loop returns the actual machine sum, using only the declared accumulator and
 temporary. Inputs can share a buffer or repeat words; their accessed cells stay outside
-the two-cell write footprint. Empty products return literal zero. -/
+the two-cell write footprint. Empty products return literal zero.
+Shared by the trees of `NLAlib.HutchPlusPlus.projectProbes`, `NLAlib.HutchPlusPlus.accumulate`,
+`NLAlib.CGS2.cgs2ExtendFinish` and 17 more. -/
 theorem sum_writes_word (hS : IsScalar M I)
     {n sx sy : ℕ} {x y t out : ℕ × ℕ} (xs ys : ℕ → K)
     (hl : m.Live [x, y, t, out])
@@ -139,7 +143,9 @@ theorem sumWord_exact (xs ys : ℕ → 𝕜) (n : ℕ) :
     rw [ih]
 
 /-- A streamed scalar step adds the exact product, preserving the input accumulator
-through the disjoint temporary cell. -/
+through the disjoint temporary cell.
+Shared by the trees of `NLAlib.reduceLastStep`, `NLAlib.hessenbergReduceLast`,
+`NLAlib.ShiftedQR.shiftedStep` and 44 more. -/
 theorem step_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     {x y t out : ℕ × ℕ} (a b acc : 𝕜) (hl : m.Live [x, y, t, out])
     (hX : m.store.readBlock x.1 x.2 1 = some [a])
@@ -155,7 +161,9 @@ theorem step_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
 
 /-- The streamed loop returns the exact sum, using only the declared accumulator and
 temporary. Inputs can share a buffer or repeat words; their accessed cells stay outside
-the two-cell write footprint. Empty products return literal zero. -/
+the two-cell write footprint. Empty products return literal zero.
+Shared by the trees of `NLAlib.HutchPlusPlus.projectProbes`, `NLAlib.HutchPlusPlus.accumulate`,
+`NLAlib.CGS2.cgs2ExtendFinish` and 17 more. -/
 theorem sum_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     {n sx sy : ℕ} {x y t out : ℕ × ℕ} (xs ys : ℕ → 𝕜)
     (hl : m.Live [x, y, t, out])

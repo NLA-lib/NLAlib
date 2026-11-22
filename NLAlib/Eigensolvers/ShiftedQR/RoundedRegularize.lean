@@ -116,7 +116,8 @@ randomized kernel with forward error $\beta$ and failure probability $\varphi$ o
 (`NLAlib.ShiftedQR.IsRandomSmallEig`), the leaf routine that calls it on an upper Hessenberg
 $\mathbf{B}$ of order $d$ writes only its output and, except with probability at most $\varphi$,
 stores values within $\beta$ of a listing of the eigenvalues of $\mathbf{B}$ with multiplicity.
-Stated in operand form; it is a statement about a tree, not the contract of a routine. -/
+Stated in operand form; it is a statement about a tree, not the contract of a routine.
+An end statement in operand form: no other declaration of the library is proved from it. -/
 theorem IsRandomSmallEig.smallEigLeaf_pwrites {law : ℕ → Measure ℝ} {s : ℕ} {β φ : ℝ}
     {I : Interp O Q ℝ} (h : IsRandomSmallEig law s β φ I) {d : ℕ} {w o : ℕ × ℕ}
     (B : Matrix (Fin d) (Fin d) ℂ) (hB : IsUpperHessenberg B) :
@@ -723,7 +724,9 @@ except with probability at most $\varphi_{\mathrm{se}} + \varphi/2$ ends in
 `NLAlib.ShiftedQR.RegularizeOutcome`: $\theta$-optimal shifts at distance at least $\eta/2$ from the
 spectrum with $\mathbf{H}$ unchanged, or a decoupled perturbed unitary similarity with backward
 error $2.1\|\mathbf{H}\|_2((1 + x)^k - 1)$, $x = 300(n+1)^2\boldsymbol{u}$.
-Stated in operand form; it is a statement about a tree, not the contract of a routine. -/
+Stated in operand form; it is a statement about a tree, not the contract of a routine.
+A step in the proof of `NLAlib.ShiftedQR.rpow_two_div_shqrDegree_le`,
+`NLAlib.ShiftedQR.shStepHyps_of_le_uShQR`, `NLAlib.ShiftedQR.regularizeWithScratchWith_pwrites`. -/
 theorem regularize_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I) {n : ℕ}

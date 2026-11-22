@@ -266,7 +266,9 @@ accumulator and the scratch above `L`, stores the rounded Hessenberg form
 $(1 + 24\boldsymbol{u})^{(n+1)^2} - 1$ of the exact unitary of the recorded rotations, and leaves
 the memory of the core call (`NLAlib.SmallEig.SmallEigCoreReady`). The frames are given by their
 evaluations. The accumulator bound is claimed only if `P`, which gives the standard model at
-$\boldsymbol{u} \le 1/100$; the run itself needs no rounding model. -/
+$\boldsymbol{u} \le 1/100$; the run itself needs no rounding model.
+A step in the proof of `NLAlib.SmallEig.smallEigProg_reduce_writes`,
+`NLAlib.SmallEig.smallEigProg_reduce_terminates`. -/
 theorem smallEigProg_reduce_writes_if {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) {P : Prop} (hP : P → StdModel u id M ∧ u ≤ 1 / 100) (hL : IsIndexLit M I)
     {n : ℕ} (hn1 : 1 ≤ n) (hNat : IsExactNatLit id M (n + 1))
@@ -365,7 +367,9 @@ theorem smallEigProg_reduce_writes_if {M : Machine ℝ} {I : Interp O Q ℝ} {u 
 
 omit [Has SampleOp O] [Has DiskSampleOp O] in
 /-- `NLAlib.SmallEig.smallEigProg_reduce_writes_if` under the standard model at
-$\boldsymbol{u} \le 1/100$: the reduction and the replay with the accumulator bound. -/
+$\boldsymbol{u} \le 1/100$: the reduction and the replay with the accumulator bound.
+A step in the proof of `NLAlib.SmallEig.SmallEigScratch.of_alloc`,
+`NLAlib.SmallEig.smallEigProg_tail_pwrites`, `NLAlib.SmallEig.smallEigProg_pwrites_schur`. -/
 theorem smallEigProg_reduce_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hu : u ≤ 1 / 100) (hL : IsIndexLit M I)
     {n : ℕ} (hn1 : 1 ≤ n) (hNat : IsExactNatLit id M (n + 1))

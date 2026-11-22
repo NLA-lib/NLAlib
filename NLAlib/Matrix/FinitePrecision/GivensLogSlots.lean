@@ -119,7 +119,9 @@ variable {O Q : Type} [Has IndexOp O]
 
 /-- Validating the pending slot with an exact literal one (`NLAlib.slottedLogValidate_writes`
 without a rounding model): if the natural literal $1$ is exact, `NLAlib.slottedLogValidate` closes
-the pending slot as accepted, writes only the log and keeps the tape position. -/
+the pending slot as accepted, writes only the log and keeps the tape position.
+Shared by the trees of `NLAlib.hessenbergReduceLast`, `NLAlib.ShiftedQR.trialAccept`,
+`NLAlib.SmallEig.decoupleLast` and 1 more. -/
 theorem slottedLogValidate_writes_of_exactNat {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch 1) {ns w : ℕ} {lg : ℕ × ℕ}
     {L : List (Option (List GivensEntry))} {P : List GivensEntry} {τ : Tape ℝ} {μ : Mem ℝ}

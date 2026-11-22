@@ -34,7 +34,7 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has MatrixOp Op] [Has SampleOp Op]
 /-- Deflation with caller-owned workspace. Dimensions are the matrix size and requested
 rank. The sampled matrix uses two scalar words per complex entry, in column order. -/
 def apply : Stmt Op Tst := ops% [n, r] (P, G, Y, Q, R) → (Qout) {
-  run (sampleVector Stream.gauss) [2 * (n * n)] (G);
+  run (sampleRoutine Stream.gauss) [2 * (n * n)] (G);
   call (Has.inj MatrixOp.mul) [n, n, n] (P, G) → (Y);
   call (Has.inj MatrixOp.qr) [n, n] (Y) → (Q, R);
   run PairMatrix.copy [n, r] (Q, Qout)

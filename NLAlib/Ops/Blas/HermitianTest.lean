@@ -29,7 +29,8 @@ variable {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has CmpTst Tst]
 open Classical in
 /-- The box test writes the selected machine zero/one literal for whether all actual component
 words decode between the stored bounds. Literal exactness is not assumed. Inputs and
-flag occupy disjoint word spans; they may use the same buffer at different offsets. -/
+flag occupy disjoint word spans; they may use the same buffer at different offsets.
+A fragment of the tree `NLAlib.Sign.test`. -/
 theorem boxTest_writes {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hC : IsCmp dec I) {md : Mode} {τ : Tape K} {m : Mem K}
     {rows cols : ℕ} {x lo hi z : ℕ × ℕ} {a b : K} {xs : List K}
@@ -49,7 +50,9 @@ theorem boxTest_writes {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
 
 open Classical in
 /-- The complete box test changes exactly its output flag to the actual machine literal of
-its interval predicate. No extra matrix-specific execution or cell-update proof is needed. -/
+its interval predicate. No extra matrix-specific execution or cell-update proof is needed.
+A fragment of the tree `NLAlib.Sign.test`.
+A corollary of `NLAlib.Ops.Hermitian.boxTest_writes`, the primary statement, without the frame. -/
 theorem boxTest_wp {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hC : IsCmp dec I) {md : Mode} {τ : Tape K} {m : Mem K}
     {rows cols : ℕ} {x lo hi z : ℕ × ℕ} {a b : K} {xs : List K}

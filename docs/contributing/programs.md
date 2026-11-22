@@ -90,10 +90,12 @@ dense and coordinate representations require their own packing and validity cond
    routine allocates, or at offsets computed inside its operands, is a fragment: a plain `Stmt`
    written with `ops%`, with one statement of its run in operand form, used only inside the
    proof of the routine that contains it, and its docstring names that routine. A kernel that
-   several routines run on operands of its own is a routine; the rotation and coefficient
-   kernels of shifted QR and the small-eigenvalue solver and the matrix kernels of
-   `NLAlib/Ops/Blas` are still operand-form trees from before routines existed, and are to be
-   converted, so do not take them as a model. A caller runs a routine by its interface,
+   several routines run on operands of its own is a routine, as the fill and the batch of
+   draws are (`Ops.fillRoutine`, `Ops.sampleRoutine`); the rotation and coefficient kernels of shifted
+   QR and the small-eigenvalue solver and the matrix kernels of `NLAlib/Ops/Blas` are still
+   operand-form trees from before routines existed, and are to be converted, so do not take
+   them as a model. Every statement in operand form says in its docstring what it is: a
+   fragment of a named tree, shared by named trees, or a step in the proof of a named theorem. A caller runs a routine by its interface,
    `run R [dims] (operands)`, and a fragment by its buffer variables. State its specification
    with `spec%` on named
    dimensions and blocks, or with `Ops.Routine.Spec.ofRel` when the routine implements an

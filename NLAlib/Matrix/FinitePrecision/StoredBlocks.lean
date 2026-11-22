@@ -151,7 +151,9 @@ variable {Op Tst : Type} [Has ScalarOp Op]
 `NLAlib.Ops.copyStrided` with $m$ rows, $q$ columns, the source leading dimension $m$ and the
 destination leading dimension $N$, from $\mathbf{B}$ stored densely at `w` into the view of
 offset $2(c_0 N + r_0)$ of the square matrix $\mathbf{A}$ of order $N$ stored at `a`, writes
-only the words of that block and leaves `NLAlib.setRect`. -/
+only the words of that block and leaves `NLAlib.setRect`.
+Shared by the trees of `NLAlib.ShiftedQR.copyToWork`, `NLAlib.ShiftedQR.copyToGlobal`,
+`NLAlib.ShiftedQR.roundedLeafUpdate`. -/
 theorem copyStrided_writes_rect {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {μ : Mem ℝ} {N r0 c0 m q : ℕ} {a w : ℕ × ℕ}
     {A : Matrix (Fin N) (Fin N) ℂ} {B : Matrix (Fin m) (Fin q) ℂ}

@@ -22,7 +22,9 @@ map's total weakest-precondition rule, including disjoint views in the same buff
 
 namespace NLAlib.Ops
 
-/-- A unary map stores the mapped word vector and preserves the tape position. -/
+/-- A unary map stores the mapped word vector and preserves the tape position.
+Shared by the trees of `NLAlib.ShiftedQR.initializeParametersWithScratch`,
+`NLAlib.ShiftedQR.searchAndCopyWith`, `NLAlib.ShiftedQR.stepInPlaceWithScratch` and 21 more. -/
 theorem unaryMap_writes_of_disj_or_eq {K Op Tst : Type} [Inhabited K] {o : Op} {f : K → K}
     {I : Interp Op Tst K}
     (hI : I.IsFn .total o (.un fun x => some (f x)) AnyOperands) {md : Mode}

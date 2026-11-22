@@ -78,7 +78,9 @@ theorem halfNormAtRegister_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 /-- Both actual half-norm calls retain the source blocks and search indices and store the same two
 squared norms compared by the mathematical search. A fragment: its tree runs only inside the tree of
-`NLAlib.ShiftedQR.findRitzWindow`. -/
+`NLAlib.ShiftedQR.findRitzWindow`.
+Shared by the trees of `NLAlib.ShiftedQR.findRitzWindow`, `NLAlib.ShiftedQR.halfNormWithScratch`,
+`NLAlib.ShiftedQR.halfNorm`. -/
 theorem findRitzNorms_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k a h e : ℕ} {b ss r : ℕ × ℕ}

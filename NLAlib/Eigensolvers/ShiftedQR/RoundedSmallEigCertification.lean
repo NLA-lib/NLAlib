@@ -336,7 +336,8 @@ noncomputable def shqrSmallEigSpecification (Mch : Machine ℝ) (c₁ c₂ : Pol
     (shqrFp (d 0) (0, 0) (3, 0) (4, 0)) m.store
 
 /-- The program terminates on every admitted input, tape and interpretation of the model, and
-writes only the matrix, the output and the failure word. -/
+writes only the matrix, the output and the failure word.
+A fragment of the tree `NLAlib.ShiftedQR.shqrSmallEigSpecification`. -/
 theorem shqrSmallEigProgram_wp {sU sG : ℕ} {d : Fin 5 → ℕ} (hd : ShQRSmallEigSizes Mch c₁ c₂ d)
     (x : (shqrSmallEigProblem Mch c₁ c₂ admitted).Input d) {I : Interp SmallEigOp Tst ℝ}
     (hI : (smallEigModel (shqrSmallEigProblem Mch c₁ c₂ admitted) Mch sU).contracts d x I)

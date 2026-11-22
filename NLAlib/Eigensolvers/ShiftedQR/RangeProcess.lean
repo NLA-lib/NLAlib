@@ -32,7 +32,8 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O
 /-- The actual range processor copies the active diagonal block and advances the complete invariant
 through the size-selected branch. The only substituted proof concerns the fixed scalar decoupling
 implementation on one local matrix, under raw quantitative hypotheses. A fragment: its tree runs
-only inside the tree of `NLAlib.ShiftedQR.worklistRound`. -/
+only inside the tree of `NLAlib.ShiftedQR.worklistRound`.
+Shared by the trees of `NLAlib.ShiftedQR.finishRange`, `NLAlib.ShiftedQR.worklistRound`. -/
 theorem processRange_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (hE : ExactModel id Mch) (hL : IsIndexLit Mch I) (hQ : IsToNat id I)
     {θ : ℝ} {K : KernelRoutines θ} (hK : IsEigenvalueKernels K I)

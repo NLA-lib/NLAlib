@@ -42,7 +42,8 @@ variable [Has ScalarOp Op] [Has Blas1Op Op] [Apart Blas1Op ScalarOp Op]
   [Inhabited K]
 
 /-- The linked dot tree executes using only scalar contracts. Products and accumulations
-are the actual machine operations; the only caller-visible update is the destination cell. -/
+are the actual machine operations; the only caller-visible update is the destination cell.
+Shared by the trees of `NLAlib.Ops.dotSumRoutine`, `NLAlib.Ops.nrm2SumRoutine`. -/
 theorem dotSum_wp_seq {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {τ : Tape K} {n : ℕ} {x y z : ℕ × ℕ} {m : Mem K} {xs ys : List K}
     (hl : m.Live [x, y, z])

@@ -36,7 +36,8 @@ def halfNormAfterInit : Stmt Op Tst := ops% [n, k, a, h, e] (H, SS, V, T, Flag) 
 
 /-- The initialized inverse-row fold and actual final branch give the full half-norm result.
 [BanksGarzaVargasSrivastava2021, §4.3]. A fragment: its tree runs only inside the tree of
-`NLAlib.ShiftedQR.halfNormAfterVector`. -/
+`NLAlib.ShiftedQR.halfNormAfterVector`.
+A fragment of the tree `NLAlib.ShiftedQR.halfNormAfterVector`. -/
 theorem halfNormAfterInit_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k a h e : ℕ} {b ss v t z f : ℕ × ℕ}
@@ -82,6 +83,8 @@ def halfNormAfterVector : Stmt Op Tst := ops% [n, k, a, h, e] (H, SS, V, T) → 
 
 /-- The half-norm evaluator initializes its report and preserves the given last basis row.
 [BanksGarzaVargasSrivastava2021, §4.3]. A fragment: its tree runs only inside the tree of
+`NLAlib.ShiftedQR.halfNormWithScratch`.
+Shared by the trees of `NLAlib.ShiftedQR.halfNormAfterInit`,
 `NLAlib.ShiftedQR.halfNormWithScratch`. -/
 theorem halfNormAfterVector_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
@@ -180,7 +183,8 @@ def halfNorm : Stmt Op Tst := ops% [n, k, a, h, e] (H, SS) → (Norm, Flag) {
 returns the exact norm or an initialized zero placeholder and a genuine singularity witness. The
 selected segment lies inside both the stored block and the supplied mathematical list.
 [BanksGarzaVargasSrivastava2021, §4.3]. A fragment: its tree runs only inside the tree of
-`NLAlib.ShiftedQR.findRitzNorms`. -/
+`NLAlib.ShiftedQR.findRitzNorms`.
+Shared by the trees of `NLAlib.ShiftedQR.findRitzNorms`, `NLAlib.ShiftedQR.halfNormWithScratch`. -/
 theorem halfNorm_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k a h e : ℕ} {b ss z f : ℕ × ℕ}

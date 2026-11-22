@@ -297,7 +297,8 @@ theorem scanRound_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     simpa only [ScanHolds, scanPrefix, if_neg hs] using And.intro hF hI
 
 /-- The actual scan loop implements the mathematical prefix recurrence on every visit. A fragment:
-its tree runs only inside the tree of `NLAlib.ShiftedQR.scan`. -/
+its tree runs only inside the tree of `NLAlib.ShiftedQR.scan`.
+A fragment of the tree `NLAlib.ShiftedQR.scan`. -/
 private theorem scanLoop_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a t r : ℕ × ℕ}

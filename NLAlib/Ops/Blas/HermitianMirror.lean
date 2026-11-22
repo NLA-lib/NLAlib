@@ -34,7 +34,8 @@ def completeUpper (M : Machine K) (A : ℕ → ℕ → K × K) : ℕ → ℕ →
 
 /-- Mirroring fills precisely the strict lower triangle with the machine conjugates of the
 stored upper entries, preserves all other cells, and consumes no random words. Output capacity
-covers the square matrix; the input handle is live even when its dimension is zero. -/
+covers the square matrix; the input handle is live even when its dimension is zero.
+A fragment of the tree `NLAlib.Ops.Hermitian.complete`. -/
 theorem mirror_writes_lower {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {n : ℕ} {y : ℕ × ℕ}
     (A : ℕ → ℕ → K × K) (hl : y.1 < m.store.length)
@@ -80,7 +81,8 @@ theorem mirror_writes_lower {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar
 
 /-- Mirroring completes the full matrix from a readable upper triangle. The stored diagonal
 is preserved; a zero-imaginary diagonal or numerical Hermitian interpretation is a separate
-property of the supplied upper entries and scalar machine. -/
+property of the supplied upper entries and scalar machine.
+A fragment of the tree `NLAlib.Ops.Hermitian.complete`. -/
 theorem mirror_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {n : ℕ} {y : ℕ × ℕ}
     (A : ℕ → ℕ → K × K) (hl : y.1 < m.store.length)

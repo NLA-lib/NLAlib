@@ -175,7 +175,8 @@ private theorem multiShiftedQRStep_take_succ {n : ℕ}
 
 /-- A stored finite shift column composes exactly the mathematical list of shifted QR steps. The
 matrix temporary is reused across the entire list. A fragment: its tree runs only inside the tree of
-`NLAlib.ShiftedQR.multiStep`. -/
+`NLAlib.ShiftedQR.multiStep`.
+A fragment of the tree `NLAlib.ShiftedQR.multiStep`. -/
 theorem multiStepWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a s t : ℕ × ℕ} {ss : List ℂ}

@@ -44,7 +44,10 @@ def clamp : Stmt Op Tst :=
     (.call (Has.inj ScalarOp.copy) [] [⟨0, .var 0⟩] [⟨3, .var 3⟩])
 
 /-- The total functional clamp changes exactly its output cell. The scalar copy contract and
-exact comparison contract use the same interpretation; input words are actual readable cells. -/
+exact comparison contract use the same interpretation; input words are actual readable cells.
+Shared by the trees of `NLAlib.SpectralBisection.nodeBranch`,
+`NLAlib.SpectralBisection.nodeSplitIndex`.
+The run without its frame; `NLAlib.Ops.clamp_writes`, the primary statement, is proved from it. -/
 theorem clamp_wp {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hC : IsCmp dec I) {md : Mode} {τ : Tape K}
     {a b x z : ℕ × ℕ} {lo hi w : K} {m : Mem K}
@@ -69,7 +72,9 @@ theorem clamp_wp {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
       (by simpa [clampWord, h0] using hQ)
 
 /-- Framed version of the functional clamp, with its selected output and preserved tape
-position. No initialization or nonaliasing assumption is needed on the output. -/
+position. No initialization or nonaliasing assumption is needed on the output.
+Shared by the trees of `NLAlib.SpectralBisection.nodeBranch`,
+`NLAlib.SpectralBisection.nodeSplitIndex`. -/
 theorem clamp_writes {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hC : IsCmp dec I) {md : Mode} {τ : Tape K}
     {a b x z : ℕ × ℕ} {lo hi w : K} {m : Mem K}
@@ -101,7 +106,9 @@ theorem toNatFn_clampWord {dec : K → ℝ} {lo hi w : K} {bound : ℕ}
 /-- A clamp followed by a bounded index binder always passes its conversion guard when its
 endpoints decode to zero and the bound. The callback receives the precise bounded floor and
 an arbitrary framed post-state. This applies to computed split sizes, including negative or
-oversized initial words, without an execution-success assumption. -/
+oversized initial words, without an execution-success assumption.
+Shared by the trees of `NLAlib.SpectralBisection.nodeBranch`,
+`NLAlib.SpectralBisection.nodeSplitIndex`. -/
 theorem clamp_writes_bindIdx [Has IdxTst Tst] {M : Machine K} {dec : K → ℝ}
     {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I) (hQ : IsToNat dec I)
     {τ : Tape K} {ρ : Env} {m : Mem K} {args : List Operand} {out : Operand}

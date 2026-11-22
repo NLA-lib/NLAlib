@@ -357,7 +357,8 @@ private def replayEntryStmt (Rot : Stmt O Q) : Stmt O Q :=
 
 omit [Has IndexOp O] [Inhabited ℝ] in
 /-- The replay of one entry whose two planes are in range stores the rotation word of the
-coefficients rounded from the entry. -/
+coefficients rounded from the entry.
+A step in the proof of `NLAlib.givensReplayWith_writes_word`. -/
 private theorem replayEntryStmt_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (hQ : IsToNat id I) (hC : IsCmp id I) {Rot : Stmt O Q}
     {N lo j0 nc ns w : ℕ} {lg x : ℕ × ℕ}
@@ -429,7 +430,8 @@ omit [Has IndexOp O] [Inhabited ℝ] in
 /-- A replay with any rotation routine stores the replayed word: if `Rot` at the plane $k$
 stores `rotWord k c s` of the matrix for the coefficients $(c, s)$, the replay of a closed log
 whose entries have their two planes in range stores the left fold of `rotWord` over the valid
-entries, with the coefficients rounded from each entry. -/
+entries, with the coefficients rounded from each entry.
+Shared by the trees of `NLAlib.givensReplayRows`, `NLAlib.givensReplayColumns`. -/
 theorem givensReplayWith_writes_word {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (hQ : IsToNat id I) (hC : IsCmp id I) {Rot : Stmt O Q}
     {N lo j0 nc ns w : ℕ} {lg x : ℕ × ℕ}
@@ -666,7 +668,8 @@ omit [Has IndexOp O] in
 /-- **The words of a row replay**: on a scalar machine with exact `toNat` and comparisons and
 every tape, the replay of a closed log whose entries have their two rows `lo + r, lo + r + 1`
 in range, on the columns $j_0, \dots, j_0 + n_c - 1$ of the matrix at `x`, writes only the matrix
-and stores the left fold of `NLAlib.replayRowStep` over the valid entries. -/
+and stores the left fold of `NLAlib.replayRowStep` over the valid entries.
+Shared by the trees of `NLAlib.ShiftedQR.roundedAbort`, `NLAlib.ShiftedQR.roundedDecoupleUpdate`. -/
 theorem givensReplayRows_writes_word {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (hQ : IsToNat id I) (hC : IsCmp id I) {N lo j0 nc ns w : ℕ}
     (hj : j0 + nc ≤ N) {L : List (Option (List GivensEntry))} {P : List GivensEntry}
@@ -688,7 +691,9 @@ theorem givensReplayRows_writes_word {Mch : Machine ℝ} {I : Interp O Q ℝ}
 
 omit [Has IndexOp O] in
 /-- **The words of a column replay**: as `NLAlib.givensReplayRows_writes_word`, on the rows
-$i_0, \dots, i_0 + n_r - 1$, the replay stores the left fold of `NLAlib.replayColumnStep`. -/
+$i_0, \dots, i_0 + n_r - 1$, the replay stores the left fold of `NLAlib.replayColumnStep`.
+Shared by the trees of `NLAlib.hessenbergReduceQ`, `NLAlib.ShiftedQR.roundedAbort`,
+`NLAlib.ShiftedQR.roundedDecoupleUpdate` and 1 more. -/
 theorem givensReplayColumns_writes_word {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (hQ : IsToNat id I) (hC : IsCmp id I) {N lo i0 nr ns w : ℕ}
     (hi : i0 + nr ≤ N) {L : List (Option (List GivensEntry))} {P : List GivensEntry}

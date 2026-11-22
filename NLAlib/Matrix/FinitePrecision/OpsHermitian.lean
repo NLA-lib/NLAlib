@@ -96,7 +96,9 @@ variable {M dec mm qr unif normal}
 
 /-- The scalar-visible shift program writes exactly the existing mathematical machine's
 packed output on the actual stored finite matrix. Spatially disjoint arena regions are allowed;
-numerical accuracy is a separate property of the same machine functions. -/
+numerical accuracy is a separate property of the same machine functions.
+Shared by the trees of `NLAlib.Schur.denseSchur`, `NLAlib.ShiftedQR.sweep`,
+`NLAlib.ShiftedQR.shiftedStep` and 43 more. -/
 theorem shift_writes_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     {I : Interp Op Tst K} (hI : IsScalar M I) {τ : Tape K} {n : ℕ}
     (A : Matrix (Fin n) (Fin n) (K × K)) (d : K) {x c y : ℕ × ℕ} {μ : Mem K}
@@ -125,7 +127,9 @@ theorem shift_writes_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
 
 /-- The scalar-visible scale program writes exactly the existing mathematical machine's
 packed output on the actual stored finite matrix. Spatially disjoint arena regions are allowed;
-numerical accuracy is a separate property of the same machine functions. -/
+numerical accuracy is a separate property of the same machine functions.
+Shared by the trees of `NLAlib.Sign.initialized`, `NLAlib.Sign.inputs`,
+`NLAlib.SpectralBisection.nodeProjectors` and 1 more. -/
 theorem scale_writes_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     {I : Interp Op Tst K} (hI : IsScalar M I) {τ : Tape K} {n : ℕ}
     (A : Matrix (Fin n) (Fin n) (K × K)) (d : K) {x c y : ℕ × ℕ} {μ : Mem K}
@@ -154,7 +158,8 @@ theorem scale_writes_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
 
 /-- The scalar-visible average program writes exactly the existing mathematical machine's
 packed output on the actual stored finite matrix. Spatially disjoint arena regions are allowed;
-numerical accuracy is a separate property of the same machine functions. -/
+numerical accuracy is a separate property of the same machine functions.
+Shared by the trees of `NLAlib.Sign.step`, `NLAlib.SpectralBisection.compress`. -/
 theorem average_writes_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     {I : Interp Op Tst K} (hI : IsScalar M I) {τ : Tape K} {n : ℕ}
     (A : Matrix (Fin n) (Fin n) (K × K)) (d : K) {x c y : ℕ × ℕ} {μ : Mem K}
@@ -184,7 +189,8 @@ theorem average_writes_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
 
 /-- Scalar negation of a packed matrix returns exactly the existing mathematical negation.
 Input and output may coincide exactly or occupy spatially disjoint blocks of the same buffer.
-The theorem is total under readable input, writable output and the scalar functional contract. -/
+The theorem is total under readable input, writable output and the scalar functional contract.
+Shared by the trees of `NLAlib.Ops.Hermitian.shift`, `NLAlib.Ops.Hermitian.shiftNegate`. -/
 theorem negate_writes_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     {I : Interp Op Tst K} (hI : IsScalar M I) {τ : Tape K} {r c : ℕ}
     (A : Matrix (Fin r) (Fin c) (K × K)) {x y : ℕ × ℕ} {μ : Mem K}

@@ -153,7 +153,7 @@ the counts depend on the dimensions only. -/
 theorem stmtCost_solve (stream m n b q u v g r s : ℕ) :
     stmtCost (solve (Op := Op) (Tst := Tst) stream) [m, n, b, q, u, v, g, r, s] =
       solveCount stream m n b q := by
-  simp [solve, stmtCost, useCost, stmtCost_sampleVector, stmtCost_step, solveCount,
+  simp [solve, stmtCost, useCost, sampleRoutine, stmtCost_sampleVector, stmtCost_step, solveCount,
     Finset.sum_add_distrib, ← mul_nsmul']
   module
 
@@ -171,7 +171,7 @@ theorem stmtPeak_solve_le (W : Op → List ℕ → ℕ) (w : ℕ) (hW : ∀ o ds
   have hStep (idx : List ℕ) := stmtPeak_zero_of_allocationFree
     (s := (step (Op := Op) (Tst := Tst))) (idx := idx) (by rfl)
   have hz (t : Finset ℕ) : (t.sup fun _ => (0 : ℕ)) = 0 := Finset.sup_bot t
-  simp [solve, stmtPeak, Stmt.alloc, hSample, hStep, hz]
+  simp [solve, stmtPeak, Stmt.alloc, sampleRoutine, hSample, hStep, hz]
 
 /-- The largest workspace of a primitive call of a run at the dimensions $(m, n, b, q)$, for the
 workspace `W` of every call: the maximum over a draw, a product with $\mathbf{A}$ at `[m, n]`, a

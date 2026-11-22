@@ -243,7 +243,8 @@ private theorem matMulFillA {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScala
       rw [h3]
       exact (hrest μ₂ hfr' hp hr).mono le_rfl fun _ _ h => h
 
-/-- One multiply–add of the product program stores $\mathrm{fl}(ay + \hat 1 s)$ in `S`. -/
+/-- One multiply–add of the product program stores $\mathrm{fl}(ay + \hat 1 s)$ in `S`.
+A fragment of the tree `NLAlib.matMulEntry`. -/
 private theorem matMulLBody_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {ρ : Env} {m p q ldx ldy ldz c Lc j i l : ℕ} {x y z : ℕ × ℕ}
     (hidx : ρ.idx = [m, p, q, ldx, ldy, ldz, c, x.2, y.2, z.2, j, i, l])
@@ -312,7 +313,8 @@ private def matMulEntry : Stmt O Q :=
       [{ buf := 2, off := IExp.var 9 + IExp.const 2 * (IExp.var 10 * IExp.var 5 + IExp.var 11) +
         IExp.const 1 }]))))
 
-/-- One entry of the product program stores the rounded accumulation of its products. -/
+/-- One entry of the product program stores the rounded accumulation of its products.
+A step in the proof of `NLAlib.matMulOn_entry_step`. -/
 private theorem matMulEntry_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {ρ : Env} {m p q ldx ldy ldz c Lc j i : ℕ} {x y z : ℕ × ℕ}
     (hidx : ρ.idx = [m, p, q, ldx, ldy, ldz, c, x.2, y.2, z.2, j, i])
@@ -473,7 +475,9 @@ private theorem matMulOn_entry_step {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
 
 /-- The product program with the output contiguous, the left factor read by `MatMulLeftWords`
 from a stored `Xs` at `xs` and the right factor read through a strided view from a stored `Ys`
-at `ys`: it stores the accumulations of the entries `lf i l` against `rf l j`. -/
+at `ys`: it stores the accumulations of the entries `lf i l` against `rf l j`.
+Shared by the trees of `NLAlib.ShiftedQR.roundedDecoupleUpdate`,
+`NLAlib.ShiftedQR.roundedLeafUpdate`, `NLAlib.matMulLBody`. -/
 private theorem matMulOn_writes_gen {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {μ : Mem ℝ} {m p q ldx ldy c r₁ r₂ r₃ r₄ : ℕ} {x y z xs ys : ℕ × ℕ}
     {Xs : Matrix (Fin r₁) (Fin r₂) ℂ} {Ys : Matrix (Fin r₃) (Fin r₄) ℂ}
@@ -565,7 +569,9 @@ the left view `x` (leading dimension `ldx`) reads the entries of $\mathbf{X}$ ($
 a matrix stored at `xs`, the right view `y` (leading dimension `ldy`) reads the entries of
 $\mathbf{Y}$ ($p \times q$) from a matrix stored at `ys`, and the contiguous output `z` has room
 and is apart from both stored matrices, then the program writes only the output and stores
-`NLAlib.matMulWord`. -/
+`NLAlib.matMulWord`.
+Shared by the trees of `NLAlib.ShiftedQR.roundedDecoupleUpdate`,
+`NLAlib.ShiftedQR.roundedLeafUpdate`, `NLAlib.matMulLBody`. -/
 theorem matMulOn_writes_view {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {μ : Mem ℝ} {m p q ldx ldy r₁ r₂ r₃ r₄ : ℕ} {x y z xs ys : ℕ × ℕ}
     {Xs : Matrix (Fin r₁) (Fin r₂) ℂ} {Ys : Matrix (Fin r₃) (Fin r₄) ℂ}
@@ -613,7 +619,9 @@ on any scalar machine: if the left view `x` (leading dimension `ldx`) reads the 
 $\mathbf{X}$ ($p \times m$) from a matrix stored at `xs`, the right view `y` reads $\mathbf{Y}$
 ($p \times q$) from a matrix stored at `ys`, and the contiguous output `z` has room apart from
 both, the program writes only the output and stores `NLAlib.matMulWord` of the machine conjugate
-transpose `NLAlib.machineConjTranspose` and $\mathbf{Y}$. -/
+transpose `NLAlib.machineConjTranspose` and $\mathbf{Y}$.
+A step in the proof of `NLAlib.ShiftedQR.roundedLeafUpdate_writes`,
+`NLAlib.matMulOn_conjTranspose_writes_view`. -/
 theorem matMulOn_machineConjTranspose_writes_view {M : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {μ : Mem ℝ}
     {m p q ldx ldy r₁ r₂ r₃ r₄ : ℕ} {x y z xs ys : ℕ × ℕ}
@@ -645,7 +653,8 @@ theorem matMulOn_machineConjTranspose_writes_view {M : Machine ℝ} {I : Interp 
 /-- **`NLAlib.matMulOn` with the left factor conjugate-transposed on strided views** ($c = 1$),
 under the standard model (negation is exact): as
 `NLAlib.matMulOn_machineConjTranspose_writes_view`, the program stores `NLAlib.matMulWord` of
-$\mathbf{X}^{\mathsf H}$ and $\mathbf{Y}$. -/
+$\mathbf{X}^{\mathsf H}$ and $\mathbf{Y}$.
+A step in the proof of `NLAlib.matMulOn_conjTranspose_writes_word`. -/
 theorem matMulOn_conjTranspose_writes_view {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : Ops.StdModel u id M) {τ : Tape ℝ} {μ : Mem ℝ}
     {m p q ldx ldy r₁ r₂ r₃ r₄ : ℕ} {x y z xs ys : ℕ × ℕ}
@@ -671,7 +680,9 @@ theorem matMulOn_conjTranspose_writes_view {M : Machine ℝ} {I : Interp O Q ℝ
 /-- `NLAlib.matMulOn` with $c = 0$ on contiguous views (leading dimensions the row counts), on a
 scalar machine and every tape: from $\mathbf{X}$ ($m \times p$) at `x` and $\mathbf{Y}$
 ($p \times q$) at `y`, with room for the output at `z` apart from both, it writes only the output
-and stores `NLAlib.matMulWord`. -/
+and stores `NLAlib.matMulWord`.
+Shared by the trees of `NLAlib.ShiftedQR.roundedDecoupleUpdate`,
+`NLAlib.ShiftedQR.roundedLeafUpdate`, `NLAlib.matMulLBody`. -/
 theorem matMulOn_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {μ : Mem ℝ} {m p q : ℕ} {x y z : ℕ × ℕ} {X : Matrix (Fin m) (Fin p) ℂ}
     {Y : Matrix (Fin p) (Fin q) ℂ} (hX : HoldsMatrix x X μ.store) (hY : HoldsMatrix y Y μ.store)
@@ -688,7 +699,8 @@ theorem matMulOn_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScal
 
 /-- `NLAlib.matMulOn` with $c = 1$ on contiguous views, under the standard model (negation is
 exact): from $\mathbf{X}$ ($p \times m$) at `x` and $\mathbf{Y}$ ($p \times q$) at `y`, it writes
-only the output and stores `NLAlib.matMulWord` of $\mathbf{X}^{\mathsf H}$ and $\mathbf{Y}$. -/
+only the output and stores `NLAlib.matMulWord` of $\mathbf{X}^{\mathsf H}$ and $\mathbf{Y}$.
+An end statement in operand form: no other declaration of the library is proved from it. -/
 theorem matMulOn_conjTranspose_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : Ops.StdModel u id M) {τ : Tape ℝ} {μ : Mem ℝ} {m p q : ℕ}
     {x y z : ℕ × ℕ} {X : Matrix (Fin p) (Fin m) ℂ} {Y : Matrix (Fin p) (Fin q) ℂ}

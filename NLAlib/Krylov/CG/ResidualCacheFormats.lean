@@ -44,7 +44,8 @@ local instance instInhabitedFiniteFloat : Inhabited Computation.FiniteFloat :=
   ⟨Float64.zeroWord⟩
 
 /-- Actual finite binary64 arithmetic writes the residual cache under an input-only
-largest-finite-result bound. The model supplies gradual-underflow accuracy itself. -/
+largest-finite-result bound. The model supplies gradual-underflow accuracy itself.
+An end statement in operand form: no other declaration of the library is proved from it. -/
 theorem residualCache_wp_float64 {I : Interp Op Tst Computation.FiniteFloat}
     (hI : IsScalar Float64.machine I) {τ : Tape Computation.FiniteFloat}
     {n : ℕ} {r z : ℕ × ℕ} {m : Mem Computation.FiniteFloat}
@@ -68,7 +69,8 @@ theorem residualCache_wp_float64 {I : Interp Op Tst Computation.FiniteFloat}
   exact h.mono fun _ ⟨cache, he, hg, herr, _⟩ => ⟨cache, he, hg, herr⟩
 
 /-- A general binary-format quantizer certifies the same kernel, on a mathematical real
-carrier. The nearest-selector law fixes the tie policy independently of execution. -/
+carrier. The nearest-selector law fixes the tie policy independently of execution.
+An end statement in operand form: no other declaration of the library is proved from it. -/
 theorem residualCache_wp_binaryQuantized (fmt : Float.Model.Format) {round : ℝ → ℤ}
     (hRound : ∀ a, Computation.AbsRelErr 0 (1 / 2) a (round a : ℝ))
     {I : Interp Op Tst ℝ} (hI : IsScalar (BinaryQuantized.machine fmt round) I)
@@ -92,7 +94,8 @@ theorem residualCache_wp_binaryQuantized (fmt : Float.Model.Format) {round : ℝ
 
 /-- Bounded nearest-grid fixed-point arithmetic has an absolute half-grid allowance.
 The resulting cache error is at most `n/scale`, and a zero cache bounds the residual by
-that same value. Saturation is excluded by the supplied input-only range inequality. -/
+that same value. Saturation is excluded by the supplied input-only range inequality.
+An end statement in operand form: no other declaration of the library is proved from it. -/
 theorem residualCache_wp_fixedPoint (bound scale : ℕ) (hs : 0 < scale)
     {I : Interp Op Tst (Examples.FixedPoint.Word bound)}
     (hI : IsScalar (Examples.FixedPoint.machine bound scale) I)

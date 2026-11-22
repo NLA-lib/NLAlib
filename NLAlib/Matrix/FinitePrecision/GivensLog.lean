@@ -728,7 +728,9 @@ theorem holdsSlottedLog_nil_of_readBlock {lg : ℕ × ℕ} {ns w : ℕ} {s : Sto
   exact ⟨h1, by rw [h2, flatMap_entryWords_padEntries_nil]⟩
 
 omit [Has IndexOp O] [Inhabited ℝ] in
-/-- Opening a log stores the empty log. -/
+/-- Opening a log stores the empty log.
+Shared by the trees of `NLAlib.hessenbergReduceQ`, `NLAlib.ShiftedQR.roundedDecoupleLoopWith`,
+`NLAlib.ShiftedQR.roundedDecoupleWith` and 3 more. -/
 theorem slottedLogOpen_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) {ns w : ℕ} {lg : ℕ × ℕ} {τ : Tape ℝ}
     {μ : Mem ℝ} (hroom : lg.2 + ns * (1 + 5 * w) ≤ μ.store.len lg.1) :
@@ -749,7 +751,9 @@ theorem slottedLogOpen_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
 
 omit [Inhabited ℝ] in
 /-- Writing an entry appends it to the pending slot. The plane is an exact natural below
-`nmax` (`hNat`); this hypothesis belongs to the log, not to the producer. -/
+`nmax` (`hNat`); this hypothesis belongs to the log, not to the producer.
+Shared by the trees of `NLAlib.reduceLastStep`, `NLAlib.ShiftedQR.stepWithDiag`,
+`NLAlib.SmallEig.rhess`. -/
 theorem slottedLogWrite_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar Mch I)
     (hL : IsIndexLit Mch I) {nmax : ℕ} (hNat : IsExactNatLit id Mch nmax) {ns w r : ℕ}
     (hr : r ≤ nmax) {lg pw qw : ℕ × ℕ} {L : List (Option (List GivensEntry))}
@@ -838,7 +842,9 @@ theorem slottedLogWrite_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : Is
 
 omit [Has ScalarOp O] [Inhabited ℝ] in
 /-- Validating the pending slot closes it as accepted, on a machine whose literal one is
-positive. -/
+positive.
+Shared by the trees of `NLAlib.hessenbergReduceLast`, `NLAlib.ShiftedQR.trialAccept`,
+`NLAlib.SmallEig.decoupleLast` and 1 more. -/
 theorem slottedLogValidate_writes_of_pos {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hL : IsIndexLit Mch I) (h1 : 0 < Mch.lit 1) {ns w : ℕ} {lg : ℕ × ℕ}
     {L : List (Option (List GivensEntry))} {P : List GivensEntry} {τ : Tape ℝ} {μ : Mem ℝ}
@@ -854,7 +860,9 @@ theorem slottedLogValidate_writes_of_pos {Mch : Machine ℝ} {I : Interp O Q ℝ
   exact ⟨hp, h.of_validate hL' hfr hg (by simpa using h1)⟩
 
 omit [Has ScalarOp O] [Inhabited ℝ] in
-/-- Validating the pending slot closes it as accepted. -/
+/-- Validating the pending slot closes it as accepted.
+Shared by the trees of `NLAlib.hessenbergReduceLast`, `NLAlib.ShiftedQR.trialAccept`,
+`NLAlib.SmallEig.decoupleLast` and 1 more. -/
 theorem slottedLogValidate_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hL : IsIndexLit Mch I) (hM : StdModel u id Mch) (hu : u < 1) {ns w : ℕ} {lg : ℕ × ℕ}
     {L : List (Option (List GivensEntry))} {P : List GivensEntry} {τ : Tape ℝ} {μ : Mem ℝ}

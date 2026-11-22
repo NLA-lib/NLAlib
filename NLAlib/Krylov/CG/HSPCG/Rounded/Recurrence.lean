@@ -61,7 +61,9 @@ open Ops
 
 /-- A first active rounded PCG step executes totally and stores an existing one-step run.
 Its guards follow from the raw matrix spectral windows, precision inequalities and nonzero
-right-hand side; the initial state is exactly the preceding oracle initializer's output. -/
+right-hand side; the initial state is exactly the preceding oracle initializer's output.
+Shared by the trees of `NLAlib.reduceLastStep`, `NLAlib.hessenbergReduceLast`,
+`NLAlib.ShiftedQR.shiftedStep` and 44 more. -/
 theorem step_writes_pcgRun_one {Op Tst : Type}
     [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op]
     [Has (Tagged Preconditioner OperatorOp) Op]

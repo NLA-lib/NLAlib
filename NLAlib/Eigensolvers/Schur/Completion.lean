@@ -245,7 +245,9 @@ section Steps
 variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 
 omit [Has IndexOp O] [Has CmpTst Q] in
-/-- The identity program stores the identity when the literals $0$ and $1$ are exact. -/
+/-- The identity program stores the identity when the literals $0$ and $1$ are exact.
+Shared by the trees of `NLAlib.hessenbergReduceLast`, `NLAlib.Schur.schurPipelineWith`,
+`NLAlib.SmallEig.identityLeaf` and 6 more. -/
 theorem identity_writes_holdsMatrix_one_of_lit {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (h0 : Mch.lit 0 = 0) (h1 : Mch.lit 1 = 1) {τ : Tape ℝ}
     {m : Mem ℝ} {N : ℕ} {b : ℕ × ℕ} (hroom : b.2 + 2 * (N * N) ≤ m.store.len b.1) :

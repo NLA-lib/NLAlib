@@ -56,8 +56,8 @@ theorem stmtPeak_fillMap_le (o : Op) (W : Op → List ℕ → ℕ) (n y : ℕ) :
 
 /-- The fill writes the value of its operation to every entry: for an operation with the
 constant value `v`, from room for the $n$ entries at `y`, on every tape, the fill writes only
-those entries, stores `v` in each and keeps the tape position. The entries are stated as a
-stored vector, the form `NLAlib.Ops.fillMap_writes_readBlock` reads back as a block. -/
+those entries, stores `v` in each and keeps the tape position. A step in the proof of
+`NLAlib.Ops.fillRoutine_meets`, with the entries stated as a stored vector. -/
 theorem fillMap_writes {o : Op} {v : K} {I : Interp Op Tst K}
     (hI : I.IsFn .total o (.const v) AnyOperands) {τ : Tape K} {m : Mem K} {n : ℕ}
     {y : ℕ × ℕ} (hy : y.2 + n ≤ m.store.len y.1) :
@@ -70,8 +70,8 @@ theorem fillMap_writes {o : Op} {v : K} {I : Interp Op Tst K}
   exact ⟨(Store.EqOff.refl _ _).upd ⟨rfl, le_rfl, by omega⟩ _, Store.get_upd_self hz _, hpos⟩
 
 /-- The fill of `NLAlib.Ops.fillMap_writes` read back as a block: the $n$ entries at `y` are
-$n$ copies of `v`. This is the proof of `NLAlib.Ops.fillRoutine_meets`; the small-eigenvalue
-program, which runs the fill as a tree inside its own scratch, also uses it directly. -/
+$n$ copies of `v`. A step in the proof of `NLAlib.Ops.fillRoutine_meets`, which is the statement
+callers use. -/
 theorem fillMap_writes_readBlock {o : Op} {v : K} {I : Interp Op Tst K}
     (hI : I.IsFn .total o (.const v) AnyOperands) {τ : Tape K} {m : Mem K} {n : ℕ}
     {y : ℕ × ℕ} (hy : y.2 + n ≤ m.store.len y.1) :

@@ -511,7 +511,8 @@ def KeptByRound (M : Machine ℝ) {n : ℕ} (Inv : ℕ → List GivensEntry →
             (W ⟨r + 1, by omega⟩ ⟨r, by omega⟩)).2 Z))
 
 /-- **One recorded round**: writing the entry of round `r` to the log and running the round keeps
-the invariant of the recording loop. -/
+the invariant of the recording loop.
+A step in the proof of `NLAlib.ShiftedQR.stepLoop_writes`. -/
 private theorem logRound_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hCmp : IsCmp id I)
     (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M nmax)
@@ -589,7 +590,8 @@ private theorem logRound_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
   · exact hInv hr es W Z hinv
 
 /-- **The recording loop keeps its invariant**: the $n$ recorded rounds from the invariant before
-the first round end in the invariant after the last. -/
+the first round end in the invariant after the last.
+A step in the proof of `NLAlib.ShiftedQR.stepWithDiag_writes_of_inv`. -/
 private theorem stepLoop_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hCmp : IsCmp id I)
     (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M nmax)
@@ -635,7 +637,8 @@ private theorem stepLoop_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 omit [Has IndexOp Op] [Has CmpTst Tst] in
 /-- **The end of the step**: after the recording loop, copying the last working diagonal entry
-and zeroing the output below its subdiagonal keep the log and the invariant. -/
+and zeroing the output below its subdiagonal keep the log and the invariant.
+A step in the proof of `NLAlib.ShiftedQR.stepWithDiag_writes_of_inv`. -/
 private theorem stepTail_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hzero : M.lit 0 = 0) {n : ℕ} {τ : Tape ℝ} {ρ : Env} {m : Mem ℝ}
     {Inv : ℕ → List GivensEntry → Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ →
@@ -680,7 +683,8 @@ exact, if a property `Inv` of the rounds (`NLAlib.ShiftedQR.KeptByRound`) holds 
 shift (`NLAlib.ShiftedQR.machineShiftedPrefix`) and $\mathbf{H}$, then `stepWithDiag` appends $n$
 entries with planes below $n$ to the pending slot of the log, and ends with a working matrix and an
 output satisfying `Inv` after $n$ rounds: the output with its fill deleted
-(`NLAlib.upperHessenbergPart`) at `z`, the last working diagonal entry at `dg`. -/
+(`NLAlib.upperHessenbergPart`) at `z`, the last working diagonal entry at `dg`.
+A fragment of the tree `NLAlib.ShiftedQR.stepWithDiagInPlace`. -/
 theorem stepWithDiag_writes_of_inv {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hzero : M.lit 0 = 0) (hCmp : IsCmp id I)
     (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M nmax)

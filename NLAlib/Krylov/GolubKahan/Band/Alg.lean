@@ -118,7 +118,7 @@ The outputs are `U` (`q * b * m` words), `V` (`(q + 1) * b * n`), `G` (`b * b`) 
 coefficients `R` and `S`. The scratch block has `max m n * b` words. -/
 def solve (stream : ℕ) : Stmt Op Tst := ops% [m, n, b, q] () → (U, V, G, R, S) {
   let W ← alloc ((m + (n - m)) * b);
-  run (sampleVector stream) [n * b] (W);
+  run (sampleRoutine stream) [n * b] (W);
   call (Has.inj OrthOp.extend) [n, 0, b] (V, W) → (V, W, G);
   for j < q {
     run step [m, n, b, j] (U, V, R, S, W)

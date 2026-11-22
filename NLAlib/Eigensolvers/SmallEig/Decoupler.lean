@@ -478,7 +478,8 @@ $\mathbf{H}_1$ in `NLAlib.SmallEig.SmallEigRHessClass` of a block $\mathbf{H}$ o
 $k + 2 \le n_{\max} + 1$ and norm at most $N \le 2\Sigma$ by the unitary of the $k + 1$ closed
 slots `Ls₁`, with the pair at `(L, 0)` and room in the log for the steps of `Decouple`, the tail
 of `NLAlib.SmallEig.smallEigDecoupler` reaches the outcome of the decoupling contract, except with
-probability at most $\varphi_D/2$. The frames are given by their evaluations. -/
+probability at most $\varphi_D/2$. The frames are given by their evaluations.
+A step in the proof of `NLAlib.SmallEig.smallEigDecoupler_randomDecouplingRoutineContract_of_le`. -/
 theorem smallEigDecoupler_tail_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
@@ -658,7 +659,8 @@ def SmallEigDecouplerOpened {n : ℕ} (H : Matrix (Fin (n + 1)) (Fin (n + 1)) �
 omit [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- Opening the log of the decoupler: from `NLAlib.SmallEig.SmallEigDecouplerAlloc`, the frame of
 `NLAlib.slottedLogOpen` given by its evaluations writes only the log and reaches
-`NLAlib.SmallEig.SmallEigDecouplerOpened`. -/
+`NLAlib.SmallEig.SmallEigDecouplerOpened`.
+A step in the proof of `NLAlib.SmallEig.smallEigDecoupler_randomDecouplingRoutineContract_of_le`. -/
 theorem smallEigDecoupler_open_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) {n : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {qs : List ℝ} {w q f lg : ℕ × ℕ} {ns ws L : ℕ} {ρ : Env} {ds : List IExp}

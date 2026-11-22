@@ -418,7 +418,8 @@ theorem denseSchurProgram_wellTyped (sG : ℕ) {Mch : Machine ℝ}
 
 /-- The dense Schur program terminates on every admitted input, interpretation of the model and
 tape, and writes only the matrix, the accumulator and the flag
-(`NLAlib.Schur.denseSchur_completes`, no rounding model). -/
+(`NLAlib.Schur.denseSchur_completes`, no rounding model).
+An end statement in operand form: no other declaration of the library is proved from it. -/
 theorem denseSchurProgram_wp {Mch : Machine ℝ} {admitted : ∃ d, SchurSizes Mch denseSchurSizes d}
     {sU sG : ℕ} {d : Fin 6 → ℕ} (hd : SchurSizes Mch denseSchurSizes d)
     (x : (denseSchurProblem Mch admitted).Input d) {I : Interp SmallEigOp Tst ℝ}

@@ -316,7 +316,8 @@ holding $\mathbf{A}$ and the words of `denseSchurParams` writes only $\mathbf{A}
 $\widehat{\mathbf{U}}$ and the flag, and stores $\widehat{\mathbf{U}}$ with
 $\|\widehat{\mathbf{U}}^{\mathsf H}\widehat{\mathbf{U}} - \mathbf{I}\|_2 \le 2\varepsilon +
 \varepsilon^2$, $\varepsilon = (1 + 27(n + 1)^2\boldsymbol{u})(1 + 24\boldsymbol{u})^{R_c} - 1$,
-$R_c$ the rotation count of the core. -/
+$R_c$ the rotation count of the core.
+A step in the proof of `NLAlib.Schur.denseSchur_terminates`. -/
 theorem denseSchur_writes_orth {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)

@@ -28,7 +28,11 @@ namespace NLAlib.Ops.PairMatrix
 variable {K Op Tst : Type} [Has ScalarOp Op]
 
 /-- Copying an interleaved matrix is the generic unary map of scalar copy, including
-exact in-place operands and spatially disjoint regions of a shared buffer. -/
+exact in-place operands and spatially disjoint regions of a shared buffer.
+Shared by the trees of `NLAlib.Deflation.apply`, `NLAlib.reduceLastStep`,
+`NLAlib.ShiftedQR.acceptTrialWithScratch` and 83 more.
+The run without its frame; `NLAlib.Ops.PairMatrix.copy_writes`, the primary statement, is proved
+from it. -/
 theorem copy_wp [Inhabited K] {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {rows cols : ℕ} {x y : ℕ × ℕ} {xs : List K}
     (hl : m.Live [x, y])
@@ -44,7 +48,9 @@ theorem copy_wp [Inhabited K] {M : Machine K} {I : Interp Op Tst K} (hI : IsScal
   simpa using hQ
 
 /-- Copy writes exactly its stored input block, frames every other cell, and consumes no
-random words. No source/output buffer inequality is required. -/
+random words. No source/output buffer inequality is required.
+Shared by the trees of `NLAlib.Deflation.apply`, `NLAlib.reduceLastStep`,
+`NLAlib.ShiftedQR.acceptTrialWithScratch` and 83 more. -/
 theorem copy_writes [Inhabited K] {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {rows cols : ℕ} {x y : ℕ × ℕ} {xs : List K}
     (hl : m.Live [x, y])
@@ -68,7 +74,8 @@ theorem copy_writes [Inhabited K] {M : Machine K} {I : Interp Op Tst K} (hI : Is
 
 /-- Conjugate transpose writes the machine-negated imaginary words and copied real words of
 the actual input matrix. Input and output word blocks are disjoint, including when they share
-a buffer. No initialized output words, numerical model or successful-run premise is assumed. -/
+a buffer. No initialized output words, numerical model or successful-run premise is assumed.
+A fragment of the tree `NLAlib.SpectralBisection.compress`. -/
 theorem conjTranspose_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {r c : ℕ} {x y : ℕ × ℕ}
     (A : ℕ → ℕ → K × K) (hl : m.Live [x, y])

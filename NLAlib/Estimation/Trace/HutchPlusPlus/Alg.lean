@@ -48,7 +48,7 @@ def applyColumns : Stmt Op Tst := ops% [n, k] (data, X) → (Y) {
 are allocated. Sample words are read in column-major order. -/
 def sketch (stream : ℕ) : Stmt Op Tst := ops% [n, k] (data) → (B) {
   let S ← alloc (n * k);
-  run (sampleVector stream) [n * k] (S);
+  run (sampleRoutine stream) [n * k] (S);
   run applyColumns [n, k] (data, S, B)
 }
 
@@ -80,7 +80,7 @@ def accumulate : Stmt Op Tst := ops% [n, k, ell] (B, C, t) → (out) {
 The temporary sketch and MGS workspace are scoped inside their own procedures. -/
 def prepare (stream : ℕ) : Stmt Op Tst := ops% [n, k, ell] (data) → (B) {
   run (sketch stream) [n, k] (data, B);
-  run (sampleVector stream) [n * ell] (B[n * k]);
+  run (sampleRoutine stream) [n * ell] (B[n * k]);
   run MGS.factorRoutine [n, k] (B)
 }
 

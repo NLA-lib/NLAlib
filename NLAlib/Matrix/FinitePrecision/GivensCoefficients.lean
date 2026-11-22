@@ -202,7 +202,8 @@ private theorem coefficientPrefix_reads {M : Machine ℝ} {m : Mem ℝ} {t : ℕ
 
 omit [Has CmpTst Tst] in
 /-- The prefix writes only the seven scratch cells and returns its captured values. A fragment: its
-tree runs only inside the tree of `NLAlib.ShiftedQR.coefficientsWithScratch`. -/
+tree runs only inside the tree of `NLAlib.ShiftedQR.coefficientsWithScratch`.
+A fragment of the tree `NLAlib.coefficientsWithScratch`. -/
 private theorem coefficientPrefix_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {a b t c s : ℕ × ℕ} {u v : ℂ}
@@ -258,7 +259,8 @@ private theorem eval_coefficientZero (M : Machine ℝ)
 omit [Has CmpTst Tst] in
 /-- The zero branch writes its two packed output blocks, including spatially separate views in a
 single caller buffer. A fragment: its tree runs only inside the tree of
-`NLAlib.ShiftedQR.coefficientsWithScratch`. -/
+`NLAlib.ShiftedQR.coefficientsWithScratch`.
+A fragment of the tree `NLAlib.coefficientsWithScratch`. -/
 private theorem coefficientZero_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {a b t c s : ℕ × ℕ}
@@ -330,7 +332,8 @@ private theorem eval_coefficientDivide {M : Machine ℝ}
 
 omit [Has CmpTst Tst] in
 /-- The nonzero-radius branch writes the conjugated component quotients. A fragment: its tree runs
-only inside the tree of `NLAlib.ShiftedQR.coefficientsWithScratch`. -/
+only inside the tree of `NLAlib.ShiftedQR.coefficientsWithScratch`.
+A fragment of the tree `NLAlib.coefficientsWithScratch`. -/
 private theorem coefficientDivide_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {a b t c s : ℕ × ℕ} {u v : ℂ} {r : ℝ}

@@ -273,7 +273,9 @@ section Steps
 variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 
 omit [Has IndexOp O] [Has CmpTst Q] in
-/-- The identity program stores the identity when the literals $0$ and $1$ are exact. -/
+/-- The identity program stores the identity when the literals $0$ and $1$ are exact.
+Shared by the trees of `NLAlib.hessenbergReduceLast`, `NLAlib.Schur.schurPipelineWith`,
+`NLAlib.SmallEig.identityLeaf` and 6 more. -/
 theorem identity_writes_holdsMatrix_one {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (h1 : Mch.lit 1 = 1) {τ : Tape ℝ}
     {m : Mem ℝ} {N : ℕ} {b : ℕ × ℕ} (hroom : b.2 + 2 * (N * N) ≤ m.store.len b.1) :
@@ -287,7 +289,9 @@ theorem identity_writes_holdsMatrix_one {Mch : Machine ℝ} {I : Interp O Q ℝ}
 
 omit [Has CmpTst Q] in
 /-- **The zero branch of the pipeline**: from the memory of a run holding $\mathbf{A} = 0$, the
-identity and the flag $0$ make a Schur output. -/
+identity and the flag $0$ make a Schur output.
+A step in the proof of `NLAlib.Schur.schurPipelineWith_measureReal_not_schur_le`,
+`NLAlib.Schur.schurPipelineWith_terminates`. -/
 theorem schurPipeline_zero_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I) (h1 : Mch.lit 1 = 1)
     {n nr nq k F T L : ℕ} {qs : List ℝ} {a p uo f : ℕ × ℕ} {τ : Tape ℝ} {m : Mem ℝ}
@@ -318,7 +322,9 @@ omit [Has IndexOp O] [Has CmpTst Q] in
 /-- **The scaling of the pipeline**: from a run memory holding $\mathbf{A}$ and the norm estimate
 $x > 0$ in $S$, the literal $1$, the division $r = \mathrm{fl}(1/x)$ and the scaling of the words
 by $r$ store an $\mathbf{A}_1$ with $\|x\mathbf{A}_1 - \mathbf{A}\|_2 \le
-3\boldsymbol{u}\|\mathbf{A}\|_{\mathsf F}$. -/
+3\boldsymbol{u}\|\mathbf{A}\|_{\mathsf F}$.
+A step in the proof of `NLAlib.Schur.schurPipeline_pos_pwrites`,
+`NLAlib.Schur.schurPipeline_pos_terminates`. -/
 theorem schurPipeline_scale_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (h1 : Mch.lit 1 = 1) (hu1 : u ≤ 1)
     {n nr nq k F T L : ℕ} {qs : List ℝ} {a p uo f : ℕ × ℕ} {τ : Tape ℝ} {m : Mem ℝ}
@@ -417,7 +423,8 @@ omit [Has IndexOp O] [Has CmpTst Q] in
 the norm estimate $x$, the core and the scaling of the words by $x$ end, except with probability
 $\varphi_C$, in a memory with the flag $0$, the accumulator $\mathbf{U}_2$ and the scaled
 $\mathbf{T}'$ of an upper triangular $\mathbf{T}$ tracked from $(\mathbf{U}_1, \mathbf{H})$. The
-conclusion is passed as `hpost`. -/
+conclusion is passed as `hpost`.
+A step in the proof of `NLAlib.Schur.schurPipeline_reg_pwrites`. -/
 theorem schurPipeline_core_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hI : I.IsMeasurable)
     {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
@@ -482,7 +489,8 @@ memory holding a scaled $\mathbf{A}_1$ with $\|\mathbf{A}_1\|_2 \le 2/c_1$ and t
 $x$, except with probability $\varphi_R + \varphi_C$ the run ends with the flag $0$, the
 accumulator $\mathbf{U}_2$ and the scaled $\mathbf{T}'$ of an upper triangular $\mathbf{T}$
 tracked from $(\mathbf{I}, \mathbf{A}_2)$, $\|\mathbf{A}_2 - \mathbf{A}_1\|_2 \le \delta_R$. The
-conclusion is passed as `hpost`, its outcomes measurable. -/
+conclusion is passed as `hpost`, its outcomes measurable.
+A step in the proof of `NLAlib.Schur.schurPipeline_pos_pwrites`. -/
 theorem schurPipeline_reg_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (h1 : Mch.lit 1 = 1) (hI : I.IsMeasurable)
     {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
@@ -652,7 +660,8 @@ omit [Has IndexOp O] [Has CmpTst Q] in
 estimate $c_1\|\mathbf{A}\|_{\mathsf F} \le x \le c_2\|\mathbf{A}\|_{\mathsf F}$, $x > 0$, the run
 of
 the scaling, the four stages and the scaling back ends in a Schur output except with probability
-$\varphi_R + \varphi_C$. -/
+$\varphi_R + \varphi_C$.
+A step in the proof of `NLAlib.Schur.schurPipelineWith_measureReal_not_schur_le`. -/
 theorem schurPipeline_pos_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (h1 : Mch.lit 1 = 1) (hI : I.IsMeasurable)
     {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}

@@ -151,7 +151,9 @@ omit [Has StarOp Op] in
 /-- The scalar copy loop returns the original block under its admitted alias policy. The tree
 implements `copy` for two operand layouts, out of place and in place, which are two routines
 (`copyRoutine`, `copyInPlaceRoutine`); this lemma, stated for both layouts, is their common
-proof. -/
+proof.
+Shared by the trees of `NLAlib.Deflation.apply`, `NLAlib.reduceLastStep`,
+`NLAlib.ShiftedQR.acceptTrialWithScratch` and 83 more. -/
 theorem copy_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     {n : ℕ} {x y : ℕ × ℕ} (xs : List 𝕜)
     (hX : m.store.readBlock x.1 x.2 n = some xs)
@@ -165,7 +167,9 @@ theorem copy_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
 omit [Has StarOp Op] in
 /-- The shared broadcast lowering computes vector division with the exact scalar machine. The
 tree implements `scal` out of place and in place, two routines (`scalRoutine`,
-`scalInPlaceRoutine`); this lemma, stated for both layouts, is their common proof. -/
+`scalInPlaceRoutine`); this lemma, stated for both layouts, is their common proof.
+Shared by the trees of `NLAlib.Krylov.Lanczos.normalize`, `NLAlib.CGS2.cgs2Extend`,
+`NLAlib.CGS2.cgs2ExtendFinish` and 10 more. -/
 theorem scal_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     {n : ℕ} {a x y : ℕ × ℕ} (xs : List 𝕜) (alpha : 𝕜) (hl : m.Live [a, x, y])
     (hX : m.store.readBlock x.1 x.2 n = some xs) (hA : m.store.get a.1 a.2 = some alpha)
@@ -184,7 +188,8 @@ theorem scal_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
   exact ⟨hp, hv.trans (congrArg some (map_eq_ofFn xs (fun v => v / alpha)
     (Store.length_of_readBlock hX)))⟩
 
-/-- One explicit conjugate product step preserves its accumulator through temporary writes. -/
+/-- One explicit conjugate product step preserves its accumulator through temporary writes.
+A fragment of the tree `NLAlib.Ops.RCLikeScalar.dotWithScratch`. -/
 theorem starProductStep_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hStar : RCLikeStar.IsExact I) {x y t out : ℕ × ℕ} (a b acc : 𝕜)
     (hl : m.Live [x, y, t, out])
@@ -227,7 +232,8 @@ theorem starProductStep_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜
   exact ⟨hp₃.trans (hp₂.trans hp₁), hv⟩
 
 /-- The explicit conjugate-product loop computes the Hermitian dot product with one
-caller-owned temporary. Both input blocks remain outside its two written scalar cells. -/
+caller-owned temporary. Both input blocks remain outside its two written scalar cells.
+A fragment of the tree `NLAlib.Ops.RCLikeScalar.dot`. -/
 theorem dotWithScratch_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hStar : RCLikeStar.IsExact I) {n : ℕ} {x y t out : ℕ × ℕ} (xs ys : List 𝕜)
     (hl : m.Live [x, y, t, out])
@@ -279,7 +285,8 @@ theorem dotWithScratch_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜)
 
 omit [Has StarOp Op] in
 /-- The pointwise scalar axpy follows the original input words through the output prefix.
-Each vector may alias the output exactly; the broadcast scalar remains separate. -/
+Each vector may alias the output exactly; the broadcast scalar remains separate.
+A fragment of the tree `NLAlib.Ops.RCLikeScalar.axpy`. -/
 theorem axpyWithScratch_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     {n : ℕ} {a x y t out : ℕ × ℕ} (xs ys : List 𝕜) (alpha : 𝕜)
     (hA : m.store.get a.1 a.2 = some alpha)
@@ -351,7 +358,9 @@ omit [Has StarOp Op] in
 The broadcast scalar remains outside the output; scratch is removed before returning. The tree
 implements `axpy` for four operand layouts, four routines (`axpyRoutine`, `axpyInPlaceRoutine`,
 `axpyOnXRoutine`, `axpySelfRoutine`); this lemma, stated for every layout, is their common
-proof. -/
+proof.
+Shared by the trees of `NLAlib.Krylov.CG.HSCG.step`, `NLAlib.Krylov.CG.HSCG.initializeState`,
+`NLAlib.Krylov.CG.HSCG.initializeRoutine` and 26 more. -/
 theorem axpy_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     {n : ℕ} {a x y out : ℕ × ℕ} (xs ys : List 𝕜) (alpha : 𝕜)
     (hl : m.Live [a, x, y, out]) (hA : m.store.get a.1 a.2 = some alpha)

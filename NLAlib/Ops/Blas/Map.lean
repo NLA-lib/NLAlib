@@ -49,7 +49,9 @@ theorem stmtPeak_unaryMap_le (o : Op) (W : Op → List ℕ → ℕ) (n x y : ℕ
 
 /-- The unary map writes the mapped input vector to the output buffer and preserves all other
 memory and the random-tape position. Inputs are stored words and the output has room;
-operands may coincide exactly or occupy disjoint blocks of the same buffer. -/
+operands may coincide exactly or occupy disjoint blocks of the same buffer.
+Shared by the trees of `NLAlib.ShiftedQR.initializeParametersWithScratch`,
+`NLAlib.ShiftedQR.searchAndCopyWith`, `NLAlib.ShiftedQR.stepInPlaceWithScratch` and 21 more. -/
 theorem unaryMap_wp_of_disj_or_eq {o : Op} {f : K → K} {I : Interp Op Tst K}
     (hI : I.IsFn .total o (.un fun x => some (f x)) AnyOperands) {md : Mode}
     {τ : Tape K} {n : ℕ} {x y : ℕ × ℕ} {m : Mem K} {xs : List K}
@@ -91,7 +93,9 @@ theorem unaryMap_wp_of_disj_or_eq {o : Op} {f : K → K} {I : Interp Op Tst K}
 
 /-- A unary map between distinct buffers, or exactly in place, is a specialization of the
 block-disjoint rule. The complete output memory and tape position are unchanged by this
-specialization; no new execution proof is needed. -/
+specialization; no new execution proof is needed.
+Shared by the trees of `NLAlib.ShiftedQR.initializeParametersWithScratch`,
+`NLAlib.ShiftedQR.searchAndCopyWith`, `NLAlib.ShiftedQR.stepInPlaceWithScratch` and 21 more. -/
 theorem unaryMap_wp {o : Op} {f : K → K} {I : Interp Op Tst K}
     (hI : I.IsFn .total o (.un fun x => some (f x)) AnyOperands) {md : Mode}
     {τ : Tape K} {n : ℕ} {x y : ℕ × ℕ} {m : Mem K} {xs : List K}
@@ -120,7 +124,8 @@ theorem stmtPeak_binaryMap_le (o : Op) (W : Op → List ℕ → ℕ) (n x y z : 
 
 omit [Inhabited K] in
 /-- A binary scalar map writes its pointwise mathematical result. Exact aliases and
-spatially separate input/output views are admitted independently for both inputs. -/
+spatially separate input/output views are admitted independently for both inputs.
+A fragment of the tree `NLAlib.ShiftedQR.shiftDiagonal`. -/
 theorem binaryMap_writes {o : Op} {f : K → K → K} {I : Interp Op Tst K}
     (hI : I.IsFn .total o (.bin fun x y => some (f x y)) AnyOperands)
     {τ : Tape K} {m : Mem K} {n : ℕ} {x y z : ℕ × ℕ} {vx vy : ℕ → K}

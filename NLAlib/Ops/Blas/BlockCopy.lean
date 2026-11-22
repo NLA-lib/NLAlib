@@ -38,7 +38,9 @@ def copyStrided : Stmt Op Tst := ops% [rows, cols, srcLd, dstLd] (X) → (Y) {
 
 /-- Scalar copies fill exactly the actual pair-codec destination entries. The input is
 readable, the destination has capacity, and their actual entry regions are disjoint;
-source and destination may belong to the same underlying buffer. -/
+source and destination may belong to the same underlying buffer.
+Shared by the trees of `NLAlib.ShiftedQR.copyToWork`, `NLAlib.ShiftedQR.copyToGlobal`,
+`NLAlib.ShiftedQR.roundedLeafUpdate`. -/
 theorem copyStrided_writes {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
     {τ : Tape K} {m : Mem K} {rows cols srcLd dstLd : ℕ} {x y : ℕ × ℕ}
     (A : ℕ → ℕ → K × K) (hl : m.Live [x, y])

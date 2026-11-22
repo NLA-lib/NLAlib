@@ -115,7 +115,9 @@ def ColsStored (M : Machine K) (dec : K → ℝ) (ed ea : ℝ) (N : (ℕ → K) 
 /-- A round keeps the invariant. From a memory with the layout of the rounds, the basis
 `qs`, the words read at entry in column `c` of the block and the invariant before round `c`,
 the round writes only its three columns and the scratch, keeps the position, and establishes
-the invariant before round `c + 1`. -/
+the invariant before round `c + 1`.
+Shared by the trees of `NLAlib.reduceLastStep`, `NLAlib.ShiftedQR.sweep`,
+`NLAlib.ShiftedQR.roundedDecoupleExit` and 44 more. -/
 theorem round_writes {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea : ℝ}
     {N : ℕ → (ℕ → K) → K → Prop} {S : ℕ → K → (ℕ → K) → (ℕ → K) → Prop} {ok : ℕ → Prop}
     {I : Interp Op Tst K} (ops : ColOps M dec ed ea N S ok I) {τ' : Tape K} {τ : ℚ}

@@ -29,7 +29,9 @@ def scalarBroadcast {Op Tst : Type} (o : Op) : Stmt Op Tst :=
     (.call o [] [⟨0, .var 1 + .var 4⟩, ⟨1, .var 2⟩] [⟨2, .var 3 + .var 4⟩])
 
 /-- A stored broadcast operation returns its pointwise value. The vector operands may alias
-exactly; the broadcast scalar must be disjoint from the entire output vector. -/
+exactly; the broadcast scalar must be disjoint from the entire output vector.
+Shared by the trees of `NLAlib.SpectralBisection.upShiftResult`,
+`NLAlib.SpectralBisection.upSplitResult`, `NLAlib.Ops.RCLikeScalar.scal`. -/
 theorem scalarBroadcast_writes {K Op Tst : Type} {o : Op} {f : K → K → K}
     {I : Interp Op Tst K} (hI : I.IsFn .total o (.bin fun x y => some (f x y)) AnyOperands)
     {τ : Tape K} {m : Mem K} {n : ℕ} {x a y : ℕ × ℕ} {v : ℕ → K} {c : K}
@@ -60,7 +62,9 @@ theorem scalarBroadcast_writes {K Op Tst : Type} {o : Op} {f : K → K → K}
   exact ⟨(Store.EqOff.refl _ _).upd ⟨rfl, le_rfl, by omega⟩ _,
     Store.get_upd_self hz _, hpos⟩
 
-/-- Packed vector readback of the same broadcast loop. -/
+/-- Packed vector readback of the same broadcast loop.
+Shared by the trees of `NLAlib.SpectralBisection.upShiftResult`,
+`NLAlib.SpectralBisection.upSplitResult`, `NLAlib.Ops.RCLikeScalar.scal`. -/
 theorem scalarBroadcast_writes_readBlock {K Op Tst : Type} [Inhabited K]
     {o : Op} {f : K → K → K} {I : Interp Op Tst K}
     (hI : I.IsFn .total o (.bin fun x y => some (f x y)) AnyOperands)

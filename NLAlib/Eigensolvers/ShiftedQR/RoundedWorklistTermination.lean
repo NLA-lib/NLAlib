@@ -406,7 +406,9 @@ omit [Has ScalarOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- The abort keeps the value-free core: on a machine whose natural literals up to $n + 1$ are
 exact, from the geometry of the worklist in Schur mode with some matrix stored, a count
 $\ell \le n + 1$ and the accumulator within its factor, `roundedAbort` writes the failure word and
-the stack count and leaves the core `NLAlib.ShiftedQR.SchurStoredCore` (an empty stack). -/
+the stack count and leaves the core `NLAlib.ShiftedQR.SchurStoredCore` (an empty stack).
+Shared by the trees of `NLAlib.ShiftedQR.roundedProcessLargeWith`,
+`NLAlib.ShiftedQR.roundedWorklistWith`, `NLAlib.ShiftedQR.roundedLargeRest`. -/
 theorem roundedAbort_writes_schurCore {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hL : IsIndexLit Mch I) {n : ℕ} (hN : IsExactNatLit id Mch (n + 1)) {np : ℕ} {τ : Tape ℝ}
     {μ : Mem ℝ} {P : Prop} {U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {u εL : ℝ} {m j ℓ : ℕ}

@@ -55,7 +55,9 @@ theorem complete_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I
     exact ⟨h.1, h.2.trans hp.2⟩
 
 /-- A shifted Hermitian matrix is computed from copied upper entries and actual rounded
-real diagonal differences. Disjoint input/output regions may belong to the same arena. -/
+real diagonal differences. Disjoint input/output regions may belong to the same arena.
+Shared by the trees of `NLAlib.Schur.denseSchur`, `NLAlib.ShiftedQR.sweep`,
+`NLAlib.ShiftedQR.shiftedStep` and 43 more. -/
 theorem shift_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {τ : Tape K} {n : ℕ} {x c y : ℕ × ℕ} {m : Mem K} {A : ℕ → ℕ → K × K} {d : K}
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (n * n)))
@@ -74,7 +76,9 @@ theorem shift_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
 
 /-- Scalar division and Hermitian completion return the actual rounded word matrix.
 A nonzero decoded divisor is needed for numerical error estimates, rather than this
-functional execution theorem. -/
+functional execution theorem.
+Shared by the trees of `NLAlib.Sign.initialized`, `NLAlib.Sign.inputs`,
+`NLAlib.SpectralBisection.nodeProjectors` and 1 more. -/
 theorem scale_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {τ : Tape K} {n : ℕ} {x c y : ℕ × ℕ} {m : Mem K} {A : ℕ → ℕ → K × K} {d : K}
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (n * n)))
@@ -92,7 +96,8 @@ theorem scale_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     (scaleUpper_writes hI hxy hcy hX hc hY hl)
 
 /-- Rounded addition/subtraction of transposed entries, rounded division, and completion
-return the actual Hermitian-averaged word matrix with imaginary diagonal zero. -/
+return the actual Hermitian-averaged word matrix with imaginary diagonal zero.
+Shared by the trees of `NLAlib.Sign.step`, `NLAlib.SpectralBisection.compress`. -/
 theorem average_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {τ : Tape K} {n : ℕ} {x c y : ℕ × ℕ} {m : Mem K} {A : ℕ → ℕ → K × K} {d : K}
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (n * n)))

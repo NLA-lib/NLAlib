@@ -66,7 +66,8 @@ def traceReF {K : Type} (M : Machine K) (n : ℕ) (v : ℕ → K) : ℕ → K
   | i + 1 => M.add (traceReF M n v i) (v (2 * (i * n + i)))
 
 /-- The real trace executes its actual left-to-right rounded recurrence on the stored matrix.
-Readable input and a disjoint writable accumulator suffice; no accuracy hypothesis is used. -/
+Readable input and a disjoint writable accumulator suffice; no accuracy hypothesis is used.
+A fragment of the tree `NLAlib.SpectralBisection.nodeSplitIndex`. -/
 theorem traceRe_writes {K : Type} {M : Machine K} {I : Interp Op Tst K}
     (hI : IsScalar M I) {τ : Tape K} {m : Mem K} {n : ℕ} {x y : ℕ × ℕ} {v : ℕ → K}
     (hx : m.store.HoldsVec x.1 x.2 (2 * (n * n)) v) (hy : y.2 < m.store.len y.1)
@@ -99,7 +100,8 @@ def diagonalReal : Stmt Op Tst := ops% [n] (X) → (Y) {
 }
 
 /-- Real-diagonal extraction succeeds on a readable source and disjoint output capacity,
-returning the actual stored diagonal words and preserving the tape position. -/
+returning the actual stored diagonal words and preserving the tape position.
+A fragment of the tree `NLAlib.SpectralBisection.leafValues`. -/
 theorem diagonalReal_writes {K : Type} {M : Machine K} {I : Interp Op Tst K}
     (hI : IsScalar M I) {τ : Tape K} {m : Mem K} {n : ℕ} {x y : ℕ × ℕ} {v : ℕ → K}
     (hx : m.store.HoldsVec x.1 x.2 (2 * (n * n)) v)
@@ -127,7 +129,9 @@ def identity : Stmt Op Tst := ops% [n] () → (Y) {
 
 /-- Identity initialization succeeds from output capacity alone and writes every word. Real
 diagonal positions contain the machine literal one; every other position contains literal zero.
-The statement concerns the actual machine words and does not assume exact arithmetic. -/
+The statement concerns the actual machine words and does not assume exact arithmetic.
+Shared by the trees of `NLAlib.hessenbergReduceLast`, `NLAlib.Schur.schurPipelineWith`,
+`NLAlib.SmallEig.identityLeaf` and 6 more. -/
 theorem identity_writes {K : Type} {M : Machine K} {I : Interp Op Tst K}
     (hI : IsScalar M I) {τ : Tape K} {m : Mem K} {n b off : ℕ}
     (hroom : off + 2 * (n * n) ≤ m.store.len b) :

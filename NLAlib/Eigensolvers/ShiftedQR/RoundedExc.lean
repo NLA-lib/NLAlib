@@ -173,7 +173,8 @@ variable {O Q : Type} [Has ScalarOp O] [Has DiskSampleOp O]
 omit [Has DiskSampleOp O] in
 /-- One exceptional shift on any scalar machine stores `NLAlib.ShiftedQR.excShiftWord`. The output
 pair and the scratch word are disjoint from each other and from the inputs. A fragment: its tree
-runs only inside the tree of `NLAlib.ShiftedQR.excShiftsWithScratch`. -/
+runs only inside the tree of `NLAlib.ShiftedQR.excShiftsWithScratch`.
+A fragment of the tree `NLAlib.ShiftedQR.excShiftsWithScratch`. -/
 private theorem excShiftPoint_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {m : Mem ℝ} {rt gp zt tt sp : ℕ × ℕ} {z : ℝ × ℝ} {R : ℝ} {gv : ℂ}
     (hrt : m.store.get rt.1 rt.2 = some R)

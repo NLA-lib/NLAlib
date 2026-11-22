@@ -47,7 +47,8 @@ def negate : Stmt Op Tst :=
     (unaryMap (Has.inj ScalarOp.neg))
 
 /-- Negation writes the machine-negated words of the complete interleaved matrix.
-The operands are live and either in distinct buffers or exactly coincident; output has room. -/
+The operands are live and either in distinct buffers or exactly coincident; output has room.
+Shared by the trees of `NLAlib.Ops.Hermitian.shift`, `NLAlib.Ops.Hermitian.shiftNegate`. -/
 theorem negate_wp {K : Type} [Inhabited K] {M : Machine K} {I : Interp Op Tst K}
     (hI : IsScalar M I) {md : Mode} {τ : Tape K} {rows cols : ℕ} {x y : ℕ × ℕ}
     {m : Mem K} {xs : List K} (hxy : x.1 ≠ y.1 ∨ x = y)

@@ -45,7 +45,8 @@ theorem stmtCost_scalarPower (n x z : ℕ) :
   simp [scalarPower, stmtCost, useCost]
 
 /-- Sequential multiplication returns its actual machine word, preserving the input through
-spatial separation. The output word need not be initialized and zero exponents are admitted. -/
+spatial separation. The output word need not be initialized and zero exponents are admitted.
+A fragment of the tree `NLAlib.ShiftedQR.iterationConstantsWithScratch`. -/
 theorem scalarPower_writes {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
     {τ : Tape K} {m : Mem K} {n : ℕ} {x z : ℕ × ℕ} {v : K}
     (hx : m.store.get x.1 x.2 = some v) (hz : z.2 < m.store.len z.1)
@@ -74,7 +75,8 @@ theorem scalarPower_writes {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar 
     exact ⟨h.1.trans hp₁, h.2⟩
 
 /-- Under the exact real arithmetic model the actual sequential power equals the mathematical
-natural power, with no sign or nonzero assumption on its base. -/
+natural power, with no sign or nonzero assumption on its base.
+A fragment of the tree `NLAlib.ShiftedQR.iterationConstantsWithScratch`. -/
 theorem scalarPower_writes_exact {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M)
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {x z : ℕ × ℕ} {v : ℝ}

@@ -83,7 +83,8 @@ theorem findRitzSearchWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst �
 /-- The complete scoped implementation returns exactly the mathematical Ritz binary search on the
 actual supplied shift list. All numerical steps are explicit scalar programs; the standard index and
 comparison models govern the actual bounded index reads. [BanksGarzaVargasSrivastava2021, §4.3]. A
-fragment: its tree runs only inside the tree of `NLAlib.ShiftedQR.iteration`. -/
+fragment: its tree runs only inside the tree of `NLAlib.ShiftedQR.iteration`.
+A fragment of the tree `NLAlib.ShiftedQR.iteration`. -/
 theorem findRitzSearch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     (hL : IsIndexLit M I) (hToNat : IsToNat id I)

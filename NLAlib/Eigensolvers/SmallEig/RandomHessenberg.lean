@@ -115,7 +115,8 @@ private theorem holdsMatrix_colVec {N L : ℕ} {s : Store ℝ} {v : Fin N → �
     simpa [this] using (h i).2
 
 /-- **The words of one rotation of `RHess`**: the four words
-$(\Re g_{j+1}, -\Im g_{j+1}, -\Re g_j, \Im g_j)$ into `Uv`; only `Uv` is written. -/
+$(\Re g_{j+1}, -\Im g_{j+1}, -\Re g_j, \Im g_j)$ into `Uv`; only `Uv` is written.
+A step in the proof of `NLAlib.SmallEig.rhess_step_writes`. -/
 private theorem rhessUv_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {ρ : Env} {m : Mem ℝ} {F : Fp} {P : Mem ℝ → Prop}
     {L t : ℕ} {x₀ x₁ y₀ y₁ : ℝ} {i₁ u₁ i₂ u₂ i₃ u₃ i₄ u₄ : List Operand} {next : Stmt O Q}
@@ -369,7 +370,8 @@ private theorem rhess_rotate_step {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
 
 /-- **One step of `RHess`**: the four words of the rotation into `Uv`, their entry
 $(j, p, q)$ appended to the pending slot of the log, then the coefficients and the rotation of the
-vector and of the matrix (`NLAlib.SmallEig.rotateToStepWord`). -/
+vector and of the matrix (`NLAlib.SmallEig.rotateToStepWord`).
+A step in the proof of `NLAlib.SmallEig.rhess_loop_writes`. -/
 private theorem rhess_step_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hC : IsCmp id I) (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M nmax)
     {τ : Tape ℝ} {ρ : Env} {m : Mem ℝ} {N L j : ℕ} (hjN : j + 1 < N) (hjn : j ≤ nmax)
@@ -466,7 +468,8 @@ private theorem rhess_step_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
 /-- **The loop, the validation and the reduction of `RHess`**: from $\mathbf{A}$ at `a`, the
 vector $\mathbf{g}$ of the words $x$ at `G` and a log with closed slots `LL`, the $N - 1$
 rotations (recorded as the pending entries), the validation of their slot and
-`NLAlib.hessenbergReduceLast` store `NLAlib.SmallEig.rhessWord` at `a` and close $N - 1$ slots. -/
+`NLAlib.hessenbergReduceLast` store `NLAlib.SmallEig.rhessWord` at `a` and close $N - 1$ slots.
+A step in the proof of `NLAlib.SmallEig.rhessUv_writes`, `NLAlib.SmallEig.rhess_writes_word`. -/
 private theorem rhess_loop_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hC : IsCmp id I) (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M nmax)
     (h1 : 1 ≤ nmax) {τ : Tape ℝ} {ρ : Env} {m : Mem ℝ} {N L p : ℕ} (h2 : 2 ≤ N)

@@ -48,7 +48,8 @@ theorem estimate_peak_zero (stream n k ell data out : ℕ) :
   have hnk : n * k ≤ 2 + n * (k + ell) := by nlinarith
   have htwo : 2 * n * (k + ell) = n * (k + ell) + n * (k + ell) := by ring
   simp [estimate, prepare, sketch, finish, stmtPeak, Stmt.alloc, IExp.evalList, IExp.eval,
-    hSample, hApply, hProject, hEval, MGS.factorRoutine, MGS.factor_peak_zero, hnk]
+    sampleRoutine, hSample, hApply, hProject, hEval, MGS.factorRoutine, MGS.factor_peak_zero,
+    hnk]
   omega
 
 /-- A common primitive-workspace ceiling is reserved once above the stored peak. -/

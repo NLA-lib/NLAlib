@@ -424,7 +424,8 @@ noncomputable def smallEigSpecification (Mch : Machine ℝ) (nmax : ℕ) (c₁ c
   good d x _ _ m := SmallEigFrame d ((smallEigProblem Mch nmax c₁ c₂ admitted).initial d x) m
 
 /-- The program terminates on every admitted input, tape and interpretation of the model, writes
-only the output and leaves it stored. -/
+only the output and leaves it stored.
+A fragment of the tree `NLAlib.SmallEig.smallEigSpecification`. -/
 theorem smallEigProgram_wp {sU sG : ℕ} {d : Fin 3 → ℕ} (hd : SmallEigSizes Mch nmax c₁ c₂ d)
     (x : (smallEigProblem Mch nmax c₁ c₂ admitted).Input d) {I : Interp SmallEigOp Tst ℝ}
     (hI : (smallEigModel (smallEigProblem Mch nmax c₁ c₂ admitted) Mch sU).contracts d x I)

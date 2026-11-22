@@ -31,7 +31,9 @@ variable {K Op Tst : Type} [Has ScalarOp Op]
 omit [Has ScalarOp Op] in
 /-- An exact pair-update execution theorem supplies the component reads and the frame needed
 by entry-fill rules. No scalar-call, memory-update or component preservation proof is repeated
-by its matrix-level consumers. -/
+by its matrix-level consumers.
+Shared by the trees of `NLAlib.Deflation.inputs`, `NLAlib.Deflation.wordSpecification`,
+`NLAlib.Deflation.sampleMatrix` and 41 more. -/
 theorem pair_writes_of_wp {md : Mode} {I : Interp Op Tst K} {τ : Tape K}
     {body : Stmt Op Tst} {ρ : Env} {m : Mem K} {z : ℕ × ℕ} {v : K × K}
     (h : Wp md I τ body ρ (fun m' => m' = m.updBlock z [v.1, v.2]) m)
@@ -58,7 +60,8 @@ def averagePair : Stmt Op Tst := ops% [] (x, y, c) → (z) {
 /-- The entry kernel returns the actual machine word pair and preserves all other memory.
 The output pair is disjoint from both input pairs and the scalar cell; each input
 word is readable and both output cells fit. This is a functional execution theorem, so it
-requires no numerical accuracy claim about a zero divisor. -/
+requires no numerical accuracy claim about a zero divisor.
+A fragment of the tree `NLAlib.Ops.Hermitian.averageUpper`. -/
 theorem averagePair_wp {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {x y c z : ℕ × ℕ} {ar ai br bi a : K}
     (hxz : Fp.Disj (Store.inBlock x.1 x.2 2) (Store.inBlock z.1 z.2 2))
@@ -111,7 +114,9 @@ def copyPair : Stmt Op Tst := ops% [] (x) → (z) {
 }
 
 /-- The pair copy writes both input words into a disjoint word block, including another
-region of the same buffer. -/
+region of the same buffer.
+Shared by the trees of `NLAlib.ShiftedQR.findRitzCopy`, `NLAlib.ShiftedQR.columnResidual`,
+`NLAlib.Ops.Hermitian.copyTriangle` and 1 more. -/
 theorem copyPair_wp_of_disj {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {x z : ℕ × ℕ} {ar ai : K}
     (hxz : Fp.Disj (Store.inBlock x.1 x.2 2) (Store.inBlock z.1 z.2 2))
@@ -129,7 +134,9 @@ theorem copyPair_wp_of_disj {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar
   · store_simp
   simpa [Mem.updBlock, Store.updBlock, Mem.upd] using hQ
 
-/-- A pair copy between different buffers specializes the disjoint-block rule. -/
+/-- A pair copy between different buffers specializes the disjoint-block rule.
+Shared by the trees of `NLAlib.ShiftedQR.findRitzCopy`, `NLAlib.ShiftedQR.columnResidual`,
+`NLAlib.Ops.Hermitian.copyTriangle` and 1 more. -/
 theorem copyPair_wp {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {x z : ℕ × ℕ} {ar ai : K}
     (hxz : x.1 ≠ z.1) (hxr : m.store.get x.1 x.2 = some ar)
@@ -144,7 +151,8 @@ def scalePair : Stmt Op Tst := ops% [] (x, c) → (z) {
   call (Has.inj ScalarOp.div) [] (x[1], c) → (z[1])
 }
 
-/-- The pair scaling kernel computes both rounded quotients in a disjoint output word block. -/
+/-- The pair scaling kernel computes both rounded quotients in a disjoint output word block.
+A fragment of the tree `NLAlib.Ops.Hermitian.scaleEntry`. -/
 theorem scalePair_wp {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {x c z : ℕ × ℕ} {ar ai a : K}
     (hxz : Fp.Disj (Store.inBlock x.1 x.2 2) (Store.inBlock z.1 z.2 2))
@@ -174,7 +182,8 @@ def conjugatePair : Stmt Op Tst := ops% [] (x) → (z) {
   call (Has.inj ScalarOp.neg) [] (x[1]) → (z[1])
 }
 
-/-- Conjugation computes the word pair with exactly one machine negation. -/
+/-- Conjugation computes the word pair with exactly one machine negation.
+Shared by the trees of `NLAlib.Ops.Hermitian.mirror`, `NLAlib.Ops.PairMatrix.conjTranspose`. -/
 theorem conjugatePair_wp {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {x z : ℕ × ℕ} {ar ai : K}
     (hxr : m.store.get x.1 x.2 = some ar)
@@ -197,7 +206,9 @@ def shiftDiagonal : Stmt Op Tst := ops% [] (x, c) → (z) {
   call (Has.inj (ScalarOp.lit 0)) [] () → (z[1])
 }
 
-/-- Diagonal shifting returns the actual rounded difference and literal zero. -/
+/-- Diagonal shifting returns the actual rounded difference and literal zero.
+Shared by the trees of `NLAlib.ShiftedQR.rowShiftStep`, `NLAlib.ShiftedQR.solveShiftedWorking`,
+`NLAlib.ShiftedQR.initializeState` and 1 more. -/
 theorem shiftDiagonal_wp {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {x c z : ℕ × ℕ} {ar a : K}
     (hxr : m.store.get x.1 x.2 = some ar) (hc : m.store.get c.1 c.2 = some a)
@@ -218,7 +229,8 @@ def scaleDiagonal : Stmt Op Tst := ops% [] (x, c) → (z) {
   call (Has.inj (ScalarOp.lit 0)) [] () → (z[1])
 }
 
-/-- Diagonal scaling returns the actual rounded quotient and literal zero. -/
+/-- Diagonal scaling returns the actual rounded quotient and literal zero.
+A fragment of the tree `NLAlib.Ops.Hermitian.scaleUpper`. -/
 theorem scaleDiagonal_wp {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {x c z : ℕ × ℕ} {ar a : K}
     (hxr : m.store.get x.1 x.2 = some ar) (hc : m.store.get c.1 c.2 = some a)
@@ -239,7 +251,8 @@ def averageDiagonal : Stmt Op Tst := ops% [] (x, c) → (z) {
   call (Has.inj (ScalarOp.lit 0)) [] () → (z[1])
 }
 
-/-- Diagonal averaging returns the actual two rounded scalar operations and literal zero. -/
+/-- Diagonal averaging returns the actual two rounded scalar operations and literal zero.
+A fragment of the tree `NLAlib.Ops.Hermitian.averageUpper`. -/
 theorem averageDiagonal_wp {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {x c z : ℕ × ℕ} {ar a : K}
     (hcz : Fp.Disj (Store.inBlock c.1 c.2 1) (Store.inBlock z.1 z.2 2))

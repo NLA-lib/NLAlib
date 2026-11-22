@@ -385,8 +385,9 @@ open Lean Elab Term Meta in
 same term is elaborated once more with notes and stored as the definition `foo._noted` (then
 `foo._noted1`, … for further trees of the declaration), with the parameters of `foo` that the
 tree uses. The value of `foo` has no note; `foo._noted` is the same tree with the names of its
-source, for `NLAlib.Ops.Stmt.pretty` and for tools. Nothing is stored when the second
-elaboration fails or leaves a metavariable. -/
+source, for `NLAlib.Ops.Stmt.pretty` and for tools. When the second elaboration fails or leaves
+a metavariable nothing is stored, and an information message names the declaration and the
+reason: the declaration is unchanged, and `noted_of% foo` is then `foo`, without names. -/
 syntax (name := opsNamed) "ops_named% " term:max : term
 
 open Lean Elab Term Meta in
@@ -414,7 +415,10 @@ the environment, so the noted copy cannot influence the declaration being elabor
       let env ← getEnv
       saved.restore
       setEnv env
-    catch _ => saved.restore
+    catch ex =>
+      saved.restore
+      logInfo (m!"ops%: no named copy `{decl}._noted` is stored, the elaboration with the " ++
+        m!"names failed:{indentD ex.toMessageData}")
     return e
   | _ => throwUnsupportedSyntax
 
@@ -445,7 +449,15 @@ open Lean Elab Term Meta in
   | _ => throwUnsupportedSyntax
 
 /-- `noted_of% foo` is the noted copy `foo._noted` of the tree or routine `foo`, when there is
-one, and `foo` otherwise (a declaration written with `noted%` carries its notes itself). -/
+one, and `foo` otherwise. Every declaration of the library written with `ops%` or `routine%`
+has a copy, except:
+
+* a declaration written with `noted%`, which carries its notes itself and gets no copy
+  (`NLAlib.Ops.Examples.Integrator.myStep`, `NLAlib.Ops.Examples.Integrator.myIntegrate` and
+  `NLAlib.Ops.Examples.Routines.sum2`): `noted_of% foo` is `foo`, with its notes;
+* a tree in an `example` or outside a declaration: there is no name to store a copy under;
+* a declaration whose elaboration with the names fails: `ops_named%` reports it with an
+  information message when the declaration is compiled (none in the library). -/
 syntax:max (name := opsNotedOf) "noted_of% " ident : term
 
 open Lean Elab Term in

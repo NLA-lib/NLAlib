@@ -84,7 +84,9 @@ computes one line for every certificate and compares it with `scripts/ops_certif
 recorded certificate may not get weaker in any field, and a new one must have a confined model,
 closed-form work and a derived problem, or be added to that file. A family of certificates
 indexed by a parameter that fixes the admitted size is not one certificate; the check lists
-parametrised programs.
+parametrised programs. The script tests its own classification each time it runs, on artificial
+certificates declared in it (`OpsCertificates.Fixtures`, with the expected line and report of
+each; see `docs/contributing/checks.md`), and prints `ops report fixtures: N cases`.
 
 **The line of a certificate.**
 
@@ -679,7 +681,10 @@ names are kept at every depth. Judgments, counts and certificates are stated and
 `foo`; nothing refers to `foo._noted`, and a rule that matches the shape of a tree never meets
 a note.
 
-`noted_of% foo` is the noted copy of `foo`. `Stmt.pretty` (`Notes.lean`) and `Routine.pretty`
+`noted_of% foo` is the noted copy of `foo`, and `foo` itself when there is none: a declaration
+written with `noted%` (its value has the notes), a tree in an `example`, or a declaration whose
+elaboration with the names failed, which the builder reports with an information message when
+the declaration is compiled (no declaration of the library is in that case). `Stmt.pretty` (`Notes.lean`) and `Routine.pretty`
 (`RoutineSyntax.lean`) read a tree back as pseudocode with those names, and show a noted `run`
 as `run name [dims] (operands)` in place of the tree of the routine:
 

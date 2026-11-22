@@ -225,7 +225,7 @@ fixed program from $b$ and three blank vectors succeeds, executes at most $6 n +
 instructions (each vector operation and each product counting one), keeps its resident memory
 within the memory of the specification, and the three vectors then
 hold the iterate, residual and direction of conjugate gradient after $k$ steps from the zero
-iterate. Every such system is admitted (`NLAlib.Ops.Routine.Domain.covers`). The matrix
+iterate. Every such system is admitted (`NLAlib.Ops.Inputs.covers`). The matrix
 is in no buffer: it is reached only through the product operation, and the work is counted in
 calls of it (`NLAlib.Krylov.CG.HSCG.Certification.oracles`). -/
 theorem cg_checked (d : Fin 2 → ℕ) (hd : domain d)

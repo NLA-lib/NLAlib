@@ -67,7 +67,7 @@ interpretation satisfying the contracts of the model and every tape, the run of 
 from the supplied buffers succeeds within the scratch, the budget, the work, the span and the
 memory of the
 specification, and its final memory satisfies the output condition
-(`NLAlib.Ops.Routine.Domain.Checked`). Every matrix and shift is admitted. -/
+(`NLAlib.Ops.Inputs.Checked`). Every matrix and shift is admitted. -/
 theorem step_checked (M : Machine ℝ) (hE : ExactModel id M) :
     stepInputs.Checked (stepAlgorithm M hE) :=
   stepInputs.checked_all _

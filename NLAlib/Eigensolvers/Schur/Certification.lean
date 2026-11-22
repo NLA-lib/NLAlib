@@ -331,7 +331,7 @@ interpretation satisfying the contracts of the model and every tape, the run of 
 from the supplied buffers succeeds within the scratch, the budget, the work, the span and the
 memory of the
 specification, and its final memory satisfies the output condition
-(`NLAlib.Ops.Routine.Domain.Checked`). The deterministic claim is termination within the
+(`NLAlib.Ops.Inputs.Checked`). The deterministic claim is termination within the
 footprint only. The accuracy is a statement about the stages, with probability over the draws:
 for the dense instance it is `NLAlib.Schur.denseSchurClaim`. -/
 theorem schurPipeline_checked (sU : ℕ) (Nm Reg Red Core : Stmt SmallEigOp Tst)
@@ -579,7 +579,7 @@ interpretation satisfying the contracts of the model and every tape, the run of 
 from the supplied buffers succeeds within the scratch, the budget, the work, the span and the
 memory of the
 specification, and its final memory satisfies the output condition
-(`NLAlib.Ops.Routine.Domain.Checked`). The deterministic claim is termination within the
+(`NLAlib.Ops.Inputs.Checked`). The deterministic claim is termination within the
 footprint only; the accuracy of the stored Schur form holds with probability over the draws:
 `NLAlib.Schur.denseSchurClaim`. -/
 theorem denseSchur_checked (Mch : Machine ℝ)

@@ -116,7 +116,7 @@ third buffer holds a value $v$ with
 $$\lvert v - (\textstyle\sum_i x_i + \sum_i y_i) \rvert \le
   \bigl((1 + u)(1 + u)^{n - 1} - 1\bigr) \bigl(\textstyle\sum_i \lvert x_i \rvert +
   \sum_i \lvert y_i \rvert\bigr).$$
-Every pair of vectors is admitted (`NLAlib.Ops.Routine.Domain.covers`). -/
+Every pair of vectors is admitted (`NLAlib.Ops.Inputs.covers`). -/
 theorem sum2_checked (M : Machine ℝ) (u : ℝ) (hM : StdModel u id M) (hu : 0 ≤ u)
     (d : Fin 1 → ℕ) (x y : Fin (d 0) → ℝ) (I : Interp ScalarOp CmpTst ℝ)
     (hI : (sum2Model M).contracts d (sum2Domain.input d (x, y) trivial) I) (τ : Tape ℝ) :

@@ -137,7 +137,7 @@ interpretation satisfying the contracts of the model and every tape, the run of 
 from the supplied buffers succeeds within the scratch, the budget, the work, the span and the
 memory of the
 specification, and its final memory satisfies the output condition
-(`NLAlib.Ops.Routine.Domain.Checked`). The accuracy of the stored diagonalization holds with
+(`NLAlib.Ops.Inputs.Checked`). The accuracy of the stored diagonalization holds with
 probability over the draws: `NLAlib.SpectralBisection.countedBisectionClaim`. -/
 theorem bisection_checked (M : Machine K) (dec : K → ℝ)
     (mm : MatMulMap (K × K)) (qr : QRMap (K × K))

@@ -458,7 +458,7 @@ noncomputable def linkedSolveAlgorithm (L : AccessModel Lo CmpTst problem) (E : 
 interpretation satisfying the contracts of the lower model and every tape, the run of the linked
 program from five uninitialized blocks succeeds within the scratch, the budget, the work and the
 span of the specification, and the five blocks decode to an exact run for the matrix from the
-start block of the tape (`NLAlib.Ops.Routine.Domain.Checked`). The matrix is in no buffer: it is
+start block of the tape (`NLAlib.Ops.Inputs.Checked`). The matrix is in no buffer: it is
 reached through the two products of the lower model. -/
 theorem linkedSolve_checked (L : AccessModel Lo CmpTst problem) (E : Stmt Lo CmpTst)
     (stream : ℕ)

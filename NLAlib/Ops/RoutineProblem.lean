@@ -13,53 +13,57 @@ public import NLAlib.Ops.Catalog.Operator
 public import NLAlib.Ops.Catalog.StoredOperator
 
 /-!
-# The problem of a routine
+# Admitted inputs, their problem, and the problem of a routine
 
 A certificate is about a problem: the sizes admitted, the inputs admitted at each size, and the
-buffers supplied for them. This file builds that problem from the interface of a routine, so
-that its author states mathematics only.
+buffers supplied for them. This file builds that problem from a record of mathematics, so that
+its author states mathematics only, and a reader of the problem reads nothing about routines.
 
-A `NLAlib.Ops.Codec` says what an operand holds: a scalar, a vector, a matrix, a tuple of
-these, or raw words. Encoding and decoding are mutually inverse at the length of the operand.
+A `NLAlib.Ops.Codec` says what a buffer holds: a scalar, a vector, a matrix, a tuple of
+these, or raw words. Encoding and decoding are mutually inverse at the length of the buffer.
 
-A `NLAlib.Ops.Routine.Domain` of a routine gives the admitted sizes (`valid`), the type of the
-inputs at each size (`In`), the admitted inputs (`accepts`), and for every operand a
-`NLAlib.Ops.Slot`:
+`NLAlib.Ops.Inputs` gives the admitted sizes (`valid`), the type of the inputs at each size
+(`In`), the admitted inputs (`accepts`), and for every supplied buffer a `NLAlib.Ops.Slot`:
 
 * `stored c get`: the buffer holds the encoding by `c` of the component `get` of the inputs;
 * `derived len f`: the buffer holds the words `f` of the inputs, a quantity computed from them
   (a threshold, say). This is the only way a buffer may depend on the inputs otherwise than by
-  holding one of them, and `NLAlib.Ops.Routine.Domain.derived` lists these operands;
+  holding one of them, and `NLAlib.Ops.Inputs.derived` lists these buffers;
 * `blank len`: the buffer is `len` uninitialised cells.
 
-The slots agree with the interface (`fits`): an operand that is read is `stored` or `derived`, an
-operand that is only written is `blank`, and the lengths are those of the ports. The inputs are
-determined by the stored buffers and the declared unstored part (`faithful`): no other
-input is in no buffer. `NLAlib.Ops.Routine.Domain.Oracles` declares the operations of a model
+The inputs are determined by the stored buffers and the declared unstored part (`faithful`): no
+other input is in no buffer. `NLAlib.Ops.Inputs.Oracles` declares the operations of a model
 through which unstored data is reached.
 
-`NLAlib.Ops.Routine.Domain.problem` is the problem: the supplied buffers are exactly those of the
+`NLAlib.Ops.Inputs.problem` is the problem: the supplied buffers are exactly those of the
 slots, and nothing else is admitted. So an input of the problem is an admitted tuple of inputs
-and conversely (`NLAlib.Ops.Routine.Domain.inputEquiv`): the certificate covers every input that
+and conversely (`NLAlib.Ops.Inputs.inputEquiv`): the certificate covers every input that
 satisfies `accepts`.
+
+A `NLAlib.Ops.Routine.Domain` of a routine is such a record together with two proofs that it
+agrees with the interface of the routine (`shape`, `fits`): the sizes are the dimensions, an
+operand that is read is `stored` or `derived`, an operand that is only written is `blank`, and
+the lengths are those of the ports. The proofs are what the certificate of the routine on the
+problem needs (`NLAlib.Ops.Routine.Domain.algorithm`); the problem does not depend on them.
 
 ## Main definitions
 
-* `NLAlib.Ops.Codec`: what an operand holds.
-* `NLAlib.Ops.Slot`: the buffer supplied for an operand.
-* `NLAlib.Ops.Routine.Domain`, `NLAlib.Ops.Routine.Domain.problem`: the admitted inputs of a
-  routine and its problem.
+* `NLAlib.Ops.Codec`: what a buffer holds.
+* `NLAlib.Ops.Slot`: the buffer supplied at a position.
+* `NLAlib.Ops.Inputs`, `NLAlib.Ops.Inputs.problem`: the admitted inputs and their problem.
+* `NLAlib.Ops.Inputs.Oracles`: the operations through which unstored inputs are reached.
+* `NLAlib.Ops.Inputs.Checked`: what a certificate states, as one proposition.
+* `NLAlib.Ops.Routine.Domain`: admitted inputs that follow the interface of a routine.
 * `NLAlib.Ops.Routine.Domain.algorithm`: the certificate of a routine on its problem.
 
 ## Main results
 
-* `NLAlib.Ops.Routine.Domain.inputEquiv`, `NLAlib.Ops.Routine.Domain.covers`: the inputs of the
-  problem are the admitted inputs.
+* `NLAlib.Ops.Inputs.inputEquiv`, `NLAlib.Ops.Inputs.covers`: the inputs of the problem are the
+  admitted inputs.
 * `NLAlib.Ops.Routine.Domain.readBlocks_initial`, `NLAlib.Ops.Routine.Domain.room_initial`: the
   initial memory holds the blocks read and has room for the blocks written.
-* `NLAlib.Ops.Routine.Domain.checked`: what a certificate states, for the admitted inputs.
-* `NLAlib.Ops.Routine.Domain.Checked`, `NLAlib.Ops.Routine.Domain.checked_all`: the same as one
-  proposition, for a certificate's `_checked` theorem.
+* `NLAlib.Ops.Inputs.checked`, `NLAlib.Ops.Inputs.checked_all`: every certificate states
+  `NLAlib.Ops.Inputs.Checked`, and its bounds one by one with the payload of the slots.
 * `NLAlib.Ops.Mem.Holds`, `NLAlib.Ops.Mem.holds_decode`: a buffer holds a value; a block read
   from it is the encoding of its value.
 -/
@@ -347,15 +351,16 @@ private theorem room_selList (m : Mem K) (q : Access → Bool) :
 
 end Routine
 
-/-! ### The admitted inputs of a routine and its problem -/
+/-! ### The admitted inputs and their problem -/
 
 variable {r b : ℕ}
 
-/-- **The admitted inputs of a routine**: the sizes, the type of the inputs, which of them are
-admitted, and the buffer supplied for each operand. Everything here is mathematics or follows
-the interface: `valid` and `accepts` are the conditions a reader checks; the slots say which
-input each operand holds. -/
-structure Routine.Domain (R : Routine Op Tst) (K : Type) (r b : ℕ) where
+/-- **The admitted inputs** of a problem with `r` sizes and `b` supplied buffers: the sizes, the
+type of the inputs, which of them are admitted, and the buffer supplied at each position.
+Everything here is mathematics: `valid` and `accepts` are the conditions a reader checks; the
+slots say which input each buffer holds. Nothing here mentions a routine or a program: the
+problem (`NLAlib.Ops.Inputs.problem`) is read from this record alone. -/
+structure Inputs (K : Type) (r b : ℕ) where
   /-- The storage of the supplied buffers. -/
   formats : Fin b → StorageFormat := fun _ => .cell
   /-- The admitted sizes. -/
@@ -364,19 +369,13 @@ structure Routine.Domain (R : Routine Op Tst) (K : Type) (r b : ℕ) where
   In : (Fin r → ℕ) → Type
   /-- The admitted inputs. -/
   accepts : (d : Fin r → ℕ) → In d → Prop
-  /-- The buffer supplied for each operand. -/
+  /-- The buffer supplied at each position. -/
   slot : (d : Fin r → ℕ) → Fin b → Slot K (In d)
-  /-- The sizes are the dimensions and the buffers the operands. -/
-  shape : R.nd = r ∧ R.ports.length = b := by exact ⟨rfl, rfl⟩
-  /-- The slots follow the interface: the length of each is that of its port, and a buffer
-  holds words exactly when its operand is read. -/
-  fits : ∀ (d : Fin r → ℕ) (i : Fin b) (p : Port), R.ports[i.val]? = some p →
-    p.len (List.ofFn d) = (slot d i).len ∧ (slot d i).held = p.access.readable
   /-- The type of the part of the inputs that is in no buffer (an operator reached only through
-  operations of the model). Most routines have none. -/
+  operations of the model). Most problems have none. -/
   Unstored : (Fin r → ℕ) → Type := fun _ => Unit
   /-- The part of the inputs that is in no buffer. It can affect a run only through an operation
-  whose contract mentions it; `NLAlib.Ops.Routine.Domain.Oracles` declares which. -/
+  whose contract mentions it; `NLAlib.Ops.Inputs.Oracles` declares which. -/
   unstored : (d : Fin r → ℕ) → In d → Unstored d := by exact fun _ _ => ()
   /-- The inputs are determined by the declared unstored part and the buffers that hold the
   rest: no other input is in no buffer. -/
@@ -387,11 +386,11 @@ structure Routine.Domain (R : Routine Op Tst) (K : Type) (r b : ℕ) where
   /-- Some input is admitted at every admitted size. -/
   inhabited : ∀ d, valid d → ∃ x, accepts d x
 
-namespace Routine.Domain
+namespace Inputs
 
-variable {R : Routine Op Tst} (D : R.Domain K r b)
+variable (D : Inputs K r b)
 
-/-- The operands whose buffer holds words computed from the inputs. -/
+/-- The buffers that hold words computed from the inputs. -/
 def derived (d : Fin r → ℕ) : List (Fin b) :=
   (List.finRange b).filter fun i => (D.slot d i).isDerived
 
@@ -401,7 +400,8 @@ def buffers (d : Fin r → ℕ) (x : D.In d) : Fin b → Buf K := fun i => (D.sl
 @[simp] theorem length_buffers (d : Fin r → ℕ) (x : D.In d) (i : Fin b) :
     (D.buffers d x i).length = (D.slot d i).len := Slot.length_buffer _ _
 
-/-- **The problem of a routine**: the admitted inputs, with exactly the buffers of the slots. -/
+/-- **The problem of the admitted inputs**: these inputs, with exactly the buffers of the
+slots. -/
 def problem : Problem K r b where
   formats := D.formats
   valid := D.valid
@@ -447,15 +447,115 @@ theorem initial_eq {d : Fin r → ℕ} (X : D.problem.Input d) :
   unfold Problem.initial memory
   rw [D.buffers_eq X]
 
-/-- The blocks the routine reads at the inputs `x`, in the order of its readable operands. -/
-def blocks (d : Fin r → ℕ) (x : D.In d) : List (List K) :=
-  R.sel Access.readable (List.ofFn fun i => (D.slot d i).words x)
+/-- The resident payload of the problem: the cells of the slots, in their storage. -/
+theorem initialBytes_eq {d : Fin r → ℕ} (X : D.problem.Input d) :
+    D.problem.initialBytes d X =
+      (List.ofFn fun i => (D.formats i).bytes * (D.slot d i).len).sum := by
+  refine Problem.initialBytes_of_lengths d X _ fun i => ?_
+  exact (congrArg List.length (congrFun (D.buffers_eq X) i)).trans
+    (D.length_buffers d X.val.1 i)
 
-end Routine.Domain
+/-- The resident payload at the sizes: the cells of the slots, in their storage. -/
+def bytes (d : Fin r → ℕ) : ℕ := (List.ofFn fun i => (D.formats i).bytes * (D.slot d i).len).sum
+
+/-- The resident payload of the problem is that of the slots. -/
+theorem initialBytes_eq_bytes {d : Fin r → ℕ} (X : D.problem.Input d) :
+    D.problem.initialBytes d X = D.bytes d :=
+  D.initialBytes_eq X
+
+/-- What a certificate states, for the admitted inputs, with the payload written on the slots.
+For every admitted size, every tuple of inputs satisfying `accepts`, every interpretation
+satisfying the contracts of the model and every tape, the run of the fixed program from the
+buffers of the slots succeeds, within the scratch, the budget, the work, the span and the memory
+of the specification (the resident payload of the slots plus the peak scratch of the run), and
+its final memory satisfies the output condition. -/
+theorem checked {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.problem}
+    (A : Algorithm M S) (d : Fin r → ℕ) (hd : D.valid d) (x : D.In d) (hx : D.accepts d x)
+    (I : Interp Op Tst K) (hI : M.contracts d (D.input d x hx) I) (τ : Tape K) :
+    ∃ st, exec A.program I M.resources D.formats τ d (D.memory d x) = some st ∧
+      st.peak ≤ S.scratch d ∧ st.cost ≤ S.budget d ∧
+      M.resources.work st.cost ≤ S.work d ∧ M.resources.span st.cost ≤ S.span d ∧
+      D.bytes d + st.peak ≤ S.memory d ∧
+      S.good d (D.input d x hx) τ st.cost st.mem := by
+  obtain ⟨st, hr, hp, hc, hw, hs, hm, hg⟩ := A.correct d hd (D.input d x hx) I hI τ
+  exact ⟨st, hr, hp, hc, hw, hs, D.initialBytes_eq_bytes (D.input d x hx) ▸ hm, hg⟩
+
+/-- **What a certificate states**, as one proposition: at every admitted size, for every tuple
+of inputs satisfying `accepts`, every interpretation satisfying the contracts of the model and
+every tape, the run of the fixed program from the buffers of the slots is accepted
+(`NLAlib.Ops.Specification.Accepts`): it succeeds, within the scratch, the budget, the work, the
+span and the memory of the specification, and its final memory satisfies the output condition.
+It is the statement of the certificate (`NLAlib.Ops.Runs`) with the inputs of the problem
+written as the admitted tuples. Every certificate on the problem has this as a theorem
+(`NLAlib.Ops.Inputs.checked_all`); a certificate's `_checked` theorem is this statement, or a
+form of it with the output condition written on values (`NLAlib.Ops.Inputs.checked` gives the
+bounds one by one, with the payload of the slots). -/
+def Checked {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.problem}
+    (A : Algorithm M S) : Prop :=
+  ∀ (d : Fin r → ℕ), D.valid d → ∀ (x : D.In d) (hx : D.accepts d x) (I : Interp Op Tst K),
+    M.contracts d (D.input d x hx) I → ∀ τ : Tape K,
+    S.Accepts M.resources d (D.input d x hx)
+      (exec A.program I M.resources D.formats τ d (D.memory d x)) (S.good d (D.input d x hx) τ)
+
+/-- Every certificate on the problem states `NLAlib.Ops.Inputs.Checked`. -/
+theorem checked_all {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.problem}
+    (A : Algorithm M S) : D.Checked A :=
+  fun d hd x hx I hI τ => A.correct d hd (D.input d x hx) I hI τ
+
+/-- **The oracles of a model on a problem.** Data that is in no buffer can
+affect a run only through an operation whose contract mentions it. This declares those
+operations: every other operation and every query has one contract at all sizes and inputs
+(as for `NLAlib.Ops.AccessModel.Uniform`), and the contract of a declared operation depends on
+the input only through its declared unstored part. A reader of a certificate whose inputs are
+not all in memory checks the contracts and the costs of the operations in `ops`: the cost of
+the certificate is counted in calls of them. -/
+structure Oracles (D : Inputs K r b) (M : AccessModel Op Tst D.problem) where
+  /-- The operations whose contract may depend on the unstored inputs or on the sizes. -/
+  ops : List Op
+  /-- Every other operation has the same contract at every size and input. -/
+  operation : ∀ o, o ∉ ops → ∀ d x d' x', M.operation d x o = M.operation d' x' o
+  /-- Every query has the same contract at every size and input. -/
+  query : ∀ d x d' x' q, M.query d x q = M.query d' x' q
+  /-- A declared operation sees the input only through its unstored part. -/
+  through : ∀ o, o ∈ ops → ∀ d (X Y : D.problem.Input d),
+    D.unstored d X.val.1 = D.unstored d Y.val.1 → M.operation d X o = M.operation d Y o
+
+/-- A model with no declared oracle is uniform. -/
+theorem Oracles.uniform {D : Inputs K r b} {M : AccessModel Op Tst D.problem}
+    (O : D.Oracles M) (h : O.ops = []) : M.Uniform :=
+  ⟨fun d x d' x' o => O.operation o (by simp [h]) d x d' x', O.query⟩
+
+/-- A uniform model declares no oracle. -/
+def Oracles.ofUniform (D : Inputs K r b) (M : AccessModel Op Tst D.problem) [hM : M.Uniform] :
+    D.Oracles M where
+  ops := []
+  operation o _ := fun d x d' x' => hM.operation d x d' x' o
+  query := hM.query
+  through o ho := absurd ho (by simp)
+
+end Inputs
+
+/-! ### The admitted inputs of a routine -/
+
+/-- **The admitted inputs of a routine**: admitted inputs (`NLAlib.Ops.Inputs`) whose sizes are
+the dimensions of the routine and whose slots follow its interface. The two fields added here
+are proofs; the problem, its oracles and the statement of a certificate are those of the
+inputs, and are read without the routine. -/
+structure Routine.Domain (R : Routine Op Tst) (K : Type) (r b : ℕ) extends Inputs K r b where
+  /-- The sizes are the dimensions and the buffers the operands. -/
+  shape : R.nd = r ∧ R.ports.length = b := by exact ⟨rfl, rfl⟩
+  /-- The slots follow the interface: the length of each is that of its port, and a buffer
+  holds words exactly when its operand is read. -/
+  fits : ∀ (d : Fin r → ℕ) (i : Fin b) (p : Port), R.ports[i.val]? = some p →
+    p.len (List.ofFn d) = (slot d i).len ∧ (slot d i).held = p.access.readable
 
 namespace Routine.Domain
 
 variable {R : Routine Op Tst} (D : R.Domain K r b)
+
+/-- The blocks the routine reads at the inputs `x`, in the order of its readable operands. -/
+def blocks (d : Fin r → ℕ) (x : D.In d) : List (List K) :=
+  R.sel Access.readable (List.ofFn fun i => (D.slot d i).words x)
 
 private theorem getD_slots {j : ℕ} (hj : j < b) : (slots b).getD j (0, 0) = (j, 0) := by
   simp [slots, hj]
@@ -575,62 +675,6 @@ def algorithm {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.pro
       D.room_initial X⟩)
     hgood hcost hspace hwork hspan hmemory D.shape ht hfit hflat hcontig
 
-/-- The resident payload of the problem: the cells of the slots, in their storage. -/
-theorem initialBytes_eq {d : Fin r → ℕ} (X : D.problem.Input d) :
-    D.problem.initialBytes d X =
-      (List.ofFn fun i => (D.formats i).bytes * (D.slot d i).len).sum := by
-  refine Problem.initialBytes_of_lengths d X _ fun i => ?_
-  exact (congrArg List.length (congrFun (D.buffers_eq X) i)).trans
-    (D.length_buffers d X.val.1 i)
-
-/-- The resident payload at the sizes: the cells of the slots, in their storage. -/
-def bytes (d : Fin r → ℕ) : ℕ := (List.ofFn fun i => (D.formats i).bytes * (D.slot d i).len).sum
-
-/-- The resident payload of the problem is that of the slots. -/
-theorem initialBytes_eq_bytes {d : Fin r → ℕ} (X : D.problem.Input d) :
-    D.problem.initialBytes d X = D.bytes d :=
-  D.initialBytes_eq X
-
-/-- What a certificate states, for the admitted inputs. For every admitted size, every
-tuple of inputs satisfying `accepts`, every interpretation satisfying the contracts of the model
-and every tape, the run of the fixed program from the buffers of the slots succeeds, within
-the scratch, the budget, the work, the span and the memory of the specification (the resident
-payload of the slots plus the peak scratch of the run), and its final memory satisfies the
-output condition. -/
-theorem checked {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.problem}
-    (A : Algorithm M S) (d : Fin r → ℕ) (hd : D.valid d) (x : D.In d) (hx : D.accepts d x)
-    (I : Interp Op Tst K) (hI : M.contracts d (D.input d x hx) I) (τ : Tape K) :
-    ∃ st, exec A.program I M.resources D.formats τ d (D.memory d x) = some st ∧
-      st.peak ≤ S.scratch d ∧ st.cost ≤ S.budget d ∧
-      M.resources.work st.cost ≤ S.work d ∧ M.resources.span st.cost ≤ S.span d ∧
-      D.bytes d + st.peak ≤ S.memory d ∧
-      S.good d (D.input d x hx) τ st.cost st.mem := by
-  obtain ⟨st, hr, hp, hc, hw, hs, hm, hg⟩ := A.correct d hd (D.input d x hx) I hI τ
-  exact ⟨st, hr, hp, hc, hw, hs, D.initialBytes_eq_bytes (D.input d x hx) ▸ hm, hg⟩
-
-/-- **What a certificate states**, as one proposition: at every admitted size, for every tuple
-of inputs satisfying `accepts`, every interpretation satisfying the contracts of the model and
-every tape, the run of the fixed program from the buffers of the slots succeeds, within the
-scratch, the budget, the work, the span and the memory of the specification (the resident
-payload of the slots plus the peak scratch of the run), and its final memory satisfies the
-output condition. Every certificate of a routine on its problem has this as a theorem
-(`NLAlib.Ops.Routine.Domain.checked_all`); a certificate's `_checked` theorem is this statement,
-or a form of it with the output condition written on values. -/
-def Checked {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.problem}
-    (A : Algorithm M S) : Prop :=
-  ∀ (d : Fin r → ℕ), D.valid d → ∀ (x : D.In d) (hx : D.accepts d x) (I : Interp Op Tst K),
-    M.contracts d (D.input d x hx) I → ∀ τ : Tape K,
-    ∃ st, exec A.program I M.resources D.formats τ d (D.memory d x) = some st ∧
-      st.peak ≤ S.scratch d ∧ st.cost ≤ S.budget d ∧
-      M.resources.work st.cost ≤ S.work d ∧ M.resources.span st.cost ≤ S.span d ∧
-      D.bytes d + st.peak ≤ S.memory d ∧
-      S.good d (D.input d x hx) τ st.cost st.mem
-
-/-- Every certificate of a routine on its problem states `NLAlib.Ops.Routine.Domain.Checked`. -/
-theorem checked_all {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.problem}
-    (A : Algorithm M S) : D.Checked A :=
-  fun d hd x hx I hI τ => D.checked A d hd x hx I hI τ
-
 /-- **The counted certificate of a routine on its problem**: `NLAlib.Ops.Routine.certify` with
 the obligations about the initial memory and the payload proved from the slots. The author
 gives the judgment, the precondition at the admitted inputs, and a bound `work` of the
@@ -678,18 +722,13 @@ routine are those of any routine with the same dimensions and operands (a routin
 tree, or with a parameter the problem does not mention). -/
 def cast (R' : Routine Op Tst) (hnd : R'.nd = R.nd) (hports : R'.ports = R.ports) :
     R'.Domain K r b where
-  formats := D.formats
-  valid := D.valid
-  In := D.In
-  accepts := D.accepts
-  slot := D.slot
+  toInputs := D.toInputs
   shape := ⟨hnd.trans D.shape.1, (congrArg List.length hports).trans D.shape.2⟩
   fits d i p hp := D.fits d i p (hports ▸ hp)
-  Unstored := D.Unstored
-  unstored := D.unstored
-  faithful := D.faithful
-  admitted := D.admitted
-  inhabited := D.inhabited
+
+/-- A domain read at another routine with the same interface has the same inputs. -/
+@[simp] theorem toInputs_cast (R' : Routine Op Tst) (hnd : R'.nd = R.nd)
+    (hports : R'.ports = R.ports) : (D.cast R' hnd hports).toInputs = D.toInputs := rfl
 
 /-- The problem of a domain read at another routine with the same interface is the same. -/
 @[simp] theorem problem_cast (R' : Routine Op Tst) (hnd : R'.nd = R.nd)
@@ -701,59 +740,17 @@ tests; the two are separate so that a cast between routines over the same operat
 have those types to infer. -/
 def castOps {Op' Tst' : Type} (R' : Routine Op' Tst') (hnd : R'.nd = R.nd)
     (hports : R'.ports = R.ports) : R'.Domain K r b where
-  formats := D.formats
-  valid := D.valid
-  In := D.In
-  accepts := D.accepts
-  slot := D.slot
+  toInputs := D.toInputs
   shape := ⟨hnd.trans D.shape.1, (congrArg List.length hports).trans D.shape.2⟩
   fits d i p hp := D.fits d i p (hports ▸ hp)
-  Unstored := D.Unstored
-  unstored := D.unstored
-  faithful := D.faithful
-  admitted := D.admitted
-  inhabited := D.inhabited
+
+/-- A domain read at a routine over other operations has the same inputs. -/
+@[simp] theorem toInputs_castOps {Op' Tst' : Type} (R' : Routine Op' Tst') (hnd : R'.nd = R.nd)
+    (hports : R'.ports = R.ports) : (D.castOps R' hnd hports).toInputs = D.toInputs := rfl
 
 /-- The problem of a domain read at a routine over other operations is the same. -/
 @[simp] theorem problem_castOps {Op' Tst' : Type} (R' : Routine Op' Tst') (hnd : R'.nd = R.nd)
     (hports : R'.ports = R.ports) : (D.castOps R' hnd hports).problem = D.problem := rfl
-
-end Routine.Domain
-
-namespace Routine.Domain
-
-variable {R : Routine Op Tst}
-
-/-- **The oracles of a model on the problem of a routine.** Data that is in no buffer can
-affect a run only through an operation whose contract mentions it. This declares those
-operations: every other operation and every query has one contract at all sizes and inputs
-(as for `NLAlib.Ops.AccessModel.Uniform`), and the contract of a declared operation depends on
-the input only through its declared unstored part. A reader of a certificate whose inputs are
-not all in memory checks the contracts and the costs of the operations in `ops`: the cost of
-the certificate is counted in calls of them. -/
-structure Oracles (D : R.Domain K r b) (M : AccessModel Op Tst D.problem) where
-  /-- The operations whose contract may depend on the unstored inputs or on the sizes. -/
-  ops : List Op
-  /-- Every other operation has the same contract at every size and input. -/
-  operation : ∀ o, o ∉ ops → ∀ d x d' x', M.operation d x o = M.operation d' x' o
-  /-- Every query has the same contract at every size and input. -/
-  query : ∀ d x d' x' q, M.query d x q = M.query d' x' q
-  /-- A declared operation sees the input only through its unstored part. -/
-  through : ∀ o, o ∈ ops → ∀ d (X Y : D.problem.Input d),
-    D.unstored d X.val.1 = D.unstored d Y.val.1 → M.operation d X o = M.operation d Y o
-
-/-- A model with no declared oracle is uniform. -/
-theorem Oracles.uniform {D : R.Domain K r b} {M : AccessModel Op Tst D.problem}
-    (O : D.Oracles M) (h : O.ops = []) : M.Uniform :=
-  ⟨fun d x d' x' o => O.operation o (by simp [h]) d x d' x', O.query⟩
-
-/-- A uniform model declares no oracle. -/
-def Oracles.ofUniform (D : R.Domain K r b) (M : AccessModel Op Tst D.problem) [hM : M.Uniform] :
-    D.Oracles M where
-  ops := []
-  operation o _ := fun d x d' x' => hM.operation d x d' x' o
-  query := hM.query
-  through o ho := absurd ho (by simp)
 
 end Routine.Domain
 

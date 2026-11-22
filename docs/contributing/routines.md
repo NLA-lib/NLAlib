@@ -24,7 +24,8 @@ A randomized guarantee adds one object beside the certificate: a `RandomizedClai
 ([programs](programs.md), "Resources and probability").
 
 What a reviewer reads is short: the specification of the routine (`Routine.Spec`), the problem
-(`Routine.Domain`), the model (operations, contracts, costs) and the `_checked` theorem. The
+(the `Inputs` of its `Routine.Domain`: sizes, inputs, acceptance and slots, with nothing
+about the routine), the model (operations, contracts, costs) and the `_checked` theorem. The
 tree, the judgment and the count are checked by Lean.
 
 What "run" and "counted" mean is stated twice: by the evaluator, which the certificate is
@@ -291,7 +292,7 @@ admitted size and one admitted input at each size, so that the certificate is no
 
 A restriction on the inputs goes in `accepts`, where the `_checked` theorem shows it as a
 hypothesis. An input that no buffer holds (the matrix of a matrix-free solver) is declared
-`Unstored`, and the certificate then states `Routine.Domain.Oracles`
+`Unstored`, and the certificate then states `Inputs.Oracles`
 (`NLAlib/Krylov/CG/HSCG/Certification.lean`; [programs](programs.md), item 7).
 
 ### 2.5 The certificate
@@ -391,7 +392,9 @@ not a formula for it, `Mem.holds_decode c hzs` gives `st.mem.Holds c i (c.decode
 read.
 
 The shortest form, for any certificate, is
-the proposition `Routine.Domain.Checked`, proved by `Routine.Domain.checked_all`
+the proposition `Inputs.Checked` (every run from the buffers of the slots is accepted,
+`Specification.Accepts`: success, the five resource bounds and the output condition), proved by
+`Inputs.checked_all`
 (`NLAlib/Krylov/CG/HSPCG/Certification.lean`, `algorithm_checked`, two lines). The docstring says in words
 what the statement says, and what a reader must check beyond it (declared oracles; the
 probability theorem, when the deterministic claim is termination).

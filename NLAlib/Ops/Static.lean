@@ -21,6 +21,13 @@ its fuel, a `bindIdx` its worst value.
 by evaluating a function on the tree, never by a proof about loops, and
 `NLAlib.Ops.ConditionalRuns.of_run` turns a statement about the memory (program logic) into the full
 statement with counts and workspace.
+
+## Main definitions
+
+* `NLAlib.Ops.Specification`, `NLAlib.Ops.Specification.Accepts`: a claim, and one run accepted
+  by it (success, the five resource bounds and a postcondition).
+* `NLAlib.Ops.Runs`, `NLAlib.Ops.Program.Certifies`: every run of a fixed program is accepted.
+
 ## Main results
 
 * `NLAlib.Ops.exec_within`: soundness of the static count and workspace.
@@ -346,17 +353,31 @@ structure Specification (Op Tst : Type) {K : Type} {r b : ℕ} (P : Problem K r 
   good : (d : Fin r → ℕ) → P.Input d → Tape K →
     Count (Op ⊕ Bookkeeping) Tst → Mem K → Prop
 
+/-- **A run is accepted.** One actual counted outcome succeeds, obeys every resource claim of
+the specification (scratch, counts, work, span, and resident memory: the payload of the supplied
+buffers plus the peak scratch), and meets the supplied postcondition on that same count and
+final memory. Negation includes failure, a violation of any of the five bounds, and failure of
+the postcondition. A certificate states that every run is accepted (`NLAlib.Ops.Runs`); a
+randomized claim bounds the probability that a run is not
+(`NLAlib.Ops.Algorithm.FailsAtMost`). -/
+def Specification.Accepts {Op Tst K : Type} {r b : ℕ} {P : Problem K r b}
+    (S : Specification Op Tst P) (resources : ResourceModel Op Tst)
+    (d : Fin r → ℕ) (x : P.Input d) (outcome : Option (St (Op ⊕ Bookkeeping) Tst K))
+    (Q : Count (Op ⊕ Bookkeeping) Tst → Mem K → Prop) : Prop :=
+  ∃ st, outcome = some st ∧ st.peak ≤ S.scratch d ∧ st.cost ≤ S.budget d ∧
+    resources.work st.cost ≤ S.work d ∧ resources.span st.cost ≤ S.span d ∧
+    P.initialBytes d x + st.peak ≤ S.memory d ∧ Q st.cost st.mem
+
 /-- Total certification of this fixed program against an independently specified model and
-claim. A target can require this proposition directly, fixing the program before every runtime
-size and input. Realizability is already required by the type of the model. -/
+claim: at every admitted size, for every input, every interpretation satisfying the contracts
+of the model and every tape, the run from the supplied buffers is accepted
+(`NLAlib.Ops.Specification.Accepts`) with the output condition of the specification. A target
+can require this proposition directly, fixing the program before every runtime size and input.
+Realizability is already required by the type of the model. -/
 def Runs {Op Tst K : Type} {r b : ℕ} {P : Problem K r b}
     (p : Program Op Tst r b) (M : AccessModel Op Tst P) (S : Specification Op Tst P) : Prop :=
   ∀ d, P.valid d → ∀ (x : P.Input d) (I : Interp Op Tst K), M.contracts d x I → ∀ τ,
-    ∃ st, exec p I M.resources P.formats τ d (P.initial d x) = some st ∧
-      st.peak ≤ S.scratch d ∧ st.cost ≤ S.budget d ∧
-        M.resources.work st.cost ≤ S.work d ∧ M.resources.span st.cost ≤ S.span d ∧
-          P.initialBytes d x + st.peak ≤ S.memory d ∧ S.good d x τ st.cost st.mem
-
+    S.Accepts M.resources d x (exec p I M.resources P.formats τ d (P.initial d x)) (S.good d x τ)
 
 /-- Certification is the canonical total run proposition for one fixed tree and model. -/
 abbrev Program.Certifies {Op Tst K : Type} {r b : ℕ} {P : Problem K r b}

@@ -571,7 +571,7 @@ noncomputable def shqrSmallEigGinibreClaim
 interpretation satisfying the contracts of the model and every tape, the run of the fixed program
 from the supplied buffers succeeds within the scratch, the budget, the work, the span and the
 memory of the
-specification (`NLAlib.Ops.Routine.Domain.Checked`). The deterministic claim is termination
+specification (`NLAlib.Ops.Inputs.Checked`). The deterministic claim is termination
 within the footprint only; the accuracy of the computed Schur form holds with probability over
 the draws: `NLAlib.ShiftedQR.roundedShQRSmallEig_algorithm_measureReal_not_accepts_le`. -/
 theorem shqrSmallEig_checked (Mch : Machine ℝ) (c₁ c₂ : PolyLogTail)

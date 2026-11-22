@@ -44,16 +44,17 @@ An `Ops.Algorithm M S` is as meaningful as its problem, its model `M` and its sp
   Functions of Mathlib and of core are not opened; apart from the listed non-constructive ones
   they are taken to be what their names say;
 * `problem` (`derived`, `handwritten`): whether the problem of the certificate is the problem of
-  a `Ops.Routine.Domain` (mathematical inputs, an acceptance predicate and one slot per
-  operand, with coverage by construction) or a hand-written `Ops.Problem`;
+  `Ops.Inputs` (mathematical inputs, an acceptance predicate and one slot per buffer, with
+  coverage by construction; usually the inputs of a `Ops.Routine.Domain`) or a hand-written
+  `Ops.Problem`;
 * `derived` (a number, `?`, or `-`): for a derived problem, the number of operands whose buffer
   holds words computed from the inputs (`Slot.derived`); `?` when the slots do not reduce;
 * `unstored` (`yes`, `no`, `-`): for a derived problem, whether it declares inputs that no
   buffer holds;
 * `oracles` (`declared`, `related`, `missing`, `none`): for a model that is not `uniform=yes`,
-  `declared` when a declaration of type `Ops.Routine.Domain.Oracles D M` (the operations that
+  `declared` when a declaration of type `Ops.Inputs.Oracles D M` (the operations that
   may depend on the input, and the proof that no other does) is about this certificate: its
-  binders are instantiated so that `D` is the domain of the problem (below `Domain.cast`) and
+  binders are instantiated so that `D` is the inputs of the problem (below `Domain.cast`) and
   `M` the model of the certificate. `related` when declarations exist for a domain built from
   the same constant (below `Domain.cast` and `Domain.castOps`) but none unifies with this
   domain and model; `none` for a uniform model;
@@ -151,7 +152,8 @@ def treeTypes : List Name :=
 /-- Types whose values describe a problem, not a run: a domain, its slots and codecs, and the
 problem itself. Their constants and the functions of their namespaces are not opened. -/
 def problemTypes : List Name :=
-  [`NLAlib.Ops.Problem, `NLAlib.Ops.Routine.Domain, `NLAlib.Ops.Slot, `NLAlib.Ops.Codec]
+  [`NLAlib.Ops.Problem, `NLAlib.Ops.Inputs, `NLAlib.Ops.Routine.Domain, `NLAlib.Ops.Slot,
+    `NLAlib.Ops.Codec]
 
 /-- Constants outside the library that the search does not accept in a closed bound: a value
 obtained by choice, by search, or as a bound of a set says nothing explicit. -/
@@ -272,26 +274,35 @@ def specFields (S : Expr) : MetaM (Option (Array Expr)) := do
     | none => return none
   return none
 
-/-- The domain of a problem that is `Routine.Domain.problem` of a domain. -/
+/-- The inputs of a problem that is `Inputs.problem` of admitted inputs. -/
 def findDomain (P : Expr) : MetaM (Option Expr) := do
   let mut e := P
   for _ in [0:12] do
     let e' ← whnfCore e
-    if e'.isAppOf ``NLAlib.Ops.Routine.Domain.problem then return e'.getAppArgs.back?
+    if e'.isAppOf ``NLAlib.Ops.Inputs.problem then return e'.getAppArgs.back?
     match ← withTransparency .all (unfoldDefinition? e') with
     | some e'' => e := e''
     | none => return none
   return none
 
+/-- The domain of a routine whose inputs these are: the argument of `Routine.Domain.toInputs`,
+as a projection function or a projection. `none` for inputs stated on their own. -/
+def domainOfInputs? (I : Expr) : Option Expr :=
+  if I.isAppOf ``NLAlib.Ops.Routine.Domain.toInputs then I.getAppArgs.back?
+  else match I with
+    | .proj ``NLAlib.Ops.Routine.Domain 0 D => some D
+    | .mdata _ e => domainOfInputs? e
+    | _ => none
+
 /-- The constant a domain is built from: the head of the domain, below `Domain.cast` and
 `Domain.castOps` (the same domain read at another routine). -/
-partial def domainHead (D : Expr) : MetaM (Option Name) := do
+partial def domainHeadOf (D : Expr) : MetaM (Option Name) := do
   let D ← whnfCore D
   let args := D.getAppArgs
   if D.isAppOf ``NLAlib.Ops.Routine.Domain.cast then
-    if args.size ≥ 4 then domainHead args[args.size - 4]! else pure none
+    if args.size ≥ 4 then domainHeadOf args[args.size - 4]! else pure none
   else if D.isAppOf ``NLAlib.Ops.Routine.Domain.castOps then
-    if args.size ≥ 6 then domainHead args[args.size - 6]! else pure none
+    if args.size ≥ 6 then domainHeadOf args[args.size - 6]! else pure none
   else
     match D.getAppFn.constName? with
     | some c =>
@@ -300,25 +311,43 @@ partial def domainHead (D : Expr) : MetaM (Option Name) := do
       | some D' =>
         let D'' ← whnfCore D'
         if D''.isAppOf ``NLAlib.Ops.Routine.Domain.cast ||
-            D''.isAppOf ``NLAlib.Ops.Routine.Domain.castOps then domainHead D''
+            D''.isAppOf ``NLAlib.Ops.Routine.Domain.castOps then domainHeadOf D''
         else pure (some c)
       | none => pure (some c)
     | none => pure none
 
+/-- The constant the inputs of a problem are built from: the head of the domain of a routine
+they are the inputs of (below its casts), or their own head when they are stated on their
+own. -/
+def domainHead (I : Expr) : MetaM (Option Name) := do
+  match domainOfInputs? I with
+  | some D => domainHeadOf D
+  | none =>
+    match domainOfInputs? (← whnfCore I) with
+    | some D => domainHeadOf D
+    | none => pure I.getAppFn.constName?
+
 /-- The domain below `Domain.cast`: a cast changes the types the domain is read at, not the
 domain. -/
-partial def domainBase (D : Expr) : MetaM Expr := do
+partial def domainBaseOf (D : Expr) : MetaM Expr := do
   let D ← whnfCore D
   if D.isAppOf ``NLAlib.Ops.Routine.Domain.cast then
     let args := D.getAppArgs
-    if args.size ≥ 4 then domainBase args[args.size - 4]! else pure D
+    if args.size ≥ 4 then domainBaseOf args[args.size - 4]! else pure D
   else if D.getAppFn.isConst then
     match ← withTransparency .all (unfoldDefinition? D) with
     | some D' =>
       let D'' ← whnfCore D'
-      if D''.isAppOf ``NLAlib.Ops.Routine.Domain.cast then domainBase D'' else pure D
+      if D''.isAppOf ``NLAlib.Ops.Routine.Domain.cast then domainBaseOf D'' else pure D
     | none => pure D
   else pure D
+
+/-- The inputs of a problem, read below `Domain.cast` when they are the inputs of a domain of a
+routine. -/
+def domainBase (I : Expr) : MetaM Expr := do
+  match domainOfInputs? I with
+  | some D => mkAppM ``NLAlib.Ops.Routine.Domain.toInputs #[← domainBaseOf D]
+  | none => pure I
 
 /-- The applications of `Slot.derived` (or `Slot.derivedOfLength`) in an expression, without
 entering them. -/
@@ -338,14 +367,14 @@ derived slots as written. The slots are read off the definition of `slot`: `?` w
 a function written out with its slots. -/
 def domainSlots (D : Expr) : MetaM (String × String × Array String) := do
   let unstored ← try
-      let u ← whnf (← mkAppM ``NLAlib.Ops.Routine.Domain.Unstored #[D])
+      let u ← whnf (← mkAppM ``NLAlib.Ops.Inputs.Unstored #[D])
       let body := match u with
         | .lam _ _ b _ => b
         | e => e
       pure (if body.isConstOf ``Unit || body.isAppOf ``PUnit then "no" else "yes")
     catch _ => pure "?"
   try
-    let slot ← whnf (← mkAppM ``NLAlib.Ops.Routine.Domain.slot #[D])
+    let slot ← whnf (← mkAppM ``NLAlib.Ops.Inputs.slot #[D])
     lambdaTelescope slot fun _ body => do
       let known := body.getUsedConstants.any fun c =>
         c == ``NLAlib.Ops.Slot.stored || c == ``NLAlib.Ops.Slot.blank ||
@@ -591,7 +620,7 @@ def scan (keep : Name → Bool) (consts : List (Name × ConstantInfo)) : MetaM I
       let head := target.getAppFn.constName?
       let generic := args.size ≥ 2 && args[args.size - 2]!.getAppFn.isFVar
       let last := args.back?.bind fun a => a.getAppFn.constName?
-      let domain ← if head == some ``NLAlib.Ops.Routine.Domain.Oracles && args.size ≥ 2 then
+      let domain ← if head == some ``NLAlib.Ops.Inputs.Oracles && args.size ≥ 2 then
           domainHead args[args.size - 2]!
         else pure none
       pure (head, generic, last, domain)
@@ -626,7 +655,7 @@ def scan (keep : Name → Bool) (consts : List (Name × ConstantInfo)) : MetaM I
     if head == some ``NLAlib.Ops.RandomizedClaim then
       if let some certificate := last then
         inv := { inv with claims := inv.claims.push (name, certificate) }
-    if head == some ``NLAlib.Ops.Routine.Domain.Oracles then
+    if head == some ``NLAlib.Ops.Inputs.Oracles then
       if let some dom := domain then inv := { inv with oracles := inv.oracles.push (name, dom) }
   return inv
 
@@ -755,14 +784,14 @@ def classifyCert (s : Setting) (name : Name) (wanted : Bool) : MetaM (Option Ent
       for r in reasons do out := out.push s!"  manifest because {r}"
       match dom with
       | some D =>
-        out := out.push s!"  admitted sizes (valid): {← field ``NLAlib.Ops.Routine.Domain.valid D}"
-        out := out.push s!"  inputs (In): {← field ``NLAlib.Ops.Routine.Domain.In D}"
-        out := out.push s!"  accepts: {← field ``NLAlib.Ops.Routine.Domain.accepts D}"
-        out := out.push s!"  slots: {← field ``NLAlib.Ops.Routine.Domain.slot D}"
+        out := out.push s!"  admitted sizes (valid): {← field ``NLAlib.Ops.Inputs.valid D}"
+        out := out.push s!"  inputs (In): {← field ``NLAlib.Ops.Inputs.In D}"
+        out := out.push s!"  accepts: {← field ``NLAlib.Ops.Inputs.accepts D}"
+        out := out.push s!"  slots: {← field ``NLAlib.Ops.Inputs.slot D}"
         for f in formulas do out := out.push s!"  derived slot: {f}"
         if unstored == "yes" then
           out := out.push
-            s!"  unstored inputs: {← field ``NLAlib.Ops.Routine.Domain.unstored D}"
+            s!"  unstored inputs: {← field ``NLAlib.Ops.Inputs.unstored D}"
       | none =>
         out := out.push s!"  admitted sizes (valid): {← field ``NLAlib.Ops.Problem.valid P}"
         out := out.push s!"  data: {← field ``NLAlib.Ops.Problem.Data P}"
@@ -770,7 +799,7 @@ def classifyCert (s : Setting) (name : Name) (wanted : Bool) : MetaM (Option Ent
       for a in oracleApps do
         if a.applies then
           let ops ← match a.term with
-            | some t => field ``NLAlib.Ops.Routine.Domain.Oracles.ops t
+            | some t => field ``NLAlib.Ops.Inputs.Oracles.ops t
             | none => pure "(not available)"
           out := out.push (s!"  oracles {a.name} [applies to this domain and model]: " ++
             s!"operations that may depend on the input: {ops}")
@@ -1406,9 +1435,11 @@ The roots are the forms a claim of the library takes, for every problem, model a
   rules, which a reader may use in place of the evaluator
   (`Ops.Reference.execution_iff_exec`);
 * `Ops.RandomizedClaim`, with `Ops.Algorithm.FailsAtMost` and `Ops.TapeModel.Realizable`;
-* `Ops.Routine.Domain`, `Ops.Routine.Domain.problem`, `Ops.Routine.Domain.Oracles` and
-  `Ops.Routine.Domain.Checked`: a derived problem, declared unstored inputs, and the form of
-  the readable `_checked` statements;
+* `Ops.Inputs`, `Ops.Inputs.problem`, `Ops.Inputs.Oracles` and `Ops.Inputs.Checked`: a derived
+  problem, declared unstored inputs, and the form of the readable `_checked` statements.
+  `Ops.Routine.Domain` is not a root: it is `Ops.Inputs` with two proofs that the slots follow
+  the interface of a routine, which the certificate of the routine uses and the problem does
+  not depend on;
 * `Ops.AccessModel.Uniform`, `.Confined`, `.Charged`: the properties of a model that the
   certificate report prints.
 
@@ -1453,8 +1484,8 @@ def roots : List Name := [
   `NLAlib.Ops.Reference.Execution, `NLAlib.Ops.Reference.Accepts,
   `NLAlib.Ops.RandomizedClaim, `NLAlib.Ops.Algorithm.FailsAtMost,
   `NLAlib.Ops.TapeModel.Realizable,
-  `NLAlib.Ops.Routine.Domain, `NLAlib.Ops.Routine.Domain.problem,
-  `NLAlib.Ops.Routine.Domain.Oracles, `NLAlib.Ops.Routine.Domain.Checked,
+  `NLAlib.Ops.Inputs, `NLAlib.Ops.Inputs.problem,
+  `NLAlib.Ops.Inputs.Oracles, `NLAlib.Ops.Inputs.Checked,
   `NLAlib.Ops.AccessModel.Uniform, `NLAlib.Ops.AccessModel.Confined,
   `NLAlib.Ops.AccessModel.Charged]
 

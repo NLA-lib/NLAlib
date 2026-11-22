@@ -77,9 +77,9 @@ confined model, closed-form work and a derived problem, or a reviewed line):
   `closed` when every library definition under it was opened and none does; `unknown` when the
   search met something it cannot inspect (an axiom, an opaque constant, a non-constructive
   choice). `unknown` counts as `manifest` wherever `closed` is required;
-* `problem`, `derived`, `unstored`: whether the problem is derived from a `Routine.Domain`, how
+* `problem`, `derived`, `unstored`: whether the problem is derived from `Ops.Inputs` (the inputs of a `Routine.Domain`), how
   many operands hold words computed from the inputs, and whether inputs are held by no buffer;
-* `oracles`: for a model that is not uniform, `declared` when a `Routine.Domain.Oracles`
+* `oracles`: for a model that is not uniform, `declared` when a `Inputs.Oracles`
   declaration unifies with the domain and the model of this certificate, `related` when one
   exists for the same domain constant (below `cast` and `castOps`) but does not;
 * `claim`: the `RandomizedClaim`s whose certificate, with the claim's binders instantiated, is
@@ -133,8 +133,8 @@ of.
 - *Roots.* The forms a claim takes: `Ops.Algorithm` (with `Ops.Program.Certifies`,
   `Ops.Specification`, `Ops.Problem`, `Ops.AccessModel`, `Ops.exec`); the reference rules
   `Ops.Reference.Execution` and `Ops.Reference.Accepts`; `Ops.RandomizedClaim` (with
-  `Ops.Algorithm.FailsAtMost`, `Ops.TapeModel.Realizable`); `Ops.Routine.Domain`, its `problem`,
-  `Ops.Routine.Domain.Oracles` and `Ops.Routine.Domain.Checked`; and the three model properties
+  `Ops.Algorithm.FailsAtMost`, `Ops.TapeModel.Realizable`); `Ops.Inputs`, its `problem`,
+  `Ops.Inputs.Oracles` and `Ops.Inputs.Checked`; and the three model properties
   the report prints. What one certificate adds (codecs, a tape law, a machine, the contracts of
   its operations) is read with that certificate and is not in the list. Routines, their
   judgment, linking, static bounds and tactics are not in it: they produce certificates.

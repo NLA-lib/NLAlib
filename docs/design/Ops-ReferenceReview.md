@@ -110,9 +110,9 @@ to checking the chosen instantiation and its explicit assumptions.
 | Exact declarations | Source | What to check |
 |---|---|---|
 | `Problem`, `Problem.Input`, `.initial`, `.initialBytes` | [Contract.lean](../../NLAlib/Ops/Contract.lean) | Admitted sizes/data/raw buffers cover the intended problem. Initial memory contains exactly the supplied words. Resident payload includes uninitialized capacity. |
-| `Codec`, `Slot`, `Routine.Domain`, `Routine.Domain.problem`, `.buffers`, `.bytes` | [RoutineProblem.lean](../../NLAlib/Ops/RoutineProblem.lean) | Typed inputs, derived preprocessing buffers, blank outputs, unstored data and acceptance are all visible. Codecs invert at the declared lengths. |
-| `Routine.Domain.Oracles` | [RoutineProblem.lean](../../NLAlib/Ops/RoutineProblem.lean) | Unstored data is reached through the declared operations. Their meaning and cost match the claimed abstraction. |
-| `Specification`, `Runs`, `Program.Certifies` | [Static.lean](../../NLAlib/Ops/Static.lean) | All bounds and `good` concern the same counted outcome; input-dependent accuracy conditions have not been confused with size-only resource bounds. |
+| `Codec`, `Slot`, `Inputs`, `Inputs.problem`, `.buffers`, `.memory`, `.input` | [RoutineProblem.lean](../../NLAlib/Ops/RoutineProblem.lean) | Typed inputs, derived preprocessing buffers, blank outputs, unstored data and acceptance are all visible. Codecs invert at the declared lengths. |
+| `Inputs.Oracles` | [RoutineProblem.lean](../../NLAlib/Ops/RoutineProblem.lean) | Unstored data is reached through the declared operations. Their meaning and cost match the claimed abstraction. |
+| `Specification`, `Specification.Accepts`, `Runs`, `Program.Certifies` | [Static.lean](../../NLAlib/Ops/Static.lean) | `Accepts` is one run accepted: success, the five bounds and a postcondition on the same counted outcome; `Runs` is every run accepted with `good`. All bounds and `good` concern the same counted outcome; input-dependent accuracy conditions have not been confused with size-only resource bounds. |
 | `Algorithm` | [Cert.lean](../../NLAlib/Ops/Cert.lean) | The proof certifies the particular fixed program, model and specification under review. |
 | `ScalarOp`, `Machine`, `Machine.fn`, `AnyOperands`, `IsScalar` | [Catalog/Scalar.lean](../../NLAlib/Ops/Catalog/Scalar.lean) | Scalar contracts refer to the intended word functions and decoding. |
 | `StdModel` | [Catalog/Scalar.lean](../../NLAlib/Ops/Catalog/Scalar.lean) | Relative-error arithmetic includes square root; negation is exact. Division accuracy requires a nonzero decoded divisor and square-root accuracy a nonnegative argument. Overflow/underflow are outside this model. Check any additional roundoff hypotheses of the particular theorem. |
@@ -124,7 +124,7 @@ to checking the chosen instantiation and its explicit assumptions.
 | Exact declarations | Source | What to check |
 |---|---|---|
 | `Reference.Accepts` | [Reference/Probability.lean](../../NLAlib/Ops/Reference/Probability.lean) | Successful source execution, all resource bounds and the exact accuracy event. A separate deterministic output guarantee is still supplied by the algorithm certificate. |
-| `Specification.Accepts` | [Probability.lean](../../NLAlib/Ops/Probability.lean) | The canonical event being bridged includes failure and every resource/event violation, rather than conditioning on successful execution. |
+| `Specification.Accepts` | [Static.lean](../../NLAlib/Ops/Static.lean) | The canonical event being bridged includes failure and every resource/event violation, rather than conditioning on successful execution. |
 | `TapeModel`, `TapeModel.streams`, `.packed`, `.Realizable` | [Randomized.lean](../../NLAlib/Ops/Randomized.lean) | Which tapes and distributions are covered; stream identifiers are distinct; a probability-space witness exists under the claim's input assumptions. |
 | `IsTapeLaw` | [TapeLaw.lean](../../NLAlib/Ops/TapeLaw.lean) | The specified entry distributions, measurability and joint independence are what the intended algorithm requires. |
 | `Algorithm.FailsAtMost` | [Randomized.lean](../../NLAlib/Ops/Randomized.lean) | Quantifier order fixes the interpretation before sampling. The measure is finite; check that the chosen law gives the intended probability normalization. |

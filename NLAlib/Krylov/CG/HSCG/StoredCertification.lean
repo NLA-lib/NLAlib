@@ -163,7 +163,7 @@ $33 n^2 k + 23 n k + 156 k + 33 n^2 + 29 n + 125$ instructions (each vector oper
 one; products with the matrix are executed and counted), keeps its resident memory within the
 memory of the specification, and the three vectors then hold the
 iterate, residual and direction of conjugate gradient after $k$ steps from the zero iterate.
-Every such system is admitted (`NLAlib.Ops.Routine.Domain.covers`). -/
+Every such system is admitted (`NLAlib.Ops.Inputs.covers`). -/
 theorem stored_checked (d : Fin 2 → ℕ) (hd : domain d)
     (A : Matrix (Fin (d 0)) (Fin (d 0)) ℝ) (rhs : Fin (d 0) → ℝ) (hA : A.PosDef)
     (hrhs : d 1 ≤ krylovGrade A rhs) (I : Interp RCLikeBlas.Operation CmpTst ℝ)

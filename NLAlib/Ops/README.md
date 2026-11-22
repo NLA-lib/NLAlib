@@ -101,10 +101,10 @@ each; see `docs/contributing/checks.md`), and prints `ops report fixtures: N cas
 | `hyps` | a number | the hypotheses of the declaration |
 | `uniform`, `confined`, `charged` | `yes`, `no`, `unknown` | an instance for the model was found; none exists once the model is unfolded to the end; the search stopped at its limit |
 | `budget`, `work`, `scratch` | `closed`, `manifest`, `unknown` | see below |
-| `problem` | `derived`, `handwritten` | the problem is that of a `Routine.Domain`, or a hand-written `Problem` |
+| `problem` | `derived`, `handwritten` | the problem is that of `Inputs` (the inputs of a `Routine.Domain`), or a hand-written `Problem` |
 | `derived` | a number, `?`, `-` | the operands whose buffer holds words computed from the inputs |
 | `unstored` | `yes`, `no`, `-` | the domain declares inputs that no buffer holds |
-| `oracles` | `declared`, `related`, `missing`, `none` | for a model that is not uniform, a `Routine.Domain.Oracles` declaration unifies with this domain and model (`declared`), or exists only for another instance of the domain (`related`); `none` for a uniform model |
+| `oracles` | `declared`, `related`, `missing`, `none` | for a model that is not uniform, a `Inputs.Oracles` declaration unifies with this domain and model (`declared`), or exists only for another instance of the domain (`related`); `none` for a uniform model |
 | `claim` | names, `related:` names, `exempt`, `none`, `required-missing` | the `RandomizedClaim`s that are about this certificate at its own parameters; `related:` for claims about the same declaration at other arguments |
 
 A resource field is classified by everything it depends on, through every definition of the
@@ -404,7 +404,10 @@ The interface in detail:
 
 - **The problem.** A certificate is about a problem: the sizes admitted, the inputs admitted
   and the buffers supplied. `Routine.Domain` (`RoutineProblem.lean`) builds it from the interface
-  of the routine, and its author states mathematics only:
+  of the routine, and its author states mathematics only. A domain is a record `Inputs` of
+  mathematics with two proofs (`shape`, `fits`) that it follows the interface; the problem, its
+  oracles and the `_checked` statement are defined on `Inputs` alone, so reading a problem
+  needs nothing about routines:
   - `valid`, the admitted sizes; `In d`, the type of the inputs (vectors, matrices, parameters);
     `accepts`, the admitted inputs;
   - a slot for every operand: `stored c get` (the buffer holds the encoding by the `Codec` `c`
@@ -418,14 +421,14 @@ The interface in detail:
   of the ports. The inputs are determined by the stored buffers and the declared unstored part
   (`faithful`), so no other input is in no buffer; a quantity that is in no buffer and is not an
   input belongs in `accepts`, as an existential. A buffer depends on the inputs in no other way
-  than these, and `Routine.Domain.derived` lists the operands whose buffer is computed from
+  than these, and `Inputs.derived` lists the operands whose buffer is computed from
   them.
 
   **Unstored inputs and oracles.** Data that is in no buffer can affect a run only through an
   operation whose contract mentions it. That is the oracle channel: a contract that mentions
   the data can hide any amount of work behind one call. A domain therefore declares the part
   of its inputs that is in no buffer (`Unstored`, `unstored`; none by default), and a
-  certificate whose model reaches data outside memory states `Routine.Domain.Oracles`: the
+  certificate whose model reaches data outside memory states `Inputs.Oracles`: the
   list `ops` of the operations that may depend on it, a proof that every other operation and
   every query has one contract at all sizes and inputs, and a proof that a declared operation
   sees the input only through its unstored part. A reviewer reads the contracts and the costs
@@ -443,7 +446,7 @@ The interface in detail:
   declared oracle is uniform (`Oracles.uniform`).
 
   `D.problem` is the problem: exactly the buffers of the slots. An input of the problem is an
-  admitted tuple of inputs and conversely (`Routine.Domain.inputEquiv`, `Routine.Domain.covers`):
+  admitted tuple of inputs and conversely (`Inputs.inputEquiv`, `Inputs.covers`):
   the certificate covers every input that satisfies `accepts`. `D.algorithm` is
   `Routine.algorithm` on that problem; that the supplied buffers hold the blocks read and have
   room for the blocks written is proved once (`readBlocks_initial`, `room_initial`), not by the
@@ -453,7 +456,10 @@ The interface in detail:
   the resources of the specification — scratch, budget, work, span, and resident memory: the
   words of the inputs `D.bytes d` plus the peak of the run are at most `S.memory d` — and
   satisfies its output condition. `D.Checked A` is
-  that statement as one proposition, and `D.checked_all` proves it of every certificate. A
+  that statement as one proposition: every such run is accepted (`Specification.Accepts`, the
+  one definition of success within the five bounds with a postcondition, which the certificate
+  `Runs` and the failure event of a randomized claim also use); `D.checked_all` proves it of
+  every certificate. A
   family's `_checked` theorem is either that proposition (`algorithm_checked`, `sign_checked`,
   `smallEig_checked`, …) or a form with the output written on values: `Mem.Holds c i a` says
   the buffer `i` holds the value `a` through the codec `c`, and `Mem.holds_decode` turns a block
@@ -648,10 +654,11 @@ The supported surface, which changes only with a recorded rename or a migration 
 * **Routines from routines**: `Routine.withData` with `Spec.onData` (stored data),
   `Routine.link` with `Meets.of_link` (linking through a table), `Routine.Implements` and
   `Meets.satisfies_ofRel` (a routine as the implementation of an operation).
-* **Problems and certificates**: `Routine.Domain` (`In`, `valid`, `accepts`, the slots `stored`,
-  `derived`, `blank`, `Unstored` and `Oracles`), `Codec`, `Domain.problem`, `Domain.covers`,
-  `Domain.algorithm`, `Domain.certify`, `Algorithm.withCountPoly`, `Domain.Checked` with
-  `checked_all`, `Mem.Holds`.
+* **Problems and certificates**: `Inputs` (`In`, `valid`, `accepts`, the slots `stored`,
+  `derived`, `blank`, `Unstored` and `Oracles`) and `Routine.Domain` (inputs that follow the
+  interface of a routine), `Codec`, `Inputs.problem`, `Inputs.covers`, `Domain.algorithm`,
+  `Domain.certify`, `Algorithm.withCountPoly`, `Inputs.Checked` with `checked_all`,
+  `Specification.Accepts`, `Mem.Holds`.
 * **Randomized results**: `RandomizedClaim`, `TapeModel.streams`, `TapeModel.packed`,
   `Algorithm.FailsAtMost`.
 * **Models**: `AccessModel`, `ResourceModel`, `Interp.Satisfies`, the operation contracts of
@@ -796,7 +803,7 @@ source guard never becomes an omitted runtime operation. See the
 | `Syntax.lean` | Index/operand/control syntax, fixed `Program`, structural elaboration |
 | `Exec.lean` | Canonical `run`/`exec`, statement interpreters, memory projection |
 | `Contract.lean` | Contracts, `Problem`, declared query contracts, closed `AccessModel` |
-| `Static.lean` | Full `staticCost`/`staticPeak`, `Runs`, static soundness |
+| `Static.lean` | Full `staticCost`/`staticPeak`, `Specification.Accepts` (one run accepted: success, five bounds, a postcondition), `Runs` (every run accepted), static soundness |
 | `Cert.lean` | `Algorithm`, `Impl.Satisfies` (a tree implements an operation contract), constructors |
 | `RoutineInterface.lean` | The interface of a routine: access modes, ports, regions, the two separation rules |
 | `Logic/View.lean` | Footprints of operands: `View` (runs at a period), reading, room, disjointness of views |
@@ -809,7 +816,7 @@ source guard never becomes an omitted runtime operation. See the
 | `Certification.lean` | Adapters for certificates: reading supplied buffers, counts without structural instructions |
 | `RoutineLink.lean` | A routine as the implementation of an operation contract; specifications read off a contract |
 | `Randomized.lean` | Randomized claims about a certificate: the law of the tape (`TapeModel`), the accuracy event, the failure bound and the proof on the counted run |
-| `RoutineProblem.lean` | The problem of a routine: codecs of operands, slots, `Routine.Domain`, coverage, the certificate on the derived problem and its evaluator-level statement |
+| `RoutineProblem.lean` | The problem of a routine: codecs of operands, slots, `Inputs` (routine-free) and `Routine.Domain`, coverage, the certificate on the derived problem and its evaluator-level statement |
 | `RoutineData.lean` | A routine on stored data (`Routine.withData`), its specification (`Spec.onData`) and judgment (`Meets.withData`) |
 | `Link.lean`, `Transfer.lean` | Fixed implementation tables, count projections and explicit weights |
 | `Logic.lean`, `Rules.lean`, `Counted.lean` | Conditional proof rules |

@@ -165,7 +165,7 @@ interpretation `I` of the scalar operations of the model, and every tape, the co
 fixed program from the two vectors and `n` blank cells succeeds, its work is at most $14 n + 2$
 instructions, its resident memory is at most the payload of the three buffers plus the static
 scratch of the tree, and the third buffer holds the vector of the machine sums
-`M.add (x i) (y i)`. Every pair of vectors is admitted (`NLAlib.Ops.Routine.Domain.covers`). -/
+`M.add (x i) (y i)`. Every pair of vectors is admitted (`NLAlib.Ops.Inputs.covers`). -/
 theorem vadd_checked (M : Machine ℝ) (d : Fin 1 → ℕ) (x y : Fin (d 0) → ℝ)
     (I : Interp ScalarOp CmpTst ℝ)
     (hI : (vaddModel M).contracts d (vaddDomain.input d (x, y) trivial) I) (τ : Tape ℝ) :

@@ -14,11 +14,12 @@ public import Mathlib.MeasureTheory.Measure.Real
 A total certificate supplies successful counted execution and every declared resource bound
 on every tape. When its output specification and a mathematical reference event imply a
 stronger postcondition, the complete actual failure event lies inside reference failure.
-This includes `none`, all resource violations and failure of the stronger output property.
+This includes `none`, all resource violations and failure of the stronger output property:
+the failure event is the negation of `NLAlib.Ops.Specification.Accepts`, the acceptance of a
+run that a certificate states for every run.
 
 ## Main results
 
-* `NLAlib.Ops.Specification.Accepts`: one counted outcome satisfies all resource bounds and a post.
 * `NLAlib.Ops.Algorithm.failure_subset`: actual failure is contained in reference failure.
 * `NLAlib.Ops.Algorithm.measureReal_failure_le`: a reference bound controls complete run failure.
 * `NLAlib.Ops.Algorithm.accepts_of_wp`, `NLAlib.Ops.Algorithm.measureReal_not_accepts_le_of_wp`:
@@ -33,16 +34,6 @@ namespace NLAlib.Ops
 open MeasureTheory
 
 variable {Op Tst K : Type} {r b : ℕ} {P : Problem K r b}
-
-/-- One actual counted outcome succeeds, obeys every resource claim of the specification,
-and meets the supplied postcondition on that same count and final memory. Negation includes
-failure, peak/count/work/span/resident-memory violations, and failure of the postcondition. -/
-def Specification.Accepts (S : Specification Op Tst P) (resources : ResourceModel Op Tst)
-    (d : Fin r → ℕ) (x : P.Input d) (outcome : Option (St (Op ⊕ Bookkeeping) Tst K))
-    (Q : Count (Op ⊕ Bookkeeping) Tst → Mem K → Prop) : Prop :=
-  ∃ st, outcome = some st ∧ st.peak ≤ S.scratch d ∧ st.cost ≤ S.budget d ∧
-    resources.work st.cost ≤ S.work d ∧ resources.span st.cost ≤ S.span d ∧
-    P.initialBytes d x + st.peak ≤ S.memory d ∧ Q st.cost st.mem
 
 namespace Algorithm
 

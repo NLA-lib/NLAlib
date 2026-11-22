@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Rules
+public import NLAlib.Ops.Reference.Equivalence
 
 /-!
 # Total certification and conditional proof rules
@@ -283,6 +284,18 @@ namespace Algorithm
 variable {Op Lo Tst K : Type} {r b : ℕ} {P : Problem K r b}
   {M : AccessModel Op Tst P} {S : Specification Op Tst P}
 
+/-- A certificate read with the evaluator: on every admitted input, under every interpretation
+satisfying the model and every tape, canonical execution succeeds within all five resource
+bounds, and its count and memory satisfy the output condition. Proofs use this form; the
+statement of the certificate itself is in terms of the execution rules. -/
+theorem correct_exec (A : Algorithm M S) (d : Fin r → ℕ) (hd : P.valid d) (x : P.Input d)
+    (I : Interp Op Tst K) (hI : M.contracts d x I) (τ : Tape K) :
+    ∃ st, exec A.program I M.resources P.formats τ d (P.initial d x) = some st ∧
+      st.peak ≤ S.scratch d ∧ st.cost ≤ S.budget d ∧
+      M.resources.work st.cost ≤ S.work d ∧ M.resources.span st.cost ≤ S.span d ∧
+      P.initialBytes d x + st.peak ≤ S.memory d ∧ S.good d x τ st.cost st.mem :=
+  (A.program.certifies_iff_exec M S).mp A.correct d hd x I hI τ
+
 /-- Add a pure mathematical output consequence without redoing program or resource proofs. -/
 def mapPost (A : Algorithm M S)
     (Q : (d : Fin r → ℕ) → P.Input d → Tape K → Count (Op ⊕ Bookkeeping) Tst → Mem K → Prop)
@@ -296,7 +309,7 @@ theorem wellTyped (A : Algorithm M S) : A.program.wellTyped M.resources P.format
   obtain ⟨d, hd⟩ := P.admitted
   obtain ⟨x⟩ := P.inputs_exist d hd
   obtain ⟨I, hI⟩ := M.realize d hd x
-  obtain ⟨st, hr, -⟩ := A.correct d hd x I hI (fun _ _ => M.word)
+  obtain ⟨st, hr, -⟩ := A.correct_exec d hd x I hI (fun _ _ => M.word)
   unfold exec at hr
   split_ifs at hr with h
   exact h.1
@@ -306,7 +319,7 @@ theorem run (A : Algorithm M S) {d : Fin r → ℕ} (hd : P.valid d) (x : P.Inpu
     (I : Interp Op Tst K) (hI : M.contracts d x I) (τ : Tape K) :
     ∃ c m', A.program.run I M.resources P.formats τ d (P.initial d x) = some m' ∧
       c ≤ S.budget d ∧ S.good d x τ c m' := by
-  obtain ⟨st, hr, -, hc, -, -, -, hg⟩ := A.correct d hd x I hI τ
+  obtain ⟨st, hr, -, hc, -, -, -, hg⟩ := A.correct_exec d hd x I hI τ
   have hm := congrArg (Option.map St.mem) hr
   rw [exec_mem, Option.map_some] at hm
   exact ⟨st.cost, st.mem, hm, hc, hg⟩
@@ -334,7 +347,7 @@ def ofWp (p : Program Op Tst r b)
     (hmemory : ∀ d, P.valid d → ∀ x : P.Input d,
       P.initialBytes d x + S.scratch d ≤ S.memory d) : Algorithm M S where
   program := p
-  correct d hd x I hI τ := by
+  correct := (p.certifies_iff_exec M S).mpr fun d hd x I hI τ => by
     obtain ⟨m', hr, hg⟩ := hwp d hd x I hI τ
     have hm : eval I.instrument τ p.body.instrument (Program.environment (b := b) d)
         (P.initial d x) = some m' := by rw [run_instrument]; exact hr

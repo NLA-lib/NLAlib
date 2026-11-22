@@ -442,10 +442,8 @@ theorem roundedShQRSmallEig_algorithm_measureReal_not_accepts_le {u : ℝ}
     (hδS : x.val.1.δ ≤ x.val.1.S) (hφ : 0 < x.val.1.φ) (hφ1 : x.val.1.φ ≤ 1)
     (hu : u ≤ uShQRSchur (d 0) (d 1) x.val.1.B x.val.1.Γ x.val.1.S x.val.1.δ x.val.1.φ c₁ c₂)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ (shqrSmallEigSpecification Mch c₁ c₂ admitted sG).Accepts smallEigResources d x
-      (exec (shqrSmallEigAlgorithm Mch c₁ c₂ admitted sU sG).program I smallEigResources
-        (shqrSmallEigProblem Mch c₁ c₂ admitted).formats (ξ ω) d
-        ((shqrSmallEigProblem Mch c₁ c₂ admitted).initial d x))
+    P.real {ω | ¬ (shqrSmallEigSpecification Mch c₁ c₂ admitted sG).Accepts
+        (shqrSmallEigAlgorithm Mch c₁ c₂ admitted sU sG).program I smallEigResources (ξ ω) d x
       fun _ m => ((shqrSmallEigProblem Mch c₁ c₂ admitted).initial d x).store.EqOff
           (shqrFp (d 0) (0, 0) (3, 0) (4, 0)) m.store ∧
         ShQRSpectrum (0, 0) (3, 0) (4, 0) x.val.1.matrix x.val.1.δ m} ≤ x.val.1.φ := by
@@ -500,13 +498,8 @@ theorem roundedShQRSmallEig_algorithm_measureReal_not_accepts_le_unconditional
       ginibreGapTail ginibreConditionTail)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
     P.real {ω | ¬ (shqrSmallEigSpecification Mch ginibreGapTail
-      ginibreConditionTail admitted sG).Accepts smallEigResources d x
-      (exec (shqrSmallEigAlgorithm Mch ginibreGapTail
-        ginibreConditionTail admitted sU sG).program I smallEigResources
-        (shqrSmallEigProblem Mch ginibreGapTail ginibreConditionTail
-          admitted).formats (ξ ω) d
-        ((shqrSmallEigProblem Mch ginibreGapTail ginibreConditionTail
-          admitted).initial d x))
+      ginibreConditionTail admitted sG).Accepts (shqrSmallEigAlgorithm Mch ginibreGapTail
+        ginibreConditionTail admitted sU sG).program I smallEigResources (ξ ω) d x
       fun _ m => ((shqrSmallEigProblem Mch ginibreGapTail
         ginibreConditionTail admitted).initial d x).store.EqOff
           (shqrFp (d 0) (0, 0) (3, 0) (4, 0)) m.store ∧

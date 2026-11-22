@@ -129,9 +129,10 @@ theorem estimate_checked (dataLength : ℕ → ℕ → ℕ)
     (x : (problem (𝕜 := 𝕜) dataLength).Input d) (I : Interp ExactLinear.Operation CmpTst 𝕜)
     (hI : (ExactLinear.model (problem dataLength) dataLength matrix (fun _ _ => 1)
       workspace).contracts d x I) (τ : Tape 𝕜) :
-    ∃ st, exec (estimateProgram stream) I (ExactLinear.resources (fun _ _ => 1) workspace)
+    ∃ st, Reference.Execution (estimateProgram stream) I
+        (ExactLinear.resources (fun _ _ => 1) workspace)
         (problem (𝕜 := 𝕜) dataLength).formats τ d
-        ((problem (𝕜 := 𝕜) dataLength).initial d x) = some st ∧
+        ((problem (𝕜 := 𝕜) dataLength).initial d x) st ∧
       (ExactLinear.resources (fun _ _ => 1) workspace).work st.cost ≤ operationCount d ∧
       (problem (𝕜 := 𝕜) dataLength).initialBytes d x + st.peak ≤
         dataLength (d 0) (d 0) + 1 + (2 * d 0 * (d 1 + d 2) + 2 + w) ∧

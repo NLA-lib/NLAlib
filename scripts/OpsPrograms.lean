@@ -1428,12 +1428,10 @@ has a size, and cannot change without the change being seen.
 
 The roots are the forms a claim of the library takes, for every problem, model and bound:
 
-* `Ops.Algorithm` (a certificate), with `Ops.Program.Certifies`, `Ops.Specification`,
-  `Ops.Problem`, `Ops.AccessModel` and `Ops.exec` (they are reached from it; they are named so
-  that a renaming is noticed);
-* `Ops.Reference.Execution` and `Ops.Reference.Accepts`: the same execution stated by inference
-  rules, which a reader may use in place of the evaluator
-  (`Ops.Reference.execution_iff_exec`);
+* `Ops.Algorithm` (a certificate), with `Ops.Program.Certifies`, `Ops.Runs`,
+  `Ops.Specification`, `Ops.Specification.Accepts`, `Ops.Problem`, `Ops.AccessModel` and
+  `Ops.Reference.Execution`, the execution rules by which a run is defined (they are reached
+  from it; they are named so that a renaming is noticed);
 * `Ops.RandomizedClaim`, with `Ops.Algorithm.FailsAtMost` and `Ops.TapeModel.Realizable`;
 * `Ops.Inputs`, `Ops.Inputs.problem`, `Ops.Inputs.Oracles` and `Ops.Inputs.Checked`: a derived
   problem, declared unstored inputs, and the form of the readable `_checked` statements.
@@ -1447,6 +1445,11 @@ What a particular certificate adds (its codecs, its tape law, its machine and th
 its operations, its bounds) is not here: it is read with that certificate, and
 `OPS_CERTIFICATES_REPORT` prints it. Tactics, static bounds, routines, their judgment and
 linking are not here either: they produce certificates, which are checked against these roots.
+
+The evaluator `Ops.exec`, with the instrumentation pass and the counted evaluator it is made
+of, is not here: no root is stated with it. It computes the outcome the rules derive
+(`Ops.Reference.execution_iff_exec`) and the proofs use it. The check fails if it becomes
+reachable from a root.
 
 ## The closure
 
@@ -1464,9 +1467,11 @@ One line for each declaration, sorted:
 
 `Name kind=… module=… root=yes|no route=… type=… body=…`
 
-* `route`: `evaluator` if the declaration is reached from `Ops.exec` and not from
-  `Ops.Reference.Execution`; `reference` for the converse; `execution` if from both; `claim`
-  if from neither (problems, models, specifications, randomized claims);
+* `route`: `reference` if the declaration is reached from `Ops.Reference.Execution` and not
+  from `Ops.exec`; `execution` if from both (the store, the syntax, the counts, which the rules
+  and the evaluator share); `evaluator` if the evaluator uses it and the rules do not (it is
+  in the base for another reason, such as the statement of a contract); `claim` if from neither
+  (problems, models, specifications, randomized claims);
 * `type`, `body`: hashes of the statement and of the content. A changed `type` is a changed
   statement; a changed `body` alone is a changed definition with the same statement.
 
@@ -1479,9 +1484,9 @@ namespace OpsTrustedBase
 
 /-- The roots: the forms of the claims of the library (see the section docstring). -/
 def roots : List Name := [
-  `NLAlib.Ops.Algorithm, `NLAlib.Ops.Program.Certifies, `NLAlib.Ops.Specification,
-  `NLAlib.Ops.Problem, `NLAlib.Ops.AccessModel, `NLAlib.Ops.exec,
-  `NLAlib.Ops.Reference.Execution, `NLAlib.Ops.Reference.Accepts,
+  `NLAlib.Ops.Algorithm, `NLAlib.Ops.Program.Certifies, `NLAlib.Ops.Runs,
+  `NLAlib.Ops.Specification, `NLAlib.Ops.Specification.Accepts,
+  `NLAlib.Ops.Problem, `NLAlib.Ops.AccessModel, `NLAlib.Ops.Reference.Execution,
   `NLAlib.Ops.RandomizedClaim, `NLAlib.Ops.Algorithm.FailsAtMost,
   `NLAlib.Ops.TapeModel.Realizable,
   `NLAlib.Ops.Inputs, `NLAlib.Ops.Inputs.problem,
@@ -1489,8 +1494,12 @@ def roots : List Name := [
   `NLAlib.Ops.AccessModel.Uniform, `NLAlib.Ops.AccessModel.Confined,
   `NLAlib.Ops.AccessModel.Charged]
 
-/-- The execution by the evaluator. -/
+/-- The execution by the evaluator. It is not a root, and must not be reached from one. -/
 def evaluatorRoot : Name := `NLAlib.Ops.exec
+/-- The evaluator and what it is made of: none may be reached from a root. -/
+def evaluatorParts : List Name := [
+  `NLAlib.Ops.exec, `NLAlib.Ops.evalCounted, `NLAlib.Ops.eval, `NLAlib.Ops.Stmt.instrument,
+  `NLAlib.Ops.Interp.instrument, `NLAlib.Ops.instrumentWorkspace]
 /-- The execution by the reference rules. -/
 def referenceRoot : Name := `NLAlib.Ops.Reference.Execution
 
@@ -1747,13 +1756,17 @@ run_cmd liftTermElabM do
   if ← path.pathExists then
     known := (← IO.FS.lines path).filterMap Line.parse
   for e in differences path.toString known lines do logError m!"{e}"
-  -- the base if the reference rules were the definition: the evaluator is not entered
-  let withoutEvaluator := (close env keep (NameSet.empty.insert evaluatorRoot) roots).listed env
+  -- a certificate is stated with the execution rules: the evaluator is not in the base
+  for c in evaluatorParts do
+    unless (env.find? c).isSome do logError m!"trusted base: {c} does not exist"
+    if all.reached.contains c then
+      logError m!"trusted base: {c}, part of the evaluator, is reached from a root; a {""
+        }certificate is stated with the execution rules (Ops.Reference.Execution)"
   logInfo m!"ops trusted base: {lines.size} declarations in {modules.size} modules, {""
     }{total} source lines, {all.outside.size} constants of Mathlib and Lean; {""
-    }the evaluator reaches {(evaluator.listed env).size} ({evalOnly.1} only it, {""
-    }{evalOnly.2} lines), the reference rules {(reference.listed env).size} ({refOnly.1} only {""
-    }they, {refOnly.2} lines); without the evaluator {withoutEvaluator.size}"
+    }the execution rules reach {(reference.listed env).size} ({refOnly.1} only they, {""
+    }{refOnly.2} lines); the evaluator is not in the base, and {evalOnly.1} of its {""
+    }declarations ({evalOnly.2} lines) are, for another reason"
   match runFixtures env with
   | .ok n => logInfo m!"ops trusted base fixtures: {n} checks"
   | .error e => logError m!"trusted base fixture: {e}"

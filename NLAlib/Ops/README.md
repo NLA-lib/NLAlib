@@ -4,9 +4,10 @@ The canonical API lives in the existing syntax, evaluator, contracts, static ana
 certification files. Lint is optional prover guidance; none of these guarantees depends on it.
 
 For semantic review, start with the [reviewer's declaration map](../../docs/design/Ops-ReferenceReview.md).
-It lists the declarations a reader must believe, the reference execution rules (`Reference/`: a
-readable restatement of execution, with a kernel-checked equivalence to the evaluator), the
-deterministic and probabilistic read-back theorems, and worked resource examples. The computed
+It lists the declarations a reader must believe, the execution rules (`Reference/`: the
+definition of a run and of its charges, with which every certificate is stated; the evaluator
+`exec` is proved to compute the same outcome and is used by the proofs), the evaluator forms of
+the deterministic and probabilistic statements, and worked resource examples. The computed
 list of those declarations is `scripts/ops_trusted_base.txt` (see `docs/contributing/checks.md`).
 
 ## Execution and operation models
@@ -451,14 +452,15 @@ The interface in detail:
   `Routine.algorithm` on that problem; that the supplied buffers hold the blocks read and have
   room for the blocks written is proved once (`readBlocks_initial`, `room_initial`), not by the
   author. `D.checked` states what a certificate says for the admitted inputs, in terms of the
-  evaluator: for every admitted size and tuple of inputs, every interpretation satisfying the
+  execution rules: for every admitted size and tuple of inputs, every interpretation satisfying the
   contracts and every tape, the run from the buffers of the slots (`D.memory`) succeeds within
   the resources of the specification — scratch, budget, work, span, and resident memory: the
   words of the inputs `D.bytes d` plus the peak of the run are at most `S.memory d` — and
   satisfies its output condition. `D.Checked A` is
   that statement as one proposition: every such run is accepted (`Specification.Accepts`, the
-  one definition of success within the five bounds with a postcondition, which the certificate
-  `Runs` and the failure event of a randomized claim also use); `D.checked_all` proves it of
+  one definition of an outcome derived by the execution rules, within the five bounds, with a
+  postcondition, which the certificate `Runs` and the failure event of a randomized claim also
+  use); `D.checked_all` proves it of
   every certificate. A
   family's `_checked` theorem is either that proposition (`algorithm_checked`, `sign_checked`,
   `smallEig_checked`, …) or a form with the output written on values: `Mem.Holds c i a` says
@@ -470,7 +472,7 @@ The interface in detail:
   `D.algorithmAt` is the same certificate when the specification depends on the input of the
   problem and not only on its data, as for a matrix-free solver whose matrix the model supplies.
   `D.certify` is the counted certificate (`Routine.certify` on the derived problem), with the
-  payload `D.bytes` computed from the slots, and `D.checked_post` its evaluator-level statement:
+  payload `D.bytes` computed from the slots, and `D.checked_post` its statement on one run:
   the reported operands hold blocks satisfying the postcondition. A domain depends on its
   routine only through the interface, so `D.cast` reads it at another routine with the same
   dimensions and operands, and the problem is the same (`problem_cast`).
@@ -484,7 +486,7 @@ A reviewer of a certified routine reads its `Routine.Spec`, the problem (`valid`
 any `derived` operand of its `Routine.Domain`), the
 model (which operations exist and what each costs) and the stated work. `Examples/Routine.lean`
 and `Examples/RoutineCertification.lean` are a complete small case, ending in a statement in
-terms of the evaluator alone; `Examples/VectorSum.lean` is the same chain in one file for a loop
+terms of the execution rules alone; `Examples/VectorSum.lean` is the same chain in one file for a loop
 over the cells of a block.
 
 The names of routines, specifications, judgments, certificates and their files follow one
@@ -803,7 +805,10 @@ source guard never becomes an omitted runtime operation. See the
 | `Syntax.lean` | Index/operand/control syntax, fixed `Program`, structural elaboration |
 | `Exec.lean` | Canonical `run`/`exec`, statement interpreters, memory projection |
 | `Contract.lean` | Contracts, `Problem`, declared query contracts, closed `AccessModel` |
-| `Static.lean` | Full `staticCost`/`staticPeak`, `Specification.Accepts` (one run accepted: success, five bounds, a postcondition), `Runs` (every run accepted), static soundness |
+| `Reference/Semantics.lean` | The execution rules: what a run is and what each construct is charged (`Reference.Derives`, `Reference.Execution`) |
+| `Specification.lean` | `Specification`, `Specification.Accepts` (one run accepted: an outcome derived by the rules, five bounds, a postcondition), `Runs` (every run accepted) |
+| `Static.lean` | Full `staticCost`/`staticPeak`, static soundness |
+| `Reference/Accounting.lean`, `Reference/Equivalence.lean`, `Reference/Probability.lean` | The evaluator computes the outcome of the rules (`Reference.execution_iff_exec`); the evaluator forms of acceptance, certification and randomized claims (`…_exec`) |
 | `Cert.lean` | `Algorithm`, `Impl.Satisfies` (a tree implements an operation contract), constructors |
 | `RoutineInterface.lean` | The interface of a routine: access modes, ports, regions, the two separation rules |
 | `Logic/View.lean` | Footprints of operands: `View` (runs at a period), reading, room, disjointness of views |
@@ -816,7 +821,7 @@ source guard never becomes an omitted runtime operation. See the
 | `Certification.lean` | Adapters for certificates: reading supplied buffers, counts without structural instructions |
 | `RoutineLink.lean` | A routine as the implementation of an operation contract; specifications read off a contract |
 | `Randomized.lean` | Randomized claims about a certificate: the law of the tape (`TapeModel`), the accuracy event, the failure bound and the proof on the counted run |
-| `RoutineProblem.lean` | The problem of a routine: codecs of operands, slots, `Inputs` (routine-free) and `Routine.Domain`, coverage, the certificate on the derived problem and its evaluator-level statement |
+| `RoutineProblem.lean` | The problem of a routine: codecs of operands, slots, `Inputs` (routine-free) and `Routine.Domain`, coverage, the certificate on the derived problem and its statement on one run |
 | `RoutineData.lean` | A routine on stored data (`Routine.withData`), its specification (`Spec.onData`) and judgment (`Meets.withData`) |
 | `Link.lean`, `Transfer.lean` | Fixed implementation tables, count projections and explicit weights |
 | `Logic.lean`, `Rules.lean`, `Counted.lean` | Conditional proof rules |

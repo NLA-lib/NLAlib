@@ -1366,6 +1366,7 @@ public import NLAlib.Ops.RoutineSyntax
 public import NLAlib.Ops.Rules
 public import NLAlib.Ops.RunMeasurable
 public import NLAlib.Ops.SelectedWork
+public import NLAlib.Ops.Specification
 public import NLAlib.Ops.Static
 public import NLAlib.Ops.Store
 public import NLAlib.Ops.StoreSimp

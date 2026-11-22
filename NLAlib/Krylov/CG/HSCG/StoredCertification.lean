@@ -170,9 +170,10 @@ theorem stored_checked (d : Fin 2 → ℕ) (hd : domain d)
     (hI : (ExactBlas.model (problem domain admitted supply) .unit).contracts d
       ((inputs domain admitted supply).input d (A, rhs) ⟨hA, hrhs⟩) I)
     (τ : Tape ℝ) :
-    ∃ st, exec program I (ExactBlas.model (problem domain admitted supply) .unit).resources
+    ∃ st, Reference.Execution
+        program I (ExactBlas.model (problem domain admitted supply) .unit).resources
         (inputs domain admitted supply).formats τ d
-        ((inputs domain admitted supply).memory d (A, rhs)) = some st ∧
+        ((inputs domain admitted supply).memory d (A, rhs)) st ∧
       (ExactBlas.model (problem domain admitted supply) .unit).resources.work st.cost ≤
         operationCount d ∧
       (inputs domain admitted supply).bytes d + st.peak ≤

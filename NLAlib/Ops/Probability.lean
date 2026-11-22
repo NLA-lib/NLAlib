@@ -49,17 +49,16 @@ include hd hI hPost
 /-- The reference event strengthens the postcondition of the actual counted execution.
 Success and all resource facts come from the total certificate, rather than premises. -/
 theorem accepts_of_reference (omega : Omega) (hR : R omega) :
-    S.Accepts model.resources d x
-      (exec A.program I model.resources P.formats (tape omega) d (P.initial d x)) (Q omega) := by
+    S.Accepts A.program I model.resources (tape omega) d x (Q omega) := by
   obtain ⟨st, hrun, hpeak, hcount, hwork, hspan, hmemory, hgood⟩ :=
-    A.correct d hd x I hI (tape omega)
-  exact ⟨st, hrun, hpeak, hcount, hwork, hspan, hmemory, hPost omega st.cost st.mem hgood hR⟩
+    A.correct_exec d hd x I hI (tape omega)
+  exact (S.accepts_iff_exec ..).mpr
+    ⟨st, hrun, hpeak, hcount, hwork, hspan, hmemory, hPost omega st.cost st.mem hgood hR⟩
 
 /-- Actual counted failure, including any resource or output violation, is a subset of
 mathematical reference failure. No execution-success assumption is required. -/
 theorem failure_subset :
-    {omega | ¬ S.Accepts model.resources d x
-      (exec A.program I model.resources P.formats (tape omega) d (P.initial d x)) (Q omega)} ⊆
+    {omega | ¬ S.Accepts A.program I model.resources (tape omega) d x (Q omega)} ⊆
       {omega | ¬ R omega} := by
   intro omega hbad hR
   exact hbad (A.accepts_of_reference hd x I hI tape R Q hPost omega hR)
@@ -67,8 +66,7 @@ theorem failure_subset :
 /-- Outer measure of complete actual failure is bounded by reference failure, without
 additional measurability assumptions on the supplied postcondition. -/
 theorem measure_failure_le [MeasurableSpace Omega] (mu : Measure Omega) :
-    mu {omega | ¬ S.Accepts model.resources d x
-      (exec A.program I model.resources P.formats (tape omega) d (P.initial d x)) (Q omega)} ≤
+    mu {omega | ¬ S.Accepts A.program I model.resources (tape omega) d x (Q omega)} ≤
       mu {omega | ¬ R omega} :=
   measure_mono (A.failure_subset hd x I hI tape R Q hPost)
 
@@ -76,8 +74,7 @@ theorem measure_failure_le [MeasurableSpace Omega] (mu : Measure Omega) :
 failure event of the same canonical run. Finiteness rules out converting infinity to real zero. -/
 theorem measureReal_failure_le [MeasurableSpace Omega] (mu : Measure Omega)
     [IsFiniteMeasure mu] {delta : ℝ} (hBound : mu.real {omega | ¬ R omega} ≤ delta) :
-    mu.real {omega | ¬ S.Accepts model.resources d x
-      (exec A.program I model.resources P.formats (tape omega) d (P.initial d x)) (Q omega)} ≤
+    mu.real {omega | ¬ S.Accepts A.program I model.resources (tape omega) d x (Q omega)} ≤
       delta :=
   (measureReal_mono (A.failure_subset hd x I hI tape R Q hPost)).trans hBound
 
@@ -99,21 +96,20 @@ memory is the final memory of the memory semantics, so it meets `Q`. Unlike
 final memory: a relational model is allowed. -/
 theorem accepts_of_wp {τ : Tape K} {Q : Mem K → Prop}
     (h : Wp .total I τ A.program.body (Program.environment (b := b) d) Q (P.initial d x)) :
-    S.Accepts model.resources d x
-      (exec A.program I model.resources P.formats τ d (P.initial d x)) fun _ m => Q m := by
-  obtain ⟨st, hrun, hpeak, hcount, hwork, hspan, hmemory, -⟩ := A.correct d hd x I hI τ
+    S.Accepts A.program I model.resources τ d x fun _ m => Q m := by
+  obtain ⟨st, hrun, hpeak, hcount, hwork, hspan, hmemory, -⟩ := A.correct_exec d hd x I hI τ
   obtain ⟨m', he, hQ⟩ := h
   have hm := exec_mem A.program I model.resources P.formats τ d (P.initial d x)
   rw [hrun, Option.map_some, Ops.run, if_pos ⟨A.wellTyped, by simp [Problem.initial]⟩, he] at hm
-  exact ⟨st, hrun, hpeak, hcount, hwork, hspan, hmemory, (Option.some.inj hm) ▸ hQ⟩
+  exact (S.accepts_iff_exec ..).mpr
+    ⟨st, hrun, hpeak, hcount, hwork, hspan, hmemory, (Option.some.inj hm) ▸ hQ⟩
 
 /-- Complete failure of the counted run (failure, a violated resource bound of the
 specification, or failure of `Q`) is a subset of failure of the total postcondition `Q` of the
 memory semantics. -/
 theorem not_accepts_subset_of_wp {Omega : Type} (tape : Omega → Tape K)
     (Q : Omega → Mem K → Prop) :
-    {omega | ¬ S.Accepts model.resources d x
-      (exec A.program I model.resources P.formats (tape omega) d (P.initial d x))
+    {omega | ¬ S.Accepts A.program I model.resources (tape omega) d x
         fun _ m => Q omega m} ⊆
       {omega | ¬ Wp .total I (tape omega) A.program.body (Program.environment (b := b) d)
         (Q omega) (P.initial d x)} :=
@@ -128,8 +124,7 @@ theorem measureReal_not_accepts_le_of_wp {Omega : Type} [MeasurableSpace Omega]
     (Q : Omega → Mem K → Prop) {delta : ℝ}
     (hBound : mu.real {omega | ¬ Wp .total I (tape omega) A.program.body
       (Program.environment (b := b) d) (Q omega) (P.initial d x)} ≤ delta) :
-    mu.real {omega | ¬ S.Accepts model.resources d x
-      (exec A.program I model.resources P.formats (tape omega) d (P.initial d x))
+    mu.real {omega | ¬ S.Accepts A.program I model.resources (tape omega) d x
         fun _ m => Q omega m} ≤ delta :=
   (measureReal_mono (A.not_accepts_subset_of_wp hd x I hI tape Q)).trans hBound
 

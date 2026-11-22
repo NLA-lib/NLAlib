@@ -243,7 +243,8 @@ example (S : Specification Empty Empty mixedProblem) (h : S.scratch (fun _ => 0)
   let x : mixedProblem.Input (fun _ => 0) := ⟨⟨(), Fin.elim0⟩, trivial⟩
   have hi : mixedModel.contracts (fun _ => 0) x emptyInterp :=
     ⟨(fun o => nomatch o), (fun q => nomatch q)⟩
-  obtain ⟨st, he, hp, -⟩ := hc (fun _ => 0) trivial x emptyInterp hi (fun _ _ => ())
+  obtain ⟨st, he, hp, -⟩ := (Program.certifies_iff_exec _ _ _).mp hc (fun _ => 0) trivial x
+    emptyInterp hi (fun _ _ => ())
   obtain ⟨actual, ha, hpeak, -, -⟩ := exec_allocation24 (fun _ => 0)
   change exec allocation24 emptyInterp memoryResources mixedProblem.formats
     (fun _ _ => ()) (fun _ => 0) ⟨[], 0⟩ = some st at he

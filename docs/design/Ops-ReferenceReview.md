@@ -1,21 +1,26 @@
 # Reviewing the meaning of an Ops certificate
 
-This is the human review boundary for the reference semantics, not a requirement
-to inspect every algorithm proof. Start with the reference rules, follow the
+This is the human review boundary for the meaning of a certificate, not a requirement
+to inspect every algorithm proof. Start with the execution rules, follow the
 shared definitions below, then inspect the particular problem, model and claim.
 Generated constructors, projections and recursors are covered by their parent
 structure or inductive declaration; their implementation is checked by Lean.
 
-The reference rules share memory, index and format definitions with the
-implementation. The equivalence proof establishes agreement with these explicit
-shared choices. It does not independently validate their intended meaning.
+The execution rules share memory, index and format definitions with the
+evaluator the proofs compute with. The equivalence proof establishes agreement with
+these explicit shared choices. It does not independently validate their intended meaning.
 
 ## What this is, and what it is not
 
-The reference rules are a readable restatement of execution and accounting. Lean checks that
-they give exactly the outcome of the evaluator the certificates are defined with. That removes
-the instrumentation and the counted evaluator from what a reader must study. It does not show
-that the rules, or the definitions they share with the evaluator, express the intended
+The execution rules (`NLAlib.Ops.Reference`) are the definition of what a run is and what it
+is charged: a certificate (`Program.Certifies`), the acceptance of one run
+(`Specification.Accepts`), a randomized claim and the readable `_checked` statements are all
+stated with `Reference.Execution`. The evaluator `exec`, with the instrumentation pass and the
+counted evaluator it is made of, is proof machinery: Lean checks that it computes exactly the
+outcome the rules derive (`Reference.execution_iff_exec`), the theorems named `_exec` restate
+each statement with it, and no statement a reader must believe mentions it. The trusted-base
+check fails if the evaluator becomes reachable from a certificate's statement. None of this
+shows that the rules, or the definitions they share with the evaluator, express the intended
 semantics: that is the judgement this review asks for.
 
 The computed list of every library declaration a certificate's meaning depends on is
@@ -34,7 +39,7 @@ These are choices, not consequences. They hold for every model and every certifi
 | An early-exit loop pays one final query evaluation | `Reference.Derives.whileFuel` | The dimension and address charges of the loop's query are added once with `exit`, also when the fuel runs out and no query is made. The count is then an upper allowance, by at most that one evaluation. |
 | Query workspace is reserved, not tracked | `Reference.Execution`, `ResourceModel.queryReserve` | The largest workspace among the executed queries is added once to the allocation and primitive peak. The scratch figure is an envelope, not the maximum of simultaneously live bytes. |
 
-## 1. The reference rules and their public meaning
+## 1. The execution rules and their public meaning
 
 Names in this section have the prefix `NLAlib.Ops.Reference`.
 
@@ -47,18 +52,23 @@ Names in this section have the prefix `NLAlib.Ops.Reference`.
 | `Repeats.zero`, `Repeats.succ` | [Reference/Semantics.lean](../../NLAlib/Ops/Reference/Semantics.lean) | A counted loop executes indices zero through the cap minus one, with one round charge each. |
 | `While.cap`, `While.stop`, `While.step` | [Reference/Semantics.lean](../../NLAlib/Ops/Reference/Semantics.lean) | A query precedes each body; false stops; zero fuel performs no query; the returned index is used by the continuation. |
 | `Execution` | [Reference/Semantics.lean](../../NLAlib/Ops/Reference/Semantics.lean) | Initial counts/live scratch/peak are zero. Format and buffer-arity checks are required. The final peak adds the conservative query reservation exactly once. |
-| `Accepts` | [Reference/Probability.lean](../../NLAlib/Ops/Reference/Probability.lean) | The same derived outcome satisfies all five resource bounds and the supplied accuracy event. No event means no accuracy claim. |
 
-Read the statement of
-[`Program.certifies_iff_reference`](../../NLAlib/Ops/Reference/Equivalence.lean)
-next. It universally quantifies admitted sizes, inputs, interpretations satisfying
-the model, and tapes. The existential outcome satisfies the source rules, scratch,
-counts, work, span, resident memory and `good`, on that same execution.
+Read [`Specification.Accepts` and `Runs`](../../NLAlib/Ops/Specification.lean) next: sixty
+lines that say what a certificate states. `Runs` universally quantifies admitted sizes, inputs,
+interpretations satisfying the model, and tapes. The existential outcome is derived by the
+rules and satisfies scratch, counts, work, span, resident memory and `good`, on that same
+execution.
 
-For randomized claims, read
-[`Algorithm.failsAtMost_iff_reference` and `RandomizedClaim.reference_holds`](../../NLAlib/Ops/Reference/Probability.lean).
-They retain the original law, `admits`, `interprets`, event and bound. Negated
-acceptance includes execution failure and every resource/event violation.
+A randomized claim ([`Algorithm.FailsAtMost`](../../NLAlib/Ops/Randomized.lean)) bounds the
+measure of the tapes at which the run is not accepted, with the claim's law, `admits`,
+`interprets`, event and bound. Negated acceptance includes execution failure (no outcome is
+derived) and every resource/event violation.
+
+The same statements with the evaluator are
+[`Specification.accepts_iff_exec`, `Program.certifies_iff_exec`](../../NLAlib/Ops/Reference/Equivalence.lean),
+`Algorithm.correct_exec` and
+[`Algorithm.failsAtMost_iff_exec`, `RandomizedClaim.holds_exec`](../../NLAlib/Ops/Reference/Probability.lean).
+They are for proofs; a reviewer need not read them.
 
 ## 2. Shared memory and tape definitions
 
@@ -83,7 +93,7 @@ Names in this and the next sections have the prefix `NLAlib.Ops`.
 | `Env`, `Env.pushIdx`, `.pushBuf`, `.frame` | [Syntax.lean](../../NLAlib/Ops/Syntax.lean) | Loops extend index scope; allocations extend handle scope; frames supply fresh dimensions, offsets and handles. |
 | `Stmt`, `Note`, `Bookkeeping` | [Syntax.lean](../../NLAlib/Ops/Syntax.lean) | The permitted statement forms, bounded control flow, metadata and distinct structural charge names. There are no runtime syntax-building callbacks. |
 | `Program`, `Program.environment` | [Syntax.lean](../../NLAlib/Ops/Syntax.lean) | One tree is fixed before runtime inputs. Its initial environment contains only sizes, zero offsets and supplied handles. |
-| `OperandSignature`, `Operand.formatList`, `Stmt.wellTyped`, `Program.wellTyped` | [Syntax.lean](../../NLAlib/Ops/Syntax.lean) | All initial/allocated formats must be declared. Calls and both query forms match operand signatures; frames inherit the actual buffer formats, including aliases. |
+| `OperandSignature`, `Operand.formatList`, `Stmt.wellTyped`, `Program.wellTyped` | [Syntax.lean](../../NLAlib/Ops/Syntax.lean) | All initial/allocated formats must be declared. Calls and both query forms match operand signatures; frames inherit the actual buffer formats, including aliases. This check is what gives the byte figures their meaning: a width is only a label on a buffer, and the check is the reason data labelled with one format reaches only operations declared for that format. |
 
 ## 4. Primitive meanings, counts and resources
 
@@ -112,7 +122,7 @@ to checking the chosen instantiation and its explicit assumptions.
 | `Problem`, `Problem.Input`, `.initial`, `.initialBytes` | [Contract.lean](../../NLAlib/Ops/Contract.lean) | Admitted sizes/data/raw buffers cover the intended problem. Initial memory contains exactly the supplied words. Resident payload includes uninitialized capacity. |
 | `Codec`, `Slot`, `Inputs`, `Inputs.problem`, `.buffers`, `.memory`, `.input` | [RoutineProblem.lean](../../NLAlib/Ops/RoutineProblem.lean) | Typed inputs, derived preprocessing buffers, blank outputs, unstored data and acceptance are all visible. Codecs invert at the declared lengths. |
 | `Inputs.Oracles` | [RoutineProblem.lean](../../NLAlib/Ops/RoutineProblem.lean) | Unstored data is reached through the declared operations. Their meaning and cost match the claimed abstraction. |
-| `Specification`, `Specification.Accepts`, `Runs`, `Program.Certifies` | [Static.lean](../../NLAlib/Ops/Static.lean) | `Accepts` is one run accepted: success, the five bounds and a postcondition on the same counted outcome; `Runs` is every run accepted with `good`. All bounds and `good` concern the same counted outcome; input-dependent accuracy conditions have not been confused with size-only resource bounds. |
+| `Specification`, `Specification.Accepts`, `Runs`, `Program.Certifies` | [Specification.lean](../../NLAlib/Ops/Specification.lean) | `Accepts` is one run accepted: the rules derive an outcome, within the five bounds, with a postcondition on the same counted outcome; `Runs` is every run accepted with `good`. All bounds and `good` concern the same counted outcome; input-dependent accuracy conditions have not been confused with size-only resource bounds. |
 | `Algorithm` | [Cert.lean](../../NLAlib/Ops/Cert.lean) | The proof certifies the particular fixed program, model and specification under review. |
 | `ScalarOp`, `Machine`, `Machine.fn`, `AnyOperands`, `IsScalar` | [Catalog/Scalar.lean](../../NLAlib/Ops/Catalog/Scalar.lean) | Scalar contracts refer to the intended word functions and decoding. |
 | `StdModel` | [Catalog/Scalar.lean](../../NLAlib/Ops/Catalog/Scalar.lean) | Relative-error arithmetic includes square root; negation is exact. Division accuracy requires a nonzero decoded divisor and square-root accuracy a nonnegative argument. Overflow/underflow are outside this model. Check any additional roundoff hypotheses of the particular theorem. |
@@ -123,8 +133,7 @@ to checking the chosen instantiation and its explicit assumptions.
 
 | Exact declarations | Source | What to check |
 |---|---|---|
-| `Reference.Accepts` | [Reference/Probability.lean](../../NLAlib/Ops/Reference/Probability.lean) | Successful source execution, all resource bounds and the exact accuracy event. A separate deterministic output guarantee is still supplied by the algorithm certificate. |
-| `Specification.Accepts` | [Static.lean](../../NLAlib/Ops/Static.lean) | The canonical event being bridged includes failure and every resource/event violation, rather than conditioning on successful execution. |
+| `Specification.Accepts` | [Specification.lean](../../NLAlib/Ops/Specification.lean) | An outcome derived by the rules, all resource bounds and the exact accuracy event. Its negation includes failure and every resource/event violation, rather than conditioning on successful execution. A separate deterministic output guarantee is still supplied by the algorithm certificate. |
 | `TapeModel`, `TapeModel.streams`, `.packed`, `.Realizable` | [Randomized.lean](../../NLAlib/Ops/Randomized.lean) | Which tapes and distributions are covered; stream identifiers are distinct; a probability-space witness exists under the claim's input assumptions. |
 | `IsTapeLaw` | [TapeLaw.lean](../../NLAlib/Ops/TapeLaw.lean) | The specified entry distributions, measurability and joint independence are what the intended algorithm requires. |
 | `Algorithm.FailsAtMost` | [Randomized.lean](../../NLAlib/Ops/Randomized.lean) | Quantifier order fixes the interpretation before sampling. The measure is finite; check that the chosen law gives the intended probability normalization. |
@@ -166,8 +175,8 @@ and live scratch returns to zero.
 
 [`Reference/Accounting.lean`](../../NLAlib/Ops/Reference/Accounting.lean) and
 [`Reference/Equivalence.lean`](../../NLAlib/Ops/Reference/Equivalence.lean) establish
-exact agreement with canonical execution, including failure, and the full
-certificate read-back. The source bridge's live-scratch/peak invariant holds
+exact agreement of the evaluator with the rules, including failure, and the
+evaluator form of a certificate. The source bridge's live-scratch/peak invariant holds
 from the initial zero state; the canonical theorem adds no hypothesis for it.
 
 The probability bridge identifies acceptance events pointwise before taking

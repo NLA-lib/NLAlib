@@ -530,10 +530,8 @@ theorem smallEig_algorithm_measureReal_not_accepts_le {u : ℝ} (hM : StdModel u
     (hδS : x.val.1.δ ≤ x.val.1.S) (hφ : 0 < x.val.1.φ) (hφ1 : x.val.1.φ ≤ 1)
     (hu : u ≤ uSmallEig nmax x.val.1.S x.val.1.δ x.val.1.φ c₁ c₂)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ (smallEigSpecification Mch nmax c₁ c₂ admitted sG).Accepts smallEigResources d x
-      (exec (smallEigAlgorithm Mch nmax c₁ c₂ admitted sU sG).program I smallEigResources
-        (smallEigProblem Mch nmax c₁ c₂ admitted).formats (ξ ω) d
-        ((smallEigProblem Mch nmax c₁ c₂ admitted).initial d x))
+    P.real {ω | ¬ (smallEigSpecification Mch nmax c₁ c₂ admitted sG).Accepts
+        (smallEigAlgorithm Mch nmax c₁ c₂ admitted sU sG).program I smallEigResources (ξ ω) d x
       fun _ m => ((smallEigProblem Mch nmax c₁ c₂ admitted).initial d x).store.EqOff
           (Store.inBlock 0 0 (2 * ((d 0 + 1) * (d 0 + 1))) ⊔
             Store.inBlock 2 0 (2 * ((d 0 + 1) * (d 0 + 1)))) m.store ∧
@@ -587,13 +585,8 @@ theorem smallEig_algorithm_measureReal_not_accepts_le_unconditional
       ginibreConditionTail)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
     P.real {ω | ¬ (smallEigSpecification Mch nmax ginibreGapTail
-      ginibreConditionTail admitted sG).Accepts smallEigResources d x
-      (exec (smallEigAlgorithm Mch nmax ginibreGapTail
-        ginibreConditionTail admitted sU sG).program I smallEigResources
-        (smallEigProblem Mch nmax ginibreGapTail ginibreConditionTail
-          admitted).formats (ξ ω) d
-        ((smallEigProblem Mch nmax ginibreGapTail ginibreConditionTail
-          admitted).initial d x))
+      ginibreConditionTail admitted sG).Accepts (smallEigAlgorithm Mch nmax ginibreGapTail
+        ginibreConditionTail admitted sU sG).program I smallEigResources (ξ ω) d x
       fun _ m => ((smallEigProblem Mch nmax ginibreGapTail
         ginibreConditionTail admitted).initial d x).store.EqOff
           (Store.inBlock 0 0 (2 * ((d 0 + 1) * (d 0 + 1))) ⊔

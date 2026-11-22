@@ -130,9 +130,10 @@ to read a certificate, and compares them with `scripts/ops_trusted_base.txt`. Le
 checks every proof, so no proof is in the list; what is in it is what the statements are made
 of.
 
-- *Roots.* The forms a claim takes: `Ops.Algorithm` (with `Ops.Program.Certifies`,
-  `Ops.Specification`, `Ops.Problem`, `Ops.AccessModel`, `Ops.exec`); the reference rules
-  `Ops.Reference.Execution` and `Ops.Reference.Accepts`; `Ops.RandomizedClaim` (with
+- *Roots.* The forms a claim takes: `Ops.Algorithm` (with `Ops.Program.Certifies`, `Ops.Runs`,
+  `Ops.Specification`, `Ops.Specification.Accepts`, `Ops.Problem`, `Ops.AccessModel` and the
+  execution rules `Ops.Reference.Execution`, by which a run is defined); `Ops.RandomizedClaim`
+  (with
   `Ops.Algorithm.FailsAtMost`, `Ops.TapeModel.Realizable`); `Ops.Inputs`, its `problem`,
   `Ops.Inputs.Oracles` and `Ops.Inputs.Checked`; and the three model properties
   the report prints. What one certificate adds (codecs, a tape law, a machine, the contracts of
@@ -142,11 +143,13 @@ of.
   type or structure, of its constructors). Theorems are not followed. Declarations Lean
   generates are followed and not listed. Only library declarations are listed.
 - *File.* One line for each declaration: `Name kind=… module=… root=… route=… type=… body=…`.
-  `route` says whether the declaration is reached from the evaluator only, from the reference
-  rules only, from both (`execution`) or from neither (`claim`). `type` and `body` are hashes of
+  `route` says whether the declaration is reached from the execution rules only
+  (`reference`), from the rules and the evaluator (`execution`: the store, the syntax, the
+  counts), from neither (`claim`), or is used by the evaluator and not by the rules
+  (`evaluator`: it is in the list for another reason, such as the statement of a contract). `type` and `body` are hashes of
   the statement and of the content.
 - *Output.* The run prints `ops trusted base: N declarations in M modules, L source lines, …`
-  with the sizes of the two routes, and `ops trusted base fixtures: 6 checks` (the closure rule
+  with the size of what the execution rules reach, and `ops trusted base fixtures: 6 checks` (the closure rule
   and the comparison, tested on constants of the script).
 
 The check fails when a declaration enters or leaves the list, or when a statement or a

@@ -25,7 +25,7 @@ instruction count is computed by the kernel from the tree.
 ## Main results
 
 * `NLAlib.Ops.Examples.Routines.sum2Algorithm`: the certificate.
-* `NLAlib.Ops.Examples.Routines.sum2_checked`: what it states, in terms of the evaluator.
+* `NLAlib.Ops.Examples.Routines.sum2_checked`: what it states, in terms of the execution rules.
 -/
 
 @[expose] public section
@@ -120,8 +120,8 @@ Every pair of vectors is admitted (`NLAlib.Ops.Inputs.covers`). -/
 theorem sum2_checked (M : Machine ℝ) (u : ℝ) (hM : StdModel u id M) (hu : 0 ≤ u)
     (d : Fin 1 → ℕ) (x y : Fin (d 0) → ℝ) (I : Interp ScalarOp CmpTst ℝ)
     (hI : (sum2Model M).contracts d (sum2Domain.input d (x, y) trivial) I) (τ : Tape ℝ) :
-    ∃ st, exec sum2Program I (sum2Model M).resources sum2Domain.formats τ d
-        (sum2Domain.memory d (x, y)) = some st ∧
+    ∃ st, Reference.Execution sum2Program I (sum2Model M).resources sum2Domain.formats τ d
+        (sum2Domain.memory d (x, y)) st ∧
       (sum2Model M).resources.work st.cost ≤ 24 * d 0 + 63 ∧
       sum2Domain.bytes d + st.peak ≤
         sum2Domain.bytes d + staticPeak (sum2Model M).resources sum2Program d ∧

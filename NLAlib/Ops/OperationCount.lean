@@ -431,8 +431,9 @@ def Algorithm.withCountPoly {K : Type} {r b : ℕ} {P : Problem K r b}
     Algorithm M { S with work := W, span := W } where
   program := A.program
   correct := by
+    refine (Program.certifies_iff_exec _ _ _).mpr ?_
     intro d hd x I hI τ
-    obtain ⟨st, hr, hp, hc, -, -, hm, hg⟩ := A.correct d hd x I hI τ
+    obtain ⟨st, hr, hp, hc, -, -, hm, hg⟩ := A.correct_exec d hd x I hI τ
     have hw := (A.program.exec_work_le_countPoly M.resources hop hcore hq hr).trans (hW d hd)
     exact ⟨st, hr, hp, hc, hw, (M.resources.span_le_work st.cost).trans hw, hm, hg⟩
 

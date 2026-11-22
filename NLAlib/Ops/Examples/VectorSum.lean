@@ -31,7 +31,7 @@ invariant, the read of one cell of a block, and a block-valued output in the rea
 
 * `NLAlib.Ops.Examples.VectorSum.vadd_meets`: the routine meets its specification.
 * `NLAlib.Ops.Examples.VectorSum.vadd_checked`: what the certificate states, in terms of the
-  evaluator.
+  execution rules.
 -/
 
 @[expose] public section
@@ -169,8 +169,8 @@ scratch of the tree, and the third buffer holds the vector of the machine sums
 theorem vadd_checked (M : Machine ℝ) (d : Fin 1 → ℕ) (x y : Fin (d 0) → ℝ)
     (I : Interp ScalarOp CmpTst ℝ)
     (hI : (vaddModel M).contracts d (vaddDomain.input d (x, y) trivial) I) (τ : Tape ℝ) :
-    ∃ st, exec vaddProgram I (vaddModel M).resources vaddDomain.formats τ d
-        (vaddDomain.memory d (x, y)) = some st ∧
+    ∃ st, Reference.Execution vaddProgram I (vaddModel M).resources vaddDomain.formats τ d
+        (vaddDomain.memory d (x, y)) st ∧
       (vaddModel M).resources.work st.cost ≤ 14 * d 0 + 2 ∧
       vaddDomain.bytes d + st.peak ≤
         vaddDomain.bytes d + staticPeak (vaddModel M).resources vaddProgram d ∧

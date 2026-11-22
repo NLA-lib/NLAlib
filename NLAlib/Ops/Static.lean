@@ -24,9 +24,9 @@ statement with counts and workspace.
 
 ## Main definitions
 
-* `NLAlib.Ops.Specification`, `NLAlib.Ops.Specification.Accepts`: a claim, and one run accepted
-  by it (success, the five resource bounds and a postcondition).
-* `NLAlib.Ops.Runs`, `NLAlib.Ops.Program.Certifies`: every run of a fixed program is accepted.
+* `NLAlib.Ops.stmtCost`, `NLAlib.Ops.stmtPeak`: the static count and workspace of a tree.
+* `NLAlib.Ops.staticCost`, `NLAlib.Ops.staticPeak`: those of a program, with its structural
+  instructions.
 
 ## Main results
 
@@ -334,55 +334,6 @@ theorem ConditionalRuns.mono {I : Interp Op Tst K} {W : Op → List ℕ → ℕ}
       := by
   obtain ⟨st', h1, h2, h3, h4⟩ := h
   exact ⟨st', h1, h2.trans hB, h3.trans hM, hQ _ h4⟩
-
-/-- An independently specified algorithmic claim. All resource budgets depend on sizes alone.
-The actual counted postcondition may also depend on the input and tape. Structural instructions
-are separate operation names in the same count, so omitting them is a false budget claim. -/
-structure Specification (Op Tst : Type) {K : Type} {r b : ℕ} (P : Problem K r b) where
-  /-- Budget for original operations, queries, index evaluation and control. -/
-  budget : (Fin r → ℕ) → Count (Op ⊕ Bookkeeping) Tst
-  /-- Peak additional scratch payload bytes above the declared buffers. -/
-  scratch : (Fin r → ℕ) → ℕ
-  /-- Total modeled work, including explicit structural work. -/
-  work : (Fin r → ℕ) → ℕ
-  /-- Sequential composition of modeled primitive critical paths. -/
-  span : (Fin r → ℕ) → ℕ
-  /-- Initial buffer payload plus peak scratch payload bytes. -/
-  memory : (Fin r → ℕ) → ℕ
-  /-- The postcondition of this same successful, counted execution. -/
-  good : (d : Fin r → ℕ) → P.Input d → Tape K →
-    Count (Op ⊕ Bookkeeping) Tst → Mem K → Prop
-
-/-- **A run is accepted.** One actual counted outcome succeeds, obeys every resource claim of
-the specification (scratch, counts, work, span, and resident memory: the payload of the supplied
-buffers plus the peak scratch), and meets the supplied postcondition on that same count and
-final memory. Negation includes failure, a violation of any of the five bounds, and failure of
-the postcondition. A certificate states that every run is accepted (`NLAlib.Ops.Runs`); a
-randomized claim bounds the probability that a run is not
-(`NLAlib.Ops.Algorithm.FailsAtMost`). -/
-def Specification.Accepts {Op Tst K : Type} {r b : ℕ} {P : Problem K r b}
-    (S : Specification Op Tst P) (resources : ResourceModel Op Tst)
-    (d : Fin r → ℕ) (x : P.Input d) (outcome : Option (St (Op ⊕ Bookkeeping) Tst K))
-    (Q : Count (Op ⊕ Bookkeeping) Tst → Mem K → Prop) : Prop :=
-  ∃ st, outcome = some st ∧ st.peak ≤ S.scratch d ∧ st.cost ≤ S.budget d ∧
-    resources.work st.cost ≤ S.work d ∧ resources.span st.cost ≤ S.span d ∧
-    P.initialBytes d x + st.peak ≤ S.memory d ∧ Q st.cost st.mem
-
-/-- Total certification of this fixed program against an independently specified model and
-claim: at every admitted size, for every input, every interpretation satisfying the contracts
-of the model and every tape, the run from the supplied buffers is accepted
-(`NLAlib.Ops.Specification.Accepts`) with the output condition of the specification. A target
-can require this proposition directly, fixing the program before every runtime size and input.
-Realizability is already required by the type of the model. -/
-def Runs {Op Tst K : Type} {r b : ℕ} {P : Problem K r b}
-    (p : Program Op Tst r b) (M : AccessModel Op Tst P) (S : Specification Op Tst P) : Prop :=
-  ∀ d, P.valid d → ∀ (x : P.Input d) (I : Interp Op Tst K), M.contracts d x I → ∀ τ,
-    S.Accepts M.resources d x (exec p I M.resources P.formats τ d (P.initial d x)) (S.good d x τ)
-
-/-- Certification is the canonical total run proposition for one fixed tree and model. -/
-abbrev Program.Certifies {Op Tst K : Type} {r b : ℕ} {P : Problem K r b}
-    (p : Program Op Tst r b) (M : AccessModel Op Tst P) (S : Specification Op Tst P) : Prop :=
-  Runs p M S
 
 /-- Full canonical static count, including index expressions and control. -/
 noncomputable def staticCost {r b : ℕ} (p : Program Op Tst r b) (d : Fin r → ℕ) :

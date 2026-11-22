@@ -1,10 +1,11 @@
 # A reference semantics for Ops certificates
 
-Status: implemented. The reference rules are a readable restatement of execution and
-accounting, with a kernel-checked two-way equivalence to the evaluator. They do not replace
-the certificate definition, which is stated with `exec`, and they do not validate the
-definitions they share with it. The reviewer-facing list is
-[Ops-ReferenceReview.md](Ops-ReferenceReview.md).
+Status: implemented, and the rules are the definition. A certificate
+(`Program.Certifies`, through `Specification.Accepts` in `NLAlib/Ops/Specification.lean`) is
+stated with `Reference.Execution`. The evaluator `exec` has a kernel-checked two-way
+equivalence with the rules and is proof machinery; the theorems named `_exec` restate each
+statement with it. The rules do not validate the definitions they share with the evaluator.
+The reviewer-facing list is [Ops-ReferenceReview.md](Ops-ReferenceReview.md).
 
 ## Purpose and review boundary
 
@@ -68,21 +69,24 @@ theorem exec_eq_none_iff ... :
       ¬ ∃ out, Reference.Execution p I R formats τ d m out
 ```
 
-`Program.certifies_iff_reference` proves the equivalence for the whole certificate.
-`Algorithm.reference_correct` replaces its `exec = some` clause with
-`Reference.Execution`, preserving all five resource inequalities and `good`.
-The probability read-back described below uses that same outcome; no second
-probability calculus is needed.
+`Specification.Accepts S p I R τ d x Q` says that the rules derive an outcome of `p` from the
+buffers of `x`, within the five resource bounds, whose count and memory satisfy `Q`. `Runs`
+(`Program.Certifies`) says that every run is accepted with the output condition of the
+specification, and `Algorithm.FailsAtMost` bounds the measure of the tapes at which a run is
+not accepted with the accuracy event. `Inputs.Checked` and the readable `_checked` statements
+are stated the same way.
 
-### Review-package additions
+### Evaluator forms
 
-`Reference/Probability.lean` adds `Reference.Accepts`, the conjunction of a source
-execution, the five resource bounds and an event on its count and memory.
-`Reference.accepts_iff` identifies it with canonical acceptance, without input
-admission or measurability premises. `Algorithm.failsAtMost_iff_reference` reads
-the entire existing failure-bound proposition through this equivalence, and
-`RandomizedClaim.reference_holds` applies it under the exact original law,
-`admits`, `interprets` and bound. Realizability remains the claim's existing field.
+Proofs compute with the evaluator. `Specification.accepts_iff_exec` and
+`Program.certifies_iff_exec` (`Reference/Equivalence.lean`) restate acceptance and
+certification with `exec = some`, with all five resource inequalities and `good`;
+`Algorithm.correct_exec` is the evaluator form of a certificate's field `correct`.
+`Algorithm.failsAtMost_iff_exec` and `RandomizedClaim.holds_exec`
+(`Reference/Probability.lean`) do the same for a randomized claim, under the same law,
+`admits`, `interprets`, event and bound. The equivalence is pointwise in the tape, so no
+measurability premise or second probability calculus is needed. Realizability remains the
+claim's existing field.
 
 `Examples/Reference.lean` also includes nested 2-byte and 8-byte allocations, a
 7-byte primitive workspace, and a 5-byte query workspace after the inner buffer
@@ -119,7 +123,7 @@ to the document, so they work in a checkout or on the repository host.
 2. `NLAlib/Ops/Reference/Accounting.lean`: tally bridges, the live-scratch/peak
    invariant, and equations for instrumented execution at source constructs.
 3. `NLAlib/Ops/Reference/Equivalence.lean`: soundness/completeness, failure,
-   determinism and certificate read-back. Proofs belong here so that proof
+   determinism and the evaluator forms of acceptance and certification. Proofs belong here so that proof
    engineering does not enlarge the reference-rule file.
 4. `NLAlib/Ops/Examples/Reference.lean`: the zero/one-fuel boundary with a refusing
    query and an aborting body, derived under the reference rules and transferred
@@ -127,9 +131,10 @@ to the document, so they work in a checkout or on the repository host.
    one fuel unit fails at the query. The payload examples independently state
    nested allocation peaks, unequal widths/weights, query maxima and resident
    payload, then derive them under the reference rules.
-5. `NLAlib/Ops/Reference/Probability.lean`: reference acceptance and its pointwise
-   equivalence with canonical acceptance, the full failure-bound equivalence and
-   the read-back for an existing `RandomizedClaim`.
+5. `NLAlib/Ops/Reference/Probability.lean`: the evaluator form of the failure
+   bound and of an existing `RandomizedClaim`.
+6. `NLAlib/Ops/Specification.lean`: `Specification`, acceptance of one run and
+   certification, stated with the rules.
 
 The Ops README and the routine guide link the reviewer map, and the vocabulary
 guide has the declarative execution and randomized read-back rows.
@@ -142,8 +147,9 @@ its recorded peak; `consistent_of_evalCounted` preserves this invariant. Canonic
 execution starts with zero live scratch and zero peak, so its equivalence theorem
 has no additional hypothesis.
 
-The development does not change the evaluator, contracts or certificate definitions.
-The root import exposes the checked bridge without changing any existing algorithm.
+The evaluator and the contracts are unchanged. The certificate definitions are restated
+with the rules; by `Program.certifies_iff_exec` each certificate states exactly what it stated
+before, and no certified program, count or bound changes.
 
 ## Review questions
 

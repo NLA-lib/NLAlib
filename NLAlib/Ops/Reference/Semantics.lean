@@ -18,8 +18,10 @@ The format predicate and memory/index operations remain shared semantic definiti
 final query reservation is conservative: it adds the largest executed query workspace to
 the allocation/primitive peak. These choices are part of the reference statement.
 
-`NLAlib/Ops/Reference/Equivalence.lean` proves equivalence with canonical execution and reads
-every certificate through these rules. The rules do not replace the certificate definition.
+These rules are the definition of a run: `NLAlib.Ops.Specification.Accepts` and
+`NLAlib.Ops.Runs` (`NLAlib/Ops/Specification.lean`) state acceptance and certification with
+`NLAlib.Ops.Reference.Execution`. `NLAlib/Ops/Reference/Equivalence.lean` proves that the
+evaluator `NLAlib.Ops.exec`, which the proofs compute with, gives exactly the same outcome.
 
 ## Main definitions
 

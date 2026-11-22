@@ -98,9 +98,7 @@ theorem measureReal_not_accepts_le_of_reference
         specNorm (U * W - decodeMatrix dec (deflate F (d 1) (inputMatrix d x) (G omega))) ≤
           error} ≤ theta) :
     P.real {omega | ¬ (wordSpecification F.mm F.qr domain admitted
-      matrixWork matrixWorkspace).Accepts model.resources d x
-        (exec algorithm.program I model.resources (problem (K := K) domain admitted).formats
-          (tape omega) d ((problem (K := K) domain admitted).initial d x))
+      matrixWork matrixWorkspace).Accepts algorithm.program I model.resources (tape omega) d x
         (fun c m => (wordSpecification F.mm F.qr domain admitted
             matrixWork matrixWorkspace).good d x (tape omega) c m ∧
           StoresApproxBasis dec U error (1, 0) m)} ≤ theta := by
@@ -143,11 +141,10 @@ theorem measureReal_not_accepts_packedGaussianTape_le_of_hasLaw_complexGaussianM
     (G : Omega → Matrix (Fin (d 0)) (Fin (d 0)) ℂ)
     (hG : HasLaw G (complexGaussianMatrix (Fin (d 0)) (Fin (d 0))) P) :
     P.real {omega | ¬ (wordSpecification F.mm F.qr domain admitted
-      matrixWork matrixWorkspace).Accepts (Dense.resources matrixWork matrixWorkspace) d input
-        (exec (deflateAlgorithm M dec F.mm F.qr domain admitted
-            matrixWork matrixWorkspace hRank).program I (Dense.resources matrixWork matrixWorkspace)
-          (problem (K := K) domain admitted).formats (packedGaussianTape F.normal (G omega))
-          d ((problem (K := K) domain admitted).initial d input))
+      matrixWork matrixWorkspace).Accepts (deflateAlgorithm M dec F.mm F.qr domain admitted
+            matrixWork matrixWorkspace hRank).program I
+          (Dense.resources matrixWork matrixWorkspace) (packedGaussianTape F.normal (G omega))
+          d input
         (fun c m => (wordSpecification F.mm F.qr domain admitted
             matrixWork matrixWorkspace).good d input (packedGaussianTape F.normal (G omega)) c m ∧
           StoresApproxBasis dec U

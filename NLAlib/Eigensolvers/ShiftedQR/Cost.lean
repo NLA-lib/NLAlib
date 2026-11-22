@@ -169,7 +169,7 @@ theorem exactAlgorithm_runs_with_work_le
       (deflationSpecification scalarDecouple kernelWork kernelWorkspace).good
         d x tape st.cost st.mem := by
   obtain ⟨st, hr, hp, hc, hw, hs, hm, hg⟩ :=
-    (exactDeflationAlgorithm kernelWork kernelWorkspace).correct d hd x I hI tape
+    (exactDeflationAlgorithm kernelWork kernelWorkspace).correct_exec d hd x I hI tape
   have hwork : (resources kernelWork kernelWorkspace).work st.cost ≤
       exactPolynomialWork kernelWork d :=
     exactTreeWork_eq kernelWork d ▸
@@ -198,9 +198,10 @@ noncomputable def countedDeflationAlgorithm
       (exactWorkSpecification kernelWork kernelWorkspace) where
   program := deflationProgram scalarDecouple
   correct := by
+    refine (Ops.Program.certifies_iff_exec _ _ _).mpr ?_
     intro d hd x I hI tape
     obtain ⟨old, hold, hp, hc, hw, hs, hm, hg⟩ :=
-      (forwardDeflationAlgorithm kernelWork kernelWorkspace).correct d hd x I hI tape
+      (forwardDeflationAlgorithm kernelWork kernelWorkspace).correct_exec d hd x I hI tape
     obtain ⟨st, hr, hwork, hspan, -⟩ :=
       exactAlgorithm_runs_with_work_le kernelWork kernelWorkspace hd x I hI tape
     have he : old = st := Option.some.inj (hold.symm.trans hr)

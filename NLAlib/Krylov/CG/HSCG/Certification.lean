@@ -233,9 +233,9 @@ theorem cg_checked (d : Fin 2 → ℕ) (hd : domain d)
     (hrhs : d 1 ≤ krylovGrade A rhs) (I : Interp HSPCG.Signature Empty ℝ)
     (hI : (unitModel domain admitted supply).contracts d
       ((inputs domain admitted supply).input d (A, rhs) ⟨hA, hrhs⟩) I) (τ : Tape ℝ) :
-    ∃ st, exec program I (unitModel domain admitted supply).resources
+    ∃ st, Reference.Execution program I (unitModel domain admitted supply).resources
         (inputs domain admitted supply).formats τ d
-        ((inputs domain admitted supply).memory d (A, rhs)) = some st ∧
+        ((inputs domain admitted supply).memory d (A, rhs)) st ∧
       (unitModel domain admitted supply).resources.work st.cost ≤
         6 * d 0 + 127 * d 1 + 92 ∧
       (inputs domain admitted supply).bytes d + st.peak ≤

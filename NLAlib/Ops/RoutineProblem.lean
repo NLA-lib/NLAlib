@@ -466,13 +466,13 @@ theorem initialBytes_eq_bytes {d : Fin r → ℕ} (X : D.problem.Input d) :
 /-- What a certificate states, for the admitted inputs, with the payload written on the slots.
 For every admitted size, every tuple of inputs satisfying `accepts`, every interpretation
 satisfying the contracts of the model and every tape, the run of the fixed program from the
-buffers of the slots succeeds, within the scratch, the budget, the work, the span and the memory
-of the specification (the resident payload of the slots plus the peak scratch of the run), and
-its final memory satisfies the output condition. -/
+buffers of the slots succeeds (the execution rules derive its outcome), within the scratch, the
+budget, the work, the span and the memory of the specification (the resident payload of the
+slots plus the peak scratch of the run), and its final memory satisfies the output condition. -/
 theorem checked {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.problem}
     (A : Algorithm M S) (d : Fin r → ℕ) (hd : D.valid d) (x : D.In d) (hx : D.accepts d x)
     (I : Interp Op Tst K) (hI : M.contracts d (D.input d x hx) I) (τ : Tape K) :
-    ∃ st, exec A.program I M.resources D.formats τ d (D.memory d x) = some st ∧
+    ∃ st, Reference.Execution A.program I M.resources D.formats τ d (D.memory d x) st ∧
       st.peak ≤ S.scratch d ∧ st.cost ≤ S.budget d ∧
       M.resources.work st.cost ≤ S.work d ∧ M.resources.span st.cost ≤ S.span d ∧
       D.bytes d + st.peak ≤ S.memory d ∧
@@ -494,8 +494,7 @@ def Checked {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.probl
     (A : Algorithm M S) : Prop :=
   ∀ (d : Fin r → ℕ), D.valid d → ∀ (x : D.In d) (hx : D.accepts d x) (I : Interp Op Tst K),
     M.contracts d (D.input d x hx) I → ∀ τ : Tape K,
-    S.Accepts M.resources d (D.input d x hx)
-      (exec A.program I M.resources D.formats τ d (D.memory d x)) (S.good d (D.input d x hx) τ)
+    S.Accepts A.program I M.resources τ d (D.input d x hx) (S.good d (D.input d x hx) τ)
 
 /-- Every certificate on the problem states `NLAlib.Ops.Inputs.Checked`. -/
 theorem checked_all {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.problem}
@@ -709,7 +708,7 @@ theorem checked_post {M : AccessModel Op Tst D.problem}
       (fun d X => D.blocks d X.val.1) D.bytes work))
     (d : Fin r → ℕ) (hd : D.valid d) (x : D.In d) (hx : D.accepts d x)
     (I : Interp Op Tst K) (hI : M.contracts d (D.input d x hx) I) (τ : Tape K) :
-    ∃ st, exec A.program I M.resources D.formats τ d (D.memory d x) = some st ∧
+    ∃ st, Reference.Execution A.program I M.resources D.formats τ d (D.memory d x) st ∧
       M.resources.work st.cost ≤ work d ∧
       D.bytes d + st.peak ≤ D.bytes d + staticPeak M.resources (R.close r b) d ∧ ∃ ys,
         st.mem.readBlocks (R.outArgs (slots b)) (R.outLens (List.ofFn d)) = some ys ∧

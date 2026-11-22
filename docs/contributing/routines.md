@@ -18,7 +18,7 @@ one layer uses only the statement of the layer below, never its proof.
 | fragment | a piece of one routine's tree, a plain `Stmt` written with `ops%` | one lemma `X_writes` in operand form (`Writes`): what the run writes and where | nobody outside the proof of its routine |
 | routine | a tree with an interface, written with `routine%` | one judgment `XRoutine_meets : XRoutine.Meets I XSpec` | authors of callers |
 | certificate | the routine on a problem, under a model | `Algorithm M S`, built by `Routine.Domain.certify` or `Routine.Domain.algorithm` | the certificate check |
-| readable statement | the certificate, in terms of the evaluator | `X_checked` | reviewer |
+| readable statement | the certificate, on the mathematical inputs and the execution rules | `X_checked` | reviewer |
 
 A randomized guarantee adds one object beside the certificate: a `RandomizedClaim` of it
 ([programs](programs.md), "Resources and probability").
@@ -28,11 +28,16 @@ What a reviewer reads is short: the specification of the routine (`Routine.Spec`
 about the routine), the model (operations, contracts, costs) and the `_checked` theorem. The
 tree, the judgment and the count are checked by Lean.
 
-What "run" and "counted" mean is stated twice: by the evaluator, which the certificate is
-defined with, and by the reference rules of `NLAlib/Ops/Reference/Semantics.lean`, a readable
-restatement with the charge of each construct written in its rule. The two are proved to give
-the same outcome. The [reviewer's declaration map](../design/Ops-ReferenceReview.md) lists every
-definition such a reading depends on.
+What "run" and "counted" mean is defined by the execution rules of
+`NLAlib/Ops/Reference/Semantics.lean`, with the charge of each construct written in its rule:
+a certificate says that `Reference.Execution` derives an accepted outcome
+(`NLAlib/Ops/Specification.lean`). The evaluator `exec` computes the same outcome
+(`Reference.execution_iff_exec`); it is what proofs compute with, and no statement a reviewer
+reads mentions it. A proof that needs the evaluator form of a certificate `A` uses
+`A.correct_exec` in place of `A.correct`, and one that builds a certificate from an evaluator
+statement uses `Program.certifies_iff_exec`. The
+[reviewer's declaration map](../design/Ops-ReferenceReview.md) lists every definition a reading
+of a certificate depends on.
 
 **Routine or fragment.** A tree is a routine when it has operands of its own and something
 calls it through its interface: a `run` in another tree, a linking table, or a certificate. A
@@ -369,8 +374,8 @@ theorem sum2_checked (M : Machine ℝ) (u : ℝ) (hM : StdModel u id M) (hu : 0 
 ```
 
 (`Examples/RoutineCertification.lean`; the rest of the proof rewrites sums over positions as
-sums over `Fin`.) The statement mentions the evaluator `exec`, the inputs as mathematical
-values and the output as a value held by a buffer (`Mem.Holds codec i v`), and nothing of
+sums over `Fin`.) The statement mentions the execution rules (`Reference.Execution … st`:
+the rules derive the outcome `st`), the inputs as mathematical values and the output as a value held by a buffer (`Mem.Holds codec i v`), and nothing of
 routines, judgments or the program logic. `checked_post` gives it from a certificate built by
 `certify`; **read_outputs** names the reported blocks.
 

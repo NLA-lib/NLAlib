@@ -6,20 +6,21 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Reference.Accounting
-public import NLAlib.Ops.Cert
+public import NLAlib.Ops.Specification
 
 /-!
 # Equivalence of declarative and canonical execution
 
-The reference rules are connected to the evaluator with exact outcomes, rather than an
-upper bound on accounting or a conditional statement about a successful output.
+The execution rules, with which certificates are stated, are connected to the evaluator with
+exact outcomes, rather than an upper bound on accounting or a conditional statement about a
+successful output. Proofs compute with the evaluator and use the forms below.
 
 ## Main results
 
 * `NLAlib.Ops.Reference.execution_iff_exec`: exact agreement on the entire execution outcome.
 * `NLAlib.Ops.Reference.exec_eq_none_iff`: failure is the absence of a source derivation.
-* `NLAlib.Ops.Program.certifies_iff_reference`: the mathematical meaning of a certificate.
-* `NLAlib.Ops.Algorithm.reference_correct`: a certificate obeys the reference rules and bounds.
+* `NLAlib.Ops.Specification.accepts_iff_exec`, `NLAlib.Ops.Program.certifies_iff_exec`:
+  acceptance of a run and certification, read with the evaluator.
 -/
 
 @[expose] public section
@@ -446,46 +447,34 @@ theorem Execution.unique {r b : ℕ} {p : Program Op Tst r b}
 
 end NLAlib.Ops.Reference
 
-namespace NLAlib.Ops.Program
+namespace NLAlib.Ops
 
 variable {Op Tst K : Type} {r b : ℕ} {P : Problem K r b}
 
-/-- Certification is equivalent to total execution under the independent source rules,
-with the same scratch, counts, work, span, resident memory and output on every admitted input. -/
-theorem certifies_iff_reference (p : Program Op Tst r b) (M : AccessModel Op Tst P)
+/-- Acceptance of a run, read with the evaluator: canonical execution succeeds with an outcome
+within the five resource bounds that meets the postcondition. Neither admission, successful
+execution nor event measurability is a premise. -/
+theorem Specification.accepts_iff_exec (S : Specification Op Tst P) (p : Program Op Tst r b)
+    (I : Interp Op Tst K) (R : ResourceModel Op Tst) (τ : Tape K)
+    (d : Fin r → ℕ) (x : P.Input d) (Q : Count (Op ⊕ Bookkeeping) Tst → Mem K → Prop) :
+    S.Accepts p I R τ d x Q ↔
+      ∃ st, exec p I R P.formats τ d (P.initial d x) = some st ∧
+        st.peak ≤ S.scratch d ∧ st.cost ≤ S.budget d ∧
+        R.work st.cost ≤ S.work d ∧ R.span st.cost ≤ S.span d ∧
+        P.initialBytes d x + st.peak ≤ S.memory d ∧ Q st.cost st.mem := by
+  simp only [Specification.Accepts, Reference.execution_iff_exec]
+
+/-- Certification, read with the evaluator: on every admitted input, under every interpretation
+satisfying the model and every tape, canonical execution succeeds with the same scratch, counts,
+work, span, resident memory and output condition. -/
+theorem Program.certifies_iff_exec (p : Program Op Tst r b) (M : AccessModel Op Tst P)
     (S : Specification Op Tst P) :
     p.Certifies M S ↔
       ∀ d, P.valid d → ∀ (x : P.Input d) (I : Interp Op Tst K), M.contracts d x I → ∀ τ,
-        ∃ st, Reference.Execution p I M.resources P.formats τ d (P.initial d x) st ∧
+        ∃ st, exec p I M.resources P.formats τ d (P.initial d x) = some st ∧
           st.peak ≤ S.scratch d ∧ st.cost ≤ S.budget d ∧
           M.resources.work st.cost ≤ S.work d ∧ M.resources.span st.cost ≤ S.span d ∧
           P.initialBytes d x + st.peak ≤ S.memory d ∧ S.good d x τ st.cost st.mem := by
-  constructor
-  · intro h d hd x I hI τ
-    obtain ⟨st, hr, hbounds⟩ := h d hd x I hI τ
-    exact ⟨st, (Reference.execution_iff_exec I M.resources τ p P.formats d
-      (P.initial d x) st).mpr hr, hbounds⟩
-  · intro h d hd x I hI τ
-    obtain ⟨st, hr, hbounds⟩ := h d hd x I hI τ
-    exact ⟨st, (Reference.execution_iff_exec I M.resources τ p P.formats d
-      (P.initial d x) st).mp hr, hbounds⟩
+  simp only [Program.Certifies, Runs, Specification.accepts_iff_exec]
 
-end NLAlib.Ops.Program
-
-namespace NLAlib.Ops.Algorithm
-
-variable {Op Tst K : Type} {r b : ℕ} {P : Problem K r b}
-  {M : AccessModel Op Tst P} {S : Specification Op Tst P}
-
-/-- A certificate has its advertised meaning under the independent source rules: every
-admitted input, interpreter and tape has one execution obeying all five resource bounds
-and the output condition on that same count and memory. -/
-theorem reference_correct (A : Algorithm M S) (d : Fin r → ℕ) (hd : P.valid d)
-    (x : P.Input d) (I : Interp Op Tst K) (hI : M.contracts d x I) (τ : Tape K) :
-    ∃ st, Reference.Execution A.program I M.resources P.formats τ d (P.initial d x) st ∧
-      st.peak ≤ S.scratch d ∧ st.cost ≤ S.budget d ∧
-      M.resources.work st.cost ≤ S.work d ∧ M.resources.span st.cost ≤ S.span d ∧
-      P.initialBytes d x + st.peak ≤ S.memory d ∧ S.good d x τ st.cost st.mem := by
-  exact (A.program.certifies_iff_reference M S).mp A.correct d hd x I hI τ
-
-end NLAlib.Ops.Algorithm
+end NLAlib.Ops

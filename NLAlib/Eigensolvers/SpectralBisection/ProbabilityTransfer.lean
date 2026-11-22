@@ -83,9 +83,7 @@ theorem measureReal_not_accepts_le_of_wordSpecification
       (fun i => dec ((inputResult M dec mm qr d x (tape omega)).2 i))
       (2 * dec (x.val.1.2 1) * dec (x.val.1.2 0)) (dec (x.val.1.2 1) / 3)} ≤ theta) :
     P.real {omega | ¬ (wordSpecification M dec mm qr domain admitted
-      budget scratch work span memory).Accepts model.resources d x
-        (exec algorithm.program I model.resources (problem (K := K) domain admitted).formats
-          (tape omega) d ((problem (K := K) domain admitted).initial d x))
+      budget scratch work span memory).Accepts algorithm.program I model.resources (tape omega) d x
         (fun c m => (wordSpecification M dec mm qr domain admitted
             budget scratch work span memory).good d x (tape omega) c m ∧
           StoresApproxDiagonalization dec (inputMatrix d x)

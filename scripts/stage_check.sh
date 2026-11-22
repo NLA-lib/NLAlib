@@ -13,7 +13,8 @@
 # (scripts/replay_fixtures.sh), the program checks
 # (scripts/OpsPrograms.lean, E2 and fixed Ops certificate coverage), the reference check, the named-bound
 # value check (scripts/check_constants.py, on the whole library), the freshness of the generated
-# rule files (scripts/gen_rules_md.py --check), the rules check
+# rule files (scripts/gen_rules_md.py --check), the unit tests of the check scripts
+# (scripts/test_*.py and scripts/test_check_latex.mjs, as CI runs them), the rules check
 # (scripts/check_rules.py, by rule id, the naming rules N1–N18 included, on an extraction of those
 # modules) and the duplicate-statement report (which never fails the script). Logs go to $TMPDIR
 # (default /tmp). Run from the repository root; never while another build is running.
@@ -59,11 +60,18 @@ LEAN_NUM_THREADS=1 lake env lean -M 8000 scripts/OpsPrograms.lean > "$tmp/progra
 grep -E '^ops (programs|certificates):' "$tmp/programs.log"
 python3 scripts/check_refs.py | tail -1
 python3 scripts/gen_rules_md.py --check
+# the unit tests of the check scripts, as CI's "Documentation metadata regressions" step
+python3 -m unittest discover -s scripts -p 'test_*.py' > "$tmp/unittest.log" 2>&1 || \
+  { tail -40 "$tmp/unittest.log"; exit 1; }
+grep -E '^Ran ' "$tmp/unittest.log"
 python3 scripts/check_constants.py > "$tmp/constants.log" || { cat "$tmp/constants.log"; exit 1; }
 tail -1 "$tmp/constants.log"
 if node --input-type=module -e "await import('katex')" 2>/dev/null; then
   node scripts/check_latex.mjs > "$tmp/latex.log" 2>&1 || { cat "$tmp/latex.log"; exit 1; }
   tail -1 "$tmp/latex.log"
+  node --test scripts/test_check_latex.mjs > "$tmp/latex-test.log" 2>&1 || \
+    { cat "$tmp/latex-test.log"; exit 1; }
+  grep -E '^# pass ' "$tmp/latex-test.log"
 else
   echo "check_latex: skipped, KaTeX not found (npm install --no-save --no-package-lock katex@0.16.22)"
 fi

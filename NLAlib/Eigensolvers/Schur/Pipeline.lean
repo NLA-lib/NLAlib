@@ -72,12 +72,12 @@ def schurPipelineWith (Nm Reg Red Core : Stmt O Q) : Stmt O Q :=
       call (Has.inj ScalarOp.div) [] (R, S) → (R);
       for t < 2 * (N * N) { call (Has.inj ScalarOp.mul) [] (A[t], R) → (A[t]) };
       run Reg [N, nr] (A, P, A);
-      run (PairMatrix.identity (Op := O) (Tst := Q)) [N] (U);
+      run (PairMatrix.identityRoutine (Op := O) (Tst := Q)) [N] (U);
       run Red [N] (A, U, A, U);
       run Core [N, nq, k, F, T] (A, P[nr], U, A, U, Fl);
       for t < 2 * (N * N) { call (Has.inj ScalarOp.mul) [] (A[t], S) → (A[t]) }
     } else {
-      run (PairMatrix.identity (Op := O) (Tst := Q)) [N] (U);
+      run (PairMatrix.identityRoutine (Op := O) (Tst := Q)) [N] (U);
       call (Has.inj IndexOp.lit) [0] () → (Fl)
     }
   }

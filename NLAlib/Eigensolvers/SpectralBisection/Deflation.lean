@@ -187,11 +187,15 @@ theorem deflate_writes {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
       Store.readBlock_packFinMatrix_columns C hQ₃ hr
   have hz₃ : z.2 + 2 * (k * r) ≤ μ₃.store.len z.1 := by
     rw [hfr₃.len_eq, hfr₂.len_eq, hfr₁.len_eq]; exact hz₀
-  refine (writes_frame rfl rfl (by
-    simp [Mem.Live, hfr₃.length_eq, hfr₂.length_eq, hfr₁.length_eq, hs]; omega)
-    (PairMatrix.copy_writes hS (by
-      simp [Mem.Live, hfr₃.length_eq, hfr₂.length_eq, hfr₁.length_eq, hs]; omega)
-      (Or.inl (Fp.disj_inBlock_of_ne (by dsimp only; omega))) hread hz₃)).mono le_sup_left ?_
-  exact fun _ _ hp => ⟨hp.1.trans (hpos₃.trans (hpos₂.trans hpos₁)), hp.2⟩
+  have hlive₃ : μ₃.Live [(μ.store.length + 2, 0), z] := by
+    simp [Mem.Live, hfr₃.length_eq, hfr₂.length_eq, hfr₁.length_eq, hs]; omega
+  have hroom₃ : μ₃.Room [z] [2 * (k * r)] := by
+    simpa only [Mem.room_cons, Mem.room_nil, and_true] using hz₃
+  have hdqz : Fp.Disj (Store.inBlock (μ.store.length + 2) 0 (2 * (k * r)))
+      (Store.inBlock z.1 z.2 (2 * (k * r))) := Fp.disj_inBlock_of_ne (by omega)
+  call (PairMatrix.copyRoutine_meets hS) [k, r] ((μ.store.length + 2, 0), z)
+    as μ₄ hfr₄ hpos₄ (zs) hpost
+  obtain rfl : zs = _ := hpost
+  exact ⟨hpos₄.trans (hpos₃.trans (hpos₂.trans hpos₁)), hzs⟩
 
 end NLAlib.SpectralBisection

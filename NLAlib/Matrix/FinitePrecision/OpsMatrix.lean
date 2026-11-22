@@ -19,7 +19,8 @@ compose these transformations with matrix multiplication without exposing entry 
 ## Main results
 
 * `NLAlib.Ops.PairMatrix.conjTranspose_writes_packed`: the actual packed conjugate transpose.
-* `NLAlib.Ops.PairMatrix.traceRe_writes_packed`: the actual rounded finite trace.
+* `NLAlib.Ops.PairMatrix.traceReF_packFinMatrix`: the trace recurrence of
+  `NLAlib.Ops.PairMatrix.traceReSpec` on a packed matrix is the machine's rounded finite trace.
 -/
 
 @[expose] public section
@@ -88,23 +89,5 @@ theorem traceReF_packFinMatrix {n : ℕ} (A : Matrix (Fin n) (Fin n) (K × K)) :
   apply congrArg (M.add acc)
   simpa [EntryCodec.pair, Nat.mul_comm] using
     (EntryCodec.pair K).vec_packFinMatrix A i i ⟨0, Nat.zero_lt_succ 1⟩
-
-/-- The actual packed trace kernel stores the existing machine's rounded finite trace.
-The accumulator need not be initialized, and disjoint regions of one buffer are supported.
-A fragment of the tree `NLAlib.SpectralBisection.nodeSplitIndex`. -/
-theorem traceRe_writes_packed {I : Interp Op Tst K} (hI : IsScalar M I) {τ : Tape K}
-    {n : ℕ} (A : Matrix (Fin n) (Fin n) (K × K)) {x y : ℕ × ℕ} {μ : Mem K}
-    (hA : μ.store.readBlock x.1 x.2 (2 * (n * n)) = some ((EntryCodec.pair K).packFinMatrix A))
-    (hy : y.2 < μ.store.len y.1)
-    (hdisj : Fp.Disj (Store.inBlock y.1 y.2 1) (Store.inBlock x.1 x.2 (2 * (n * n)))) :
-    Writes .total I τ (traceRe (Op := Op) (Tst := Tst)) (Env.frame [n] [x, y])
-      (Store.inBlock y.1 y.2 1)
-      (fun μ' => μ'.pos = μ.pos ∧ μ'.store.get y.1 y.2 =
-        some ((M.toFloatMachine dec mm qr unif normal).traceRe A)) μ := by
-  refine (traceRe_writes hI (Store.holdsVec_of_readBlock hA) hy hdisj).mono le_rfl ?_
-  intro μ' _ ⟨htrace, hpos⟩
-  rw [traceReF_packFinMatrix (dec := dec) (mm := mm) (qr := qr)
-    (unif := unif) (normal := normal)] at htrace
-  exact ⟨hpos, htrace⟩
 
 end NLAlib.Ops.PairMatrix

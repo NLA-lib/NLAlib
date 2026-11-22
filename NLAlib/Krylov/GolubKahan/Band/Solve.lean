@@ -134,9 +134,17 @@ private theorem solve_writes {dec : K → ℝ} {m n b q : ℕ} {Ext : ExtendPred
   have hLive : (Mem.mk s₁ μ.pos).Live [(μ.store.length, 0)] := by
     simp only [Mem.live_cons, Mem.live_nil, and_true]
     omega
-  refine Writes.seq_le ((sampleVector_writes hSample stream (y := (μ.store.length, 0))
-    (n := n * b) (show 0 + n * b ≤ s₁.len μ.store.length by omega)).in_frame rfl rfl hLive)
-    (Fp.inBlock_le_sup_above le_rfl) fun μ₁ hfr₁ ⟨hω, hp₁⟩ => ?_
+  have hroomW : (Mem.mk s₁ μ.pos).Room [(μ.store.length, 0)] [n * b] := by
+    simp only [Mem.room_cons, Mem.room_nil, and_true]
+    omega
+  call (sampleRoutine_meets hSample stream) [n * b] ((μ.store.length, 0)) as μ₁ hfr₁ hp₁ (ws) hpost
+  have hfr₁ : s₁.EqOff (Store.inBlock μ.store.length 0 (n * b)) μ₁.store :=
+    hfr₁.mono (by fp_sub)
+  have hω : μ₁.store.readBlock μ.store.length 0 (n * b) =
+      some (τ.window stream μ.pos (n * b)) := by
+    have h : ws = (τ.shift μ.pos).window stream 0 (n * b) := hpost
+    rw [h, Tape.window_shift] at hws
+    exact hws
   have hz₁ := hz₀.congr hfr₁.len_eq
   have hW₁ := (hfr₁.len_eq μ.store.length).trans hW
   have hL₁ := hfr₁.length_eq.trans hlen

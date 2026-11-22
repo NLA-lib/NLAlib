@@ -49,9 +49,8 @@ theorem stmtCost_sampleVector (stream n y : ℕ) :
 /-- A sample batch writes the actual contiguous window at the current shared tape position.
 Its output need not be initialized. All input buffers and cells outside the vector are framed.
 This is total correctness under the scalar sample contracts, without a tape-law assumption.
-A step in the proof of `NLAlib.Ops.sampleRoutine_meets`; a caller that frames the batch on a
-buffer it has just allocated applies it at that operand. -/
-theorem sampleVector_writes {I : Interp Op Tst K} (hI : IsSample I) {τ : Tape K}
+A step in the proof of `NLAlib.Ops.sampleRoutine_meets`; callers use that judgment. -/
+private theorem sampleVector_writes {I : Interp Op Tst K} (hI : IsSample I) {τ : Tape K}
     (stream : ℕ) {n : ℕ} {y : ℕ × ℕ} {m : Mem K}
     (hroom : y.2 + n ≤ m.store.len y.1) :
     Writes .total I τ (sampleVector stream) (Env.frame [n] [y])

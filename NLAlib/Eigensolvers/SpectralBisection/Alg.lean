@@ -57,7 +57,7 @@ def leafValues (diagonal : Bool) : Stmt Op Tst :=
 
 /-- A terminal node writes its complete identity, eigenvalue block and the stored leaf kind. -/
 def leaf (diagonal : Bool) : Stmt Op Tst := ops% [k] (A) → (U, E, Kind) {
-  run (PairMatrix.identity) [k] (U);
+  run PairMatrix.identityRoutine [k] (U);
   run (leafValues diagonal) [k] (A, E);
   call (Has.inj IndexOp.lit) [1] () → (Kind)
 }
@@ -140,7 +140,7 @@ def downLevel (node : Stmt Op Tst) : Stmt Op Tst :=
 
 /-- Initialize the mathematical recursion-boundary result with actual machine literals. -/
 def bottomResult : Stmt Op Tst := ops% [k] () → (U, E) {
-  run (PairMatrix.identity) [k] (U);
+  run PairMatrix.identityRoutine [k] (U);
   for i < k { call (Has.inj (ScalarOp.lit 0)) [] () → (E[i]) }
 }
 
@@ -158,7 +158,7 @@ def bottomLevel : Stmt Op Tst := ops% [n, D] (Sz) → (Ua, Ea) {
 
 /-- Reconstruct a one-child node from its complete child output and stored signed shift. -/
 def upShiftResult : Stmt Op Tst := ops% [k] (Uc, ec, sigma) → (U, E) {
-  run (PairMatrix.copy) [k, k] (Uc, U);
+  run PairMatrix.copyRoutine [k, k] (Uc, U);
   run (scalarBroadcast (Has.inj ScalarOp.add)) [k] (ec, sigma, E)
 }
 
@@ -242,7 +242,7 @@ All arena storage is caller-owned; the helpers preserve the order of the primiti
 def initializeArenas : Stmt Op Tst := ops% [n, L] (A, par) → (c, Ma, Sz, Lv) {
   run initialConstants [] (c);
   run initialSizes [n, L] (Sz);
-  run (PairMatrix.copy) [n, n] (A, Ma);
+  run PairMatrix.copyRoutine [n, n] (A, Ma);
   run initialParameters [] (par, Lv)
 }
 
@@ -262,7 +262,7 @@ def downwardPass (node : Stmt Op Tst) : Stmt Op Tst :=
 
 /-- Copy the reconstructed root basis and eigenvalues into the supplied output views. -/
 def rootResultCopy : Stmt Op Tst := ops% [n] (Ua, Ea) → (U, dv) {
-  run (PairMatrix.copy) [n, n] (Ua, U);
+  run PairMatrix.copyRoutine [n, n] (Ua, U);
   run (unaryMap (Has.inj ScalarOp.copy)) [n] (Ea, dv)
 }
 

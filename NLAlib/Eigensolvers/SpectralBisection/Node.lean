@@ -62,7 +62,7 @@ def deflate : Stmt Op Tst := ops% [n, k, r, lo, side] (Sg, sq, P) → (Qout) {
   run deflateSamples [n, k, lo, side] (Sg, sq, G);
   call (Has.inj MatrixOp.mul) [k, k, k] (P, G) → (Y);
   call (Has.inj MatrixOp.qr) [k, k] (Y) → (Q, R);
-  run PairMatrix.copy [k, r] (Q, Qout)
+  run PairMatrix.copyRoutine [k, r] (Q, Qout)
 }
 
 /-- Compress the stored matrix by a rectangular basis, Hermitianize the computed product,
@@ -155,7 +155,7 @@ def nodeBranch : Stmt Op Tst := ops% [n, d, lo, k, kp]
 /-- Compute and clamp the rounded projector trace before its bounded natural query.
 Only cells two, three, five and six of the supplied temporary block are written. -/
 def nodeSplitIndex : Stmt Op Tst := ops% [k] (Pp, c) → (t) {
-  run PairMatrix.traceRe [k] (Pp, t[5]);
+  run PairMatrix.traceReRoutine [k] (Pp, t[5]);
   call (Has.inj ScalarOp.add) [] (t[5], c[2]) → (t[6]);
   call (Has.inj IndexOp.lit) [0] () → (t[2]);
   call (Has.inj IndexOp.lit) [k] () → (t[3]);

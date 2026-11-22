@@ -8,6 +8,7 @@ module
 public import NLAlib.Ops.Blas.Matrix
 public import NLAlib.Ops.Blas.HermitianEntry
 public import NLAlib.Ops.Logic.EntryRows
+public import NLAlib.Ops.Logic.RoutineIntro
 
 /-!
 # Stored correctness of interleaved matrix transformations
@@ -16,8 +17,13 @@ Conjugate transpose is a scalar entry conjugation at an injective target-index m
 fill maintains all output entries and the ordinary frame rule retains readable input entries,
 including disjoint input and output regions in the same buffer.
 
+## Main definitions
+
+* `NLAlib.Ops.PairMatrix.copySpec`: what copying an interleaved matrix writes.
+
 ## Main results
 
+* `NLAlib.Ops.PairMatrix.copyRoutine_meets`: the copy meets its specification.
 * `NLAlib.Ops.PairMatrix.conjTranspose_writes`: the actual stored conjugate transpose.
 -/
 
@@ -29,11 +35,8 @@ variable {K Op Tst : Type} [Has ScalarOp Op]
 
 /-- Copying an interleaved matrix is the generic unary map of scalar copy, including
 exact in-place operands and spatially disjoint regions of a shared buffer.
-Shared by the trees of `NLAlib.Deflation.apply`, `NLAlib.reduceLastStep`,
-`NLAlib.ShiftedQR.acceptTrialWithScratch` and 83 more.
-The run without its frame; `NLAlib.Ops.PairMatrix.copy_writes`, the primary statement, is proved
-from it. -/
-theorem copy_wp [Inhabited K] {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+A step in the proof of `NLAlib.Ops.PairMatrix.copyRoutine_meets`. -/
+private theorem copy_wp_any [Inhabited K] {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {rows cols : ℕ} {x y : ℕ × ℕ} {xs : List K}
     (hl : m.Live [x, y])
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (rows * cols)))
@@ -49,9 +52,9 @@ theorem copy_wp [Inhabited K] {M : Machine K} {I : Interp Op Tst K} (hI : IsScal
 
 /-- Copy writes exactly its stored input block, frames every other cell, and consumes no
 random words. No source/output buffer inequality is required.
-Shared by the trees of `NLAlib.Deflation.apply`, `NLAlib.reduceLastStep`,
-`NLAlib.ShiftedQR.acceptTrialWithScratch` and 83 more. -/
-theorem copy_writes [Inhabited K] {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+A step in the proof of `NLAlib.Ops.PairMatrix.copyRoutine_meets`. -/
+private theorem copy_writes_any [Inhabited K] {M : Machine K} {I : Interp Op Tst K}
+    (hI : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {rows cols : ℕ} {x y : ℕ × ℕ} {xs : List K}
     (hl : m.Live [x, y])
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (rows * cols)))
@@ -62,7 +65,7 @@ theorem copy_writes [Inhabited K] {M : Machine K} {I : Interp Op Tst K} (hI : Is
       (Env.frame [rows, cols] [x, y]) (Store.inBlock y.1 y.2 (2 * (rows * cols)))
       (fun m' => m'.pos = m.pos ∧
         m'.store.readBlock y.1 y.2 (2 * (rows * cols)) = some xs) m := by
-  have hw := Writes.of_wp_eq_updBlock (copy_wp hI (md := md) (τ := τ) hl hxy hx hy
+  have hw := Writes.of_wp_eq_updBlock (copy_wp_any hI (md := md) (τ := τ) hl hxy hx hy
     (Q := fun m' => m' = m.updBlock y xs) rfl)
   have hlen := Store.length_of_readBlock hx
   rw [hlen] at hw
@@ -71,6 +74,47 @@ theorem copy_writes [Inhabited K] {M : Machine K} {I : Interp Op Tst K} (hI : Is
   have hr := Store.readBlock_updBlock_self (s := m.store) (b := y.1) (off := y.2)
     (xs := xs) (by simpa [hlen] using hy)
   exact ⟨rfl, by simpa [hlen] using hr⟩
+
+/-- The written block is the block read. -/
+def copySpec : Routine.Spec K :=
+  spec% [rows, cols] (xs) → (ys) ensures ys = xs
+
+/-- Copying an interleaved matrix meets its specification under the scalar copy, for blocks
+that are apart, including two regions of one buffer. -/
+theorem copyRoutine_meets [Inhabited K] {M : Machine K} {I : Interp Op Tst K}
+    (hI : IsScalar M I) : (copyRoutine (Op := Op) (Tst := Tst)).Meets I (copySpec (K := K)) := by
+  routine_intro [rows, cols] (x, y) reads (xs)
+  have hd : Fp.Disj (Store.inBlock x.1 x.2 (2 * (rows * cols)))
+      (Store.inBlock y.1 y.2 (2 * (rows * cols))) := by
+    have h : Fp.Disj (Fp.blocks [y] [2 * (rows * cols)]) (Fp.blocks [x] [2 * (rows * cols)]) :=
+      hsep.2.1
+    simpa [Fp.blocks] using h.symm
+  refine (copy_writes_any hI hlive (.inl hd) hxs hrooms.1).mono (by fp_sub) fun m' _ h => ?_
+  exact ⟨h.1, [xs], Mem.readBlocks_of_cons h.2 rfl, rfl⟩
+
+/-- The judgment of `NLAlib.Ops.PairMatrix.copyRoutine` read at operands: the copy writes the
+block read. A corollary of `NLAlib.Ops.PairMatrix.copyRoutine_meets`, kept because the
+block-sequence rule `NLAlib.Ops.Writes.seq_readBlock` takes its statement in this form. -/
+theorem copy_writes [Inhabited K] {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+    {τ : Tape K} {m : Mem K} {rows cols : ℕ} {x y : ℕ × ℕ} {xs : List K}
+    (hl : m.Live [x, y])
+    (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (rows * cols)))
+      (Store.inBlock y.1 y.2 (2 * (rows * cols))))
+    (hx : m.store.readBlock x.1 x.2 (2 * (rows * cols)) = some xs)
+    (hy : y.2 + 2 * (rows * cols) ≤ m.store.len y.1) :
+    Writes .total I τ (copy (Op := Op) (Tst := Tst))
+      (Env.frame [rows, cols] [x, y]) (Store.inBlock y.1 y.2 (2 * (rows * cols)))
+      (fun m' => m'.pos = m.pos ∧
+        m'.store.readBlock y.1 y.2 (2 * (rows * cols)) = some xs) m := by
+  have hroom : m.Room [y] [2 * (rows * cols)] := by
+    simpa only [Mem.room_cons, Mem.room_nil, and_true] using hy
+  have h := copyRoutine_meets (Op := Op) (Tst := Tst) hI [rows, cols] [x, y] τ m [xs] rfl rfl
+    hl (by routine_sep) (Mem.readBlocks_of_cons hx rfl) trivial hroom
+  refine h.mono (by fp_sub) fun m' _ ⟨hpos, ys, hys, hpost⟩ => ?_
+  routine_nf at hys hpos
+  split_reads hys as (zs)
+  obtain rfl : zs = xs := hpost
+  exact ⟨hpos, hzs⟩
 
 /-- Conjugate transpose writes the machine-negated imaginary words and copied real words of
 the actual input matrix. Input and output word blocks are disjoint, including when they share

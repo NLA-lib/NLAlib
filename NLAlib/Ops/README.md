@@ -204,13 +204,14 @@ is a fragment: a plain `Stmt` written with `ops%`, with one statement of its run
 that routine.
 
 The library does not yet follow this rule everywhere. Kernels that several routines run, each on
-operands of its own, are by the rule routines. The fill (`fillRoutine`) and the batch of draws
-(`sampleRoutine`) are, and their callers run them by interface. The others are still plain trees
-with operand-form statements, from before routines existed: the row and column rotations and
-the Givens coefficient kernels of shifted QR, the small-eigenvalue solver and Hessenberg
-reduction, and the matrix kernels of `Blas/` (`Matrix.copy`, `Matrix.identity`,
-`Matrix.traceRe`, `unaryMap`, the `Hermitian` family, `scalarBroadcast`, `normSq`,
-`Pair.multiply`, `Pair.linearCombination`, `copyStrided`, `clamp`). They address sub-blocks of
+operands of its own, are by the rule routines. The fill (`fillRoutine`), the batch of draws
+(`sampleRoutine`) and the matrix copy, identity and real trace (`PairMatrix.copyRoutine`,
+`PairMatrix.identityRoutine`, `PairMatrix.traceReRoutine`) are, and their callers run them by
+interface. The others are still plain trees with operand-form statements, from before routines
+existed: the row and column rotations and the Givens coefficient kernels of shifted QR, the
+small-eigenvalue solver and Hessenberg reduction, and these kernels of `Blas/`: `unaryMap`,
+the `Hermitian` family, `scalarBroadcast`, `normSq`, `Pair.multiply`,
+`Pair.linearCombination`, `copyStrided`, `clamp`. They address sub-blocks of
 one matrix buffer at computed offsets, and several have a word-level and a decoded statement;
 they are to become routines, separated by block, with one judgment each. Until then every
 statement in operand form says in its docstring what it is: a fragment of one named tree, shared

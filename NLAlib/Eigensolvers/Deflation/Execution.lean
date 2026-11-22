@@ -72,9 +72,19 @@ theorem apply_writes (hS : IsScalar M I) (hSample : IsSample I)
   obtain ⟨hp, hg, hy, hq, hr, hz⟩ : p.1 < m.store.length ∧ g.1 < m.store.length ∧
       y.1 < m.store.length ∧ q.1 < m.store.length ∧ r.1 < m.store.length ∧
       z.1 < m.store.length := by simpa [Mem.Live] using hl
-  refine (writes_frame rfl rfl (by simp [Mem.Live]; omega)
-    (sampleVector_writes hSample Stream.gauss hG)).seq ?_
-  intro m₁ hf₁ ⟨hDraw, hpos₁⟩
+  have hroomG : m.Room [g] [2 * (n * n)] := by
+    simpa only [Mem.room_cons, Mem.room_nil, and_true] using hG
+  call (sampleRoutine_meets hSample Stream.gauss) [2 * (n * n)] (g) as m₁ hf₁ hpos₁ (ws) hpost
+  have hf₁ : m.store.EqOff (Store.inBlock g.1 g.2 (2 * (n * n))) m₁.store :=
+    hf₁.mono (by fp_sub)
+  have hDraw : m₁.store.readBlock g.1 g.2 (2 * (n * n)) =
+      some (tape.window Stream.gauss m.pos (2 * (n * n))) := by
+    have h : ws = (tape.shift m.pos).window Stream.gauss 0 (2 * (n * n)) := hpost
+    rw [h, Tape.window_shift] at hws
+    exact hws
+  refine Writes.mono (F := Store.inBlock y.1 y.2 (2 * (n * n)) ⊔
+    ((Store.inBlock q.1 q.2 (2 * (n * n)) ⊔ Store.inBlock r.1 r.2 (2 * (n * n))) ⊔
+      Store.inBlock z.1 z.2 (2 * (n * rank)))) ?_ le_sup_right fun _ _ h => h
   have hlen : (tape.window Stream.gauss m.pos (2 * (n * n))).length = n * n * C.width := by
     simp [C, Tape.window, Nat.mul_comm]
   have hG₁ : m₁.store.readBlock g.1 g.2 (n * n * C.width) = some (C.packFinMatrix G) := by
@@ -107,12 +117,16 @@ theorem apply_writes (hS : IsScalar M I) (hSample : IsSample I)
       some (C.packFinMatrix ((qr (mm P G)).1.submatrix id (Fin.castLE hrank))) := by
     simpa [C, Nat.mul_comm, Nat.mul_left_comm, Nat.mul_assoc] using
       Store.readBlock_packFinMatrix_columns C hQ₃ hrank
-  refine (writes_frame rfl rfl (by
-    simp [Mem.Live, hf₃.length_eq, hf₂.length_eq, hf₁.length_eq]; omega)
-    (PairMatrix.copy_writes hS (by
-      simp [Mem.Live, hf₃.length_eq, hf₂.length_eq, hf₁.length_eq]; omega)
-      (Or.inl (Fp.disj_inBlock_of_ne hqz)) hread
-      (by rw [hf₃.len_eq, hf₂.len_eq, hf₁.len_eq]; exact hZ))).mono le_rfl ?_
-  exact fun _ _ h => ⟨h.1.trans (hpos₃.trans (hpos₂.trans hpos₁)), h.2⟩
+  have hlive₃ : m₃.Live [q, z] := by
+    simp [Mem.Live, hf₃.length_eq, hf₂.length_eq, hf₁.length_eq]; omega
+  have hroom₃ : m₃.Room [z] [2 * (n * rank)] := by
+    simp only [Mem.room_cons, Mem.room_nil, and_true]
+    rw [hf₃.len_eq, hf₂.len_eq, hf₁.len_eq]
+    exact hZ
+  have hdqz : Fp.Disj (Store.inBlock q.1 q.2 (2 * (n * rank)))
+      (Store.inBlock z.1 z.2 (2 * (n * rank))) := Fp.disj_inBlock_of_ne hqz
+  call (PairMatrix.copyRoutine_meets hS) [n, rank] (q, z) as m₄ hf₄ hpos₄ (zs) hpost
+  obtain rfl : zs = _ := hpost
+  exact ⟨hpos₄.trans (hpos₃.trans (hpos₂.trans hpos₁)), hzs⟩
 
 end NLAlib.Deflation

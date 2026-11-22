@@ -59,9 +59,14 @@ theorem sketch_writes {dataLength : ℕ → ℕ → ℕ}
   have hLive : (Mem.mk store m.pos).Live [(m.store.length, 0)] := by
     simp only [Mem.live_cons, Mem.live_nil]
     exact ⟨by omega, trivial⟩
-  refine Writes.seq_le ((sampleVector_writes hSample stream (by simpa using hs.ge)).in_frame
-    rfl rfl hLive) (by fp_sub) ?_
-  intro m₁ hfr ⟨hS, hp⟩
+  call (sampleRoutine_meets hSample stream) [n * k] ((m.store.length, 0)) as m₁ hfr hp (ws) hpost
+  have hfr : store.EqOff (Store.inBlock m.store.length 0 (n * k)) m₁.store :=
+    hfr.mono (by fp_sub)
+  have hS : m₁.store.readBlock m.store.length 0 (n * k) =
+      some (τ.window stream m.pos (n * k)) := by
+    have h : ws = (τ.shift m.pos).window stream 0 (n * k) := hpost
+    rw [h, Tape.window_shift] at hws
+    exact hws
   let S := (EntryCodec.scalar 𝕜).matrix n k (τ.window stream m.pos (n * k))
   have hSPack : m₁.store.readBlock m.store.length 0 (k * n) =
       some ((EntryCodec.scalar 𝕜).packFinMatrix S) := by
@@ -75,9 +80,7 @@ theorem sketch_writes {dataLength : ℕ → ℕ → ℕ}
   have hLive₁ : m₁.Live [data, (m.store.length, 0), b] := by
     simp only [Mem.live_cons, Mem.live_nil]
     rw [hfr.length_eq]
-    exact ⟨by change data.1 < store.length; omega,
-      by change m.store.length < store.length; omega,
-      by change b.1 < store.length; omega, trivial⟩
+    exact ⟨by omega, by omega, by omega, trivial⟩
   refine ((applyColumns_writes hI as S hLive₁ hA₁ hSPack
     (Fp.disj_inBlock_of_ne (Nat.ne_of_lt hbuf)) hBA
     (by rw [hfr.len_eq]; simpa only [(hBelow b.1 hbuf).1] using hb)).in_frame

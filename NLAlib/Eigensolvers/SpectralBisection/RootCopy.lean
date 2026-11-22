@@ -59,8 +59,8 @@ theorem rootResultCopy_writes {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
       (Fp.blocks [dv] [n]) := hAP.2.2.1
   have hED : Fp.Disj (Store.inBlock ea.1 ea.2 n) (Store.inBlock dv.1 dv.2 n) := by
     simpa using hAP.disj_getD (i := 1) (j := 3) (by simp) (by simp) (by simp)
-  have hc := PairMatrix.copy_writes (md := .total) (rows := n) (cols := n) (τ := τ)
-    hS (by room) (Or.inl hUU) hU hroom.1
+  have hc := PairMatrix.copy_writes (rows := n) (cols := n) (τ := τ)
+    hS (by room) hUU hU hroom.1
   refine (hc.in_frame rfl rfl (by room)).seq_readBlock hUD ?_
   intro μ₁ hfr₁ _ _
   have hE₁ := hfr₁.keep (Store.readsOnly_readBlock ea.1 ea.2 n _) hUE hE

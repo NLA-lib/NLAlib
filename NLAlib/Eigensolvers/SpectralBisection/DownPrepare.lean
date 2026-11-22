@@ -66,16 +66,32 @@ theorem downPrepare_writes {K Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op]
       sg.1 < m.store.length ∧ t.1 < m.store.length := by simpa [Mem.Live] using hl
   rcases hLive with ⟨hlc, hlv, hlu, hlg, hlt⟩
   refine (hP.in_frame rfl rfl (by room)).seq fun μ hfr0 hpar => ?_
-  have hU := sampleVector_writes (τ := τ) (m := μ) hSample Stream.unif
-    (y := su) (n := n) (by rw [hfr0.len_eq]; exact hu)
-  refine (hU.in_frame rfl rfl (by room)).seq fun ν hfr1 hunif => ?_
+  have hroomU : μ.Room [su] [n] := by
+    simp only [Mem.room_cons, Mem.room_nil, and_true]
+    rw [hfr0.len_eq]
+    exact hu
+  call (sampleRoutine_meets hSample Stream.unif) [n] (su) as ν hfr1 hposU (us) hpostU
+  have hfr1 : μ.store.EqOff (Store.inBlock su.1 su.2 n) ν.store := hfr1.mono (by fp_sub)
+  have hunif : ν.store.readBlock su.1 su.2 n = some (τ.window Stream.unif μ.pos n) ∧
+      ν.pos = μ.pos + n := by
+    have h : us = (τ.shift μ.pos).window Stream.unif 0 n := hpostU
+    rw [h, Tape.window_shift] at hus
+    exact ⟨hus, hposU⟩
   have hV := hfr1.keep (Store.readsOnly_readBlock lv.1 (lv.2 + 2 * (d + 1)) 2 _)
     (by simpa using hd 3 2 (by simp)) hpar.2
   have hfr01 := hfr0.trans' hfr1
-  have hG := sampleVector_writes (τ := τ) (m := ν) hSample Stream.gauss
-    (y := sg) (n := 4 * (n * n)) (by rw [hfr01.len_eq]; exact hg)
-  refine (hG.in_frame rfl rfl (by room)).mono le_rfl ?_
-  intro ξ hfr2 hgauss
+  have hroomG : ν.Room [sg] [4 * (n * n)] := by
+    simp only [Mem.room_cons, Mem.room_nil, and_true]
+    rw [hfr01.len_eq]
+    exact hg
+  call (sampleRoutine_meets hSample Stream.gauss) [4 * (n * n)] (sg) as ξ hfr2 hposG (gs) hpostG
+  have hfr2 : ν.store.EqOff (Store.inBlock sg.1 sg.2 (4 * (n * n))) ξ.store :=
+    hfr2.mono (by fp_sub)
+  have hgauss : ξ.store.readBlock sg.1 sg.2 (4 * (n * n)) =
+      some (τ.window Stream.gauss ν.pos (4 * (n * n))) ∧ ξ.pos = ν.pos + 4 * (n * n) := by
+    have h : gs = (τ.shift ν.pos).window Stream.gauss 0 (4 * (n * n)) := hpostG
+    rw [h, Tape.window_shift] at hgs
+    exact ⟨hgs, hposG⟩
   have hV' := hfr2.keep (Store.readsOnly_readBlock lv.1 (lv.2 + 2 * (d + 1)) 2 _)
     (by simpa using hd 4 2 (by simp)) hV
   have hU' := hfr2.keep (Store.readsOnly_readBlock su.1 su.2 n _)

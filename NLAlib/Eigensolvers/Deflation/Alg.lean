@@ -37,7 +37,7 @@ def apply : Stmt Op Tst := ops% [n, r] (P, G, Y, Q, R) → (Qout) {
   run (sampleRoutine Stream.gauss) [2 * (n * n)] (G);
   call (Has.inj MatrixOp.mul) [n, n, n] (P, G) → (Y);
   call (Has.inj MatrixOp.qr) [n, n] (Y) → (Q, R);
-  run PairMatrix.copy [n, r] (Q, Qout)
+  run PairMatrix.copyRoutine [n, r] (Q, Qout)
 }
 
 /-- A fixed standalone deflation implementation with explicit scalar draws and four scoped

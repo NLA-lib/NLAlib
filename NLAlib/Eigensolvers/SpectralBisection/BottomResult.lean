@@ -69,9 +69,16 @@ theorem bottomResult_writes {K Op Tst : Type} [Has ScalarOp Op]
       (Env.frame [k] [u, e])
       (Store.inBlock u.1 u.2 (2 * (k * k)) ⊔ Store.inBlock e.1 e.2 k)
       (fun m' => m'.pos = m.pos ∧ BottomOutput M k u e m'.store) m := by
-  simp only [Mem.live_cons, Mem.live_nil, and_true] at hl
-  refine (writes_frame rfl rfl (by room) (PairMatrix.identity_writes hS hu)).seq
-    fun m₁ hfr ⟨hU, hp⟩ => ?_
+  have hlU : m.Live [u] := fun z hz => hl z (by
+    obtain rfl := List.mem_singleton.mp hz
+    simp)
+  have hroomU : m.Room [u] [2 * (k * k)] := by
+    simpa only [Mem.room_cons, Mem.room_nil, and_true] using hu
+  call (PairMatrix.identityRoutine_meets hS) [k] (u) as m₁ hfr hp (us) hpost
+  have hfr : m.store.EqOff (Store.inBlock u.1 u.2 (2 * (k * k))) m₁.store :=
+    hfr.mono (by fp_sub)
+  have hU := PairMatrix.holdsVec_of_identitySpec hus hpost
+  refine Writes.mono (F := Store.inBlock e.1 e.2 k) ?_ le_sup_right fun _ _ h => h
   have hU' := PairMatrix.holdsEntries_of_holdsVec hU
   have hz : e.2 + k ≤ m₁.store.len e.1 := by rw [hfr.len_eq]; exact he
   have hfill := writes_fill (n := .var 0) (N := k) (b := e.1) (o := e.2)

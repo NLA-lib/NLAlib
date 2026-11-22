@@ -115,7 +115,9 @@ $n$, sketch width $k$ and positive probe count $\ell$, every stored operator sup
 first buffer, every interpretation of the exact operations of the model, and every tape, the
 counted run of the fixed program succeeds, executes at most
 $230 + 155 k + 71 \ell + 38 k \ell + 6 n k + 6 n \ell + 38 k^2$ instructions (each vector
-operation, draw and product with the operator counting one), stops at tape position
+operation, draw and product with the operator counting one), keeps the resident memory (the
+supplied payload plus the peak scratch) within
+$\mathrm{dataLength}(n, n) + 1 + 2 n (k + \ell) + 2 + w$ bytes, stops at tape position
 $n (k + \ell)$, and leaves the second buffer holding the Hutch++ value of the operator for the
 sketch in the first $n k$ words of the stream and the probes in the next $n \ell$. The accuracy
 of that value as a trace estimate, for Gaussian draws, is
@@ -131,14 +133,16 @@ theorem estimate_checked (dataLength : ℕ → ℕ → ℕ)
         (problem (𝕜 := 𝕜) dataLength).formats τ d
         ((problem (𝕜 := 𝕜) dataLength).initial d x) = some st ∧
       (ExactLinear.resources (fun _ _ => 1) workspace).work st.cost ≤ operationCount d ∧
+      (problem (𝕜 := 𝕜) dataLength).initialBytes d x + st.peak ≤
+        dataLength (d 0) (d 0) + 1 + (2 * d 0 * (d 1 + d 2) + 2 + w) ∧
       st.mem.pos = d 0 * (d 1 + d 2) ∧
       st.mem.Holds (Codec.scalar (K := 𝕜)) 1 (hutchpp (matrix (d 0) (d 0) x.val.1.val)
         ((EntryCodec.scalar 𝕜).matrix (d 0) (d 1) (τ.window stream 0 (d 0 * d 1)))
         ((EntryCodec.scalar 𝕜).matrix (d 0) (d 2)
           (τ.window stream (d 0 * d 1) (d 0 * d 2)))) := by
-  obtain ⟨st, hr, -, -, hw, -, -, hpos, -, hread⟩ :=
+  obtain ⟨st, hr, -, -, hw, -, hm, hpos, -, hread⟩ :=
     (countedAlgorithm dataLength matrix workspace w hW stream).correct d hd x I hI τ
-  refine ⟨st, hr, hw, hpos, ?_⟩
+  refine ⟨st, hr, hw, hm, hpos, ?_⟩
   simpa [Mem.Holds, Codec.scalar, sampleMatrices] using hread
 
 end NLAlib.HutchPlusPlus.Certification

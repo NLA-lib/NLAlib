@@ -50,18 +50,29 @@ An `Ops.Algorithm M S` is as meaningful as its problem, its model `M` and its sp
   holds words computed from the inputs (`Slot.derived`); `?` when the slots do not reduce;
 * `unstored` (`yes`, `no`, `-`): for a derived problem, whether it declares inputs that no
   buffer holds;
-* `oracles` (`declared`, `missing`, `none`): for a model that is not `uniform=yes`, whether a
-  `Ops.Routine.Domain.Oracles` declaration for the domain of the problem exists (the operations
-  that may depend on the input, and the proof that no other does); `none` for a uniform model;
-* `claim` (names joined by `+`, `exempt`, `none`, `required-missing`): the declarations of type
-  `Ops.RandomizedClaim` of the certificate. A certificate whose routine specification is
-  `Routine.Spec.terminates` states nothing of the values written; it must have a claim
-  (`required-missing` is an error) unless it is listed in `exempt` with its reason.
+* `oracles` (`declared`, `related`, `missing`, `none`): for a model that is not `uniform=yes`,
+  `declared` when a declaration of type `Ops.Routine.Domain.Oracles D M` (the operations that
+  may depend on the input, and the proof that no other does) is about this certificate: its
+  binders are instantiated so that `D` is the domain of the problem (below `Domain.cast`) and
+  `M` the model of the certificate. `related` when declarations exist for a domain built from
+  the same constant but none unifies with this domain and model; `none` for a uniform model;
+* `claim` (names joined by `+`, `related:` and names, `exempt`, `none`, `required-missing`):
+  the declarations of type `Ops.RandomizedClaim A` whose `A`, with the binders of the claim
+  instantiated, is this certificate applied to its own parameters. `related:` and the names
+  when claims exist about the same certificate declaration but only at other arguments (a
+  fixed field, a bundle of operations): such a claim is not a claim of this certificate. A
+  certificate whose routine specification is `Routine.Spec.terminates` states nothing of the
+  values written; it must have a claim that applies (`required-missing` is an error; a related
+  claim does not count) unless it is listed in `exempt` with its reason.
+
+The comparison is by unification up to reducible definitions; the hypotheses that a
+declaration which applies adds to those of the certificate are printed by the report.
 
 The lines are compared with `scripts/ops_certificates.txt`:
 
 * a certificate of that file may not lose `uniform=yes`, `confined=yes`, `charged=yes`, a
-  `closed` bound, `problem=derived`, `oracles=declared` or its claim, nor gain hypotheses:
+  `closed` bound, `problem=derived`, `oracles=declared` or its claim (`related` values do
+  not keep either), nor gain hypotheses:
   update its line in the same change, which makes the weakening visible;
 * a certificate that is not in the file must be `confined=yes` with `closed` work and a
   `derived` problem, or be added to the file.
@@ -77,9 +88,14 @@ value, not one fixed program, when the parameter also fixes the admitted sizes.
 * `OPS_CERTIFICATES_REPORT=1`, or `=Name` for the certificates whose name contains `Name`:
   print, for each certificate, what it states: its line, the admitted sizes and the acceptance
   predicate as written, the derived slots with their formulas, the unstored inputs with the
-  operations that reach them, the contracts and the weights of the operations of the model,
-  the hypotheses of the certificate, its output condition, its resource fields, and its
-  randomized claims (law, event, bound). The report never writes the fixture.
+  operations that reach them, the model with the contracts of its operations and of its
+  queries and the three weights, every binder of the certificate (parameters and hypotheses),
+  its output condition and its resource fields. For each oracle declaration and each claim it
+  says whether it applies to this instance; for one that applies, which of its binders this
+  instance fixes, which parameters remain, which hypotheses are also hypotheses of the
+  certificate and which are not; for a claim, the law of the tape (realizable: a field of the
+  claim), `admits`, `interprets`, the event and the bound; for one that does not apply, the
+  instance it is about and where it differs. The report never writes the fixture.
 * `OPS_CERTIFICATES_REPORT_FILE=path`: write the report to that file instead of printing it.
 -/
 
@@ -275,6 +291,21 @@ partial def domainHead (D : Expr) : MetaM (Option Name) := do
       | none => pure (some c)
     | none => pure none
 
+/-- The domain below `Domain.cast`: a cast changes the types the domain is read at, not the
+domain. -/
+partial def domainBase (D : Expr) : MetaM Expr := do
+  let D ← whnfCore D
+  if D.isAppOf ``NLAlib.Ops.Routine.Domain.cast then
+    let args := D.getAppArgs
+    if args.size ≥ 4 then domainBase args[args.size - 4]! else pure D
+  else if D.getAppFn.isConst then
+    match ← withTransparency .all (unfoldDefinition? D) with
+    | some D' =>
+      let D'' ← whnfCore D'
+      if D''.isAppOf ``NLAlib.Ops.Routine.Domain.cast then domainBase D'' else pure D
+    | none => pure D
+  else pure D
+
 /-- The applications of `Slot.derived` (or `Slot.derivedOfLength`) in an expression, without
 entering them. -/
 partial def derivedSlots (e : Expr) (acc : Array Expr := #[]) : Array Expr :=
@@ -389,7 +420,8 @@ def CertLine.parse (line : String) : Option CertLine := do
     claim := (get "claim").getD "none" }
 
 /-- Whether a claim value names a claim. -/
-def hasClaim (s : String) : Bool := s != "none" && s != "required-missing"
+def hasClaim (s : String) : Bool :=
+  s != "none" && s != "required-missing" && !s.startsWith "related:"
 
 /-- Whether the certificate `c` is weaker than its recorded line `k`. -/
 def weaker (k c : CertLine) : Bool :=
@@ -398,7 +430,7 @@ def weaker (k c : CertLine) : Bool :=
     (k.budget == .closed && c.budget != .closed) || (k.work == .closed && c.work != .closed) ||
     (k.scratch == .closed && c.scratch != .closed) ||
     (k.problem == "derived" && c.problem != "derived") ||
-    (k.oracles == "declared" && c.oracles == "missing") ||
+    (k.oracles == "declared" && (c.oracles == "missing" || c.oracles == "related")) ||
     (hasClaim k.claim && !hasClaim c.claim) || k.hyps < c.hyps
 
 /-- Print an expression on one paragraph of bounded size. -/
@@ -416,6 +448,94 @@ def field (proj : Name) (e : Expr) : MetaM String := do
     let p ← mkAppM proj #[e]
     render (← whnf p)
   catch _ => pure "(not available)"
+
+/-- A related declaration read at one certificate: whether its type is that of this instance,
+and how its binders are met. -/
+structure Applied where
+  /-- The declaration. -/
+  name : Name
+  /-- Its type unifies with this instance. -/
+  applies : Bool
+  /-- Binders fixed by this instance, parameters left free, hypotheses met by a hypothesis of
+  the certificate, and hypotheses of the declaration only: each as written. -/
+  fixed : Array String
+  free : Array String
+  shared : Array String
+  extra : Array String
+  /-- The declaration applied to its binders, when it applies. -/
+  term : Option Expr
+  /-- When it does not apply: the arguments at which its instance and this one differ. -/
+  differs : Array String := #[]
+
+/-- Read the declaration `c`, whose type ends in an application `F … a₁ … aₖ`, at this
+instance: its binders become unknowns, and the last `k` arguments must unify with `targets`
+(`check` may replace the comparison of one argument). Unknowns that remain are parameters, or
+hypotheses, which are looked up among the hypotheses `hyps` of the certificate. -/
+def applyAt (c : Name) (targets : Array Expr) (hyps : Array Expr)
+    (check : Nat → Expr → Expr → MetaM Bool := fun _ a b => withReducible (isDefEq a b)) :
+    MetaM Applied := do
+  let env ← getEnv
+  let some info := env.find? c | return ⟨c, false, #[], #[], #[], #[], none, #[]⟩
+  let names ← forallTelescopeReducing info.type fun ys _ =>
+    ys.mapM fun y => do pure (← y.fvarId!.getDecl).userName
+  let lvls ← info.levelParams.mapM fun _ => mkFreshLevelMVar
+  let (mvars, _, target) ← forallMetaTelescopeReducing
+    (info.type.instantiateLevelParams info.levelParams lvls)
+  let args := target.getAppArgs
+  let k := targets.size
+  let mut ok := decide (args.size ≥ k)
+  if ok then
+    for i in [0:k] do
+      let a := args[args.size - k + i]!
+      let good ← try check i a targets[i]! catch _ => pure false
+      unless good do ok := false
+  let mut fixed := #[]
+  let mut free := #[]
+  let mut shared := #[]
+  let mut extra := #[]
+  let mut differs := #[]
+  if !ok && args.size ≥ k then
+    -- where the two instances part: argument by argument, for the report
+    for i in [0:k] do
+      let a := args[args.size - k + i]!
+      let b := targets[i]!
+      if a.getAppFn == b.getAppFn && a.getAppNumArgs == b.getAppNumArgs then
+        for (x, y) in a.getAppArgs.zip b.getAppArgs do
+          let same ← try withReducible (isDefEq x y) catch _ => pure false
+          unless same do
+            differs := differs.push
+              s!"{← render (← instantiateMVars x)}  (this instance: {← render y})"
+      else
+        differs := differs.push s!"{← render (← instantiateMVars a)}  (this instance: {← render b})"
+  if ok then
+    for i in [0:mvars.size] do
+      let m := mvars[i]!
+      let nm := names[i]?.getD `_
+      let ty ← instantiateMVars (← inferType m)
+      let v ← instantiateMVars m
+      let shown ← render ty
+      if !v.isMVar then
+        if !(← isProp ty) then fixed := fixed.push s!"({nm} := {← render v})"
+      else if ← isProp ty then
+        let mut met := false
+        for h in hyps do
+          if !met then
+            if ← (try withReducible (isDefEq (← inferType h) ty) catch _ => pure false) then
+              try m.mvarId!.assign h catch _ => pure ()
+              met := true
+        if met then shared := shared.push s!"({nm} : {shown})"
+        else extra := extra.push s!"({nm} : {shown})"
+      else
+        -- instance arguments are found by the claim itself
+        let inst ← try synthInstance? ty catch _ => pure none
+        match inst with
+        | some i => (try m.mvarId!.assign i catch _ => pure ())
+        | none => free := free.push s!"({nm} : {shown})"
+  let term ← if ok then
+      pure (some (← instantiateMVars
+        (mkAppN (mkConst c lvls) mvars)))
+    else pure none
+  return ⟨c, ok, fixed, free, shared, extra, term, differs⟩
 
 /-- What is known of one certificate. -/
 structure Entry where
@@ -555,22 +675,42 @@ run_cmd liftTermElabM do
       let domName ← match dom with
         | some D => domainHead D
         | none => pure none
-      let own := oracles.filter fun o => some o.2 == domName
+      -- oracle declarations on this domain, read at this domain and this model: the domain
+      -- may be read through a cast, the model must be this one
+      let relatedOracles := oracles.filter fun o => some o.2 == domName
+      let mut oracleApps : Array Applied := #[]
+      for (o, _) in relatedOracles do
+        let targets := match dom with
+          | some D => #[D, M]
+          | none => #[M]
+        let a ← applyAt o targets hyps fun i a b => do
+          if targets.size == 2 && i == 0 then
+            withReducible (isDefEq (← domainBase a) (← domainBase b))
+          else withReducible (isDefEq a b)
+        oracleApps := oracleApps.push a
+      let own := oracleApps.filter (·.applies)
       let oraclesField := if uniform == .yes then "none"
-        else if own.isEmpty then "missing" else "declared"
-      -- the claim
-      let ownClaims := (claims.filter (·.2 == name)).map (·.1)
+        else if !own.isEmpty then "declared"
+        else if !relatedOracles.isEmpty then "related" else "missing"
+      -- claims about this certificate's declaration, read at this instance
+      let self := mkAppN (mkConst name (info.levelParams.map mkLevelParam)) xs
+      let relatedClaims := ((claims.filter (·.2 == name)).map (·.1)).qsort
+        (·.toString < ·.toString)
+      let mut claimApps : Array Applied := #[]
+      for c in relatedClaims do claimApps := claimApps.push (← applyAt c #[self] hyps)
+      let ownClaims := (claimApps.filter (·.applies)).map (·.name)
       let (terminates, tmemo) := (usesTerminates env follow name).run (← termRef.get)
       termRef.set tmemo
       if terminates.isNone then
         notes := notes.push "claim: the search for a termination-only specification did not finish"
       let claim :=
         if !ownClaims.isEmpty then
-          String.intercalate "+"
-            ((ownClaims.qsort (·.toString < ·.toString)).toList.map (·.toString))
-        else if terminates == some false then "none"
-        else if (exempt.find? (·.1 == name)).isSome then "exempt"
-        else "required-missing"
+          String.intercalate "+" (ownClaims.toList.map (·.toString))
+        else if (exempt.find? (·.1 == name)).isSome && terminates != some false then "exempt"
+        else if terminates != some false then "required-missing"
+        else if !relatedClaims.isEmpty then
+          "related:" ++ String.intercalate "+" (relatedClaims.toList.map (·.toString))
+        else "none"
       let line : CertLine := {
         name, hyps := hyps.size, uniform, confined, charged, budget, work, scratch, problem,
         derived, unstored, oracles := oraclesField, claim }
@@ -594,23 +734,43 @@ run_cmd liftTermElabM do
           out := out.push s!"  admitted sizes (valid): {← field ``NLAlib.Ops.Problem.valid P}"
           out := out.push s!"  data: {← field ``NLAlib.Ops.Problem.Data P}"
           out := out.push s!"  admissible: {← field ``NLAlib.Ops.Problem.admissible P}"
-        for (o, _) in own do
-          let some oinfo := env.find? o | continue
-          let ops ← forallTelescopeReducing oinfo.type fun ys _ => do
-            let c := mkAppN (mkConst o (oinfo.levelParams.map mkLevelParam)) ys
-            field ``NLAlib.Ops.Routine.Domain.Oracles.ops c
-          out := out.push s!"  oracles {o}: operations that may depend on the input: {ops}"
-        if uniform != .yes then
-          out := out.push
-            s!"  contracts of the operations: {← field ``NLAlib.Ops.AccessModel.operation M}"
-        let res ← try
+        for a in oracleApps do
+          if a.applies then
+            let ops ← match a.term with
+              | some t => field ``NLAlib.Ops.Routine.Domain.Oracles.ops t
+              | none => pure "(not available)"
+            out := out.push (s!"  oracles {a.name} [applies to this domain and model]: " ++
+              s!"operations that may depend on the input: {ops}")
+            for e in a.fixed do out := out.push s!"    fixed by this instance: {e}"
+            for e in a.free do out := out.push s!"    parameter of the declaration: {e}"
+            for e in a.shared do out := out.push s!"    hypothesis shared with the certificate: {e}"
+            for e in a.extra do
+              out := out.push s!"    hypothesis NOT of the certificate: {e}"
+          else
+            out := out.push
+              s!"  oracles {a.name} [related declaration; not about this domain and model]"
+            for e in a.differs do out := out.push s!"    it is about: {e}"
+        out := out.push s!"  model: {← render M}"
+        out := out.push
+          s!"  contracts of the operations: {← field ``NLAlib.Ops.AccessModel.operation M}"
+        out := out.push
+          s!"  contracts of the queries: {← field ``NLAlib.Ops.AccessModel.query M}"
+        let weight (proj : Name) : MetaM String := do
+          try
             let rm ← mkAppM ``NLAlib.Ops.AccessModel.resources #[M]
-            field ``NLAlib.Ops.ResourceModel.operationWork (← whnf rm)
+            field proj (← whnf rm)
           catch _ => pure "(not available)"
-        out := out.push s!"  weights of the operations (operationWork): {res}"
-        for h in hyps do
-          let decl ← h.fvarId!.getDecl
-          out := out.push s!"  hypothesis ({decl.userName} : {← render (← inferType h)})"
+        out := out.push s!"  weights of the operations (operationWork): {
+          ← weight ``NLAlib.Ops.ResourceModel.operationWork}"
+        out := out.push s!"  weights of the queries (queryWork): {
+          ← weight ``NLAlib.Ops.ResourceModel.queryWork}"
+        out := out.push s!"  weights of the structural instructions (coreWork): {
+          ← weight ``NLAlib.Ops.ResourceModel.coreWork}"
+        for x in xs do
+          let decl ← x.fvarId!.getDecl
+          let ty ← inferType x
+          let label := if ← isProp ty then "hypothesis" else "parameter"
+          out := out.push s!"  {label} ({decl.userName} : {← render ty})"
         match fields with
         | some f =>
           out := out.push s!"  budget [{budget.format}]: {← render f[0]!}"
@@ -620,19 +780,31 @@ run_cmd liftTermElabM do
           out := out.push s!"  memory: {← render f[4]!}"
           out := out.push s!"  output condition (good): {← render f[5]!}"
         | none => out := out.push s!"  specification: {← render S}"
-        for c in ownClaims do
-          let some cinfo := env.find? c | continue
-          let parts ← forallTelescopeReducing cinfo.type fun ys _ => do
-            let e := mkAppN (mkConst c (cinfo.levelParams.map mkLevelParam)) ys
-            pure (← field ``NLAlib.Ops.RandomizedClaim.law e,
-              ← field ``NLAlib.Ops.RandomizedClaim.admits e,
-              ← field ``NLAlib.Ops.RandomizedClaim.event e,
-              ← field ``NLAlib.Ops.RandomizedClaim.bound e)
-          out := out.push s!"  claim {c}"
-          out := out.push s!"    law of the tape: {parts.1}"
-          out := out.push s!"    hypotheses on the input: {parts.2.1}"
-          out := out.push s!"    event: {parts.2.2.1}"
-          out := out.push s!"    failure bound: {parts.2.2.2}"
+        for a in claimApps do
+          unless a.applies do
+            out := out.push (s!"  claim {a.name} [related declaration; about another instance " ++
+              "of this certificate, not this one]")
+            let some cinfo := env.find? a.name | continue
+            let about ← forallTelescopeReducing cinfo.type fun _ t => do
+              render (t.getAppArgs.back?.getD t)
+            out := out.push s!"    it is about: {about}"
+            for e in a.differs do out := out.push s!"    where it differs: {e}"
+            continue
+          let some e := a.term | continue
+          out := out.push s!"  claim {a.name} [applies to this instance]"
+          for b in a.fixed do out := out.push s!"    fixed by this instance: {b}"
+          for b in a.free do out := out.push s!"    parameter of the claim: {b}"
+          for b in a.shared do out := out.push s!"    hypothesis shared with the certificate: {b}"
+          for b in a.extra do
+            out := out.push s!"    hypothesis of the claim, NOT of the certificate: {b}"
+          out := out.push s!"    law of the tape: {← field ``NLAlib.Ops.RandomizedClaim.law e}"
+          out := out.push "    the law is realizable: proved (field `realizable` of the claim)"
+          out := out.push (s!"    hypotheses on the input (admits): " ++
+            s!"{← field ``NLAlib.Ops.RandomizedClaim.admits e}")
+          out := out.push (s!"    hypotheses on the interpretation (interprets): " ++
+            s!"{← field ``NLAlib.Ops.RandomizedClaim.interprets e}")
+          out := out.push s!"    event: {← field ``NLAlib.Ops.RandomizedClaim.event e}"
+          out := out.push s!"    failure bound: {← field ``NLAlib.Ops.RandomizedClaim.bound e}"
         report := String.intercalate "\n" out.toList
       pure ({ line, notes, report } : Entry)
     entries := entries.push entry

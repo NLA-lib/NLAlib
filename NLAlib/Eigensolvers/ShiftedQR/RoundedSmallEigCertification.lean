@@ -528,7 +528,7 @@ matrix, the output and the failure word and lists the spectrum of a matrix withi
 the input, except with probability at most $\varphi$. The Ginibre tails $c_1$, $c_2$ are
 hypotheses; `NLAlib.ShiftedQR.shqrSmallEigGinibreClaim` has them proved. -/
 noncomputable def shqrSmallEigClaim (admitted : ∃ d, ShQRSmallEigSizes Mch c₁ c₂ d)
-    (sU sG : ℕ) {u : ℝ} (hM : StdModel u id Mch) (hA : c₁.BoundsGinibreGap)
+    (sU sG : ℕ) (hs : sU ≠ sG) {u : ℝ} (hM : StdModel u id Mch) (hA : c₁.BoundsGinibreGap)
     (hB : c₂.BoundsGinibreCondition) (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) :
     RandomizedClaim (shqrSmallEigAlgorithm Mch c₁ c₂ admitted sU sG) where
   law _ _ := TapeModel.streams [(sU, volume.restrict (Set.Icc 0 1)), (sG, gaussianReal 0 1)]
@@ -545,8 +545,9 @@ noncomputable def shqrSmallEigClaim (admitted : ∃ d, ShQRSmallEigSizes Mch c�
       (shqrFp (d 0) (0, 0) (3, 0) (4, 0)) m.store ∧
     ShQRSpectrum (0, 0) (3, 0) (4, 0) x.val.1.matrix x.val.1.δ m
   bound _ x := x.val.1.φ
+  realizable _ _ _ _ := TapeModel.realizable_uniform_gaussian hs
   holds := fun d hd x hx I hI hint Ω _ μ _ tape hlaw => by
-    obtain ⟨law, hfix, hξ⟩ := hlaw
+    obtain ⟨-, law, hfix, hξ⟩ := hlaw
     obtain ⟨hIm, win, hloc⟩ := hint
     obtain ⟨hHess, ⟨V, ev, hV, hHV, hκ, hgap⟩, hΓ, hHS, hδ, hδS, hφ, hφ1, hu⟩ := hx
     exact roundedShQRSmallEig_algorithm_measureReal_not_accepts_le hM
@@ -558,16 +559,17 @@ Ginibre tails, at the records `NLAlib.ginibreGapTail` <!-- value ginibreGapTail 
 $(10000e, 5, 1/2, 2)$ and `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail -->
 $(128e, 3, 2, 2)$. -/
 noncomputable def shqrSmallEigGinibreClaim
-    (admitted : ∃ d, ShQRSmallEigSizes Mch ginibreGapTail ginibreConditionTail d) (sU sG : ℕ)
-    {u : ℝ} (hM : StdModel u id Mch) :
+    (admitted : ∃ d, ShQRSmallEigSizes Mch ginibreGapTail ginibreConditionTail d)
+    (sU sG : ℕ) (hs : sU ≠ sG) {u : ℝ} (hM : StdModel u id Mch) :
     RandomizedClaim (shqrSmallEigAlgorithm Mch ginibreGapTail ginibreConditionTail admitted
       sU sG) :=
-  shqrSmallEigClaim admitted sU sG hM boundsGinibreGap_ginibreGapTail
+  shqrSmallEigClaim admitted sU sG hs hM boundsGinibreGap_ginibreGapTail
     boundsGinibreCondition_ginibreConditionTail ginibreGapTail_b_pos ginibreConditionTail_b_pos
 
 /-- What the certificate states: at every admitted size, for every admitted input, every
 interpretation satisfying the contracts of the model and every tape, the run of the fixed program
-from the supplied buffers succeeds within the scratch, the budget, the work and the span of the
+from the supplied buffers succeeds within the scratch, the budget, the work, the span and the
+memory of the
 specification (`NLAlib.Ops.Routine.Domain.Checked`). The deterministic claim is termination
 within the footprint only; the accuracy of the computed Schur form holds with probability over
 the draws: `NLAlib.ShiftedQR.roundedShQRSmallEig_algorithm_measureReal_not_accepts_le`. -/

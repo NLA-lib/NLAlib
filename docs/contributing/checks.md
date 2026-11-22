@@ -79,14 +79,22 @@ confined model, closed-form work and a derived problem, or a reviewed line):
   choice). `unknown` counts as `manifest` wherever `closed` is required;
 * `problem`, `derived`, `unstored`: whether the problem is derived from a `Routine.Domain`, how
   many operands hold words computed from the inputs, and whether inputs are held by no buffer;
-* `oracles`: for a model that is not uniform, whether a `Routine.Domain.Oracles` declaration
-  exists;
-* `claim`: the `RandomizedClaim`s of the certificate; a certificate whose routine specification
-  is termination only must have one.
+* `oracles`: for a model that is not uniform, `declared` when a `Routine.Domain.Oracles`
+  declaration unifies with the domain and the model of this certificate, `related` when one
+  exists for the same domain constant but does not;
+* `claim`: the `RandomizedClaim`s whose certificate, with the claim's binders instantiated, is
+  this certificate at its own parameters; `related:<name>` when a claim is about the same
+  declaration at other arguments. A certificate whose routine specification is termination
+  only must have a claim that applies. `related` values do not satisfy that rule and do not
+  keep `oracles=declared` or a claim in the ratchet.
 
 `OPS_CERTIFICATES_REPORT=1` (or `=Name`) prints what each certificate states, as written:
-admitted sizes, acceptance predicate, slots, oracles, contracts and weights of the operations,
-hypotheses, resource fields, output condition and randomized claims. It writes nothing;
+admitted sizes, acceptance predicate, slots, the model with the contracts and weights of its
+operations and queries, every binder of the certificate, resource fields and output condition;
+and for each oracle declaration and randomized claim whether it applies to this instance, the
+binders it fixes, its hypotheses that are not hypotheses of the certificate, and for a claim
+the law (realizable by a field of the claim), `admits`, `interprets`, event and bound. It
+writes nothing;
 `OPS_CERTIFICATES_REPORT_FILE=path` sends the report to a file. `OPS_CERTIFICATES_WRITE=1`
 rewrites the fixture, and `OPS_CERTIFICATES_FILE=path` compares with another file. The supported
 surface of the layer is listed in the [Ops README](../../NLAlib/Ops/README.md), "What client

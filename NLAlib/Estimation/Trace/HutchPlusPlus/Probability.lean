@@ -172,6 +172,10 @@ noncomputable def Certification.claim (dataLength : ℕ → ℕ → ℕ)
       ((d 2 : ℝ) * tolerance / (√(subgaussianRangeFinderFactor 1) *
         frobNorm (matrix (d 0) (d 0) x.val.1.val -
           truncatedSVD (matrix (d 0) (d 0) x.val.1.val) rank)))))
+  realizable d _ _ _ := by
+    obtain ⟨Ω, mΩ, μ, S, G, hμ, hS, hG, hSG⟩ := TapeModel.exists_indepFun_hasLaw
+      (gaussianMatrix (Fin (d 0)) (Fin (d 1))) (gaussianMatrix (Fin (d 0)) (Fin (d 2)))
+    exact ⟨Ω, mΩ, μ, _, hμ, S, G, hS, hG, hSG, rfl⟩
   holds := fun d hd x hx I hI _ Ω _ μ _ tape hlaw => by
     obtain ⟨S, G, hS, hG, hSG, rfl⟩ := hlaw
     exact Certification.measureReal_not_accepts_le_of_hasLaw_gaussianMatrix dataLength matrix

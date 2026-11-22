@@ -222,7 +222,8 @@ positive-definite $\mathbf{A}$ of order $n$ and right-hand side $b$ whose Krylov
 is at least the horizon $k$, every interpretation of exact scalar arithmetic, exact level-one
 vector operations and exact products with $\mathbf{A}$, and every tape, the counted run of the
 fixed program from $b$ and three blank vectors succeeds, executes at most $6 n + 127 k + 92$
-instructions (each vector operation and each product counting one), and the three vectors then
+instructions (each vector operation and each product counting one), keeps its resident memory
+within the memory of the specification, and the three vectors then
 hold the iterate, residual and direction of conjugate gradient after $k$ steps from the zero
 iterate. Every such system is admitted (`NLAlib.Ops.Routine.Domain.covers`). The matrix
 is in no buffer: it is reached only through the product operation, and the work is counted in
@@ -237,16 +238,18 @@ theorem cg_checked (d : Fin 2 → ℕ) (hd : domain d)
         ((inputs domain admitted supply).memory d (A, rhs)) = some st ∧
       (unitModel domain admitted supply).resources.work st.cost ≤
         6 * d 0 + 127 * d 1 + 92 ∧
+      (inputs domain admitted supply).bytes d + st.peak ≤
+        (countedSpecification domain admitted supply).memory d ∧
       ∃ x r p : Fin (d 0) → ℝ, st.mem.Holds (Codec.vector (d 0)) 1 x ∧
         st.mem.Holds (Codec.vector (d 0)) 2 r ∧ st.mem.Holds (Codec.vector (d 0)) 3 p ∧
         cgState A rhs 0 (d 1) = ⟨x, r, p⟩ := by
-  obtain ⟨st, hr, -, -, hw, -, -, xs, rs, ps, hys, hst⟩ :=
+  obtain ⟨st, hr, -, -, hw, -, hm, -, xs, rs, ps, hys, hst⟩ :=
     (inputs domain admitted supply).checked (countedAlgorithm domain admitted supply)
       d hd (A, rhs) ⟨hA, hrhs⟩ I hI τ
   obtain ⟨_, _, _, _, _, _, he, hx, hr', hp, hl⟩ := Mem.readBlocks_three hys
   obtain ⟨rfl, rfl, rfl⟩ : _ = _ ∧ _ = _ ∧ _ = _ := by simpa using he
   obtain ⟨rfl, rfl, rfl⟩ : _ = _ ∧ _ = _ ∧ _ = _ := by simpa using hl
-  exact ⟨st, hr, hw, _, _, _, Mem.holds_decode _ hx, Mem.holds_decode _ hr',
+  exact ⟨st, hr, hw, hm, _, _, _, Mem.holds_decode _ hx, Mem.holds_decode _ hr',
     Mem.holds_decode _ hp, hst.symm⟩
 
 end NLAlib.Krylov.CG.HSCG.Certification

@@ -583,26 +583,37 @@ theorem initialBytes_eq {d : Fin r → ℕ} (X : D.problem.Input d) :
   exact (congrArg List.length (congrFun (D.buffers_eq X) i)).trans
     (D.length_buffers d X.val.1 i)
 
+/-- The resident payload at the sizes: the cells of the slots, in their storage. -/
+def bytes (d : Fin r → ℕ) : ℕ := (List.ofFn fun i => (D.formats i).bytes * (D.slot d i).len).sum
+
+/-- The resident payload of the problem is that of the slots. -/
+theorem initialBytes_eq_bytes {d : Fin r → ℕ} (X : D.problem.Input d) :
+    D.problem.initialBytes d X = D.bytes d :=
+  D.initialBytes_eq X
+
 /-- What a certificate states, for the admitted inputs. For every admitted size, every
 tuple of inputs satisfying `accepts`, every interpretation satisfying the contracts of the model
 and every tape, the run of the fixed program from the buffers of the slots succeeds, within
-the scratch, the budget, the work, the span and the memory of the specification, and its final
-memory satisfies the output condition. -/
+the scratch, the budget, the work, the span and the memory of the specification (the resident
+payload of the slots plus the peak scratch of the run), and its final memory satisfies the
+output condition. -/
 theorem checked {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.problem}
     (A : Algorithm M S) (d : Fin r → ℕ) (hd : D.valid d) (x : D.In d) (hx : D.accepts d x)
     (I : Interp Op Tst K) (hI : M.contracts d (D.input d x hx) I) (τ : Tape K) :
     ∃ st, exec A.program I M.resources D.formats τ d (D.memory d x) = some st ∧
       st.peak ≤ S.scratch d ∧ st.cost ≤ S.budget d ∧
       M.resources.work st.cost ≤ S.work d ∧ M.resources.span st.cost ≤ S.span d ∧
+      D.bytes d + st.peak ≤ S.memory d ∧
       S.good d (D.input d x hx) τ st.cost st.mem := by
-  obtain ⟨st, hr, hp, hc, hw, hs, -, hg⟩ := A.correct d hd (D.input d x hx) I hI τ
-  exact ⟨st, hr, hp, hc, hw, hs, hg⟩
+  obtain ⟨st, hr, hp, hc, hw, hs, hm, hg⟩ := A.correct d hd (D.input d x hx) I hI τ
+  exact ⟨st, hr, hp, hc, hw, hs, D.initialBytes_eq_bytes (D.input d x hx) ▸ hm, hg⟩
 
 /-- **What a certificate states**, as one proposition: at every admitted size, for every tuple
 of inputs satisfying `accepts`, every interpretation satisfying the contracts of the model and
 every tape, the run of the fixed program from the buffers of the slots succeeds, within the
-scratch, the budget, the work and the span of the specification, and its final memory satisfies
-the output condition. Every certificate of a routine on its problem has this as a theorem
+scratch, the budget, the work, the span and the memory of the specification (the resident
+payload of the slots plus the peak scratch of the run), and its final memory satisfies the
+output condition. Every certificate of a routine on its problem has this as a theorem
 (`NLAlib.Ops.Routine.Domain.checked_all`); a certificate's `_checked` theorem is this statement,
 or a form of it with the output condition written on values. -/
 def Checked {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.problem}
@@ -612,15 +623,13 @@ def Checked {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.probl
     ∃ st, exec A.program I M.resources D.formats τ d (D.memory d x) = some st ∧
       st.peak ≤ S.scratch d ∧ st.cost ≤ S.budget d ∧
       M.resources.work st.cost ≤ S.work d ∧ M.resources.span st.cost ≤ S.span d ∧
+      D.bytes d + st.peak ≤ S.memory d ∧
       S.good d (D.input d x hx) τ st.cost st.mem
 
 /-- Every certificate of a routine on its problem states `NLAlib.Ops.Routine.Domain.Checked`. -/
 theorem checked_all {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.problem}
     (A : Algorithm M S) : D.Checked A :=
   fun d hd x hx I hI τ => D.checked A d hd x hx I hI τ
-
-/-- The resident payload at the sizes: the cells of the slots, in their storage. -/
-def bytes (d : Fin r → ℕ) : ℕ := (List.ofFn fun i => (D.formats i).bytes * (D.slot d i).len).sum
 
 /-- **The counted certificate of a routine on its problem**: `NLAlib.Ops.Routine.certify` with
 the obligations about the initial memory and the payload proved from the slots. The author
@@ -647,7 +656,8 @@ noncomputable def certify {M : AccessModel Op Tst D.problem}
     (fun _ _ X => (D.initialBytes_eq X).le) hop hcore hq hwork D.shape ht hfit hflat hcontig
 
 /-- What a counted certificate states, for the admitted inputs: the run of the fixed program
-from the buffers of the slots succeeds, its work is at most `work`, and the reported operands
+from the buffers of the slots succeeds, its work is at most `work`, its resident memory is at
+most the payload of the slots plus the static scratch of the tree, and the reported operands
 hold blocks satisfying the postcondition of the routine at the blocks of the inputs. -/
 theorem checked_post {M : AccessModel Op Tst D.problem}
     {Sp : (d : Fin r → ℕ) → D.In d → Routine.Spec K} {work : (Fin r → ℕ) → ℕ}
@@ -656,11 +666,12 @@ theorem checked_post {M : AccessModel Op Tst D.problem}
     (d : Fin r → ℕ) (hd : D.valid d) (x : D.In d) (hx : D.accepts d x)
     (I : Interp Op Tst K) (hI : M.contracts d (D.input d x hx) I) (τ : Tape K) :
     ∃ st, exec A.program I M.resources D.formats τ d (D.memory d x) = some st ∧
-      M.resources.work st.cost ≤ work d ∧ ∃ ys,
+      M.resources.work st.cost ≤ work d ∧
+      D.bytes d + st.peak ≤ D.bytes d + staticPeak M.resources (R.close r b) d ∧ ∃ ys,
         st.mem.readBlocks (R.outArgs (slots b)) (R.outLens (List.ofFn d)) = some ys ∧
           (Sp d x).post (List.ofFn d) τ (D.blocks d x) ys := by
-  obtain ⟨st, hr, -, -, hw, -, -, ys, hys, hpost⟩ := D.checked A d hd x hx I hI τ
-  exact ⟨st, hr, hw, ys, hys, hpost⟩
+  obtain ⟨st, hr, -, -, hw, -, hm, -, ys, hys, hpost⟩ := D.checked A d hd x hx I hI τ
+  exact ⟨st, hr, hw, hm, ys, hys, hpost⟩
 
 /-- A domain depends on its routine only through the interface: the admitted inputs of a
 routine are those of any routine with the same dimensions and operands (a routine with another

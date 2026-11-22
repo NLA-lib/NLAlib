@@ -136,7 +136,8 @@ dense and coordinate representations require their own packing and validity cond
    of such a certificate is a count of calls of them.
    Derive the public certificate with `Ops.Routine.Domain.algorithm` against a
    stated `Specification`, and state what it says in a `_checked` theorem: the proposition
-   `Ops.Routine.Domain.Checked` of the certificate (proved by `Ops.Routine.Domain.checked_all`),
+   `Ops.Routine.Domain.Checked` of the certificate (proved by `Ops.Routine.Domain.checked_all`;
+   it includes every resource bound, the resident memory among them),
    or a form with the output on values (`Ops.Mem.Holds`: a buffer holds a value). Its docstring
    says what a reader checks beyond it: the declared oracles, or the probability theorem that
    carries the accuracy when the deterministic claim is termination. A counted certificate,
@@ -182,8 +183,12 @@ State the result as a `Ops.RandomizedClaim` of the certificate (`NLAlib/Ops/Rand
 named for the certificate with the suffix `Claim` (`claim` in a `Certification` namespace). Its
 fields are what a reader checks: the law of the tape (`Ops.TapeModel.streams` for independent
 entries with stated stream laws, `Ops.TapeModel.packed` for a packed random object, or the law
-written out), the hypotheses on the input and on the interpretation, the accuracy event and the
-failure bound. A certificate whose routine has the specification `Ops.Routine.Spec.terminates`
+written out), the hypotheses on the input and on the interpretation, the accuracy event, the
+failure bound, and the proof that the law is realizable (`Ops.TapeModel.Realizable`; the
+streams of `streams` must be distinct). State the claim about the certificate at its own
+parameters: a claim about the certificate at a fixed field or a bundle of operations is
+recorded as `claim=related:…`, which is not a claim of the certificate. A certificate whose
+routine has the specification `Ops.Routine.Spec.terminates`
 must have a claim; the certificate check `scripts/OpsPrograms.lean` fails otherwise. The
 headline theorem may stay as the statement the claim's proof applies.
 

@@ -96,8 +96,8 @@ parametrised programs.
 | `problem` | `derived`, `handwritten` | the problem is that of a `Routine.Domain`, or a hand-written `Problem` |
 | `derived` | a number, `?`, `-` | the operands whose buffer holds words computed from the inputs |
 | `unstored` | `yes`, `no`, `-` | the domain declares inputs that no buffer holds |
-| `oracles` | `declared`, `missing`, `none` | for a model that is not uniform, a `Routine.Domain.Oracles` declaration exists; `none` for a uniform model |
-| `claim` | names, `exempt`, `none`, `required-missing` | the `RandomizedClaim`s of the certificate |
+| `oracles` | `declared`, `related`, `missing`, `none` | for a model that is not uniform, a `Routine.Domain.Oracles` declaration unifies with this domain and model (`declared`), or exists only for another instance of the domain (`related`); `none` for a uniform model |
+| `claim` | names, `related:` names, `exempt`, `none`, `required-missing` | the `RandomizedClaim`s that are about this certificate at its own parameters; `related:` for claims about the same declaration at other arguments |
 
 A resource field is classified by everything it depends on, through every definition of the
 library (proofs are not searched):
@@ -120,9 +120,24 @@ A scratch bound that adds the query reserve of the static count
 certificates whose name contains `Name`) prints, for each certificate and without writing
 anything: its line with the reason of every `manifest` or `unknown`; the admitted sizes and the
 acceptance predicate as written; the slots, with the formulas of the derived ones; the unstored
-inputs with the operations declared to reach them; the contracts and the weights of the
-operations of the model; the hypotheses of the certificate; its resource fields and its output
-condition; and its randomized claims with their law, event and bound.
+inputs; the model, with the contracts of its operations and of its queries and the three
+weights (`operationWork`, `queryWork`, `coreWork`), whether the model is uniform or not; every
+binder of the certificate, parameters and hypotheses; its resource fields and its output
+condition.
+
+For oracle declarations and randomized claims the report distinguishes two levels. A
+declaration *applies to this instance* when its binders can be instantiated so that its type is
+about this certificate: `RandomizedClaim A` with `A` this certificate at its own parameters,
+`Oracles D M` with `D` the domain of the problem and `M` the model. Only then does the line of
+the certificate say `claim=<name>` or `oracles=declared`. A declaration about the same
+certificate declaration at other arguments (a claim for the real field only, or for operations
+taken from a bundle) is *related*: the line says `claim=related:<name>` or `oracles=related`,
+which satisfies neither the rule for termination-only certificates nor the ratchet, and the
+report prints the instance it is about and the arguments where it differs. For a declaration
+that applies the report prints the binders this instance fixes, the parameters that remain,
+the hypotheses it shares with the certificate, and the hypotheses that are **not** hypotheses
+of the certificate; for a claim, also the law of the tape (its realizability is a field of the
+claim, so it is proved), `admits`, `interprets`, the event and the bound.
 `OPS_CERTIFICATES_REPORT_FILE=path` writes the report to a file.
 
 ```
@@ -417,7 +432,9 @@ The interface in detail:
   author. `D.checked` states what a certificate says for the admitted inputs, in terms of the
   evaluator: for every admitted size and tuple of inputs, every interpretation satisfying the
   contracts and every tape, the run from the buffers of the slots (`D.memory`) succeeds within
-  the resources of the specification and satisfies its output condition. `D.Checked A` is
+  the resources of the specification — scratch, budget, work, span, and resident memory: the
+  words of the inputs `D.bytes d` plus the peak of the run are at most `S.memory d` — and
+  satisfies its output condition. `D.Checked A` is
   that statement as one proposition, and `D.checked_all` proves it of every certificate. A
   family's `_checked` theorem is either that proposition (`algorithm_checked`, `sign_checked`,
   `smallEig_checked`, …) or a form with the output written on values: `Mem.Holds c i a` says
@@ -538,7 +555,9 @@ some solvers the certificate itself claims only termination (`Routine.Spec.termi
 
 * `law`: the law of the tape, as a `TapeModel` — the sample spaces, measures and random tapes
   the claim covers. Two forms are named. `TapeModel.streams [(s, ν), …]` says the entries of the
-  tape are independent and an entry of the stream `s` has the law `ν` (`IsTapeLaw`).
+  tape are independent and an entry of the stream `s` has the law `ν` (`IsTapeLaw`); the
+  stream identifiers of the list must be distinct, which is part of the law, so a list naming
+  one stream twice describes no tape.
   `TapeModel.packed ν pack` says the tape is the packing `pack` of a random object with the law
   `ν`. A claim may also state its law directly, as Hutch++ does for two independent Gaussian
   matrices and spectral bisection for a rounded tape;
@@ -548,12 +567,26 @@ some solvers the certificate itself claims only termination (`Routine.Spec.termi
   (measurability, reading the tape only in its windows), where the proof needs them;
 * `event`: the accuracy event, a property of the tape, the count and the final memory of the run;
 * `bound`: the failure probability, a function of the size and the input;
+* `realizable`: for every admitted size and input satisfying `admits`, the law is
+  `TapeModel.Realizable`: some probability space carries a tape with it. Without this field a
+  claim whose law no tape has would hold vacuously. `TapeModel.realizable_streams` (distinct
+  streams, probability laws), `realizable_packed` and `realizable_uniform_gaussian` prove it
+  for the named forms. The claims over a uniform and a Gaussian stream `sU`, `sG` take the
+  hypothesis `sU ≠ sG` for it;
 * `holds`: the statement `Algorithm.FailsAtMost`: for every admitted size and input satisfying
   `admits`, every interpretation satisfying the contracts and `interprets`, and every finite
   measure and tape with the law, the probability that the counted run of the program of `A`
   fails, exceeds a resource bound of the specification, or ends outside `event` is at most
   `bound`. The run is that of the certificate: the same program from the initial memory of the
   problem, so success and every resource bound are part of the event.
+
+`admits` and `interprets` are not required to be satisfiable. They are numerical conditions in
+the parameters of a claim (a unit roundoff below a threshold, a measurable interpretation
+reading the tape in its windows); whether some input and some interpretation meet them depends
+on those parameters, and a field demanding it could only be discharged by a further hypothesis
+of the claim. They are stated in the claim and printed by the certificate report, where a
+reader sees for which inputs and implementations the bound is claimed. `holds` quantifies over
+every finite measure, of which the probability measures of `realizable` are instances.
 
 `RandomizedClaim.ofReference` and `RandomizedClaim.ofWp` build a claim from the two transfers of
 `Probability.lean`: from a reference event of the sample space, and from the probabilistic
@@ -565,12 +598,12 @@ The claims of the library:
 
 | Certificate | Claim | Law of the tape |
 |---|---|---|
-| `HutchPlusPlus.Certification.algorithm` | `HutchPlusPlus.Certification.claim` | packing of two independent Gaussian matrices |
-| `Deflation.deflateAlgorithm` | `Deflation.deflateClaim` | packing of a complex Gaussian matrix |
+| `HutchPlusPlus.Certification.algorithm` over `ℝ` | `HutchPlusPlus.Certification.claim` | packing of two independent Gaussian matrices |
+| `Deflation.deflateAlgorithm` with the product and QR of a `FloatMachine` | `Deflation.deflateClaim` | packing of a complex Gaussian matrix |
 | any certificate of block Golub–Kahan | `BlockKrylov.gaussianClaim` | packing of a Gaussian start block |
 | `SpectralBisection.countedBisectionAlgorithm` | `SpectralBisection.countedBisectionClaim` | rounding of independent uniform and Gaussian streams |
-| `SmallEig.smallEigAlgorithm` | `SmallEig.smallEigClaim`, `smallEigGinibreClaim` | independent uniform and Gaussian streams |
-| `ShiftedQR.shqrSmallEigAlgorithm` | `ShiftedQR.shqrSmallEigClaim`, `shqrSmallEigGinibreClaim` | independent uniform and Gaussian streams |
+| `SmallEig.smallEigAlgorithm` | `SmallEig.smallEigClaim`; `smallEigGinibreClaim` at the Ginibre tails | independent uniform and Gaussian streams |
+| `ShiftedQR.shqrSmallEigAlgorithm` | `ShiftedQR.shqrSmallEigClaim`; `shqrSmallEigGinibreClaim` at the Ginibre tails | independent uniform and Gaussian streams |
 | `Schur.denseSchurAlgorithm` | `Schur.denseSchurClaim` | independent uniform and Gaussian streams |
 
 **Every termination-only certificate has a claim.** The certificate check

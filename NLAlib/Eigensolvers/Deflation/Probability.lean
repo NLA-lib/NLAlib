@@ -199,6 +199,7 @@ noncomputable def deflateClaim (M : Machine K) (domain : (Fin 2 → ℕ) → Pro
       (6 * ((specNorm (S d) + 2) * specNorm (S d)⁻¹ * (√2 * (2 * √(d 0 : ℝ) + t)) / cut) *
         beta) (1, 0) m
   bound d _ := 2 * Real.exp (-t ^ 2 / 2) + (d 1) ^ 2 * cut ^ 2
+  realizable _ _ _ _ := TapeModel.realizable_packed _ _
   holds := fun d hd x hx I hI _ Ω _ μ _ tape hlaw => by
     obtain ⟨G, hG, rfl⟩ := hlaw
     obtain ⟨hU, hV, hS, hBeta, hCondition, hPrecision, hFloor, hFloorN, hRange⟩ := hx

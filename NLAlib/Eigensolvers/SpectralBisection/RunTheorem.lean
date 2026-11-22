@@ -155,6 +155,17 @@ theorem measureReal_not_accepts_countedSpecification_le
 
 /-! ### The randomized claim -/
 
+/-- Probability laws for the streams with the law of each sample distribution on its stream. -/
+theorem exists_law_distributionStream :
+    ∃ law : ℕ → Measure ℝ, (∀ s, IsProbabilityMeasure (law s)) ∧
+      ∀ dist : Computation.Dist, law (distributionStream dist) = dist.law := by
+  refine ⟨fun s => if s = Stream.unif then Computation.Dist.uniform.law else
+    if s = Stream.gauss then Computation.Dist.gaussian.law
+    else Computation.Dist.rademacher.law, fun s => ?_, fun dist => ?_⟩
+  · dsimp only
+    split_ifs <;> infer_instance
+  · cases dist <;> simp [distributionStream, Stream.unif, Stream.gauss, Stream.sign]
+
 /-- **The randomized claim of the counted spectral bisection certificate** ([Shah2024,
 Theorem 4.2], for the rounded reference computation). The tape is the rounding to machine words,
 by `roundUnif` and `roundGaussian`, of a tape with independent entries whose stream of each
@@ -212,6 +223,10 @@ noncomputable def countedBisectionClaim (M : Machine K) (dec : K → ℝ)
   event d x _ _ m := StoresApproxDiagonalization dec (inputMatrix d x)
     (2 * inputTolerance dec x * inputRadius dec x) (inputTolerance dec x / 3) (2, 0) (3, 0) m
   bound _ _ := theta
+  realizable _ _ _ _ := by
+    obtain ⟨law, hprob, hlaw⟩ := exists_law_distributionStream
+    obtain ⟨Ω, mΩ, μ, ideal, hξ⟩ := exists_isTapeLaw law
+    exact ⟨Ω, mΩ, μ, _, hξ.isProbabilityMeasure, law, ideal, hξ, hlaw, rfl⟩
   holds := fun d hd x hx I hI _ Ω _ μ _ tape hlaw => by
     obtain ⟨law, ideal, hTape, hStream, rfl⟩ := hlaw
     obtain ⟨hA, hRadius, hRadiusPos, hEps, hEpsMax, hDepth, hBeta, hBetaMax, hSign, hStop,

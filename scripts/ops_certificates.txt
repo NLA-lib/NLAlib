@@ -1,5 +1,5 @@
-NLAlib.Deflation.deflateAlgorithm hyps=2 uniform=yes confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=none claim=NLAlib.Deflation.deflateClaim
-NLAlib.HutchPlusPlus.Certification.algorithm hyps=1 uniform=yes confined=yes charged=no budget=manifest work=manifest scratch=closed problem=derived derived=0 unstored=no oracles=none claim=NLAlib.HutchPlusPlus.Certification.claim
+NLAlib.Deflation.deflateAlgorithm hyps=2 uniform=yes confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=none claim=related:NLAlib.Deflation.deflateClaim
+NLAlib.HutchPlusPlus.Certification.algorithm hyps=1 uniform=yes confined=yes charged=no budget=manifest work=manifest scratch=closed problem=derived derived=0 unstored=no oracles=none claim=related:NLAlib.HutchPlusPlus.Certification.claim
 NLAlib.HutchPlusPlus.Certification.countedAlgorithm hyps=1 uniform=yes confined=yes charged=no budget=manifest work=closed scratch=closed problem=derived derived=0 unstored=no oracles=none claim=none
 NLAlib.Krylov.CG.HSCG.Carried.Certification.algorithm hyps=4 uniform=no confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=yes oracles=declared claim=none
 NLAlib.Krylov.CG.HSCG.Carried.Rounded.Certification.algorithm hyps=10 uniform=no confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=yes oracles=declared claim=none
@@ -56,10 +56,10 @@ NLAlib.ShiftedQR.deflationAlgorithm hyps=2 uniform=yes confined=yes charged=no b
 NLAlib.ShiftedQR.exactDeflationAlgorithm hyps=0 uniform=yes confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=none claim=none
 NLAlib.ShiftedQR.exactStepAlgorithm hyps=0 uniform=yes confined=yes charged=yes budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=none claim=none
 NLAlib.ShiftedQR.forwardDeflationAlgorithm hyps=0 uniform=yes confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=none claim=none
-NLAlib.ShiftedQR.shqrSmallEigAlgorithm hyps=1 uniform=yes confined=yes charged=yes budget=manifest work=closed scratch=manifest problem=derived derived=3 unstored=yes oracles=none claim=NLAlib.ShiftedQR.shqrSmallEigClaim+NLAlib.ShiftedQR.shqrSmallEigGinibreClaim
+NLAlib.ShiftedQR.shqrSmallEigAlgorithm hyps=1 uniform=yes confined=yes charged=yes budget=manifest work=closed scratch=manifest problem=derived derived=3 unstored=yes oracles=none claim=NLAlib.ShiftedQR.shqrSmallEigClaim
 NLAlib.ShiftedQR.stepAlgorithm hyps=1 uniform=yes confined=yes charged=yes budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=none claim=none
 NLAlib.Sign.signAlgorithm hyps=2 uniform=yes confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=none claim=none
-NLAlib.SmallEig.smallEigAlgorithm hyps=1 uniform=yes confined=yes charged=yes budget=manifest work=closed scratch=manifest problem=derived derived=1 unstored=yes oracles=none claim=NLAlib.SmallEig.smallEigClaim+NLAlib.SmallEig.smallEigGinibreClaim
+NLAlib.SmallEig.smallEigAlgorithm hyps=1 uniform=yes confined=yes charged=yes budget=manifest work=closed scratch=manifest problem=derived derived=1 unstored=yes oracles=none claim=NLAlib.SmallEig.smallEigClaim
 NLAlib.SpectralBisection.bisectionAlgorithm hyps=2 uniform=yes confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=none claim=none
 NLAlib.SpectralBisection.boundedBisectionAlgorithm hyps=7 uniform=yes confined=yes charged=no budget=closed work=closed scratch=closed problem=derived derived=0 unstored=no oracles=none claim=none
 NLAlib.SpectralBisection.countedBisectionAlgorithm hyps=6 uniform=yes confined=yes charged=no budget=manifest work=closed scratch=closed problem=derived derived=0 unstored=no oracles=none claim=NLAlib.SpectralBisection.countedBisectionClaim

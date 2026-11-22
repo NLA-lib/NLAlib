@@ -83,6 +83,7 @@ when its implementation satisfies it. -/
 theorem Interp.link_satisfies {I : Interp Op₂ Tst K} {T : Table Op₁ Op₂ Tst} {o : Op₁}
     {E : Impl Op₂ Tst} (hT : T o = .inl E) {md : Mode} {C : Contract K} (h : E.Satisfies I md C) :
     (I.link T).Satisfies md o C := by
+  refine Interp.Satisfies.of_callS ?_
   intro d ins outs τ m hpre
   obtain ⟨hl, hw⟩ := h d ins outs τ m hpre
   rw [Interp.link_callS_inl I hT]
@@ -99,9 +100,10 @@ theorem Interp.link_satisfies_kept {I : Interp Op₂ Tst K} {T : Table Op₁ Op�
     {o' : Op₂}
     (hT : T o = .inr o') {md : Mode} {C : Contract K} (h : I.Satisfies md o' C) :
     (I.link T).Satisfies md o C := by
+  refine Interp.Satisfies.of_callS ?_
   intro d ins outs τ m hpre
   rw [Interp.link_callS_inr I hT]
-  exact h d ins outs τ m hpre
+  exact h.callS d ins outs τ m hpre
 
 /-- In liberal mode an implementation that fails satisfies every contract. -/
 theorem Impl.satisfies_liberal_abort (nd nin nout : ℕ) (I : Interp Op Tst K) (C : Contract K)
@@ -116,6 +118,7 @@ of linking is never a result without a statement of success. -/
 theorem Interp.link_satisfies_liberal_of_abort {I : Interp Op₂ Tst K} {T : Table Op₁ Op₂ Tst}
     {o : Op₁} {E : Impl Op₂ Tst} (hT : T o = .inl E) (hE : E.body = .abort) (C : Contract K) :
     (I.link T).Satisfies .liberal o C := by
+  refine Interp.Satisfies.of_callS ?_
   intro d ins outs τ m _ m' hm'
   rw [Interp.link_callS_inl I hT, hE] at hm'
   split_ifs at hm'
@@ -222,6 +225,7 @@ theorem Interp.IsFn.satisfies_rel {I : Interp Op Tst K} {o : Op} {f : BlockFn K}
       m.readBlocks ins (B.inLens d) = some xs → B.dom d xs w →
       ∃ ys, f.fn d w xs = some ys ∧ ys.map List.length = B.outLens d ∧ B.rel d xs w ys) :
     I.Satisfies .total o (B.spec adm) := by
+  refine Interp.Satisfies.of_callS ?_
   rintro d ins outs τ m ⟨hnd', hadm', hn⟩
   obtain ⟨hl, ⟨xs, hxs, hdom⟩, hz⟩ := hn rfl
   obtain ⟨ys, hys, hlen, hrel⟩ := hf d _ xs m ins outs hnd'
@@ -246,6 +250,7 @@ theorem Interp.IsFn.satisfies_rel_of_pre {I : Interp Op Tst K} {o : Op} {f : Blo
       adm d ins outs → m.readBlocks ins (B.inLens d) = some xs → B.dom d xs w →
       ∃ ys, f.fn d w xs = some ys ∧ ys.map List.length = B.outLens d ∧ B.rel d xs w ys) :
     I.Satisfies .total o (B.spec adm) := by
+  refine Interp.Satisfies.of_callS ?_
   rintro d ins outs τ m ⟨hnd', ha, hn⟩
   obtain ⟨hl, ⟨xs, hxs, hdom⟩, hz⟩ := hn rfl
   obtain ⟨ys, hys, hlen, hrel⟩ := hf d _ xs m ins outs hnd'

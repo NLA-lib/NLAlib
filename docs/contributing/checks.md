@@ -146,7 +146,8 @@ of.
   `route` says whether the declaration is reached from the execution rules only
   (`reference`), from the rules and the evaluator (`execution`: the store, the syntax, the
   counts), from neither (`claim`), or is used by the evaluator and not by the rules
-  (`evaluator`: it is in the list for another reason, such as the statement of a contract). `type` and `body` are hashes of
+  (`evaluator`: it would be in the list for another reason; no declaration has this route, and
+  the check fails if the evaluator or its guarded call `Interp.callS` is reached from a root). `type` and `body` are hashes of
   the statement and of the content.
 - *Output.* The run prints `ops trusted base: N declarations in M modules, L source lines, …`
   with the size of what the execution rules reach, and `ops trusted base fixtures: 6 checks` (the closure rule

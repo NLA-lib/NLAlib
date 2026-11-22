@@ -1219,6 +1219,7 @@ public import NLAlib.Ops.ContextWork
 public import NLAlib.Ops.Contract
 public import NLAlib.Ops.Counted
 public import NLAlib.Ops.CountedLoop
+public import NLAlib.Ops.Dependence
 public import NLAlib.Ops.Examples.Backward
 public import NLAlib.Ops.Examples.Bilinear
 public import NLAlib.Ops.Examples.Bits

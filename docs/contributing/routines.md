@@ -39,6 +39,14 @@ statement uses `Program.certifies_iff_exec`. The
 [reviewer's declaration map](../design/Ops-ReferenceReview.md) lists every definition a reading
 of a certificate depends on.
 
+What a run can depend on is proved once, for every tree, in `NLAlib/Ops/Dependence.lean`: a run
+is given by the tree, the sizes, the supplied buffers, the tape and the interpretation, so data
+that is in no buffer reaches it only through the contracts of the model. In a uniform model one
+run from given buffers meets the output condition of every input with those buffers
+(`Algorithm.good_of_buffers_eq`); with declared oracles, two inputs with the same buffers are
+told apart only by an oracle (`Inputs.Oracles.good_of_satisfies`,
+`Inputs.Oracles.good_of_allOps`). Nothing needs to be proved about this for a new routine.
+
 **Routine or fragment.** A tree is a routine when it has operands of its own and something
 calls it through its interface: a `run` in another tree, a linking table, or a certificate. A
 tree that is a piece of one routine's tree, working on buffers that routine allocates or at

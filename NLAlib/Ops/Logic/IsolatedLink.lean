@@ -170,7 +170,7 @@ theorem eval_guardIsolated (active fallback : Interp Op Tst K)
     (target := active) ?_ rfl rfl hSnapshot hEnv hr
   intro o d ins outs tape mem mem' hGood hOut hRun
   have hActive := Interp.callS_guardIsolated_of_good hGood hOut hRun
-  obtain ⟨v, hv, hPost⟩ := hSat o d ins outs tape mem hActive.1
+  obtain ⟨v, hv, hPost⟩ := (hSat o).callS d ins outs tape mem hActive.1
   rw [hRun] at hv
   cases hv
   exact ⟨hActive.2, BlockRel.isolated_of_post hGood hOut hPost⟩

@@ -101,7 +101,7 @@ theorem wp_call {o : Op} {C : Contract K} (hI : I.Satisfies md o C) {ds : List I
     (hb : Operand.evalList ρ outs = some b) (hpre : (C.on md d a b τ m).pre m)
     (hQ : ∀ m', (C.on md d a b τ m).post m m' → Q m') : Wp md I τ (.call o ds ins outs) ρ Q m := by
   simp only [Wp, eval, hd, ha, hb, Option.bind_some]
-  exact (hI d a b τ m hpre).mono hQ
+  exact (hI.callS d a b τ m hpre).mono hQ
 
 theorem holds_iter {σ : Type} {f : ℕ → σ → Option σ} {k : ℕ} (Inv : ℕ → σ → Prop)
     (hstep : ∀ i < k, ∀ s, Inv i s → md.Holds (f i s) (Inv (i + 1))) {s : σ} (h0 : Inv 0 s) :

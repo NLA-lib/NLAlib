@@ -105,7 +105,7 @@ Names in this and the next sections have the prefix `NLAlib.Ops`.
 | `ResourceModel` and all its fields | [Syntax.lean](../../NLAlib/Ops/Syntax.lean) | Formats, signatures, primitive/query workspace, and operation/query/core work/span weights are fixed by this execution model. The only built-in cost laws are span no greater than work. |
 | `ResourceModel.work`, `.span` | [Exec.lean](../../NLAlib/Ops/Exec.lean) | Full counts, including structural instructions and queries, are weighted. Sequential syntax adds primitive spans; no scheduling theorem is asserted. |
 | `ResourceModel.queryReserve` | [Exec.lean](../../NLAlib/Ops/Exec.lean) | Reservation is the maximum workspace among executed query keys. It is added to the allocation/primitive peak; it is not the exact maximum of simultaneous live bytes. |
-| `Mode`, `Mode.Needs`, `.Holds`, `OpSpec`, `Contract`, `Contract.on`, `Interp.Satisfies` | [Contract.lean](../../NLAlib/Ops/Contract.lean) | Total contracts require success under the precondition. The contract receives only its declared tape window. Liberal satisfaction is not a certificate. |
+| `Mode`, `Mode.Needs`, `OpSpec`, `Contract`, `Contract.on`, `Interp.Satisfies` | [Contract.lean](../../NLAlib/Ops/Contract.lean) | Satisfaction is stated with the call of the interpretation, the liveness of its operands and the unchanged shape of the store, the premises of the rule of a call. In total mode, under the precondition, the operands are live, the call succeeds, the shape is unchanged and the postcondition holds (`Interp.satisfies_total_iff`). The contract receives only its declared tape window. Liberal satisfaction is not a certificate. |
 | `QueryContract`, `Interp.SatisfiesQuery` | [Contract.lean](../../NLAlib/Ops/Contract.lean) | The declared Boolean/index relations constrain the actual query results, including possible failure. |
 | `BlockRel`, `BlockRel.Post`, `.spec` | [BlockRel.lean](../../NLAlib/Ops/BlockRel.lean) | Operand lengths, input domain, output relation, exact tape advance, output capacity and frame behavior have the intended meaning. |
 | `AccessModel`, `AccessModel.contracts` | [Contract.lean](../../NLAlib/Ops/Contract.lean) | The hypotheses are exactly the declared primitive/query contracts. They have a joint realization at each admitted input; the word/tape type is inhabited. |
@@ -171,7 +171,35 @@ Weights are deliberately unequal: work is `9 + 11 + 2 = 22` and span is
 `9 + 3 + 1 = 13`. The theorem also states that final memory is the original memory
 and live scratch returns to zero.
 
-## 8. What the kernel checks after this review
+## 8. What the definitions imply
+
+These theorems are consequences of the definitions above, not part of what a reader must
+believe. They are stated once, for every tree, and say what a run can depend on
+([`Dependence.lean`](../../NLAlib/Ops/Dependence.lean)). A run is given by the tree, the sizes,
+the supplied buffers, the tape and the interpretation; the data of a problem that is in no
+buffer is not an argument of `Reference.Execution`, so it can reach a run only through which
+interpretations the contracts of the model allow.
+
+| Theorem | What it rules out |
+|---|---|
+| `Reference.derives_congr_of_allOps`, `Reference.execution_congr_of_allOps` | A tree reaching the interpretation other than at its calls and tests: two interpretations that agree on the operations the tree calls, and on the tests, derive the same outcomes. |
+| `Specification.accepts_congr_of_buffers` | A run reading the input other than through the supplied buffers: at two inputs with the same buffers the same runs are accepted, with the same resource figures. |
+| `Algorithm.good_of_contracts` | Two inputs with the same buffers being told apart by anything but the set of interpretations the model allows: one run under an interpretation allowed at both meets the output condition of both. |
+| `Algorithm.good_of_buffers_eq` | An output that depends on data in no buffer, in a uniform model: one run from given buffers meets the output condition of every input with those buffers. |
+| `Inputs.Oracles.good_of_satisfies` | Unstored data reaching a run other than through a declared oracle: if the declared oracles of the interpretation are also allowed at the other input, the run meets the output condition of both. |
+| `Inputs.Oracles.good_of_allOps` | A tree that calls no declared oracle using unstored data: its run meets the output condition of every input with the same buffers. |
+
+What they do not rule out is the content of the model, which the reader checks: what a contract
+computes from its operands and what it costs, a contract that reads cells that are not its
+operands (`AccessModel.Confined` excludes it), and a model that is neither uniform nor has its
+oracles declared. For that last case the conclusion fails:
+`Examples.Oracles.not_good_oracleInput_zero_one` is the counterexample, a certificate whose two
+inputs have the same buffers and no common output. The parameters of a certificate are in its
+statement, not in the problem, and are outside these theorems. Resource bounds are functions of
+the sizes alone by the type of `Specification`; the count of one run can depend on the data
+through the tests of the tree.
+
+## 9. What the kernel checks after this review
 
 [`Reference/Accounting.lean`](../../NLAlib/Ops/Reference/Accounting.lean) and
 [`Reference/Equivalence.lean`](../../NLAlib/Ops/Reference/Equivalence.lean) establish

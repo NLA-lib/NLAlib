@@ -86,6 +86,22 @@ or has zero work; a unit-cost primitive can then write the answer (`Examples/Ora
 * `AccessModel.Charged`: every primitive, query and structural instruction has positive work.
   `AccessModel.Charged.size_le_work`: work is then at least the number of instructions.
 
+`Dependence.lean` proves, for every tree, what a run can depend on. A run is given by the
+tree, the sizes, the supplied buffers, the tape and the interpretation, so data that is in no
+buffer can reach it only through which interpretations the model allows:
+
+* `Reference.execution_congr_of_allOps`: two interpretations that agree on the operations the
+  tree calls, and on the tests, have the same runs.
+* `Specification.accepts_congr_of_buffers`: two inputs with the same buffers have the same runs.
+* `Algorithm.good_of_buffers_eq`: in a uniform model, one run from given buffers meets the
+  output condition of every input with those buffers.
+* `Inputs.Oracles.good_of_satisfies`, `Inputs.Oracles.good_of_allOps`: with the oracles
+  declared, two inputs with the same buffers are told apart only by an oracle, and a tree that
+  calls no declared oracle cannot use unstored data.
+
+`Examples.Oracles.not_good_oracleInput_zero_one` shows the conclusion fails for a model that is
+not uniform and declares no oracle.
+
 `Profiles/Confined.lean` proves these for the standard collections. `scripts/OpsPrograms.lean`
 computes one line for every certificate and compares it with `scripts/ops_certificates.txt`: a
 recorded certificate may not get weaker in any field, and a new one must have a confined model,
@@ -550,7 +566,11 @@ one matrix held as one block (`swapMatrixRows_meets`), and their kernel-evaluate
 
 Three statements have three roles. `Routine.Meets` is what an author states about a routine.
 `Interp.Satisfies` says that an interpretation satisfies the contract of a primitive operation;
-operation models are made of it. `Impl.Satisfies` says that an implementation of an operation
+operation models are made of it. It is stated with the call of the interpretation, the liveness
+of its operands and the unchanged shape of the store (in total mode,
+`Interp.satisfies_total_iff`); the program logic uses the form through the call of the
+evaluator, `Interp.Satisfies.callS`, and a proof of satisfaction from that form is
+`Interp.Satisfies.of_callS`. `Impl.Satisfies` says that an implementation of an operation
 satisfies that contract; it is derived from the judgments of the routines that share the
 entry's tree and consumed by linking.
 
@@ -831,6 +851,7 @@ source guard never becomes an omitted runtime operation. See the
 | `Examples/Certification.lean` | Repeated-addition certificate and adversarial regressions |
 | `Examples/Resources.lean` | Mixed-format storage, workspace, and work/span certificates |
 | `Confined.lean`, `Profiles/Confined.lean` | Confined, uniform and charged models |
+| `Dependence.lean` | What a run depends on: the calls and tests of its tree, the supplied buffers, and declared oracles |
 | `Examples/Oracles.lean` | Misleading certificates the types accept and these properties reject |
 | `Examples/Integrator.lean`, `IntegratorLink.lean` | The integrator of the *Programs, models and certificates* page: routines, model, certificate, linking |
 

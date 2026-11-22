@@ -1499,7 +1499,7 @@ def evaluatorRoot : Name := `NLAlib.Ops.exec
 /-- The evaluator and what it is made of: none may be reached from a root. -/
 def evaluatorParts : List Name := [
   `NLAlib.Ops.exec, `NLAlib.Ops.evalCounted, `NLAlib.Ops.eval, `NLAlib.Ops.Stmt.instrument,
-  `NLAlib.Ops.Interp.instrument, `NLAlib.Ops.instrumentWorkspace]
+  `NLAlib.Ops.Interp.instrument, `NLAlib.Ops.instrumentWorkspace, `NLAlib.Ops.Interp.callS]
 /-- The execution by the reference rules. -/
 def referenceRoot : Name := `NLAlib.Ops.Reference.Execution
 

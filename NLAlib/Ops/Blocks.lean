@@ -139,7 +139,8 @@ theorem Interp.IsFn.callS_eq {I : Interp Op Tst K} {o : Op} {f : BlockFn K}
     (ha : f.apply d ins outs τ m = some m') : I.callS o d ins outs τ m = some m' := by
   obtain ⟨hnd, hl, xs, ys, hxs, hys, hlen, hroom, rfl⟩ := BlockFn.apply_eq_some_iff.mp ha
   obtain ⟨m₁, h₁, xs', hxs', -, ys', -, hys', rfl⟩ :=
-    h d ins outs τ m ⟨hnd, hadm, fun _ => ⟨hl, ⟨xs, hxs, ys, hys, hlen⟩, hroom⟩⟩
+    Interp.Satisfies.callS h d ins outs τ m
+      ⟨hnd, hadm, fun _ => ⟨hl, ⟨xs, hxs, ys, hys, hlen⟩, hroom⟩⟩
   have hxs'' : m.readBlocks ins (f.inLens d) = some xs' := hxs'
   rw [hxs] at hxs''
   cases hxs''
@@ -153,7 +154,8 @@ theorem Interp.IsFn.apply_of_callS {I : Interp Op Tst K} {o : Op} {f : BlockFn K
     {d : List ℕ} {ins outs : List (ℕ × ℕ)} {τ : Tape K} {m m' : Mem K} (hnd : d.length = f.nd)
     (hadm : adm d ins outs) (hc : I.callS o d ins outs τ m = some m') :
     f.apply d ins outs τ m = some m' := by
-  obtain ⟨xs, hxs, hroom, ys, hlen, hys, rfl⟩ := h d ins outs τ m ⟨hnd, hadm, by simp⟩ m' hc
+  obtain ⟨xs, hxs, hroom, ys, hlen, hys, rfl⟩ :=
+    Interp.Satisfies.callS h d ins outs τ m ⟨hnd, hadm, by simp⟩ m' hc
   exact BlockFn.apply_of_read hnd (Interp.live_of_callS hc) hxs hys hlen hroom
 
 /-- **The interpretation whose operations are given block functions** (model primitives, concrete
@@ -178,6 +180,7 @@ and on all operands. -/
 theorem Interp.ofFns_isFn (F : Op → BlockFn K) (md : Mode) (o : Op)
     (adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop) :
     (Interp.ofFns F : Interp Op Tst K).IsFn md o (F o) adm := by
+  refine Interp.Satisfies.of_callS ?_
   rintro d ins outs τ m ⟨hnd, -, hn⟩
   rw [Interp.ofFns_callS]
   cases md with

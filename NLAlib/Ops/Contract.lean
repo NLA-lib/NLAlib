@@ -35,7 +35,12 @@ The three statements of the layer, `NLAlib.Ops.Routine.Meets`, `NLAlib.Ops.Inter
 
 ## Main results
 
-* `NLAlib.Ops.Interp.Satisfies`: an operation satisfies a contract.
+* `NLAlib.Ops.Interp.Satisfies`: an operation satisfies a contract, stated with the call of the
+  interpretation, the liveness of its operands and the unchanged shape of the store.
+* `NLAlib.Ops.Interp.satisfies_total_iff`: the statement in total mode.
+* `NLAlib.Ops.Interp.satisfies_iff_callS`, `NLAlib.Ops.Interp.Satisfies.callS`,
+  `NLAlib.Ops.Interp.Satisfies.of_callS`: the form through the call of the evaluator, which the
+  program logic uses.
 * `NLAlib.Ops.Interp.Satisfies.mono`: weakening.
 -/
 
@@ -142,10 +147,78 @@ def Contract.on (C : Contract K) (md : Mode) (d : List ℕ) (ins outs : List (�
     (m : Mem K) : OpSpec K :=
   C.spec md d ins outs (τ.window C.stream m.pos (C.win d))
 
-/-- **The operation `o` of `I` satisfies the contract `C`** in the mode `md`. -/
+/-- **The operation `o` of `I` satisfies the contract `C`** in the mode `md`. A call counts only
+if its operands are buffers of the store and it leaves the shape of the store unchanged. Under
+the precondition, in total mode there is such a call, and in both modes the memory after such a
+call satisfies the postcondition. -/
 def Interp.Satisfies (I : Interp Op Tst K) (md : Mode) (o : Op) (C : Contract K) : Prop :=
   ∀ d ins outs τ m, (C.on md d ins outs τ m).pre m →
-    md.Holds (I.callS o d ins outs τ m) ((C.on md d ins outs τ m).post m)
+    md.Needs (m.Live (ins ++ outs) ∧ ∃ m', I.call o d ins outs τ m = some m' ∧
+      m'.store.shape = m.store.shape) ∧
+    ∀ m', m.Live (ins ++ outs) → I.call o d ins outs τ m = some m' →
+      m'.store.shape = m.store.shape → (C.on md d ins outs τ m).post m m'
+
+/-- In total mode: under the precondition the operands are buffers of the store, the call
+succeeds, the shape of the store is unchanged and the postcondition holds. These are the premises
+of the rule of a call (`NLAlib.Ops.Reference.Derives.call`) and the postcondition. -/
+theorem Interp.satisfies_total_iff {I : Interp Op Tst K} {o : Op} {C : Contract K} :
+    I.Satisfies .total o C ↔ ∀ d ins outs τ m, (C.on .total d ins outs τ m).pre m →
+      m.Live (ins ++ outs) ∧ ∃ m', I.call o d ins outs τ m = some m' ∧
+        m'.store.shape = m.store.shape ∧ (C.on .total d ins outs τ m).post m m' := by
+  constructor
+  · intro h d ins outs τ m hp
+    obtain ⟨hn, hall⟩ := h d ins outs τ m hp
+    obtain ⟨hl, m', hc, hs⟩ := hn rfl
+    exact ⟨hl, m', hc, hs, hall m' hl hc hs⟩
+  · intro h d ins outs τ m hp
+    obtain ⟨hl, m', hc, hs, hq⟩ := h d ins outs τ m hp
+    refine ⟨fun _ => ⟨hl, m', hc, hs⟩, fun m₁ _ hc₁ _ => ?_⟩
+    rw [hc] at hc₁
+    cases hc₁
+    exact hq
+
+/-- The same statement through the call of the evaluator, `NLAlib.Ops.Interp.callS`, which
+fails unless the operands are buffers of the store and the shape is unchanged. This is the form
+the program logic uses. -/
+theorem Interp.satisfies_iff_callS {I : Interp Op Tst K} {md : Mode} {o : Op} {C : Contract K} :
+    I.Satisfies md o C ↔ ∀ d ins outs τ m, (C.on md d ins outs τ m).pre m →
+      md.Holds (I.callS o d ins outs τ m) ((C.on md d ins outs τ m).post m) := by
+  constructor
+  · intro h d ins outs τ m hp
+    obtain ⟨hn, hall⟩ := h d ins outs τ m hp
+    cases md
+    · obtain ⟨hl, m', hc, hs⟩ := hn rfl
+      exact ⟨m', Interp.callS_eq_some_iff.mpr ⟨hl, hc, hs⟩, hall m' hl hc hs⟩
+    · intro m' hm'
+      obtain ⟨hl, hc, hs⟩ := Interp.callS_eq_some_iff.mp hm'
+      exact hall m' hl hc hs
+  · intro h d ins outs τ m hp
+    refine ⟨fun hmd => ?_, fun m' hl hc hs => ?_⟩
+    · subst hmd
+      obtain ⟨m', hm', -⟩ := h d ins outs τ m hp
+      obtain ⟨hl, hc, hs⟩ := Interp.callS_eq_some_iff.mp hm'
+      exact ⟨hl, m', hc, hs⟩
+    · have hcs := Interp.callS_eq_some_iff.mpr ⟨hl, hc, hs⟩
+      cases md
+      · obtain ⟨a, ha, hq⟩ := h d ins outs τ m hp
+        rw [hcs] at ha
+        cases ha
+        exact hq
+      · exact h d ins outs τ m hp m' hcs
+
+/-- The call of the evaluator under a contract: the form the program logic applies. -/
+theorem Interp.Satisfies.callS {I : Interp Op Tst K} {md : Mode} {o : Op} {C : Contract K}
+    (h : I.Satisfies md o C) (d : List ℕ) (ins outs : List (ℕ × ℕ)) (τ : Tape K) (m : Mem K)
+    (hp : (C.on md d ins outs τ m).pre m) :
+    md.Holds (I.callS o d ins outs τ m) ((C.on md d ins outs τ m).post m) :=
+  Interp.satisfies_iff_callS.mp h d ins outs τ m hp
+
+/-- An operation satisfies a contract if the call of the evaluator does. -/
+theorem Interp.Satisfies.of_callS {I : Interp Op Tst K} {md : Mode} {o : Op} {C : Contract K}
+    (h : ∀ d ins outs τ m, (C.on md d ins outs τ m).pre m →
+      md.Holds (I.callS o d ins outs τ m) ((C.on md d ins outs τ m).post m)) :
+    I.Satisfies md o C :=
+  Interp.satisfies_iff_callS.mpr h
 
 /-- Weakening: a contract with a stronger precondition and a weaker postcondition is met. -/
 theorem Interp.Satisfies.mono {I : Interp Op Tst K} {md : Mode} {o : Op} {C C' : Contract K}
@@ -154,7 +227,7 @@ theorem Interp.Satisfies.mono {I : Interp Op Tst K} {md : Mode} {o : Op} {C C' :
     (hpost : ∀ d ins outs τ m m', (C'.on md d ins outs τ m).pre m →
       (C.on md d ins outs τ m).post m m' → (C'.on md d ins outs τ m).post m m') :
     I.Satisfies md o C' :=
-  fun d ins outs τ m hp => (h d ins outs τ m (hpre d ins outs τ m hp)).mono
+  .of_callS fun d ins outs τ m hp => (h.callS d ins outs τ m (hpre d ins outs τ m hp)).mono
     fun m' => hpost d ins outs τ m m' hp
 
 /-- The exactness of a test, imposed by the access model: the Boolean is the function `f` of the

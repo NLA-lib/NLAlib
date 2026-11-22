@@ -220,13 +220,14 @@ theorem Interp.satisfies_guardIsolated (active fallback : Interp Op Tst K)
         (((contracts o).on .total d ins outs τ m).post m)) :
     (active.guardIsolated contracts good C fallback).Satisfies .total o (contracts o) := by
   classical
+  refine Interp.Satisfies.of_callS ?_
   intro d ins outs τ m hp
   rw [Interp.callS_guardIsolated]
   by_cases hg : good m ∧ ∀ z ∈ outs, ¬ C z.1
   · rw [if_pos hg, if_pos hp]
     exact hActive d ins outs τ m hg.1 hg.2 hp
   · rw [if_neg hg]
-    exact hFallback d ins outs τ m hp
+    exact hFallback.callS d ins outs τ m hp
 
 /-- A successful guarded call within the isolated regime uses the actual delegated call
 and satisfies the source primitive precondition. -/

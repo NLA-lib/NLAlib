@@ -79,7 +79,7 @@ theorem wp_call_rel_liberal {o : Op} {R : BlockRel K}
   subst hk hls
   intro m' hrun
   simp only [eval, hd, ha, hb, Option.bind_some] at hrun
-  obtain ⟨xs, hr, hroom, ys, hlen, hrel, rfl⟩ := hI d a b τ m ⟨hnd, hadm, by simp⟩ m' hrun
+  obtain ⟨xs, hr, hroom, ys, hlen, hrel, rfl⟩ := hI.callS d a b τ m ⟨hnd, hadm, by simp⟩ m' hrun
   exact hQ xs ys (Interp.live_of_callS hrun) hr hroom hlen hrel
 
 /-- The call rule for **one output block**. -/

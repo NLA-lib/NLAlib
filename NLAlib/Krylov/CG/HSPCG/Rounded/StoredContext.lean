@@ -156,16 +156,16 @@ theorem guarded_satisfies {I : Interp RCLikeBlas.Operation CmpTst ℝ} {M : Mach
   cases o with
   | scalar a =>
     rw [Interp.linkContext_callS_inr I (by rfl)]
-    exact hS a d ins outs τ mem hp
+    exact Interp.Satisfies.callS (hS a) d ins outs τ mem hp
   | blas b =>
     rw [Interp.linkContext_callS_inr I (by rfl)]
     cases b <;> first
-      | exact hB.sum d ins outs τ mem hp
-      | exact hB.dot d ins outs τ mem hp
-      | exact hB.axpy d ins outs τ mem hp
-      | exact hB.nrm2 d ins outs τ mem hp
-      | exact hB.scal d ins outs τ mem hp
-      | exact hB.copy d ins outs τ mem hp
+      | exact Interp.Satisfies.callS (hB.sum) d ins outs τ mem hp
+      | exact Interp.Satisfies.callS (hB.dot) d ins outs τ mem hp
+      | exact Interp.Satisfies.callS (hB.axpy) d ins outs τ mem hp
+      | exact Interp.Satisfies.callS (hB.nrm2) d ins outs τ mem hp
+      | exact Interp.Satisfies.callS (hB.scal) d ins outs τ mem hp
+      | exact Interp.Satisfies.callS (hB.copy) d ins outs τ mem hp
   | operator =>
     have hi := hc context[systemIndex] (List.getElem_mem ..)
     have hd := (hs.2.readBlock hi context[systemIndex].2 (n * n)).trans hA
@@ -190,6 +190,7 @@ theorem guarded_dot {I : Interp RCLikeBlas.Operation CmpTst ℝ} {M : Machine �
       systemRaw preconditionerRaw).IsFn .total (Has.inj Blas1Op.dot) (dotSeqFn M)
         (OutApart (fun _ => True)) := by
   classical
+  refine Interp.Satisfies.of_callS ?_
   intro d ins outs τ mem hp
   change Mode.total.Holds
     (((I.linkContext (table context.length systemIndex preconditionerIndex) context).guardIsolated
@@ -207,9 +208,9 @@ theorem guarded_dot {I : Interp RCLikeBlas.Operation CmpTst ℝ} {M : Machine �
       obtain ⟨hl, ⟨vals, hr, _⟩, hz⟩ := hp.2.2 h
       exact ⟨hl, ⟨vals, hr, trivial⟩, hz⟩
     rw [if_pos hpN, Interp.linkContext_callS_inr I (by rfl)]
-    exact hD d ins outs τ mem hp
+    exact Interp.Satisfies.callS hD d ins outs τ mem hp
   · rw [if_neg hg]
-    exact hD d ins outs τ mem hp
+    exact Interp.Satisfies.callS hD d ins outs τ mem hp
 
 /-- Scalar, rounded BLAS, derived system, functional preconditioner and comparison laws
 for the same isolated two-operator implementation. No solver-success premise is required. -/

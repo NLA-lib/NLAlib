@@ -65,6 +65,10 @@ dense and coordinate representations require their own packing and validity cond
 
 ## Proving programs as mathematics
 
+[Writing, proving and certifying a routine](routines.md) carries one example through every
+step below, with the tactics and the pitfalls; read it before writing a routine. This section
+states the rules.
+
 1. State the pure function and its mathematical properties independently of memory. A program
    proof then identifies its actual stored output with that function.
 2. Use `Ops.Writes` for a total or liberal postcondition with an explicit write footprint.
@@ -274,5 +278,5 @@ records an earlier design.
 
 During development, check only the edited modules and relevant dependents. The shared gate
 `scripts/ops/lean_gated.sh` serializes Lean work on a shared host. Run the full
-`scripts/stage_check.sh` once sources are stable, followed by the check-script unit tests when
-scripts change. The complete validation procedure is in [CONTRIBUTING](../../CONTRIBUTING.md).
+`scripts/stage_check.sh` once sources are stable; it includes the check-script unit tests. The
+complete validation procedure is in [CONTRIBUTING](../../CONTRIBUTING.md).

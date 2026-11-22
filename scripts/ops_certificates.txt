@@ -49,6 +49,7 @@ NLAlib.Ops.Examples.Oracles.oracleAlgorithm hyps=0 uniform=no confined=no charge
 NLAlib.Ops.Examples.Oracles.sumAlgorithm hyps=0 uniform=yes confined=no charged=no budget=closed work=closed scratch=closed problem=handwritten derived=- unstored=- oracles=none claim=none
 NLAlib.Ops.Examples.Resources.mixedAlgorithm hyps=0 uniform=yes confined=yes charged=no budget=closed work=closed scratch=closed problem=handwritten derived=- unstored=- oracles=none claim=none
 NLAlib.Ops.Examples.Routines.sum2Algorithm hyps=2 uniform=yes confined=yes charged=yes budget=manifest work=closed scratch=manifest problem=derived derived=0 unstored=no oracles=none claim=none
+NLAlib.Ops.Examples.VectorSum.vaddAlgorithm hyps=0 uniform=yes confined=yes charged=yes budget=manifest work=closed scratch=manifest problem=derived derived=0 unstored=no oracles=none claim=none
 NLAlib.Schur.denseSchurAlgorithm hyps=1 uniform=yes confined=yes charged=yes budget=manifest work=closed scratch=manifest problem=derived derived=1 unstored=yes oracles=none claim=NLAlib.Schur.denseSchurClaim
 NLAlib.Schur.schurPipelineAlgorithm hyps=8 uniform=yes confined=yes charged=yes budget=manifest work=closed scratch=manifest problem=derived derived=1 unstored=yes oracles=none claim=exempt
 NLAlib.ShiftedQR.countedDeflationAlgorithm hyps=0 uniform=yes confined=yes charged=no budget=manifest work=closed scratch=manifest problem=derived derived=0 unstored=no oracles=none claim=none

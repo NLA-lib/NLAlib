@@ -240,7 +240,8 @@ macro (name := disjBuffers) "disj_buffers" : tactic => `(tactic|
 from a hypothesis about `s`, or about an earlier store across a frame `s₀.EqOff F s` (the block is
 off `F`, by `disjoint`) or an agreement `Store.Below L s₀ s` (the buffer is below `L`, by `idx`),
 or as a sub-block of a block read (`Store.readBlock_sub`, the bound by `idx`), or a cell as a
-block of one (`Store.readBlock_one_of_get`). Known input tuples supply their block and interior
+block of one (`Store.readBlock_one_of_get`; a cell stated at `s` itself is taken before any
+block). Known input tuples supply their block and interior
 cell projections lazily, with natural address and length arithmetic normalized. Fails if none
 applies. -/
 syntax "kept" (" [" Lean.Parser.Tactic.simpLemma,* "]")? : tactic
@@ -249,6 +250,7 @@ macro_rules
   | `(tactic| kept) => `(tactic| kept [])
   | `(tactic| kept [$ts,*]) => `(tactic| first
       | assumption
+      | (apply Store.readBlock_one_of_get; assumption)
       | tuple_read
       | (apply Store.EqOff.readBlock_of
          · assumption

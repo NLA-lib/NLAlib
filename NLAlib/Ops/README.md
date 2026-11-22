@@ -161,6 +161,10 @@ and allocations. `Algorithm.runsLaw` observes the output of the same certified e
 
 ## Writing a routine and certifying it
 
+[Writing, proving and certifying a routine](../../docs/contributing/routines.md) is the guided
+path: the layers, one example from the tree to the line of the certificate report, and the
+pitfalls. This section is the reference.
+
 A routine (`Routine.lean`) is a fixed tree with an interface, and is the unit that is written,
 called, linked and certified. It is written with `routine%` (`RoutineSyntax.lean`), whose header
 is the interface:
@@ -468,7 +472,8 @@ A reviewer of a certified routine reads its `Routine.Spec`, the problem (`valid`
 any `derived` operand of its `Routine.Domain`), the
 model (which operations exist and what each costs) and the stated work. `Examples/Routine.lean`
 and `Examples/RoutineCertification.lean` are a complete small case, ending in a statement in
-terms of the evaluator alone.
+terms of the evaluator alone; `Examples/VectorSum.lean` is the same chain in one file for a loop
+over the cells of a block.
 
 The names of routines, specifications, judgments, certificates and their files follow one
 convention in every family, stated in

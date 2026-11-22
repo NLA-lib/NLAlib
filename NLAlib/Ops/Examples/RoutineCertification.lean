@@ -79,10 +79,7 @@ theorem countPoly_sum2Program : sum2Program.countPoly = [(24, [0]), (63, [])] :=
 theorem eval_countPoly_sum2Program (d : Fin 1 → ℕ) :
     CountPoly.eval (List.ofFn d) sum2Program.countPoly = sum2Work d := by
   rw [countPoly_sum2Program]
-  simp only [CountPoly.eval, CountPoly.monoEval, sum2Work, List.ofFn_succ, List.ofFn_zero,
-    List.map_cons, List.map_nil, List.sum_cons, List.sum_nil, List.prod_cons, List.prod_nil,
-    List.getD_cons_zero]
-  ring
+  poly_eval [sum2Work]
 
 /-- **The certificate of the composite routine**, over the scalar-only model with unit weights
 and the standard model of arithmetic at unit roundoff `u`: the counted certificate of the

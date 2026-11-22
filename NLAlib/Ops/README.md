@@ -305,11 +305,7 @@ The interface in detail:
   `(a : 1, x : n, x) → (x)` runs `axpy` with one vector). A layout is written by hand in two
   places, each documented at the definition: where the written blocks must follow the output
   order of an operation contract rather than the macro's order (`Examples/CgsQR.lean`), and
-  where a continuation must directly follow the operand it continues (`extendRoutine`). A third
-  is not yet converted: the zero start of rounded preconditioned CG
-  (`Krylov/CG/HSPCG/Rounded/ZeroStart.lean`) runs its solver on its own variables without a
-  frame, unlike its exact sibling, so its routine has a hand layout and its solver is a
-  fragment; it is to be written like the exact one.
+  where a continuation must directly follow the operand it continues (`extendRoutine`).
 - **Draws.** `Routine.draws d` is `some k` when the routine consumes exactly `k` tape positions at
   the dimensions `d`, and `none` when that number depends on the data (a rejection loop, an
   early stop); the judgment then makes no claim on the final tape position.
@@ -405,8 +401,13 @@ The interface in detail:
   (`GolubKahan.Band.Certification.oracles`); matrix-free conjugate gradient, with and without
   a preconditioner, takes its matrices as unstored inputs, with positive definiteness in
   `accepts`, and declares their products (`HSCG.Certification.oracles`,
-  `HSPCG.Certification.oracles`). A model with no declared oracle is uniform
-  (`Oracles.uniform`).
+  `HSPCG.Certification.oracles`). A standard model (`Profiles/Standard.lean`) reaches its
+  operator only through its product: when it reads the operator of the unstored input
+  (`Standard.Model.ReadsOperator`), the product is its one oracle (`Standard.Model.oracles`,
+  `Profiles/StandardOracles.lean`). The carried and reorthogonalized conjugate gradient
+  certificates take the matrix as an unstored input in this way; the Lanczos certificates in a
+  standard model declare the product for an operator fixed by the sizes. A model with no
+  declared oracle is uniform (`Oracles.uniform`).
 
   `D.problem` is the problem: exactly the buffers of the slots. An input of the problem is an
   admitted tuple of inputs and conversely (`Routine.Domain.inputEquiv`, `Routine.Domain.covers`):

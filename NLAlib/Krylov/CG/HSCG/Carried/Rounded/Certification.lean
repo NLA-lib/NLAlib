@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Krylov.CG.HSCG.Carried.Rounded.Standard
-public import NLAlib.Ops.RoutineProblem
+public import NLAlib.Ops.Profiles.StandardOracles
 public import NLAlib.Krylov.CG.HSCG.Carried.Rounded.ZeroStart
 
 /-!
@@ -32,20 +32,24 @@ variable {K : Type} [Inhabited K]
 
 /-- The admitted inputs: at the sizes of `domain`, every right-hand side, a vector of `d 0`
 words held by the first operand; the iterate, the residual, the direction and the residual
-product cell are blank. The matrix is not stored: it is a parameter of the model. -/
+product cell are blank. The symmetric matrix is the declared unstored input: it is in no buffer
+and is reached only through the product of the model
+(`NLAlib.Krylov.CG.HSCG.Carried.Rounded.Certification.oracles`). -/
 def inputs (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d) :
     (zeroStartRoutine (Op := Standard.Operation) (Tst := CmpTst)).Domain K 2 5 where
   valid := domain
-  In d := Fin (d 0) → K
-  accepts _ _ := True
-  slot d := ![.stored (Codec.vector (d 0)) id, .blank (d 0), .blank (d 0), .blank (d 0),
+  In d := Matrix (Fin (d 0)) (Fin (d 0)) ℝ × (Fin (d 0) → K)
+  Unstored d := Matrix (Fin (d 0)) (Fin (d 0)) ℝ
+  unstored _ x := x.1
+  accepts _ x := x.1ᵀ = x.1
+  slot d := ![.stored (Codec.vector (d 0)) Prod.snd, .blank (d 0), .blank (d 0), .blank (d 0),
     .blank 1]
   fits := by domain_fits
-  faithful d x y _ h := (Codec.vector (d 0)).encode_injective (by
+  faithful d x y hu h := Prod.ext hu ((Codec.vector (d 0)).encode_injective (by
     have h0 := h 0
-    simpa only [Slot.input, Matrix.cons_val_zero, Option.some.injEq, id] using h0)
+    simpa only [Slot.input, Matrix.cons_val_zero, Option.some.injEq] using h0))
   admitted := admitted
-  inhabited _ _ := ⟨fun _ => default, trivial⟩
+  inhabited _ _ := ⟨(1, fun _ => default), Matrix.transpose_one⟩
 
 /-- The right-hand side and the blank state of the solver: its problem. -/
 abbrev problem (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d) : Problem K 2 5 :=
@@ -99,7 +103,7 @@ noncomputable def specification
   span d := model.resources.span (staticBudget d)
   memory d := 4 * d 0 + 1 + staticPeak model.resources program d
   good d x _ _ m := m.pos = 0 ∧
-    StableOutput model.decode (model.matrix d x) (fun i => model.decode (x.val.1 i))
+    StableOutput model.decode (model.matrix d x) (fun i => model.decode (x.val.1.2 i))
       (E d) (a d) (a' d) (d 1) (1, 0) (2, 0) (3, 0) (4, 0) m
 
 /-- Spectral and precision assumptions on the declared inputs imply total rounded execution
@@ -115,7 +119,7 @@ noncomputable def algorithm
       (model.scheme.roundoff model.unit) (E d) (model.scheme.errors model.unit) (d 0))
     (hbudget : ∀ d, domain d → ∀ x, model.scheme.roundoff (model.matvecAllowance d x) ≤
       em d * specNorm (model.matrix d x))
-    (hAT : ∀ d, domain d → ∀ x, (model.matrix d x)ᵀ = model.matrix d x)
+    (hOp : model.ReadsOperator (inputs (K := K) domain admitted) fun _ A => A)
     (ha : ∀ d, domain d → 0 < a d)
     (hspec : ∀ d, domain d → ∀ x, spectrum ℝ (model.matrix d x) ⊆ Set.Icc (a d) (a' d))
     (hprec : ∀ d, domain d → 3 * E d * a' d ≤ a d)
@@ -136,17 +140,27 @@ noncomputable def algorithm
     have hde : (model.scheme.errors model.unit).dot (d 0) ≤ E d := by
       linarith [hacc.dot, hacc.nonneg]
     exact zeroStartRoutine_meets hS model.scalar hB (hok d hd) (hA.mono (hbudget d hd x)) hCmp
-      (hAT d hd x) (ha d hd) (hspec d hd x) hu hd' haxpy hacc.matvec hue hde hacc.axpy
+      ((hOp.matrix d x).symm ▸ (inputs (K := K) domain admitted).accepts_data x)
+      (ha d hd) (hspec d hd x) hu hd' haxpy hacc.matvec hue hde hacc.axpy
       hacc.small (hprec d hd)
   · intro d hd x τ
     exact ⟨rfl, hwindow d hd⟩
   · intro d hd x τ m' _ hpos ys hys hrel c _
     read_outputs hys as (xs, rs, ps, vs)
-    have hb : decv model.decode (d 0) (List.ofFn x.val.1) =
-        fun i => model.decode (x.val.1 i) := decv_ofFn_apply _ _
+    have hb : decv model.decode (d 0) (List.ofFn x.val.1.2) =
+        fun i => model.decode (x.val.1.2 i) := decv_ofFn_apply _ _
     exact ⟨hpos, StableOutput.of_values hys (hb ▸ hrel)⟩
   · intro d hd x
     rw [initialBytes_problem]
     exact le_rfl
+
+/-- The product is the one oracle of the certificate: scalar arithmetic and the vector operations
+have one contract at every size and input, and the contract of the product depends on the input
+only through the matrix. -/
+noncomputable def oracles
+    (model : Standard.Model (problem (K := K) domain admitted) (fun d => d 0))
+    (hOp : model.ReadsOperator (inputs (K := K) domain admitted) fun _ A => A) :
+    (inputs (K := K) domain admitted).Oracles model.access :=
+  model.oracles _ _ hOp
 
 end NLAlib.Krylov.CG.HSCG.Carried.Rounded.Certification

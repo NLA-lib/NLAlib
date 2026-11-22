@@ -14,13 +14,13 @@ public import NLAlib.Ops.Logic.RoutineIntro
 
 `NLAlib.Krylov.CG.HSPCG.Rounded.zeroStartRoutine` reads the right-hand side and writes the
 iterate, the residual, the preconditioned residual and the direction: it fills the iterate with
-literal zeros and runs the capped rounded solver. Its specification states, on the written
+literal zeros and runs the capped rounded solver
+(`NLAlib.Krylov.CG.HSPCG.Rounded.solveRoutine`). Its specification states, on the written
 blocks, that they are a prefix of a rounded preconditioned run
 (`NLAlib.Krylov.CG.HSPCG.Rounded.PrefixValues`).
 
 ## Main definitions
 
-* `NLAlib.Krylov.CG.HSPCG.Rounded.PrefixValues`: the output claim on blocks.
 * `NLAlib.Krylov.CG.HSPCG.Rounded.zeroStartRoutine`,
   `NLAlib.Krylov.CG.HSPCG.Rounded.zeroStartSpec`: the routine and its specification.
 
@@ -40,24 +40,11 @@ open scoped Matrix
 variable {Op Tst : Type} [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op]
   [Has (Tagged Preconditioner OperatorOp) Op] [Has CmpTst Tst]
 
-/-- The output claim on the four written blocks: they hold a state that is a prefix of length at
-most `cap` of a rounded preconditioned run for the matrices `A`, `P` and the preconditioner action
-`O`, and the residual is zero if the prefix stopped before the cap. -/
-def PrefixValues {n : ℕ} (A P : Matrix (Fin n) (Fin n) ℝ) (O : MatvecOracle P) (b : Fin n → ℝ)
-    (e : ℝ) (cap : ℕ) (ys : List (List ℝ)) : Prop :=
-  ∃ m ≤ cap, ∃ s rho, (∃ xs rs zs ps, ys = [xs, rs, zs, ps] ∧ decodedState id n xs rs zs ps = s) ∧
-    RunPrefix A P O b e m s rho ∧ (m < cap → s.r = 0)
-
 /-- Rounded preconditioned conjugate gradient from the zero iterate: the right-hand side is read,
 and the iterate, the residual, the preconditioned residual and the direction are written. The tree
-fills the iterate and then runs the solver on it in place, so the written iterate is two buffer
-variables of the tree; its initial contents are not read. -/
+fills the iterate and then runs the solver on it. -/
 def zeroStartRoutine : Routine Op Tst :=
-  { nd := 2
-    ports := [.read (fun d => d.headD 0), .write (fun d => d.headD 0), .write (fun d => d.headD 0),
-      .write (fun d => d.headD 0), .write (fun d => d.headD 0)]
-    body := zeroStart
-    binds := some [0, 1, 1, 2, 3, 4] }
+  routine% [n, cap] (b : n) → (x : n, r : n, z : n, p : n) := zeroStart
 
 /-- For the order `n` and a cap within the precision window, the written blocks are a prefix of
 the rounded preconditioned run for the right-hand side read. -/
@@ -90,29 +77,16 @@ theorem zeroStartRoutine_meets {F : Machine ℝ} {em u e : ℝ} {ε : Blas1Err}
   routine_intro [n', cap] (b, x, r, z, v) reads (bs)
   obtain ⟨hn, hwindow⟩ := hpre
   obtain rfl : n = n' := hn.symm
-  rename' m => μ
-  have hl : μ.Live [b, x, r, z, v] := hlive
-  have hz : μ.Room [x, r, z, v] [n, n, n, n] := hrooms
-  have hzx : x.2 + n ≤ μ.store.len x.1 := hz.1
-  have hlx : x.1 < μ.store.length := hl x (by simp)
   call (fillRoutine_meets (Tst := Tst) (hS (.lit 0))) [n] (x) as ν hfr hpos (xs₀) hzero
   obtain rfl : xs₀ = List.replicate n (F.lit 0) := hzero
-  have hx := hxs₀
-  have hlν : ν.Live [b, x, r, z, v] := by
-    simpa only [Mem.Live, hfr.length_eq] using hl
-  have hzν : ν.Room [x, r, z, v] [n, n, n, n] := by
-    simpa only [Mem.Room, hfr.len_eq] using hz
-  have hbν : ν.store.readBlock b.1 b.2 n = some bs :=
-    hfr.keep (Store.readsOnly_readBlock _ _ _ _) (by disjoint) hbs
   have hx0 : decv id n (List.replicate n (F.lit 0)) = 0 := by
     have hz0 : F.lit 0 = 0 := hF.zero
     ext i
     simp [decv, vec, i.isLt, hz0]
-  refine (solve_writes hS hF hB hok hA hP hD hCmp hAT hPT ha hp hAs hPs
-    hu hd haa hem hue hde hae he hOe hAp hPp hwindow
-    hbx hbr hbz hbv hxr hxz hxv hrz hrv hzv hlν hbν hx hx0 hzν).mono le_rfl ?_
-  rintro μ' _ ⟨hpos', m', hm', st, rho, ⟨xs, rs, zs, ps, hr, hst⟩, hrun, hstop⟩
-  exact ⟨(hpos'.trans hpos).trans (Nat.add_zero _).symm, [xs, rs, zs, ps], hr, m', hm', st, rho,
-    ⟨xs, rs, zs, ps, rfl, hst⟩, hrun, hstop⟩
+  call (solveRoutine_meets (Tst := Tst) hS hF hB hok hA hP hD hCmp hAT hPT ha hp hAs hPs
+    hu hd haa hem hue hde hae he hOe hAp hPp) [n, cap] (b, x, r, z, v)
+    (pre := ⟨rfl, hx0, hwindow⟩) as ν₂ hfr₂ hpos₂ (xs, rs, zs, ps) hpost
+  routine_exit
+  exact hpost
 
 end NLAlib.Krylov.CG.HSPCG.Rounded

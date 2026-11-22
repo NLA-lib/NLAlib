@@ -22,7 +22,8 @@ bounds the number of active rounds and does not assert convergence.
 
 * `NLAlib.Krylov.CG.HSPCG.Rounded.guardedStep` refreshes the residual-pairing cache.
 * `NLAlib.Krylov.CG.HSPCG.Rounded.rounds` stops on the computed residual pairing.
-* `NLAlib.Krylov.CG.HSPCG.Rounded.solve` initializes and runs capped zero-start PCG.
+* `NLAlib.Krylov.CG.HSPCG.Rounded.solve` initializes and runs capped zero-start PCG;
+  `NLAlib.Krylov.CG.HSPCG.Rounded.solveRoutine` is its routine.
 -/
 
 @[expose] public section
@@ -109,12 +110,17 @@ def solve : Stmt Op Tst := ops% [n, cap] (B, X) → (X, R, Z, P) {
   run (rounds (Op := Op) (Tst := Tst)) [n, cap] (X, R, Z, P, C, X, R, Z, P, C)
 }
 
-/-- Initialize the iterate through literal-zero writes before invoking the same solver.
-The fixed program receives the raw right-hand side and four uninitialized output blocks. The
-solver runs in the same environment, with no frame of its own, so the sequence is written
-directly: the builder runs a tree only inside a frame. -/
-def zeroStart : Stmt Op Tst :=
-  .seq (.frame [.var 0] [⟨1, .var 3⟩] (fillRoutine (Has.inj (ScalarOp.lit 0))).body) solve
+/-- The capped rounded solver from a zero iterate: the right-hand side is read, the iterate is
+updated in place, and the residual, the preconditioned residual and the direction are written. -/
+def solveRoutine : Routine Op Tst :=
+  routine% [n, cap] (b : n, x : n) → (x, r : n, z : n, p : n) := solve
+
+/-- Initialize the iterate through literal-zero writes, then run the solver on it. The fixed
+program receives the raw right-hand side and four uninitialized output blocks. -/
+def zeroStart : Stmt Op Tst := ops% [n, cap] (B) → (X, R, Z, P) {
+  run (fillRoutine (Op := Op) (Tst := Tst) (Has.inj (ScalarOp.lit 0))) [n] (X);
+  run (solveRoutine (Op := Op) (Tst := Tst)) [n, cap] (B, X, R, Z, P)
+}
 
 /-- The solver budget contains initialization, the initial pairing, and the capped rounds. -/
 noncomputable def solveCount (n cap : ℕ) : Count Op Tst :=
@@ -137,10 +143,10 @@ theorem staticCost_solve (n cap a b c d e f : ℕ) :
     staticCost_initialize, staticCost_rounds, solveCount, add_assoc]
 
 /-- The public zero-start budget counts every literal-zero write. -/
-theorem staticCost_zeroStart (n cap a b c d e f : ℕ) :
-    stmtCost (zeroStart (Op := Op) (Tst := Tst)) [n, cap, a, b, c, d, e, f] =
+theorem staticCost_zeroStart (n cap a b c d e : ℕ) :
+    stmtCost (zeroStart (Op := Op) (Tst := Tst)) [n, cap, a, b, c, d, e] =
       zeroStartCount n cap := by
-  simp [zeroStart, stmtCost, IExp.evalList, IExp.eval, fillRoutine, stmtCost_fillMap,
-    staticCost_solve, zeroStartCount]
+  simp [zeroStart, solveRoutine, stmtCost, IExp.evalList, IExp.eval, fillRoutine,
+    stmtCost_fillMap, staticCost_solve, zeroStartCount]
 
 end NLAlib.Krylov.CG.HSPCG.Rounded

@@ -100,18 +100,17 @@ theorem preconditioner_eq {d : Fin 2 → ℕ}
     preconditioner x = x.val.1.2.1 :=
   StoredOperator.denseMatrix_packFinMatrix _
 
-/-- The vector-level tree forwards both raw contexts and initializes the supplied iterate.
-Every operator call already consists of dense scalar rows; BLAS lowering follows separately. -/
-def blasProgram : Program RCLikeBlas.Operation CmpTst 2 7 :=
-  ⟨.frame [.var 0, .var 1]
-    [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩, ⟨3, .var 5⟩, ⟨3, .var 5⟩,
-      ⟨4, .var 6⟩, ⟨5, .var 7⟩, ⟨6, .var 8⟩]
-    ((zeroStart (Op := Signature) (Tst := CmpTst)).linkContext 2 2
-      (StoredContext.table 2 0 1))⟩
+/-- The vector-level program: the routine on stored data, which forwards both raw contexts and
+initializes the supplied iterate. Every operator call already consists of dense scalar rows; BLAS
+lowering follows separately. -/
+def blasProgram : Program RCLikeBlas.Operation CmpTst 2 7 := solveRoutine.close 2 7
 
 /-- The entire implementation has scalar operations as its target signature. This includes
 all BLAS calls and both operator calls, with no remaining operator or vector primitive. -/
-def program : Program ScalarOp CmpTst 2 7 := blasProgram.link RoundedScalarBlas.table
+def program : Program ScalarOp CmpTst 2 7 := zeroStartRoutine.close 2 7
+
+/-- The scalar program is the vector-level program with its vector operations linked. -/
+theorem program_eq_link : program = blasProgram.link RoundedScalarBlas.table := rfl
 
 /-- Both raw matrices and every supplied vector capacity contribute to resident payload. -/
 theorem initialBytes_problem (d : Fin 2 → ℕ)

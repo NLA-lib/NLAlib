@@ -1344,6 +1344,7 @@ public import NLAlib.Ops.Profiles.RoundedBlas
 public import NLAlib.Ops.Profiles.RoundedScalarBlas
 public import NLAlib.Ops.Profiles.ScalarOnly
 public import NLAlib.Ops.Profiles.Standard
+public import NLAlib.Ops.Profiles.StandardOracles
 public import NLAlib.Ops.Profiles.StoredCOO
 public import NLAlib.Ops.Profiles.StoredDense
 public import NLAlib.Ops.Profiles.StoredDenseRounded

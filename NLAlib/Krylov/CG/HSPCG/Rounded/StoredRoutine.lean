@@ -62,14 +62,9 @@ def solveRoutine : Routine RCLikeBlas.Operation CmpTst :=
 /-- The vector-level tree. -/
 abbrev blasBody : Stmt RCLikeBlas.Operation CmpTst := solveRoutine.body
 
-/-- The scalar tree: the vector-level tree framed on its eight operands, with every vector
-operation expanded to scalar loops. Index variables: `n`, `cap`, then the offsets of `A`, `P`,
-`b`, `x`, `r`, `z`, `p`. -/
-def scalarBody : Stmt ScalarOp CmpTst :=
-  (Stmt.frame [.var 0, .var 1]
-    [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩, ⟨3, .var 5⟩, ⟨3, .var 5⟩,
-      ⟨4, .var 6⟩, ⟨5, .var 7⟩, ⟨6, .var 8⟩]
-    blasBody).link RoundedScalarBlas.table
+/-- The scalar tree: the vector-level tree with every vector operation expanded to scalar loops.
+Index variables: `n`, `cap`, then the offsets of `A`, `P`, `b`, `x`, `r`, `z`, `p`. -/
+def scalarBody : Stmt ScalarOp CmpTst := blasBody.link RoundedScalarBlas.table
 
 /-- The output claim: the four stored state vectors are a prefix of length at most `cap` of a
 rounded preconditioned run for the stored matrices and the word-kernel preconditioner action,
@@ -195,18 +190,10 @@ theorem zeroStartRoutine_meets {I : Interp ScalarOp CmpTst ℝ}
   obtain rfl : n = n' := hn.symm
   obtain ⟨hS', hB⟩ := RoundedScalarBlas.laws hM hu hS
   have hD := RoundedScalarBlas.isFn_dot hS
-  have hl8 : m.Live [a, pm, b, x, x, r, z, p] := by
-    simp only [Mem.live_cons, Mem.live_nil, and_true] at hlive ⊢
-    exact ⟨hlive.1, hlive.2.1, hlive.2.2.1, hlive.2.2.2.1, hlive.2.2.2.1, hlive.2.2.2.2.1,
-      hlive.2.2.2.2.2.1, hlive.2.2.2.2.2.2⟩
   have h := (solveRoutine_meets hS' hM hu hB hD hCmp hAccuracy ha₀ hp₀ hAp hPp)
     [n, cap] [a, pm, b, x, r, z, p] τ m [rawA, rawP, bs] rfl rfl hlive (by routine_sep)
     (by reads) ⟨⟨rfl, hAT, hPT, hsA, hsP⟩, rfl, hwindow⟩ hrooms
-  have h2 := writes_frame (ρ := Env.frame [n, cap] [a, pm, b, x, r, z, p])
-    (ds := [.var 0, .var 1])
-    (args := [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩, ⟨3, .var 5⟩, ⟨3, .var 5⟩,
-      ⟨4, .var 6⟩, ⟨5, .var 7⟩, ⟨6, .var 8⟩]) rfl rfl hl8 h
-  refine (Writes.link I RoundedScalarBlas.table h2).mono le_rfl ?_
+  refine (Writes.link I RoundedScalarBlas.table h).mono le_rfl ?_
   rintro m' - ⟨hpos, ys, hys, hpost⟩
   refine ⟨hpos, ys, hys, ?_⟩
   split_reads hys as (xs, rs, zs, ps)

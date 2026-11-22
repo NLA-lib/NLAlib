@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Ops.RoutineProblem
+public import NLAlib.Ops.Profiles.StandardOracles
 public import NLAlib.Krylov.Lanczos.Reorth.Rounded.Models
 public import NLAlib.Krylov.Lanczos.Reorth.Rounded.Solve
 
@@ -169,6 +169,18 @@ noncomputable def algorithm
       rw [hbytes]
       exact le_rfl)
 
+/-- The product is the one oracle of a certificate in a model whose operator `A d` is fixed by
+the sizes: scalar arithmetic and the vector operations have one contract at every size and
+input, and the contract of the product does not depend on the stored input. The matrix is in no
+buffer, and the cost of the certificate is counted in calls of the product and in vector
+operations. -/
+noncomputable def oracles
+    (model : Standard.Model (problem (K := K) domain admitted) (fun d => d 0))
+    (A : (d : Fin 2 → ℕ) → Matrix (Fin (d 0)) (Fin (d 0)) ℝ)
+    (hOp : model.ReadsOperator (inputs (K := K) domain admitted) fun d _ => A d) :
+    (inputs (K := K) domain admitted).Oracles model.access :=
+  model.oracles _ _ hOp
+
 /-- An explicit exact standard backend for the identity operator. Every dimension, cap and
 right-hand side is admitted by the caller's size domain, and all numerical budgets are zero. -/
 noncomputable def exactReferenceModel (domain : (Fin 2 → ℕ) → Prop)
@@ -176,6 +188,15 @@ noncomputable def exactReferenceModel (domain : (Fin 2 → ℕ) → Prop)
     (matvecWork matvecScratch : List ℕ → ℕ) :
     Standard.Model (problem (K := ℝ) domain admitted) (fun d => d 0) :=
   Standard.referenceModel _ _ .exact 0 le_rfl cost matvecWork matvecScratch
+
+/-- The exact reference model reads the identity operator at every size, so its product is its
+one declared oracle. -/
+noncomputable def exactReferenceOracles (domain : (Fin 2 → ℕ) → Prop)
+    (admitted : ∃ d, domain d) (cost : Standard.Costing)
+    (matvecWork matvecScratch : List ℕ → ℕ) :
+    (inputs (K := ℝ) domain admitted).Oracles
+      (exactReferenceModel domain admitted cost matvecWork matvecScratch).access :=
+  oracles _ (fun _ => 1) ⟨fun _ _ => rfl, fun _ _ _ _ => rfl⟩
 
 /-- A concrete canonical certificate exists for every cap and every supplied real input in
 the exact identity-operator model. This witnesses the numerical and nonempty-input obligations

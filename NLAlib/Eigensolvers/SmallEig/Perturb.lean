@@ -53,10 +53,10 @@ compute $\gamma' = \mathrm{fl}(\gamma/\mathrm{fl}(\sqrt N))$ from the word $\gam
 literal $N$, and the stored $\sqrt{1/2}$, and add $\gamma'\sqrt{1/2}(x_{2k} + i x_{2k+1})$ to the
 $k$-th entry of `A`, rounded. The interface is `[N, nq] (A, Q) → (A)`.
 Algorithm: small-eig -/
-def ginibrePerturb (sG : ℕ) : Impl O Q := opsImpl% [N, nq] (A, Qw) → (A) {
+def ginibrePerturb (sG : ℕ) : Stmt O Q := ops% [N, nq] (A, Qw) → (A) {
   let G ← alloc (2 * (N * N));
   let Sc ← alloc 3;
-  run (gaussDraws (O := O) (Q := Q) sG).body [2 * (N * N)] (G);
+  run (gaussDraws (O := O) (Q := Q) sG) [2 * (N * N)] (G);
   call (Has.inj IndexOp.lit) [N] () → (Sc);
   call (Has.inj ScalarOp.sqrt) [] (Sc) → (Sc);
   call (Has.inj ScalarOp.div) [] (Qw, Sc) → (Sc);
@@ -172,8 +172,9 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O]
 
 /-- **The scale prelude** of `NLAlib.SmallEig.ginibrePerturb`: the index literal $N$, its rounded
 square root, $\gamma' = \mathrm{fl}(\gamma/\mathrm{fl}(\sqrt N))$ in `Sc[0]`, and the stored
-$\sqrt{1/2}$ in `Sc[1]`, written in the three cells of `Sc` only. -/
-private theorem writes_scalePrelude {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+$\sqrt{1/2}$ in `Sc[1]`, written in the three cells of `Sc` only.
+A step in the proof of `ginibrePerturb_writes_word`. -/
+private theorem scalePrelude_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hL : IsIndexLit M I) {τ : Tape ℝ} {ρ : Env} {m : Mem ℝ} {F : Fp} {P : Mem ℝ → Prop}
     {e : IExp} {N L : ℕ} {o₁ o₄ o₅ : Operand}
     {i₂ u₂ i₃ u₃ i₆ u₆ i₇ u₇ : List Operand} {next : Stmt O Q} {q : ℕ × ℕ} {γ : ℝ}
@@ -249,10 +250,11 @@ private theorem writes_scalePrelude {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
 
 omit [Has IndexOp O] in
 /-- **One entry of the perturbation loop**: with $\gamma'$ in `Sc[0]`, $\sqrt{1/2}$ in `Sc[1]` and
-the words $w_0, w_1$ at `G[2j]`, `G[2j+1]`, the six calls store
-$\mathrm{fl}(a_k + \mathrm{fl}(\mathrm{fl}(w_k\sqrt{1/2})\gamma'))$ at `A[2j + k]`, writing only
-those cells and the two words of `G`. -/
-private theorem writes_perturbEntry {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+the words $w_0, w_1$ at `G[2j]`, `G[2j+1]`, the six calls store $\mathrm{fl}(a_k +
+\mathrm{fl}(\mathrm{fl}(w_k\sqrt{1/2})\gamma'))$ at `A[2j + k]`, writing only those cells and the
+two words of `G`.
+A step in the proof of `perturbLoop_writes`. -/
+private theorem perturbEntry_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {ρ : Env} {m : Mem ℝ} {L t zb zo : ℕ} {g h w₀ w₁ a₀ a₁ : ℝ}
     {i₁ u₁ i₂ u₂ i₃ u₃ i₄ u₄ i₅ u₅ i₆ u₆ : List Operand}
     (h₁ : Operand.evalList ρ i₁ = some [(L, t), (L + 1, 1)])
@@ -328,10 +330,10 @@ private theorem writes_perturbEntry {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
   exact ⟨by rw [hp₆, hp₅, hp₄, hp₃, hp₂, hp₁], K hf₆ (by pomega) hv₅, hv₆⟩
 
 omit [Has IndexOp O] in
-/-- **The perturbation loop**: with $\gamma'$ in `Sc[0]`, $\sqrt{1/2}$ in `Sc[1]`, the words
-$x_t$ at `G[t]` and $\mathbf{A}$ at `a`, the $N^2$ rounds store
-`NLAlib.Ops.Machine.perturbWords` at `a`. -/
-private theorem writes_perturbLoop {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+/-- **The perturbation loop**: with $\gamma'$ in `Sc[0]`, $\sqrt{1/2}$ in `Sc[1]`, the words $x_t$
+at `G[t]` and $\mathbf{A}$ at `a`, the $N^2$ rounds store `NLAlib.Ops.Machine.perturbWords` at `a`.
+A step in the proof of `ginibrePerturb_writes_word`. -/
+private theorem perturbLoop_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {ρ : Env} {m : Mem ℝ} {N L : ℕ} {n : IExp} {a : ℕ × ℕ} {γ : ℝ}
     {A : Matrix (Fin N) (Fin N) ℂ} {x : ℕ → ℝ}
     {i₁ u₁ i₂ u₂ i₃ u₃ i₄ u₄ i₅ u₅ i₆ u₆ : List Operand} (hn : n.eval ρ.idx = some (N * N))
@@ -382,7 +384,7 @@ private theorem writes_perturbLoop {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     have ha₀ := hW.get_re r c
     have ha₁ := hW.get_im r c
     rw [hold, hjc] at ha₀ ha₁
-    refine (writes_perturbEntry hS (h₁ j) (h₁' j) (h₂ j) (h₂' j) (h₃ j) (h₃' j) (h₄ j) (h₄' j)
+    refine (perturbEntry_writes hS (h₁ j) (h₁' j) (h₂ j) (h₂' j) (h₃ j) (h₃' j) (h₄ j) (h₄' j)
       (h₅ j) (h₅' j) (h₆ j) (h₆' j) haL (by pomega) (by pomega) (by pomega) hg' hh'
       (hx' _ le_rfl (by pomega)) (hx' _ (by pomega) (by pomega)) ha₀ ha₁).mono
       (sup_le (fun b i hi => Or.inr (hi.1 ▸ le_rfl))
@@ -790,12 +792,14 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O]
 the tape entry: from $\mathbf{A}$ of order $N$ at `a` and the word $\gamma$ at `q`, apart, it
 writes only the matrix, advances the position by $2N^2$, and stores
 `NLAlib.Ops.Machine.perturbWords` $\gamma$ $\mathbf{A}$ of the $2N^2$ entries of the stream `sG`
-at the start position. -/
+at the start position.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem ginibrePerturb_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hL : IsIndexLit M I) (hSmp : IsSample I) {sG N nq : ℕ} {τ : Tape ℝ} {μ : Mem ℝ}
     {a q : ℕ × ℕ} {A : Matrix (Fin N) (Fin N) ℂ} {γ : ℝ} (hl : μ.Live [a, q])
     (hA : HoldsMatrix a A μ.store) (hq : μ.store.get q.1 q.2 = some γ) :
-    Writes .total I τ (ginibrePerturb (O := O) (Q := Q) sG).body (Env.frame [N, nq] [a, q, a])
+    Writes .total I τ (ginibrePerturb (O := O) (Q := Q) sG) (Env.frame [N, nq] [a, q, a])
       (Store.inBlock a.1 a.2 (2 * (N * N)))
       (fun μ' => μ'.pos = μ.pos + 2 * (N * N) ∧
         HoldsMatrix a (M.perturbWords γ A fun j => τ (μ.pos + j) sG) μ'.store) μ := by
@@ -820,7 +824,7 @@ theorem ginibrePerturb_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
   rintro m₁ hf₁ ⟨hp₁, hr₁⟩
   have hq₁ : m₁.store.get q.1 q.2 = some γ :=
     (hf₁.2 _ _ (Store.not_inBlock_of (by pomega))).trans (hBelow.get_of hql hq)
-  refine writes_scalePrelude hS hL rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl hq₁
+  refine scalePrelude_writes hS hL rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl hq₁
     (by pomega) (by rw [hf₁.length_eq]; pomega) (by rw [hf₁.len_eq]; exact hSc)
     (hab _ _ _ (by pomega)) ?_
   intro m₂ hf₂ hp₂ hg₂ hh₂
@@ -830,7 +834,7 @@ theorem ginibrePerturb_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
   have hA₂ : HoldsMatrix a A m₂.store :=
     ((hA.of_below hBelow hal).of_eqOff hf₁ (Fp.disj_inBlock_of_ne (by pomega))).of_eqOff hf₂
       (Fp.disj_inBlock_of_ne (by pomega))
-  refine (writes_perturbLoop hS rfl (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl)
+  refine (perturbLoop_writes hS rfl (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl)
     (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl)
     (fun _ => rfl) (fun _ => rfl) (by pomega) (by rw [hf₂.length_eq, hf₁.length_eq]; exact hlen)
     (by rw [hf₂.len_eq, hf₁.len_eq]; exact hG) hg₂ hh₂ hx₂ hA₂).mono le_rfl ?_
@@ -849,7 +853,9 @@ probability at most $3\varphi/4$, the run writes only the matrix and stores
 $\widehat{\mathbf{A}} = \mathbf{A} + \mathbf{E}$ with $\|\mathbf{E}\|_2 \le \delta/2$ and a
 diagonalization $\mathbf{V}\operatorname{diag}(\mathbf{d})\mathbf{V}^{-1}$ with
 $\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le 2/t_2$ and eigenvalues separated by $t_1/2$, for
-$t_1, t_2$ = `NLAlib.SmallEig.smallEigGap`, `NLAlib.SmallEig.smallEigCond`. -/
+$t_1, t_2$ = `NLAlib.SmallEig.smallEigGap`, `NLAlib.SmallEig.smallEigCond`.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem ginibrePerturb_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hL : IsIndexLit M I) (hSmp : IsSample I) {law : ℕ → Measure ℝ}
     {sG : ℕ} (hG : law sG = gaussianReal 0 1) {c₁ c₂ : PolyLogTail} (hA : c₁.BoundsGinibreGap)
@@ -857,7 +863,7 @@ theorem ginibrePerturb_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} 
     {S δ φ : ℝ} (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
     (hu : u ≤ uSmallEigReduce nmax S δ φ c₁ c₂) {n : ℕ} (hn : n + 1 ≤ nmax)
     {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hAS : specNorm A ≤ S) {a q : ℕ × ℕ} :
-    PWrites law I (ginibrePerturb (O := O) (Q := Q) sG).body
+    PWrites law I (ginibrePerturb (O := O) (Q := Q) sG)
       (Env.frame [n + 1, (smallEigParams nmax S δ φ c₁ c₂).length] [a, q, a])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
       (fun μ => HoldsMatrix a A μ.store ∧

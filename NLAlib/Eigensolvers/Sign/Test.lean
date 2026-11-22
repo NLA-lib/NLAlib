@@ -18,7 +18,7 @@ actual packed output. The cache and the failure flag belong to this same executi
 
 ## Main results
 
-* `NLAlib.Sign.writes_test` returns the actual cached square and the mathematical stopping flag.
+* `NLAlib.Sign.test_writes` returns the actual cached square and the mathematical stopping flag.
 -/
 
 @[expose] public section
@@ -34,8 +34,9 @@ variable {K Op Tst Su Sg : Type} [Inhabited K] [Has ScalarOp Op] [Has MatrixOp O
 
 /-- The complete stopping-test program computes the actual square and a zero/one word for the
 existing matrix stopping predicate. All seven supplied word regions are pairwise disjoint,
-including scalar endpoints that may share one buffer; no output initialization is required. -/
-theorem writes_test {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I)
+including scalar endpoints that may share one buffer; no output initialization is required.
+A fragment of `NLAlib.Sign.signRoutine`. -/
+theorem test_writes {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) {τ : Tape K} {n : ℕ}
     (A : Matrix (Fin n) (Fin n) (K × K)) (η : K)
     {x one lo hi w v z : ℕ × ℕ} {m : Mem K}
@@ -49,7 +50,7 @@ theorem writes_test {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I)
     (hHi : m.store.get hi.1 hi.2 = some η)
     (hW : w.2 + 2 * (n * n) ≤ m.store.len w.1)
     (hV : v.2 + 2 * (n * n) ≤ m.store.len v.1) (hz : z.2 < m.store.len z.1) :
-    Writes .total I τ (test (Has.inj MatrixOp.mul)).body
+    Writes .total I τ (test (Has.inj MatrixOp.mul))
       (Env.frame [n] [x, one, lo, hi, w, v, z])
       (Store.inBlock w.1 w.2 (2 * (n * n)) ⊔ Store.inBlock v.1 v.2 (2 * (n * n)) ⊔
         Store.inBlock z.1 z.2 1)
@@ -77,7 +78,7 @@ theorem writes_test {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I)
   have hv : v.2 + 2 * (n * n) ≤ μ.store.len v.1 := by rw [hfr.len_eq]; exact hV
   have hl1 : μ.Live [w, one, v] := by
     simpa [Mem.Live, hfr.length_eq] using ⟨hl w (by simp), hl one (by simp), hl v (by simp)⟩
-  have hs := Hermitian.writes_shift_packed (dec := dec) (mm := mm) (qr := qr)
+  have hs := Hermitian.shift_writes_packed (dec := dec) (mm := mm) (qr := qr)
     (unif := unif) (normal := normal) (τ := τ) hS (mm A A) (M.lit 1)
     (hdis 4 5 (by decide)) (hdis 1 5 (by decide)) hp.2 hOne' hv hl1
   refine (writes_frame rfl rfl hl1 hs).seq_le (le_sup_right.trans le_sup_left)
@@ -91,7 +92,7 @@ theorem writes_test {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I)
   have hl2 : ν.Live [v, lo, hi, z] := by
     simpa [Mem.Live, hfr'.length_eq, hfr.length_eq] using
       ⟨hl v (by simp), hl lo (by simp), hl hi (by simp), hl z (by simp)⟩
-  have hb := (Hermitian.writes_boxTest (md := .total) (τ := τ) hS hC hl2 hshift.2
+  have hb := (Hermitian.boxTest_writes (md := .total) (τ := τ) hS hC hl2 hshift.2
     hLo'' hHi'' hz' (hdis 5 6 (by decide)) (hdis 2 6 (by decide)) (hdis 3 6 (by decide))).keep
       (Store.readsOnly_readBlock w.1 w.2 (2 * (n * n))
         ((EntryCodec.pair K).packFinMatrix (mm A A))) (hdis 6 4 (by decide)) hW'

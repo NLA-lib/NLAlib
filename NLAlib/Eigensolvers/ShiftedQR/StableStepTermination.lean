@@ -99,7 +99,7 @@ theorem sweep_terminates {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hzc : Fp.Disj (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock cf.1 cf.2 4))
     (hl : m.Live [w, z, cf, w, z]) :
-    Writes .total I τ sweep.body (Env.frame [n + 1] [w, z, cf, w, z])
+    Writes .total I τ sweep (Env.frame [n + 1] [w, z, cf, w, z])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock cf.1 cf.2 4)
       (fun m' => m'.pos = m.pos ∧ ∃ W Z : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, True ∧
@@ -151,7 +151,7 @@ theorem stepWithDiagInPlace_terminates {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hlgd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 2 ⊔
         Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock dg.1 dg.2 2)) :
-    Writes .total I τ stepWithDiagInPlace.body
+    Writes .total I τ stepWithDiagInPlace
       (Env.frame [n + 1, w, L.length, P.length] [a, s, t, a, dg, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock dg.1 dg.2 2 ⊔
@@ -199,7 +199,7 @@ theorem multiStepStable_terminates {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hlgd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock ds.1 ds.2 (2 * k))) :
-    Writes .total I τ multiStepStable.body (Env.frame [n + 1, k, w, L.length] [a, s, a, ds, lg])
+    Writes .total I τ multiStepStable (Env.frame [n + 1, k, w, L.length] [a, s, a, ds, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock ds.1 ds.2 (2 * k) ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun m' => m'.pos = m.pos ∧ (∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,

@@ -83,7 +83,9 @@ are such literals), for an $(n+1) \times (n+1)$ matrix $\mathbf{H}$, $k \le n$ a
 word $t$, `bottomScan` writes only its five registers and either sets the flag to $1$ and the
 index to some $i$ among the bottom $k$ subdiagonal positions ($n \le i + k$) with
 $(1 - \boldsymbol{u})^2\lvert h_{i+1,i} \rvert^2 \le t$, or sets the flag to $0$, and then every
-bottom $k$ subdiagonal entry has $t < (1 + \boldsymbol{u})^2\lvert h_{i+1,i} \rvert^2$. -/
+bottom $k$ subdiagonal entry has $t < (1 + \boldsymbol{u})^2\lvert h_{i+1,i} \rvert^2$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem bottomScan_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hu1 : u ≤ 1)
     (hL : IsIndexLit M I) (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I)
@@ -93,7 +95,7 @@ theorem bottomScan_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : 
     (hl : m.Live [a, t, r]) (hroom : r.2 + 5 ≤ m.store.len r.1)
     (hA : Fp.Disj (Store.inBlock r.1 r.2 5) (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))))
     (hT : Fp.Disj (Store.inBlock r.1 r.2 5) (Store.inBlock t.1 t.2 1)) :
-    Writes .total I τ (bottomScan (O := O) (Q := Q)).body (Env.frame [n + 1, k] [a, t, r])
+    Writes .total I τ (bottomScan (O := O) (Q := Q)) (Env.frame [n + 1, k] [a, t, r])
       (Store.inBlock r.1 r.2 5)
       (fun m' => m'.pos = m.pos ∧
         ((m'.store.get r.1 (r.2 + 3) = some 1 ∧ ∃ i : Fin n, n ≤ (i : ℕ) + k ∧
@@ -142,12 +144,14 @@ theorem bottomScan_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : 
 
 omit [Has ScalarOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- The abort writes the failure word $1$ and the stack count $0$, on any machine whose literals
-$0$ and $1$ are exact. -/
+$0$ and $1$ are exact.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem roundedAbort_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hL : IsIndexLit M I) {B : ℕ}
     (hN : IsExactNatLit id M B) (hB : 1 ≤ B) {τ : Tape ℝ} {m : Mem ℝ} {st f : ℕ × ℕ}
     (hst : st.2 < m.store.len st.1) (hf : f.2 < m.store.len f.1)
     (hd : Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock st.1 st.2 1)) :
-    Writes .total I τ (roundedAbort (O := O) (Q := Q)).body (Env.frame [] [st, f])
+    Writes .total I τ (roundedAbort (O := O) (Q := Q)) (Env.frame [] [st, f])
       (Store.inBlock f.1 f.2 1 ⊔ Store.inBlock st.1 st.2 1)
       (fun m' => m'.store.get f.1 f.2 = some 1 ∧ m'.store.get st.1 st.2 = some 0) m := by
   have h1 : M.lit ((1 : ℕ) : ℚ) = 1 := by simpa using hN 1 hB
@@ -164,7 +168,9 @@ theorem roundedAbort_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hL : IsIndex
 omit [Has CmpTst Q] in
 /-- Commit and split, memory effect: `writeAndSplit` copies the work block $\mathbf{B}$ into
 the diagonal block of the range $(lo, d)$ of the stored matrix and pushes the right child, then
-the left child, on any scalar machine whose natural literals up to $n + 1$ are exact. -/
+the left child, on any scalar machine whose natural literals up to $n + 1$ are exact.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem writeAndSplit_writes_mem {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hL : IsIndexLit M I) (hQ : IsToNat id I) {n : ℕ} (hN : IsExactNatLit id M (n + 1))
     {τ : Tape ℝ} {m : Mem ℝ} {lo d i : ℕ} {a st w : ℕ × ℕ}
@@ -178,7 +184,7 @@ theorem writeAndSplit_writes_mem {M : Machine ℝ} {I : Interp O Q ℝ} (hS : Is
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))))
     (hAS : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock st.1 st.2 (1 + 2 * (n + 1)))) :
-    Writes .total I τ (writeAndSplit (O := O) (Q := Q)).body
+    Writes .total I τ (writeAndSplit (O := O) (Q := Q))
       (Env.frame [n + 1, lo, d, i] [a, st, w])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock st.1 st.2 (1 + 2 * (n + 1)))

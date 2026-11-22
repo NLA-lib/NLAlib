@@ -121,15 +121,15 @@ theorem exists_exactContracts [Apart ScalarOp OperatorOp Op]
   rw [hfA] at hA
   rw [hfP] at hP
   obtain ⟨hS', hB⟩ := (Blas.seq_certifies_exact exactModel_exactMachine
-    (fun _ => True)).meets (Interp.ofFns F : Interp Op Tst ℝ) hS
+    (fun _ => True)).satisfies (Interp.ofFns F : Interp Op Tst ℝ) hS
   have hA' : IsExactMatvec id A
       ((Interp.ofFns F : Interp Op Tst ℝ).link (Blas.seq (Op := Op) (Tst := Tst)).table) :=
-    Interp.link_meets_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec))
-      hA.meets_matvec
+    Interp.link_satisfies_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec))
+      hA.satisfies_matvec
   have hP' : IsExactPreconditioner id P
       ((Interp.ofFns F : Interp Op Tst ℝ).link (Blas.seq (Op := Op) (Tst := Tst)).table) :=
-    Interp.link_meets_kept (Blas.seq_table_kept
-      (Apart.proj_inj (⟨OperatorOp.matvec⟩ : Tagged Preconditioner OperatorOp))) hP.meets_matvec
+    Interp.link_satisfies_kept (Blas.seq_table_kept
+      (Apart.proj_inj (⟨OperatorOp.matvec⟩ : Tagged Preconditioner OperatorOp))) hP.satisfies_matvec
   exact ⟨_, exactModel_exactMachine, hS', hB, hA', hP'⟩
 
 /-- Sequential BLAS supplies the complete exact fixed-horizon PCG result by generic linking,
@@ -151,11 +151,11 @@ theorem runs_solve_seq {M : Machine K} {dec : K → ℝ} {n : ℕ}
       (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock x.1 x.2 n = some ys ∧
         decv dec n ys = pcgIterate A P (decv dec n bs) (decv dec n xs) k) := by
   have hcert := Blas.seq_certifies_exact (Op := Op) (Tst := Tst) hM (fun _ => True)
-  obtain ⟨hS', hB⟩ := hcert.meets I hS
+  obtain ⟨hS', hB⟩ := hcert.satisfies I hS
   have hA' : IsExactMatvec dec A (I.link (Blas.seq (Op := Op) (Tst := Tst)).table) :=
-    Interp.link_meets_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
+    Interp.link_satisfies_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
   have hP' : IsExactPreconditioner dec P (I.link (Blas.seq (Op := Op) (Tst := Tst)).table) :=
-    Interp.link_meets_kept (Blas.seq_table_kept
+    Interp.link_satisfies_kept (Blas.seq_table_kept
       (Apart.proj_inj (⟨OperatorOp.matvec⟩ : Tagged Preconditioner OperatorOp))) hP
   have hrun := runs_solve hS' hM hB hA' hP' hPos hPPos (Blas.ws 0) (τ := τ)
     hbx hbr hbz hbp hxr hxz hxp hrz hrp hzp hl hbs hxs hk hz

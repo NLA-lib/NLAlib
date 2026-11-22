@@ -28,7 +28,9 @@ open Ops
 
 variable {Op Tst : Type} [Has ScalarOp Op]
 
-/-- A substitution column preserves a disjoint zero flag during its arithmetic update. -/
+/-- A substitution column preserves a disjoint zero flag during its arithmetic update.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem substituteColumn_keepFlag_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {n : ℕ} {a v z t f : ℕ × ℕ} {R : Matrix (Fin n) (Fin n) ℂ} {w : Fin n → ℂ}
@@ -38,7 +40,7 @@ theorem substituteColumn_keepFlag_writes {M : Machine ℝ} {I : Interp Op Tst �
     (hfv : f.1 ≠ v.1) (hfz : f.1 ≠ z.1) (hft : f.1 ≠ t.1)
     (hf0 : m.store.get f.1 f.2 = some 0)
     (hz : z.2 + 2 ≤ m.store.len z.1) (ht : t.2 + 4 ≤ m.store.len t.1) :
-    Writes .total I τ substituteColumn.body (Env.frame [n, j] [a, v, z, t, v])
+    Writes .total I τ substituteColumn (Env.frame [n, j] [a, v, z, t, v])
       ((Store.inBlock t.1 t.2 4 ⊔ Store.inBlock z.1 z.2 2) ⊔
         Store.inBlock v.1 (v.2 + 2 * j) 2)
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a R m'.store ∧
@@ -55,11 +57,11 @@ variable [Has CmpTst Tst]
 
 /-- A set singularity flag skips every subsequent column. Otherwise the actual pivot is
 checked before the verified substitution routine is entered. -/
-def checkedSubstituteColumn : Impl Op Tst := opsImpl% [n, j] (R, V, Acc, T, Flag) → (V, Flag) {
+def checkedSubstituteColumn : Stmt Op Tst := ops% [n, j] (R, V, Acc, T, Flag) → (V, Flag) {
   if (Has.inj CmpTst.isZero) [] (Flag) {
-    run checkComplexPivot.body [] (R[2 * (j * n + j)], Flag, Flag);
+    run checkComplexPivot [] (R[2 * (j * n + j)], Flag, Flag);
     if (Has.inj CmpTst.isZero) [] (Flag) {
-      run substituteColumn.body [n, j] (R, V, Acc, T, V)
+      run substituteColumn [n, j] (R, V, Acc, T, V)
     } else {
       skip
     }
@@ -72,7 +74,7 @@ def checkedSubstituteColumn : Impl Op Tst := opsImpl% [n, j] (R, V, Acc, T, Flag
 theorem checkedSubstituteColumn_singular {I : Interp Op Tst ℝ} (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n j : ℕ} {a v z t f : ℕ × ℕ}
     (hf : m.store.get f.1 f.2 = some 1) :
-    Writes .total I τ checkedSubstituteColumn.body (Env.frame [n, j] [a, v, z, t, f, v, f]) ⊥
+    Writes .total I τ checkedSubstituteColumn (Env.frame [n, j] [a, v, z, t, f, v, f]) ⊥
       (fun m' => m' = m) m := by
   have htest := hCmp.test_isZero (d := []) (m := m) (x := f) hf
   simp only [id_eq, one_ne_zero, decide_false] at htest
@@ -92,7 +94,7 @@ theorem checkedSubstituteColumn_clear {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hf0 : m.store.get f.1 f.2 = some 0)
     (hz : z.2 + 2 ≤ m.store.len z.1) (ht : t.2 + 4 ≤ m.store.len t.1)
     (hf : f.2 + 1 ≤ m.store.len f.1) :
-    Writes .total I τ checkedSubstituteColumn.body (Env.frame [n, j] [a, v, z, t, f, v, f])
+    Writes .total I τ checkedSubstituteColumn (Env.frame [n, j] [a, v, z, t, f, v, f])
       (Store.inBlock f.1 f.2 1 ⊔ ((Store.inBlock t.1 t.2 4 ⊔ Store.inBlock z.1 z.2 2) ⊔
         Store.inBlock v.1 (v.2 + 2 * j) 2))
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a R m'.store ∧

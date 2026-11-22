@@ -31,9 +31,9 @@ open scoped Matrix
 variable {Op Tst : Type} [Has ScalarOp Op] [Has CmpTst Tst]
 
 /-- Apply the saved rotations only when every checked triangular pivot was nonzero. -/
-def finishRowSolve : Impl Op Tst := opsImpl% [n] (V, Cf, T, Flag) → (V, Flag) {
+def finishRowSolve : Stmt Op Tst := ops% [n] (V, Cf, T, Flag) → (V, Flag) {
   if (Has.inj CmpTst.isZero) [] (Flag) {
-    run reverseVectorRotations.body [n] (V, Cf, T, V)
+    run reverseVectorRotations [n] (V, Cf, T, V)
   } else {
     skip
   }
@@ -41,7 +41,9 @@ def finishRowSolve : Impl Op Tst := opsImpl% [n] (V, Cf, T, Flag) → (V, Flag) 
 
 /-- The actual final flag branch returns either a genuine singularity certificate or the
 row multiplied by the original matrix inverse. No determinant premise is assumed.
-[GolubVanLoan2013, §5.2.5]. -/
+[GolubVanLoan2013, §5.2.5].
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem finishRowSolve_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {v cf t f : ℕ × ℕ}
@@ -54,7 +56,7 @@ theorem finishRowSolve_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hfv : f.1 ≠ v.1) (hft : f.1 ≠ t.1)
     (hc : cf.2 + 4 * (n + 1) ≤ m.store.len cf.1)
     (ht : t.2 + 10 ≤ m.store.len t.1) :
-    Writes .total I τ finishRowSolve.body (Env.frame [n + 1] [v, cf, t, f, v, f])
+    Writes .total I τ finishRowSolve (Env.frame [n + 1] [v, cf, t, f, v, f])
       (Store.inBlock v.1 v.2 (2 * (n + 1)) ⊔ Store.inBlock t.1 t.2 10)
       (fun m' => m'.pos = m.pos ∧ RowSolveResult v f D w m'.store) m := by
   rcases hcase with ⟨hf, i, hi⟩ | ⟨hf, hV, hdiag⟩

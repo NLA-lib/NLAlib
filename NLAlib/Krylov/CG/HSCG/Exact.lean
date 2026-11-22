@@ -9,6 +9,8 @@ public import NLAlib.Krylov.CG.Spec
 public import NLAlib.Krylov.CG.HSCG.Alg
 public import NLAlib.Ops.Blas.Decoded
 public import NLAlib.Ops.Logic.Tactic
+public import NLAlib.Ops.Logic.RoutineIntro
+public import NLAlib.Ops.RoutineSyntax
 
 /-!
 # Exact Hestenes–Stiefel rounds
@@ -21,7 +23,8 @@ the scalar contract constrains division only at nonzero divisors.
 
 * `NLAlib.Krylov.CG.HSCG.decodedState` reads a mathematical state from three lists.
 * `NLAlib.Krylov.CG.HSCG.stepRel` is the exact one-round contract.
-* `NLAlib.Krylov.CG.HSCG.step_spec` certifies the round against exact operation contracts.
+* `NLAlib.Krylov.CG.HSCG.stepRoutine_meets` certifies the round against exact operation
+  contracts.
 * `NLAlib.Krylov.CG.HSCG.runs_step` supplies its operation counts and workspace.
 -/
 
@@ -38,12 +41,6 @@ variable [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op]
 /-- Decode the iterate, residual and direction blocks as the mathematical CG state. -/
 def decodedState (dec : K → ℝ) (n : ℕ) (xs rs ps : List K) : CGState ℝ (Fin n) :=
   ⟨decv dec n xs, decv dec n rs, decv dec n ps⟩
-
-/-- The round updates three different buffers in place, at the dimension of the matrix. -/
-@[admNF] def StepOperands (n : ℕ) :
-    List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop :=
-  fun d ins outs => d = [n] ∧ ∃ x r p, ins = [x, r, p] ∧ outs = [x, r, p] ∧
-    x.1 ≠ r.1 ∧ x.1 ≠ p.1 ∧ r.1 ≠ p.1
 
 /-- A round computes the existing Hestenes–Stiefel recurrence on the decoded state. -/
 @[simps (attr := storeNF)]
@@ -80,22 +77,28 @@ theorem decodedState_step {dec : K → ℝ} {n : ℕ}
       decv dec n rs' := hr.symm
   rw [← ha, ← hr, hrf, ← hb, ← hx, ← hp]
 
-/-- Exact operation contracts implement one nonbreaking Hestenes–Stiefel round. -/
-theorem step_spec {M : Machine K} {dec : K → ℝ} {n : ℕ}
+/-- At the dimension of the matrix, a nonbreaking state is advanced by one round of the
+Hestenes–Stiefel recurrence. -/
+noncomputable def stepSpec (dec : K → ℝ) {n : ℕ} (A : Matrix (Fin n) (Fin n) ℝ) :
+    Routine.Spec K :=
+  .ofRel (stepRel dec A) (· = [n])
+
+/-- One nonbreaking Hestenes–Stiefel round meets its specification under exact operation
+contracts. -/
+theorem stepRoutine_meets {M : Machine K} {dec : K → ℝ} {n : ℕ}
     {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hM : ExactModel dec M)
     (hB : IsExactBlas1 dec (fun _ => True) I) (hA : IsExactMatvec dec A I) :
-    (stepImpl (Op := Op) (Tst := Tst)).Triple I .total
-      ((stepRel dec A).spec (StepOperands n)) := by
-  cert_intro [m] (x, r, p) → (x', r', p') reads (xs, rs, ps)
-  obtain ⟨hd, hx, hr, hp, hxr, hxp, hrp⟩ := hadm
-  subst m x' r' p'
+    (stepRoutine (Op := Op) (Tst := Tst)).Meets I (stepSpec dec A) := by
+  routine_intro [n'] (x, r, p) reads (xs, rs, ps)
+  obtain ⟨hn, hdom⟩ := hpre
+  obtain rfl : n = n' := (List.head_eq_of_cons_eq hn).symm
   change Nonbreakdown A (decodedState dec n xs rs ps) at hdom
   refine writes_allocs (lens := [.var 0, .var 0, .const 4]) (ns := [n, n, 4]) rfl
     fun s₁ hs₁ hlen hB₁ => ?_
-  have hq : s₁.len μ.store.length = n := by simpa using hlen 0 (by simp)
-  have hz : s₁.len (μ.store.length + 1) = n := by simpa using hlen 1 (by simp)
-  have ht : s₁.len (μ.store.length + 2) = 4 := by simpa using hlen 2 (by simp)
+  have hq : s₁.len m.store.length = n := by simpa using hlen 0 (by simp)
+  have hz : s₁.len (m.store.length + 1) = n := by simpa using hlen 1 (by simp)
+  have ht : s₁.len (m.store.length + 2) = 4 := by simpa using hlen 2 (by simp)
   dsimp only [Env.frame, List.append, List.range_succ, List.range_zero, List.map,
     List.length_cons, List.length_nil, Nat.add_zero] at *
   step hB.dot as m₁ hfr₁ ⟨hpos₁, rr, hrr, herr⟩
@@ -110,7 +113,7 @@ theorem step_spec {M : Machine K} {dec : K → ℝ} {n : ℕ}
   have hx₈ : m₈.store.readBlock x.1 x.2 n = some xs' := by kept
   have hr₈ : m₈.store.readBlock r.1 r.2 n = some rs' := by kept
   have hp₈ : m₈.store.readBlock p.1 p.2 n = some ps := by kept
-  have hrr₈ : m₈.store.get (μ.store.length + 2) 0 = some rr := by kept
+  have hrr₈ : m₈.store.get (m.store.length + 2) 0 = some rr := by kept
   clear hfr₁ hfr₂ hfr₃ hfr₄ hfr₅ hfr₆ hfr₇
   step (hS .div) as m₉ hfr₉ ⟨hpos₉, b, hb, heb⟩
   step hB.copy as m₁₀ hfr₁₀ ⟨hpos₁₀, zs, hzs, rfl⟩
@@ -134,10 +137,8 @@ theorem step_spec {M : Machine K} {dec : K → ℝ} {n : ℕ}
   have hstep := decodedState_step A xs rs ps xs' zs ps'' (dec a) (dec b) had hbd
     (axpyExactRel_decoded hex) hrvec (axpyExactRel_decoded hep)
   intro s₂ hs₂ hB₂
-  refine ⟨by simp [stepRel, hpos₁₂, hpos₁₁, hpos₁₀, hpos₉, hpos₈, hpos₇, hpos₆,
-    hpos₅, hpos₄, hpos₃, hpos₂, hpos₁], [xs', zs, ps''], ?_, hstep⟩
-  exact Mem.readBlocks_of_cons (by kept) (Mem.readBlocks_of_cons (by kept)
-    (Mem.readBlocks_of_cons (by kept) rfl))
+  routine_exit
+  exact hstep
 
 /-- The exact round terminates with the specified CG state, its closed operation counts and
 its declared workspace. The output contract also preserves every cell outside the three state
@@ -156,46 +157,14 @@ theorem runs_step {M : Machine K} {dec : K → ℝ} {n : ℕ}
     ConditionalRuns I W τ step (Env.frame [n] [x, r, p, x, r, p]) μ
       (stepCount n) (stepPeak W n)
       ((stepRel dec A).Post [n] [xs, rs, ps] [x, r, p] [] μ) := by
-  refine ((step_spec hS hM hB hA).runs_rel W (d := [n]) (ins := [x, r, p])
-    (outs := [x, r, p]) (xs := [xs, rs, ps]) rfl
-    ⟨rfl, x, r, p, rfl, rfl, hxr, hxp, hrp⟩
-    (by
-      change μ.Live [x, r, p, x, r, p]
-      simp only [Mem.live_cons, Mem.live_nil, and_true] at hl ⊢
-      exact ⟨hl.1, hl.2.1, hl.2.2, hl⟩)
-    (Mem.readBlocks_of_cons hx (Mem.readBlocks_of_cons hr (Mem.readBlocks_of_cons hp rfl)))
-    hdom hz).mono (le_of_eq (staticCost_step ..)) (staticPeak_step_le ..) ?_
-  intro μ' hpost
-  exact hpost
+  exact ((stepRoutine_meets hS hM hB hA).runs_ofRel W (d := [n]) (args := [x, r, p]) (τ := τ)
+    (xs := [xs, rs, ps]) rfl rfl hl (by routine_sep) (by reads) rfl hdom hz rfl rfl).mono
+    (le_of_eq (staticCost_step ..)) (staticPeak_step_le ..) fun _ h => h
 
 /-- Three blocks store a decoded mathematical CG state. -/
 def StoresState (dec : K → ℝ) (n : ℕ) (x r p : ℕ × ℕ) (s : CGState ℝ (Fin n))
     (μ : Mem K) : Prop :=
   ∃ xs rs ps, μ.readBlocks [x, r, p] [n, n, n] = some [xs, rs, ps] ∧
     decodedState dec n xs rs ps = s
-
-/-- A certified round composes as a framed block that advances the stored mathematical state. -/
-theorem step_writes {M : Machine K} {dec : K → ℝ} {n : ℕ}
-    {A : Matrix (Fin n) (Fin n) ℝ} {I : Interp Op Tst K}
-    (hS : IsScalar M I) (hM : ExactModel dec M)
-    (hB : IsExactBlas1 dec (fun _ => True) I) (hA : IsExactMatvec dec A I)
-    {τ : Tape K} {μ : Mem K} {x r p : ℕ × ℕ} {s : CGState ℝ (Fin n)}
-    (hxr : x.1 ≠ r.1) (hxp : x.1 ≠ p.1) (hrp : r.1 ≠ p.1)
-    (hl : μ.Live [x, r, p]) (hstate : StoresState dec n x r p s μ)
-    (hdom : Nonbreakdown A s) (hz : μ.Room [x, r, p] [n, n, n]) :
-    Writes .total I τ step (Env.frame [n] [x, r, p, x, r, p])
-      (Fp.blocks [x, r, p] [n, n, n])
-      (fun μ' => μ'.pos = μ.pos ∧ StoresState dec n x r p (cgStep A s) μ') μ := by
-  obtain ⟨xs, rs, ps, hread, hstate⟩ := hstate
-  refine ((step_spec hS hM hB hA).writes_blocks rfl
-    ⟨rfl, x, r, p, rfl, rfl, hxr, hxp, hrp⟩
-    ((μ.live_append _ _).mpr ⟨hl, hl⟩) hread
-    (by change Nonbreakdown A (decodedState dec n xs rs ps); rwa [hstate])
-    hz (by disjoint)).mono le_rfl ?_
-  rintro μ' _ ⟨hpos, ys, hys, hrel⟩
-  obtain ⟨xs', rs', ps', rfl⟩ := List.length_eq_three.mp
-    (by simpa [stepRel] using congrArg List.length (Mem.map_length_of_readBlocks hys))
-  exact ⟨by simpa [stepRel] using hpos, xs', rs', ps', hys,
-    by simpa only [stepRel_rel, hstate] using hrel⟩
 
 end NLAlib.Krylov.CG.HSCG

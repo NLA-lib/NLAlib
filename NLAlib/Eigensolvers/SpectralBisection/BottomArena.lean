@@ -18,7 +18,7 @@ assumption on unused output words or successful execution.
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_bottomLevel_stored`: total bottom-level initialization.
+* `NLAlib.SpectralBisection.bottomLevel_writes_stored`: total bottom-level initialization.
 -/
 
 @[expose] public section
@@ -39,8 +39,9 @@ local notation "F" => tapeMachine M dec mm qr n base τ
 local notation "nodes" => (fun lo => nodeAtSlot F n fuel R0 beta (EighNode.mk n A R0 eps L) D lo)
 local notation "KS" => (fun lo => EighNode.k (nodes lo))
 
-/-- Arena capacities and mathematical slot disjointness give total bottom initialization. -/
-theorem writes_bottomLevel_stored {I : Interp Op Tst K}
+/-- Arena capacities and mathematical slot disjointness give total bottom initialization.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem bottomLevel_writes_stored {I : Interp Op Tst K}
     (hS : IsScalar M I) (hQ : IsToNat dec I) (hexact : IsExactNatLit dec M (max n 4))
     (hD : D ≤ L + 1) (hl : μ.Live [sz, ua, ea])
     (hLevel : StoresLevel M F n fuel R0 beta ⟨n, A, R0, eps, L⟩ D ma sz lv μ)
@@ -67,7 +68,7 @@ theorem writes_bottomLevel_stored {I : Interp Op Tst K}
     apply resultSlot_le_span (hslot lo hlo) ua ea buf off
     simpa only [bottomSlotFootprint, resultOperands, resultLengths, Fp.blocks_cons,
       Fp.blocks_nil, sup_bot_eq] using hc
-  have hw := writes_bottomLevel (M := M) (dec := dec) (m := μ) (τ := τ) hS hQ
+  have hw := bottomLevel_writes (M := M) (dec := dec) (m := μ) (τ := τ) hS hQ
     KS (fun lo => M.lit (KS lo : ℚ)) hl hLevel.nodeAtSlot_sizes
     (fun lo hlo => hexact _ (by have := hbound lo; omega)) (fun lo _ => hbound lo)
     (fun lo hlo => by

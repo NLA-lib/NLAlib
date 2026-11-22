@@ -45,9 +45,9 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op] [Has CmpTst Tst]
 
 /-- Inspect a trial matrix, calculate its squared-potential product and write its exact
 acceptance flag. R has five caller-owned scan words and P one caller-owned product word. -/
-def acceptTrialWithScratch : Impl Op Tst := opsImpl% [n, k] (A, Threshold, Target, R, P) → (Flag) {
-  run scan.body [n] (A, Threshold, R);
-  run subdiagProduct.body [n, k] (A, P);
+def acceptTrialWithScratch : Stmt Op Tst := ops% [n, k] (A, Threshold, Target, R, P) → (Flag) {
+  run scan [n] (A, Threshold, R);
+  run subdiagProduct [n, k] (A, P);
   call (Has.inj ScalarOp.copy) [] (R[3]) → (Flag);
   if (Has.inj CmpTst.le) [] (P, Target) {
     call (Has.inj (ScalarOp.lit 1)) [] () → (Flag)
@@ -57,7 +57,9 @@ def acceptTrialWithScratch : Impl Op Tst := opsImpl% [n, k] (A, Threshold, Targe
 open Classical in
 /-- Total acceptance classification from the actual supplied trial matrix and stored threshold
 and target. Scratch, output and input separation concern real word regions, including views
-of one arena. No assumption about which trial will pass is made. -/
+of one arena. No assumption about which trial will pass is made.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem acceptTrialWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {τp : Tape ℝ} {m : Mem ℝ} {n k : ℕ} {a t target r p f : ℕ × ℕ}
@@ -72,7 +74,7 @@ theorem acceptTrialWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hsep : Fp.Disj (Fp.blocks [r, p, f] [5, 1, 1])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock t.1 t.2 1 ⊔ Store.inBlock target.1 target.2 1)) :
-    Writes .total I τp acceptTrialWithScratch.body
+    Writes .total I τp acceptTrialWithScratch
       (Env.frame [n + 1, k] [a, t, target, r, p, f]) (Fp.blocks [r, p, f] [5, 1, 1])
       (fun m' => m'.pos = m.pos ∧ m'.store.get f.1 f.2 =
         some (if IsDecoupledAbs τ H ∨ subdiagNormSqProd k H ≤ T then (1 : ℝ) else 0)) m := by
@@ -128,15 +130,17 @@ theorem acceptTrialWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
       bot_le (fun _ _ h => h)
 
 /-- Scope five scan words and one product word, returning only the persistent acceptance flag. -/
-def acceptTrial : Impl Op Tst := opsImpl% [n, k] (A, Threshold, Target) → (Flag) {
+def acceptTrial : Stmt Op Tst := ops% [n, k] (A, Threshold, Target) → (Flag) {
   let R ← alloc 5;
   let P ← alloc 1;
-  run acceptTrialWithScratch.body [n, k] (A, Threshold, Target, R, P, Flag)
+  run acceptTrialWithScratch [n, k] (A, Threshold, Target, R, P, Flag)
 }
 
 open Classical in
 /-- The scoped acceptance test writes the exact zero/one result and removes all temporary
-scan/product storage. Only the actual matrix, threshold and target words are consumed. -/
+scan/product storage. Only the actual matrix, threshold and target words are consumed.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem acceptTrial_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {τp : Tape ℝ} {m : Mem ℝ} {n k : ℕ} {a t target f : ℕ × ℕ}
@@ -148,7 +152,7 @@ theorem acceptTrial_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hsep : Fp.Disj (Store.inBlock f.1 f.2 1)
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock t.1 t.2 1 ⊔ Store.inBlock target.1 target.2 1)) :
-    Writes .total I τp acceptTrial.body (Env.frame [n + 1, k] [a, t, target, f])
+    Writes .total I τp acceptTrial (Env.frame [n + 1, k] [a, t, target, f])
       (Store.inBlock f.1 f.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.get f.1 f.2 =
         some (if IsDecoupledAbs τ H ∨ subdiagNormSqProd k H ≤ T then (1 : ℝ) else 0)) m := by

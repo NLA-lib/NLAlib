@@ -126,8 +126,10 @@ It runs, in order:
    root `NLAlib.lean` is current), and the freshness check `lake build --no-build --rehash`;
 3. the kernel replay `scripts/Replay.lean` (every constant re-checked by Lean's kernel,
    [proofs](docs/contributing/proofs.md)) and its fixtures `scripts/replay_fixtures.sh`;
-4. fixed-program checks `scripts/OpsPrograms.lean` (E2), canonical Ops certificates and
-   kernel-checked structural/accounting fixtures ([programs](docs/contributing/programs.md));
+4. fixed-program checks `scripts/OpsPrograms.lean` (E2), the line of every Ops certificate
+   against `scripts/ops_certificates.txt` (model, resource fields, problem, oracles, randomized
+   claim; [checks](docs/contributing/checks.md)) and kernel-checked structural/accounting
+   fixtures ([programs](docs/contributing/programs.md));
 5. `scripts/check_refs.py` (citations, result ids, `Asymptotic:` and `Algorithm:` tags),
    `scripts/gen_rules_md.py --check` (the generated rule files are current),
    `scripts/check_constants.py` (named-bound values, [statements](docs/contributing/statements.md)

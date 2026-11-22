@@ -71,14 +71,14 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op]
 
 /-- Compute one exceptional grid point from actual center and radius words, with nine
 caller-owned scratch words. Dimensions are denominator, first coordinate, second coordinate. -/
-def gridPointWithScratch : Impl Op Tst :=
-  ⟨3, 3, 1, .seq (.indexBlock gridLiterals)
-    (.scalarBlock (gridInstructions.map ScalarIns.lift))⟩
+def gridPointWithScratch : Stmt Op Tst :=
+  .seq (.indexBlock gridLiterals)
+    (.scalarBlock (gridInstructions.map ScalarIns.lift))
 
 /-- Compute one exceptional grid point with nine scoped scratch words. -/
-def gridPoint : Impl Op Tst := opsImpl% [D, i, j] (Center, Radius) → (S) {
+def gridPoint : Stmt Op Tst := ops% [D, i, j] (Center, Radius) → (S) {
   let T ← alloc 9;
-  run gridPointWithScratch.body [D, i, j] (Center, Radius, T, S)
+  run gridPointWithScratch [D, i, j] (Center, Radius, T, S)
 }
 
 private def gridWords (M : Machine ℝ) (center : ℝ × ℝ) (radius : ℝ) (D i j : ℕ) : ℝ × ℝ :=
@@ -149,6 +149,7 @@ private theorem gridWords_eq {M : Machine ℝ} (hE : ExactModel id M)
   apply Prod.ext <;> simp [gridWords, hdiv, hadd, hsub, hmul, gridPointValue]
 
 omit [Has IndexOp Op] in
+/-- A step in the proof of `gridPointWithScratch_writes`. -/
 private theorem gridArithmetic_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {c r t s : ℕ × ℕ} {center : ℂ} {radius : ℝ} {D i j : ℕ}
@@ -193,7 +194,9 @@ private theorem gridArithmetic_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 /-- Five actual dimension literals and ten scalar operations compute the requested grid
 point. The denominator is positive; both coordinate numerators and the radius are arbitrary.
-The output is disjoint from the center, and the scratch buffer is fresh. -/
+The output is disjoint from the center, and the scratch buffer is fresh.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem gridPointWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I)
     {τ : Tape ℝ} {m : Mem ℝ} {c r t s : ℕ × ℕ} {center : ℂ} {radius : ℝ}
@@ -204,7 +207,7 @@ theorem gridPointWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hc1 : m.store.get c.1 (c.2 + 1) = some center.im)
     (hr : m.store.get r.1 r.2 = some radius)
     (ht : t.2 + 9 ≤ m.store.len t.1) (hs : s.2 + 2 ≤ m.store.len s.1) :
-    Writes .total I τ gridPointWithScratch.body (Env.frame [D, i, j] [c, r, t, s])
+    Writes .total I τ gridPointWithScratch (Env.frame [D, i, j] [c, r, t, s])
       (Store.inBlock t.1 t.2 9 ⊔ Store.inBlock s.1 s.2 2)
       (fun μ => μ.pos = m.pos ∧ μ.store.readBlock s.1 s.2 2 =
         some [(gridPointValue center radius D i j).re,
@@ -256,7 +259,9 @@ theorem gridPointWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 
 /-- The scoped grid-point program computes the same exact point and releases all nine
-scratch words. Its only surviving writes are the two output components. -/
+scratch words. Its only surviving writes are the two output components.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem gridPoint_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I)
     {τ : Tape ℝ} {m : Mem ℝ} {c r s : ℕ × ℕ} {center : ℂ} {radius : ℝ}
@@ -266,7 +271,7 @@ theorem gridPoint_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hc1 : m.store.get c.1 (c.2 + 1) = some center.im)
     (hr : m.store.get r.1 r.2 = some radius)
     (hs : s.2 + 2 ≤ m.store.len s.1) :
-    Writes .total I τ gridPoint.body (Env.frame [D, i, j] [c, r, s])
+    Writes .total I τ gridPoint (Env.frame [D, i, j] [c, r, s])
       (Store.inBlock s.1 s.2 2)
       (fun μ => μ.pos = m.pos ∧ μ.store.readBlock s.1 s.2 2 =
         some [(gridPointValue center radius D i j).re,

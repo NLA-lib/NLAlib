@@ -5,30 +5,22 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Ops.Catalog.RCLikeStar
-public import NLAlib.Ops.Logic.Builder
-public import NLAlib.Ops.Logic.Functional
-public import NLAlib.Ops.Logic.Scalar
-public import NLAlib.Ops.AllocationFree
-public import NLAlib.Ops.Workspace
-public import NLAlib.Ops.Blas.Broadcast
-public import NLAlib.Ops.Blas.MapCorrect
-public import NLAlib.Ops.Logic.Allocation
-public import NLAlib.Ops.Logic.PrefixRead
-public import NLAlib.Ops.Logic.Tactic
+public import NLAlib.Ops.Profiles.RCLikeScalarTrees
 
 /-!
 # Exact scalar implementations of the real or complex BLAS collection
 
-Every vector operation is a fixed loop of declared scalar field operations and scalar
-conjugation. Dot products stream through one temporary cell. Maps admit disjoint views
-or exact alias; reduction outputs stay separate from their inputs. These operation-model
-admissions justify constant workspace without assumptions about successful execution.
+Every vector operation of the exact level-one collection is implemented by a routine over
+declared scalar field operations and scalar conjugation
+(`NLAlib/Ops/Profiles/RCLikeScalarTrees.lean`). Maps admit disjoint views or exact alias, each
+admitted layout being its own routine; reduction outputs stay separate from their inputs. These
+operation-model admissions justify constant workspace without assumptions about successful
+execution.
 
-## Main definitions
+## Main results
 
-* `NLAlib.Ops.RCLikeScalar.table` lowers the entire exact level-one collection.
-* `NLAlib.Ops.RCLikeScalar.dot` is an explicit Hermitian scalar dot product.
+* `NLAlib.Ops.RCLikeScalar.satisfies_table`: every entry of the table satisfies the exact contract
+  of its operation.
 -/
 
 @[expose] public section
@@ -37,171 +29,27 @@ namespace NLAlib.Ops.RCLikeScalar
 
 variable {Op Tst : Type} [Has ScalarOp Op] [Has StarOp Op]
 
-/-- One conjugate, multiplication and accumulation, using caller-owned scalar cells. -/
-def starProductStep : Impl Op Tst := opsImpl% [] (X, Y, t, out) → () {
-  call (Has.inj StarOp.conj) [] (X) → (t);
-  call (Has.inj ScalarOp.mul) [] (t, Y) → (t);
-  call (Has.inj ScalarOp.add) [] (out, t) → (out)
-}
-
-/-- A Hermitian dot-product loop on caller-owned scalar workspace. -/
-def dotWithScratch : Impl Op Tst := opsImpl% [n] (X, Y, t) → (out) {
-  call (Has.inj (ScalarOp.lit 0)) [] () → (out);
-  for i < n { run starProductStep.body [] (X[i], Y[i], t, out) }
-}
-
-/-- A Hermitian dot product with one scoped temporary, including the empty product. -/
-def dot : Impl Op Tst := opsImpl% [n] (X, Y) → (out) {
-  let t ← alloc 1;
-  run dotWithScratch.body [n] (X, Y, t, out)
-}
-
-/-- Sequential scalar summation with a caller-supplied output accumulator. -/
-def sum : Impl Op Tst := opsImpl% [n] (X) → (out) {
-  call (Has.inj (ScalarOp.lit 0)) [] () → (out);
-  for i < n { call (Has.inj ScalarOp.add) [] (out, X[i]) → (out) }
-}
-
-/-- A pointwise axpy on caller-owned product workspace. -/
-def axpyWithScratch : Impl Op Tst := opsImpl% [n] (a, X, Y, t) → (out) {
-  for i < n {
-    call (Has.inj ScalarOp.mul) [] (a, X[i]) → (t);
-    call (Has.inj ScalarOp.add) [] (Y[i], t) → (out[i])
-  }
-}
-
-/-- A pointwise axpy using one scoped product temporary. -/
-def axpy : Impl Op Tst := opsImpl% [n] (a, X, Y) → (out) {
-  let t ← alloc 1;
-  run axpyWithScratch.body [n] (a, X, Y, t, out)
-}
-
-/-- Vector division is the shared scalar broadcast loop, with declared operand order. -/
-def scal : Impl Op Tst := opsImpl% [n] (a, X) → (out) {
-  run (scalarBroadcast (Has.inj ScalarOp.div)).body [n] (X, a, out)
-}
-
-/-- Copying is the shared unary scalar map, allowing exact alias or disjoint views. -/
-def copy : Impl Op Tst := unaryMap (Has.inj ScalarOp.copy)
-
-/-- The Euclidean norm is a Hermitian dot product followed by the scalar square root. -/
-def nrm2 : Impl Op Tst := opsImpl% [n] (X) → (out) {
-  run dot.body [n] (X, X, out);
-  call (Has.inj ScalarOp.sqrt) [] (out) → (out)
-}
-
-/-- Every level-one operation lowers to scalar arithmetic and explicit scalar conjugation. -/
-def table : Table Blas1Op Op Tst
-  | .sum => .inl sum
-  | .dot => .inl dot
-  | .axpy => .inl axpy
-  | .nrm2 => .inl nrm2
-  | .scal => .inl scal
-  | .copy => .inl copy
-
 variable {𝕜 : Type} [RCLike 𝕜] {I : Interp Op Tst 𝕜} {tape : Tape 𝕜} {m : Mem 𝕜}
 
-/-- Zero supplies list padding; valid input lengths make the padding unobservable. -/
-local instance instInhabitedRCLikeScalar : Inhabited 𝕜 := ⟨0⟩
-
-private theorem map_eq_ofFn {n : ℕ} (xs : List 𝕜) (f : 𝕜 → 𝕜) (hlen : xs.length = n) :
-    xs.map f = List.ofFn (fun i : Fin n => f (xs.getD i 0)) := by
-  apply List.ext_getElem (by simp [hlen])
-  intro i hi hi'
-  have hx : i < xs.length := by simpa using hi
-  simp [List.getD_eq_getElem?_getD, hx]
-
 omit [Has StarOp Op] in
-/-- The scalar copy loop returns the original block under its admitted alias policy. -/
-theorem writes_copy (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
-    {n : ℕ} {x y : ℕ × ℕ} (xs : List 𝕜)
-    (hX : m.store.readBlock x.1 x.2 n = some xs)
-    (hXY : Fp.Disj (Store.inBlock x.1 x.2 n) (Store.inBlock y.1 y.2 n) ∨ x = y)
-    (hy : y.2 + n ≤ m.store.len y.1) :
-    Writes .total I tape copy.body (Env.frame [n] [x, y]) (Store.inBlock y.1 y.2 n)
-      (fun m' => m'.pos = m.pos ∧ m'.store.readBlock y.1 y.2 n = some xs) m := by
-  simpa [copy, Machine.fn] using
-    writes_unaryMap_of_disj_or_eq (hS .copy) hXY hX hy
-
-omit [Has StarOp Op] in
-/-- The shared broadcast lowering computes vector division with the exact scalar machine. -/
-theorem writes_scal (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
-    {n : ℕ} {a x y : ℕ × ℕ} (xs : List 𝕜) (alpha : 𝕜) (hl : m.Live [a, x, y])
-    (hX : m.store.readBlock x.1 x.2 n = some xs) (hA : m.store.get a.1 a.2 = some alpha)
-    (hXY : Fp.Disj (Store.inBlock x.1 x.2 n) (Store.inBlock y.1 y.2 n) ∨ x = y)
-    (hAY : Fp.Disj (Store.inBlock a.1 a.2 1) (Store.inBlock y.1 y.2 n))
-    (hy : y.2 + n ≤ m.store.len y.1) :
-    Writes .total I tape scal.body (Env.frame [n] [a, x, y]) (Store.inBlock y.1 y.2 n)
-      (fun m' => m'.pos = m.pos ∧ m'.store.readBlock y.1 y.2 n =
-        some (List.ofFn fun i : Fin n => xs.getD i 0 / alpha)) m := by
-  have hl' : m.Live [x, a, y] := by
-    simp only [Mem.live_cons, Mem.live_nil]
-    exact ⟨hl x (by simp), hl a (by simp), hl y (by simp), trivial⟩
-  refine ((writes_scalarBroadcast_readBlock (hS .div) hX hA hy hXY hAY).in_frame
-    rfl rfl hl').mono le_rfl ?_
-  intro m' _ ⟨hp, hv⟩
-  exact ⟨hp, hv.trans (congrArg some (map_eq_ofFn xs (fun v => v / alpha)
-    (Store.length_of_readBlock hX)))⟩
-
-/-- One explicit conjugate product step preserves its accumulator through temporary writes. -/
-theorem writes_starProductStep (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
-    (hStar : RCLikeStar.IsExact I) {x y t out : ℕ × ℕ} (a b acc : 𝕜)
-    (hl : m.Live [x, y, t, out])
-    (hX : m.store.readBlock x.1 x.2 1 = some [a])
-    (hY : m.store.readBlock y.1 y.2 1 = some [b])
-    (hA : m.store.readBlock out.1 out.2 1 = some [acc])
-    (hTY : Fp.Disj (Store.inBlock t.1 t.2 1) (Store.inBlock y.1 y.2 1))
-    (hTO : Fp.Disj (Store.inBlock t.1 t.2 1) (Store.inBlock out.1 out.2 1))
-    (ht : t.2 + 1 ≤ m.store.len t.1) (ho : out.2 + 1 ≤ m.store.len out.1) :
-    Writes .total I tape starProductStep.body (Env.frame [] [x, y, t, out])
-      (Store.inBlock t.1 t.2 1 ⊔ Store.inBlock out.1 out.2 1)
+/-- Scalar summation meets the specification read off the exact level-one reduction: the
+cell is set to zero and the entries are added to it in order. -/
+theorem sumRoutine_meets (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) :
+    (sumRoutine (Op := Op) (Tst := Tst)).Meets I
+      (Routine.Spec.ofRel (RCLikeBlas.functions (𝕜 := 𝕜) .sum).rel fun _ => True) := by
+  routine_intro [n] (x, out) reads (xs)
+  have hOX : Fp.Disj (Store.inBlock out.1 out.2 1) (Store.inBlock x.1 x.2 n) := by
+    have h : Fp.Disj (Fp.blocks [out] [1]) (Fp.blocks [x] [n]) := hsep.2.1
+    simpa using h
+  refine (show Writes .total I τ sum (Env.frame [n] [x, out]) (Store.inBlock out.1 out.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 1 =
-        some [acc + star a * b]) m := by
-  unfold starProductStep
-  dsimp only
-  refine Writes.seq_le (writes_call_fn1 hStar (xs := [[a]])
-    rfl rfl rfl rfl rfl trivial (by
-      simp only [Mem.live_append, Mem.live_cons, Mem.live_nil]
-      exact ⟨⟨hl x (by simp), trivial⟩, hl t (by simp), trivial⟩)
-    (by simp [RCLikeStar.functions, Mem.readBlocks, hX]) rfl rfl ht) le_sup_left ?_
-  intro m₁ hfr₁ ⟨hp₁, hStarValue⟩
-  have hY₁ := hfr₁.keep (Store.readsOnly_readBlock _ _ _ [b]) hTY hY
-  have hA₁ := hfr₁.keep (Store.readsOnly_readBlock _ _ _ [acc]) hTO hA
-  have hl₁ := hl.congr hfr₁.length_eq
-  refine Writes.seq_le (writes_call_fn1 (hS .mul) (xs := [[star a], [b]])
-    rfl rfl rfl rfl rfl trivial (by
-      simp only [Mem.live_append, Mem.live_cons, Mem.live_nil]
-      exact ⟨⟨hl₁ t (by simp), hl₁ y (by simp), trivial⟩, hl₁ t (by simp), trivial⟩)
-    (by simp [Machine.fn, Mem.readBlocks, hStarValue, hY₁]) rfl rfl
-    (by simpa only [hfr₁.len_eq] using ht)) le_sup_left ?_
-  intro m₂ hfr₂ ⟨hp₂, hProduct⟩
-  have hA₂ := hfr₂.keep (Store.readsOnly_readBlock _ _ _ [acc]) hTO hA₁
-  have hl₂ := hl₁.congr hfr₂.length_eq
-  refine (writes_call_fn1 (hS .add) (xs := [[acc], [star a * b]])
-    rfl rfl rfl rfl rfl trivial (by
-      simp only [Mem.live_append, Mem.live_cons, Mem.live_nil]
-      exact ⟨⟨hl₂ out (by simp), hl₂ t (by simp), trivial⟩, hl₂ out (by simp), trivial⟩)
-    (by simp [Machine.fn, RCLikeBlas.machine, Mem.readBlocks, hA₂, hProduct]) rfl rfl
-    (by simpa only [hfr₂.len_eq, hfr₁.len_eq] using ho)).mono le_sup_right ?_
-  intro m₃ _ ⟨hp₃, hv⟩
-  exact ⟨hp₃.trans (hp₂.trans hp₁), hv⟩
-
-omit [Has StarOp Op] in
-/-- Sequential scalar summation realizes the exact reduction on disjoint input/output spans. -/
-theorem writes_sum (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
-    {n : ℕ} {x out : ℕ × ℕ} (xs : List 𝕜) (hl : m.Live [x, out])
-    (hX : m.store.readBlock x.1 x.2 n = some xs)
-    (hOX : Fp.Disj (Store.inBlock out.1 out.2 1) (Store.inBlock x.1 x.2 n))
-    (ho : out.2 + 1 ≤ m.store.len out.1) :
-    Writes .total I tape sum.body (Env.frame [n] [x, out])
-      (Store.inBlock out.1 out.2 1)
-      (fun m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 1 =
-        some [∑ i : Fin n, xs.getD i 0]) m := by
+        some [∑ i : Fin n, xs.getD i 0]) m from ?_).mono le_sup_left fun μ' _ h =>
+    ⟨h.1, [[∑ i : Fin n, xs.getD i 0]], Mem.readBlocks_cons_eq_some.mpr ⟨_, [], h.2, rfl, rfl⟩,
+      rfl⟩
   unfold sum
-  dsimp only
   refine Writes.seq_le (writes_call_fn1 (hS (.lit 0)) (xs := [])
-    rfl rfl rfl rfl rfl trivial (by simpa [Mem.Live] using hl out (by simp))
-    rfl rfl rfl ho) le_rfl ?_
+    rfl rfl rfl rfl rfl trivial (by simpa [Mem.Live] using hlive out (by simp))
+    rfl rfl rfl hroom) le_rfl ?_
   intro m₁ hfr₁ ⟨hp₁, hzero⟩
   have hzero' : m₁.store.readBlock out.1 out.2 1 = some [0] := by
     simpa [RCLikeBlas.machine] using hzero
@@ -211,91 +59,59 @@ theorem writes_sum (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     le_rfl ?_
   · intro i hi m' hfr ⟨hp, hacc⟩
     have hWhole := hfr₁.trans hfr
-    have hX' := hWhole.keep (Store.readsOnly_readBlock _ _ _ xs) hOX hX
+    have hxs' := hWhole.keep (Store.readsOnly_readBlock _ _ _ xs) hOX hxs
     have hx : m'.store.readBlock x.1 (x.2 + i) 1 = some [xs.getD i 0] := by
-      simp [Store.readBlock, Store.get_of_readBlock hX' hi (0 : 𝕜)]
-    have hl' := hl.congr hWhole.length_eq
+      simp [Store.readBlock, Store.get_of_readBlock hxs' hi (0 : 𝕜)]
+    have hl' := hlive.congr hWhole.length_eq
     refine (writes_call_fn1 (hS .add)
       (xs := [[∑ j ∈ Finset.range i, xs.getD j 0], [xs.getD i 0]])
       rfl rfl rfl rfl rfl trivial (by
         simp only [Mem.live_append, Mem.live_cons, Mem.live_nil]
         exact ⟨⟨hl' out (by simp), hl' x (by simp), trivial⟩, hl' out (by simp), trivial⟩)
       (by simp [Machine.fn, Mem.readBlocks, hacc, hx]) rfl rfl
-      (by simpa only [hWhole.len_eq] using ho)).mono le_rfl ?_
+      (by simpa only [hWhole.len_eq] using hroom)).mono le_rfl ?_
     intro m'' _ ⟨hp', hv⟩
     exact ⟨hp'.trans hp, by simpa only [RCLikeBlas.machine, Finset.sum_range_succ] using hv⟩
   · intro m' _ ⟨hp, hv⟩
     exact ⟨hp, by simpa only [← Fin.sum_univ_eq_sum_range (fun i => xs.getD i 0) n] using hv⟩
 
-/-- The explicit conjugate-product loop computes the Hermitian dot product with one
-caller-owned temporary. Both input blocks remain outside its two written scalar cells. -/
-theorem writes_dotWithScratch (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
-    (hStar : RCLikeStar.IsExact I) {n : ℕ} {x y t out : ℕ × ℕ} (xs ys : List 𝕜)
-    (hl : m.Live [x, y, t, out])
-    (hX : m.store.readBlock x.1 x.2 n = some xs)
-    (hY : m.store.readBlock y.1 y.2 n = some ys)
-    (hDX : Fp.Disj (Store.inBlock t.1 t.2 1 ⊔ Store.inBlock out.1 out.2 1)
-      (Store.inBlock x.1 x.2 n))
-    (hDY : Fp.Disj (Store.inBlock t.1 t.2 1 ⊔ Store.inBlock out.1 out.2 1)
-      (Store.inBlock y.1 y.2 n))
-    (hTO : Fp.Disj (Store.inBlock t.1 t.2 1) (Store.inBlock out.1 out.2 1))
-    (ht : t.2 + 1 ≤ m.store.len t.1) (ho : out.2 + 1 ≤ m.store.len out.1) :
-    Writes .total I tape dotWithScratch.body (Env.frame [n] [x, y, t, out])
-      (Store.inBlock t.1 t.2 1 ⊔ Store.inBlock out.1 out.2 1)
-      (fun m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 1 =
-        some [RCLikeBlas.dot n xs ys]) m := by
-  unfold dotWithScratch
-  dsimp only
-  refine Writes.seq_le (writes_call_fn1 (hS (.lit 0)) (xs := [])
-    rfl rfl rfl rfl rfl trivial (by simpa [Mem.Live] using hl out (by simp))
-    rfl rfl rfl ho) le_sup_right ?_
-  intro m₁ hfr₁ ⟨hp₁, hzero⟩
-  have hzero' : m₁.store.readBlock out.1 out.2 1 = some [0] := by
-    simpa [RCLikeBlas.machine] using hzero
-  refine (writes_loop rfl (fun _ => Store.inBlock t.1 t.2 1 ⊔ Store.inBlock out.1 out.2 1)
-    (fun _ _ => le_rfl) (fun i m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 1 =
-      some [∑ j ∈ Finset.range i, star (xs.getD j 0) * ys.getD j 0])
-    ⟨hp₁, by simpa using hzero'⟩ ?_).mono le_rfl ?_
-  · intro i hi m' hfr ⟨hp, hacc⟩
-    have houtSub : Store.inBlock out.1 out.2 1 ≤
-        Store.inBlock t.1 t.2 1 ⊔ Store.inBlock out.1 out.2 1 := le_sup_right
-    have hWhole := (hfr₁.mono houtSub).trans hfr
-    have hX' := hWhole.keep (Store.readsOnly_readBlock _ _ _ xs) hDX hX
-    have hY' := hWhole.keep (Store.readsOnly_readBlock _ _ _ ys) hDY hY
-    have hx : m'.store.readBlock x.1 (x.2 + i) 1 = some [xs.getD i 0] := by
-      simp [Store.readBlock, Store.get_of_readBlock hX' hi (0 : 𝕜)]
-    have hy : m'.store.readBlock y.1 (y.2 + i) 1 = some [ys.getD i 0] := by
-      simp [Store.readBlock, Store.get_of_readBlock hY' hi (0 : 𝕜)]
-    have hl' : m'.Live [(x.1, x.2 + i), (y.1, y.2 + i), t, out] := by
-      simpa only [Mem.live_cons, Mem.live_nil] using hl.congr hWhole.length_eq
-    refine ((writes_starProductStep hS hStar _ _ _ hl' hx hy hacc
-      ((hDY.mono le_sup_left le_rfl).mono le_rfl
-        (Fp.inBlock_le_inBlock (by omega) (by omega))) hTO
-      (by simpa only [hWhole.len_eq] using ht)
-      (by simpa only [hWhole.len_eq] using ho)).in_frame rfl rfl hl').mono le_rfl ?_
-    intro m'' _ ⟨hp', hv⟩
-    exact ⟨hp'.trans hp, by simpa only [Finset.sum_range_succ] using hv⟩
-  · intro m' _ ⟨hp, hv⟩
-    exact ⟨hp, by simpa only [RCLikeBlas.dot,
-      ← Fin.sum_univ_eq_sum_range (fun j => star (xs.getD j 0) * ys.getD j 0) n] using hv⟩
+omit [Has StarOp Op] in
+/-- The routine of `sum` implements the exact contract of the operation `sum`. -/
+theorem sumRoutine_implements :
+    (sumRoutine (Op := Op) (Tst := Tst)).Implements (RCLikeBlas.functions (𝕜 := 𝕜) .sum).rel
+      (RCLikeBlas.admissible .sum) (fun ins outs => ins ++ outs) := by
+  implements [n] (x) → (z) with hadm
 
-/-- A scoped one-cell scalar dot product realizes the admitted Hermitian reduction,
-including zero-length vectors. All scratch is removed before returning. -/
-theorem writes_dot (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
-    (hStar : RCLikeStar.IsExact I) {n : ℕ} {x y out : ℕ × ℕ} (xs ys : List 𝕜)
-    (hl : m.Live [x, y, out])
-    (hX : m.store.readBlock x.1 x.2 n = some xs)
-    (hY : m.store.readBlock y.1 y.2 n = some ys)
-    (hOX : Fp.Disj (Store.inBlock out.1 out.2 1) (Store.inBlock x.1 x.2 n))
-    (hOY : Fp.Disj (Store.inBlock out.1 out.2 1) (Store.inBlock y.1 y.2 n))
-    (ho : out.2 + 1 ≤ m.store.len out.1) :
-    Writes .total I tape dot.body (Env.frame [n] [x, y, out])
-      (Store.inBlock out.1 out.2 1)
+omit [Has StarOp Op] in
+/-- Scalar summation realizes the exact level-one reduction contract: a consequence of the
+judgment of its routine. -/
+theorem satisfies_sum (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) :
+    (sumRoutine (Op := Op) (Tst := Tst)).impl.Satisfies I .total
+      ((RCLikeBlas.functions .sum).rel.spec (RCLikeBlas.admissible .sum)) :=
+  (sumRoutine_meets hS).satisfies_ofRel sumRoutine_implements
+    fun _ _ _ _ => trivial
+
+/-- The Hermitian dot product meets the specification read off the exact level-one
+reduction: one scratch cell holds each conjugate product, which is added to the output cell; the
+scratch cell is released at the end. The two inputs may overlap. -/
+theorem dotRoutine_meets (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+    (hStar : RCLikeStar.IsExact I) :
+    (dotRoutine (Op := Op) (Tst := Tst)).Meets I
+      (Routine.Spec.ofRel (RCLikeBlas.functions (𝕜 := 𝕜) .dot).rel fun _ => True) := by
+  routine_intro [n] (x, y, out) reads (xs, ys)
+  have hd : Fp.Disj (Store.inBlock out.1 out.2 1)
+      (Store.inBlock x.1 x.2 n ⊔ Store.inBlock y.1 y.2 n) := by
+    have h : Fp.Disj (Fp.blocks [out] [1]) (Fp.blocks [x, y] [n, n]) := hsep.2.1
+    simpa [Fp.blocks] using h
+  obtain ⟨hOX, hOY⟩ := Fp.disj_sup_right.mp hd
+  refine (show Writes .total I τ dot (Env.frame [n] [x, y, out]) (Store.inBlock out.1 out.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 1 =
-        some [RCLikeBlas.dot n xs ys]) m := by
-  have hxL := hl x (by simp)
-  have hyL := hl y (by simp)
-  have hoL := hl out (by simp)
+        some [RCLikeBlas.dot n xs ys]) m from ?_).mono le_sup_left fun μ' _ h =>
+    ⟨h.1, [[RCLikeBlas.dot n xs ys]], Mem.readBlocks_cons_eq_some.mpr ⟨_, [], h.2, rfl, rfl⟩,
+      rfl⟩
+  have hxL := hlive x (by simp)
+  have hyL := hlive y (by simp)
+  have hoL := hlive out (by simp)
   apply writes_allocs_readBlock (lens := [.const 1]) (ns := [1]) rfl hoL
   intro store hlength hlens hBelow
   have ht : store.len m.store.length = 1 := by simpa using hlens 0 (by simp)
@@ -303,278 +119,390 @@ theorem writes_dot (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
   have hl' : (Mem.mk store m.pos).Live [x, y, (m.store.length, 0), out] := by
     simp only [Mem.live_cons, Mem.live_nil]
     exact ⟨by omega, by omega, by omega, by omega, trivial⟩
-  refine ((writes_dotWithScratch hS hStar xs ys hl' (by kept) (by kept)
+  refine ((dotWithScratch_writes hS hStar xs ys hl' (by kept) (by kept)
     (Fp.disj_sup_left.mpr ⟨Fp.disj_inBlock_of_ne (Ne.symm (Nat.ne_of_lt hxL)), hOX⟩)
     (Fp.disj_sup_left.mpr ⟨Fp.disj_inBlock_of_ne (Ne.symm (Nat.ne_of_lt hyL)), hOY⟩)
     (Fp.disj_inBlock_of_ne (Ne.symm (Nat.ne_of_lt hoL)))
-    (by simpa using ht.ge) (by simpa only [(hBelow out.1 hoL).1] using ho)).in_frame
+    (by simpa using ht.ge) (by simpa only [(hBelow out.1 hoL).1] using hroom)).in_frame
       rfl rfl hl').mono (by fp_sub) (fun _ _ h => h)
 
-/-- The scalar dot product followed by scalar square root computes the exact norm. -/
-theorem writes_nrm2 (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
-    (hStar : RCLikeStar.IsExact I) {n : ℕ} {x out : ℕ × ℕ} (xs : List 𝕜)
-    (hl : m.Live [x, out]) (hX : m.store.readBlock x.1 x.2 n = some xs)
-    (hOX : Fp.Disj (Store.inBlock out.1 out.2 1) (Store.inBlock x.1 x.2 n))
-    (ho : out.2 + 1 ≤ m.store.len out.1) :
-    Writes .total I tape nrm2.body (Env.frame [n] [x, out])
-      (Store.inBlock out.1 out.2 1)
-      (fun m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 1 =
-        some [RCLike.ofReal (Real.sqrt (RCLike.re (RCLikeBlas.dot n xs xs)))]) m := by
-  have hl' : m.Live [x, x, out] := by
-    simp only [Mem.live_cons, Mem.live_nil]
-    exact ⟨hl x (by simp), hl x (by simp), hl out (by simp), trivial⟩
+/-- The routine of `dot` implements the exact contract of the operation `dot`. -/
+theorem dotRoutine_implements :
+    (dotRoutine (Op := Op) (Tst := Tst)).Implements (RCLikeBlas.functions (𝕜 := 𝕜) .dot).rel
+      (RCLikeBlas.admissible .dot) (fun ins outs => ins ++ outs) := by
+  implements [n] (x, y) → (z) with hadm
+
+/-- The streamed conjugate-product implementation realizes the exact Hermitian dot contract: a
+consequence of the judgment of its routine. -/
+theorem satisfies_dot (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+    (hStar : RCLikeStar.IsExact I) :
+    (dotRoutine (Op := Op) (Tst := Tst)).impl.Satisfies I .total
+      ((RCLikeBlas.functions .dot).rel.spec (RCLikeBlas.admissible .dot)) :=
+  (dotRoutine_meets hS hStar).satisfies_ofRel dotRoutine_implements fun _ _ _ _ => trivial
+
+/-- The Euclidean norm meets the specification read off the exact level-one norm: the
+judgment of `dotRoutine`, called on the vector twice over, then the scalar square root. -/
+theorem nrm2Routine_meets (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+    (hStar : RCLikeStar.IsExact I) :
+    (nrm2Routine (Op := Op) (Tst := Tst)).Meets I
+      (Routine.Spec.ofRel (RCLikeBlas.functions (𝕜 := 𝕜) .nrm2).rel fun _ => True) := by
+  routine_intro [n] (x, out) reads (xs)
+  have hdot := dotRoutine_meets (Op := Op) (Tst := Tst) hS hStar
   unfold nrm2
-  dsimp only
-  refine Writes.seq_le ((writes_dot hS hStar xs xs hl' hX hX hOX hOX ho).in_frame
-    rfl rfl hl') le_rfl ?_
-  intro m₁ hfr ⟨hp, hDot⟩
-  have hl₁ := hl.congr hfr.length_eq
+  have hOX : Fp.Disj (Store.inBlock out.1 out.2 1) (Store.inBlock x.1 x.2 n) := by
+    simpa [Fp.blocks] using hblocks.2.1
+  call hdot [n] (x, x, out) (pre := ⟨trivial, _, rfl, rfl⟩) as μ₁ hfr hp (ds) hpost
+  have hfn : some [[RCLikeBlas.dot n xs xs]] = some [ds] := hpost
+  obtain rfl : ds = [RCLikeBlas.dot n xs xs] := by simpa using hfn.symm
+  have hl₁ := hlive.congr hfr.length_eq
   refine (writes_call_fn1 (hS .sqrt) (xs := [[RCLikeBlas.dot n xs xs]])
     rfl rfl rfl rfl rfl trivial (by
       simp only [Mem.live_append, Mem.live_cons, Mem.live_nil]
       exact ⟨⟨hl₁ out (by simp), trivial⟩, hl₁ out (by simp), trivial⟩)
-    (by simp [Machine.fn, Mem.readBlocks, hDot]) rfl rfl
-    (by simpa only [hfr.len_eq] using ho)).mono le_rfl ?_
-  intro m₂ _ ⟨hp₂, hv⟩
-  exact ⟨hp₂.trans hp, hv⟩
+    (by simp [Machine.fn, Mem.readBlocks, hds]) rfl rfl
+    (by simpa only [hfr.len_eq] using hroom)).mono (by fp_sub) ?_
+  intro μ₂ _ ⟨hp₂, hv⟩
+  exact ⟨hp₂.trans hp, [[RCLike.ofReal (Real.sqrt (RCLike.re (RCLikeBlas.dot n xs xs)))]],
+    Mem.readBlocks_cons_eq_some.mpr ⟨_, [], hv, rfl, rfl⟩, rfl⟩
 
-omit [Has StarOp Op] in
-/-- The pointwise scalar axpy follows the original input words through the output prefix.
-Each vector may alias the output exactly; the broadcast scalar remains separate. -/
-theorem writes_axpyWithScratch (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
-    {n : ℕ} {a x y t out : ℕ × ℕ} (xs ys : List 𝕜) (alpha : 𝕜)
-    (hA : m.store.get a.1 a.2 = some alpha)
-    (hX : m.store.readBlock x.1 x.2 n = some xs)
-    (hY : m.store.readBlock y.1 y.2 n = some ys)
-    (hXO : Fp.Disj (Store.inBlock x.1 x.2 n) (Store.inBlock out.1 out.2 n) ∨ x = out)
-    (hYO : Fp.Disj (Store.inBlock y.1 y.2 n) (Store.inBlock out.1 out.2 n) ∨ y = out)
-    (hAO : Fp.Disj (Store.inBlock a.1 a.2 1) (Store.inBlock out.1 out.2 n))
-    (hTX : Fp.Disj (Store.inBlock t.1 t.2 1) (Store.inBlock x.1 x.2 n))
-    (hTY : Fp.Disj (Store.inBlock t.1 t.2 1) (Store.inBlock y.1 y.2 n))
-    (hTA : Fp.Disj (Store.inBlock t.1 t.2 1) (Store.inBlock a.1 a.2 1))
-    (hTO : Fp.Disj (Store.inBlock t.1 t.2 1) (Store.inBlock out.1 out.2 n))
-    (ht : t.2 + 1 ≤ m.store.len t.1) (ho : out.2 + n ≤ m.store.len out.1) :
-    Writes .total I tape axpyWithScratch.body (Env.frame [n] [a, x, y, t, out])
-      (Store.inBlock out.1 out.2 n ⊔ Store.inBlock t.1 t.2 1)
-      (fun m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 n =
-        some (List.ofFn fun i : Fin n => ys.getD i 0 + alpha * xs.getD i 0)) m := by
-  unfold axpyWithScratch
-  dsimp only
-  refine (writes_fill_scratch rfl (Store.inBlock t.1 t.2 1) hTO
-    (fun i => ys.getD i 0 + alpha * xs.getD i 0) (fun _ => m.pos) rfl ?_).mono le_rfl ?_
-  · intro i hi m' hfr _ hp
-    have hx : m'.store.get x.1 (x.2 + i) = some (xs.getD i 0) :=
-      (hfr.get_prefix hXO hTX hi).trans (Store.get_of_readBlock hX hi 0)
-    have hy : m'.store.get y.1 (y.2 + i) = some (ys.getD i 0) :=
-      (hfr.get_prefix hYO hTY hi).trans (Store.get_of_readBlock hY hi 0)
-    have ha : m'.store.get a.1 a.2 = some alpha := by
-      rw [hfr.get_eq ?_]
-      · exact hA
-      · rintro (hw | hw)
-        · exact hAO _ _ ⟨rfl, le_rfl, by omega⟩
-            ⟨hw.1, hw.2.1, by have := hw.2.2; omega⟩
-        · exact hTA _ _ hw ⟨rfl, le_rfl, by omega⟩
-    have hne : (y.1, y.2 + i) ≠ t := by
-      intro he
-      have hb := congrArg Prod.fst he
-      have ho := congrArg Prod.snd he
-      exact hTY y.1 (y.2 + i) ⟨hb, by omega, by omega⟩ ⟨rfl, by omega, by omega⟩
-    let code : List (ScalarIns ScalarOp) :=
-      [⟨.mul, [⟨0, .var 1⟩, ⟨1, .var 2 + .var 6⟩], ⟨3, .var 4⟩⟩,
-        ⟨.add, [⟨2, .var 3 + .var 6⟩, ⟨3, .var 4⟩], ⟨4, .var 5 + .var 6⟩⟩]
-    have hev : ScalarIns.evalBlock RCLikeBlas.machine.eval
-        ((Env.frame [n] [a, x, y, t, out]).pushIdx i) code m'.store.cellFn =
-      some [(t, alpha * xs.getD i 0), ((out.1, out.2 + i), ys.getD i 0 + alpha * xs.getD i 0)] := by
-      simp [code, ScalarIns.evalBlock, Operand.evalList, Operand.eval, IExp.eval,
-        Env.frame, Env.pushIdx, Store.cellFn, Machine.eval, RCLikeBlas.machine, ha, hx, hy, hne]
-    refine (writes_machineScalarBlock hS hev ?_).mono (by fp_sub) ?_
-    · intro w hw
-      simp only [List.mem_cons, List.not_mem_nil, or_false] at hw
-      rcases hw with rfl | rfl
-      · change t.2 < m'.store.len t.1
-        rw [hfr.len_eq]
-        omega
-      · change out.2 + i < m'.store.len out.1
-        rw [hfr.len_eq]
-        omega
-    · intro m'' _ he
-      subst m''
-      refine ⟨get_updCells (ws₁ := [(t, alpha * xs.getD i 0)]) (ws₂ := []) ?_
-        (by simp), hp⟩
-      change out.2 + i < m'.store.len out.1
-      rw [hfr.len_eq]
-      omega
-  · intro m' _ ⟨hv, hp⟩
-    refine ⟨hp, Store.readBlock_eq_some_iff.mpr ⟨by simp, fun i hi => ?_⟩⟩
-    simpa [List.getD_eq_getElem?_getD, hi] using hv i hi
+/-- The routine of `nrm2` implements the exact contract of the operation `nrm2`. -/
+theorem nrm2Routine_implements :
+    (nrm2Routine (Op := Op) (Tst := Tst)).Implements (RCLikeBlas.functions (𝕜 := 𝕜) .nrm2).rel
+      (RCLikeBlas.admissible .nrm2) (fun ins outs => ins ++ outs) := by
+  implements [n] (x) → (z) with hadm
 
-omit [Has StarOp Op] in
-/-- One scoped product cell implements axpy for disjoint or exactly aliased vector views.
-The broadcast scalar remains outside the output; scratch is removed before returning. -/
-theorem writes_axpy (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
-    {n : ℕ} {a x y out : ℕ × ℕ} (xs ys : List 𝕜) (alpha : 𝕜)
-    (hl : m.Live [a, x, y, out]) (hA : m.store.get a.1 a.2 = some alpha)
-    (hX : m.store.readBlock x.1 x.2 n = some xs)
-    (hY : m.store.readBlock y.1 y.2 n = some ys)
-    (hXO : Fp.Disj (Store.inBlock x.1 x.2 n) (Store.inBlock out.1 out.2 n) ∨ x = out)
-    (hYO : Fp.Disj (Store.inBlock y.1 y.2 n) (Store.inBlock out.1 out.2 n) ∨ y = out)
-    (hAO : Fp.Disj (Store.inBlock a.1 a.2 1) (Store.inBlock out.1 out.2 n))
-    (ho : out.2 + n ≤ m.store.len out.1) :
-    Writes .total I tape axpy.body (Env.frame [n] [a, x, y, out])
-      (Store.inBlock out.1 out.2 n)
-      (fun m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 n =
-        some (List.ofFn fun i : Fin n => ys.getD i 0 + alpha * xs.getD i 0)) m := by
-  have haL := hl a (by simp)
-  have hxL := hl x (by simp)
-  have hyL := hl y (by simp)
-  have hoL := hl out (by simp)
-  apply writes_allocs_readBlock (lens := [.const 1]) (ns := [1]) rfl hoL
-  intro store hlength hlens hBelow
-  have hlen : store.length = m.store.length + 1 := by simpa using hlength
-  have ht : store.len m.store.length = 1 := by simpa using hlens 0 (by simp)
-  have hl' : (Mem.mk store m.pos).Live [a, x, y, (m.store.length, 0), out] := by
-    simp only [Mem.live_cons, Mem.live_nil]
-    exact ⟨by omega, by omega, by omega, by omega, by omega, trivial⟩
-  refine ((writes_axpyWithScratch hS xs ys alpha (by kept) (by kept) (by kept)
-    hXO hYO hAO
-    (Fp.disj_inBlock_of_ne (Ne.symm (Nat.ne_of_lt hxL)))
-    (Fp.disj_inBlock_of_ne (Ne.symm (Nat.ne_of_lt hyL)))
-    (Fp.disj_inBlock_of_ne (Ne.symm (Nat.ne_of_lt haL)))
-    (Fp.disj_inBlock_of_ne (Ne.symm (Nat.ne_of_lt hoL)))
-    (by simpa using ht.ge) (by simpa only [(hBelow out.1 hoL).1] using ho)).in_frame
-      rfl rfl hl').mono (by fp_sub) (fun _ _ h => h)
-
-omit [Has StarOp Op] in
-/-- Scalar summation realizes the exact level-one reduction contract. -/
-theorem meets_sum (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) :
-    (sum (Op := Op) (Tst := Tst)).Triple I .total
-      ((RCLikeBlas.functions .sum).rel.spec (RCLikeBlas.admissible .sum)) := by
-  refine Impl.meets_of_writes fun d ins outs tape mem vals hnd hadm hl hread _ hroom => ?_
-  obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
-  obtain ⟨x, xs, rfl, hx, rfl⟩ := Mem.readBlocks_one hread
-  obtain ⟨z, rfl, hz⟩ := Mem.room_one hroom
-  have hsep : Fp.Disj (Store.inBlock z.1 z.2 1) (Store.inBlock x.1 x.2 n) := by
-    simpa [RCLikeBlas.admissible] using hadm
-  refine ⟨⟨rfl, rfl, rfl⟩, (writes_sum hS xs hl hx hsep hz).mono ?_ ?_⟩
-  · exact le_sup_left
-  intro mem' _ h
-  refine ⟨h.1, [[∑ i : Fin n, xs.getD i 0]], ?_, rfl⟩
-  exact Mem.readBlocks_cons_eq_some.mpr ⟨_, [], h.2, rfl, rfl⟩
-
-/-- The streamed conjugate-product implementation realizes the exact Hermitian dot contract. -/
-theorem meets_dot (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+/-- Scalar Hermitian dot followed by square root realizes the exact norm contract: a
+consequence of the judgment of its routine. -/
+theorem satisfies_nrm2 (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hStar : RCLikeStar.IsExact I) :
-    (dot (Op := Op) (Tst := Tst)).Triple I .total
-      ((RCLikeBlas.functions .dot).rel.spec (RCLikeBlas.admissible .dot)) := by
-  refine Impl.meets_of_writes fun d ins outs tape mem vals hnd hadm hl hread _ hroom => ?_
-  obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
-  obtain ⟨x, y, xs, ys, rfl, hx, hy, rfl⟩ := Mem.readBlocks_two hread
-  obtain ⟨z, rfl, hz⟩ := Mem.room_one hroom
-  have hsep : Fp.Disj (Store.inBlock z.1 z.2 1) (Store.inBlock x.1 x.2 n) ∧
-      Fp.Disj (Store.inBlock z.1 z.2 1) (Store.inBlock y.1 y.2 n) := by
-    simpa [RCLikeBlas.admissible] using hadm
-  refine ⟨⟨rfl, rfl, rfl⟩, (writes_dot hS hStar xs ys hl hx hy hsep.1 hsep.2 hz).mono ?_ ?_⟩
-  · exact le_sup_left
-  intro mem' _ h
-  refine ⟨h.1, [[RCLikeBlas.dot n xs ys]], ?_, rfl⟩
-  exact Mem.readBlocks_cons_eq_some.mpr ⟨_, [], h.2, rfl, rfl⟩
+    (nrm2Routine (Op := Op) (Tst := Tst)).impl.Satisfies I .total
+      ((RCLikeBlas.functions .nrm2).rel.spec (RCLikeBlas.admissible .nrm2)) :=
+  (nrm2Routine_meets hS hStar).satisfies_ofRel nrm2Routine_implements
+    fun _ _ _ _ => trivial
 
-/-- Scalar Hermitian dot followed by square root realizes the exact norm contract. -/
-theorem meets_nrm2 (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
-    (hStar : RCLikeStar.IsExact I) :
-    (nrm2 (Op := Op) (Tst := Tst)).Triple I .total
-      ((RCLikeBlas.functions .nrm2).rel.spec (RCLikeBlas.admissible .nrm2)) := by
-  refine Impl.meets_of_writes fun d ins outs tape mem vals hnd hadm hl hread _ hroom => ?_
-  obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
-  obtain ⟨x, xs, rfl, hx, rfl⟩ := Mem.readBlocks_one hread
-  obtain ⟨z, rfl, hz⟩ := Mem.room_one hroom
-  have hsep : Fp.Disj (Store.inBlock z.1 z.2 1) (Store.inBlock x.1 x.2 n) := by
-    simpa [RCLikeBlas.admissible] using hadm
-  refine ⟨⟨rfl, rfl, rfl⟩, (writes_nrm2 hS hStar xs hl hx hsep hz).mono ?_ ?_⟩
-  · exact le_sup_left
-  intro mem' _ h
-  refine ⟨h.1, [[RCLike.ofReal (Real.sqrt (RCLike.re (RCLikeBlas.dot n xs xs)))]], ?_, rfl⟩
-  exact Mem.readBlocks_cons_eq_some.mpr ⟨_, [], h.2, rfl, rfl⟩
+/-! ### Operations that may run in place
+
+The contracts of `copy`, `scal` and `axpy` admit an output that is apart from a vector input or
+exactly that input. Each admitted layout is a routine with the same tree: separate operands, or
+the vector updated in place with its buffer variables bound to one operand. The contract of the
+operation follows by cases on the admission. -/
 
 omit [Has StarOp Op] in
-/-- The scalar copy realizes exact copying under disjoint-or-equal vector admission. -/
-theorem meets_copy (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) :
-    (copy (Op := Op) (Tst := Tst)).Triple I .total
+/-- `copy` in place: `[n] (x : update n)`, the same tree with both buffer variables on `x`. -/
+def copyInPlaceRoutine : Routine Op Tst :=
+  routine% [n] (x : n) → (x) by blocks := copy
+
+omit [Has StarOp Op] in
+/-- The scalar copy out of place meets the specification read off the exact copy. -/
+theorem copyRoutine_meets (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) :
+    (copyRoutine (Op := Op) (Tst := Tst)).Meets I
+      (Routine.Spec.ofRel (RCLikeBlas.functions (𝕜 := 𝕜) .copy).rel fun _ => True) := by
+  routine_intro [n] (x, z) reads (xs)
+  have hd : Fp.Disj (Store.inBlock z.1 z.2 n) (Store.inBlock x.1 x.2 n) := by
+    have h : Fp.Disj (Fp.blocks [z] [n]) (Fp.blocks [x] [n]) := hsep.2.1
+    simpa using h
+  refine (copy_writes hS xs hxs (.inl hd.symm) hroom).mono le_sup_left fun μ' _ h => ?_
+  exact ⟨h.1, [xs], Mem.readBlocks_cons_eq_some.mpr ⟨_, [], h.2, rfl, rfl⟩, rfl⟩
+
+omit [Has StarOp Op] in
+/-- The scalar copy in place meets the specification read off the exact copy. -/
+theorem copyInPlaceRoutine_meets (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) :
+    (copyInPlaceRoutine (Op := Op) (Tst := Tst)).Meets I
+      (Routine.Spec.ofRel (RCLikeBlas.functions (𝕜 := 𝕜) .copy).rel fun _ => True) := by
+  routine_intro [n] (x) reads (xs)
+  refine (copy_writes hS xs hxs (.inr rfl) hroom).mono le_sup_left fun μ' _ h => ?_
+  exact ⟨h.1, [xs], Mem.readBlocks_cons_eq_some.mpr ⟨_, [], h.2, rfl, rfl⟩, rfl⟩
+
+omit [Has StarOp Op] in
+/-- The scalar copy realizes exact copying under disjoint-or-equal vector admission: by cases
+on the admission, from the routine out of place and the routine in place. -/
+theorem satisfies_copy (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) :
+    (copyRoutine (Op := Op) (Tst := Tst)).impl.Satisfies I .total
       ((RCLikeBlas.functions .copy).rel.spec (RCLikeBlas.admissible .copy)) := by
-  refine Impl.meets_of_writes fun d ins outs tape mem vals hnd hadm _ hread _ hroom => ?_
+  refine Impl.satisfies_of_writes fun d ins outs tape mem vals hnd hadm hl hread hdom hroom => ?_
   obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
   obtain ⟨x, xs, rfl, hx, rfl⟩ := Mem.readBlocks_one hread
   obtain ⟨z, rfl, hz⟩ := Mem.room_one hroom
   have hsep : Fp.Disj (Store.inBlock x.1 x.2 n) (Store.inBlock z.1 z.2 n) ∨ x = z := by
     simpa [RCLikeBlas.admissible] using hadm
-  refine ⟨⟨rfl, rfl, rfl⟩, (writes_copy hS xs hx hsep hz).mono ?_ ?_⟩
-  · exact le_sup_left
-  intro mem' _ h
-  refine ⟨h.1, [xs], ?_, rfl⟩
-  exact Mem.readBlocks_cons_eq_some.mpr ⟨_, [], h.2, rfl, rfl⟩
+  refine ⟨⟨rfl, rfl, rfl⟩, ?_⟩
+  rcases hsep with hd | rfl
+  · exact (copyRoutine_meets hS).writes_ofRel (args := [x, z]) rfl rfl hl
+      (Routine.separatedAt_of_blocks rfl (Routine.separatedBlocks_of_noIsolated
+        (by simp [copyRoutine, Access.isIsolated]) (Fp.apart_singleton z n)
+        (by
+          change Fp.Disj (Fp.blocks [z] [n]) (Fp.blocks [x] [n])
+          simpa using hd.symm)))
+      hread trivial hdom hroom rfl
+  · exact (copyInPlaceRoutine_meets hS).writes_ofRel (args := [x]) rfl rfl
+      (fun w hw => hl w (List.mem_cons_of_mem _ hw))
+      (Routine.separatedAt_of_blocks rfl (Routine.separatedBlocks_of_noIsolated
+        (by simp [copyInPlaceRoutine, Access.isIsolated]) (Fp.apart_singleton x n)
+        (fun _ _ _ h => False.elim h)))
+      hread trivial hdom hroom rfl
 
 omit [Has StarOp Op] in
-/-- Broadcast scalar division realizes the exact scaling contract, with allowed vector alias. -/
-theorem meets_scal (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) :
-    (scal (Op := Op) (Tst := Tst)).Triple I .total
+/-- `scal` in place: `[n] (a : read 1, x : update n)`, the same tree with the vector and the
+output on `x`. -/
+def scalInPlaceRoutine : Routine Op Tst :=
+  routine% [n] (a : 1, x : n) → (x) by blocks := scal
+
+omit [Has StarOp Op] in
+/-- The run of the scaling tree on a scalar `a`, a vector `x` and an output `z` that is apart
+from `x` or is `x`, as the blocks of the exact scaling. -/
+theorem scal_blocks (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) {n : ℕ}
+    {a x z : ℕ × ℕ} {τ : Tape 𝕜} {μ : Mem 𝕜} {vals : List (List 𝕜)} (hl : μ.Live [a, x, z])
+    (hread : μ.readBlocks [a, x] [1, n] = some vals)
+    (hxz : Fp.Disj (Store.inBlock x.1 x.2 n) (Store.inBlock z.1 z.2 n) ∨ x = z)
+    (haz : Fp.Disj (Store.inBlock a.1 a.2 1) (Store.inBlock z.1 z.2 n))
+    (hz : z.2 + n ≤ μ.store.len z.1) :
+    Writes .total I τ scal (Env.frame [n] [a, x, z]) (Fp.blocks [z] [n])
+      (fun μ' => μ'.pos = μ.pos + 0 ∧ ∃ ys, μ'.readBlocks [z] [n] = some ys ∧
+        (RCLikeBlas.functions (𝕜 := 𝕜) .scal).rel.rel [n] vals [] ys) μ := by
+  obtain ⟨a', x', as, xs, he, ha, hx, rfl⟩ := Mem.readBlocks_two hread
+  obtain ⟨rfl, rfl⟩ : a = a' ∧ x = x' := by simpa using he
+  obtain ⟨alpha, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock ha)
+  have ha' : μ.store.get a.1 a.2 = some alpha := by
+    simpa using Store.get_of_readBlock ha Nat.zero_lt_one alpha
+  refine (scal_writes hS xs alpha hl hx ha' hxz haz hz).mono le_sup_left fun μ' _ h => ?_
+  exact ⟨h.1, [List.ofFn fun i : Fin n => xs.getD i 0 / alpha],
+    Mem.readBlocks_cons_eq_some.mpr ⟨_, [], h.2, rfl, rfl⟩, rfl⟩
+
+omit [Has StarOp Op] in
+/-- Broadcast scalar division out of place meets the specification read off the exact
+scaling. -/
+theorem scalRoutine_meets (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) :
+    (scalRoutine (Op := Op) (Tst := Tst)).Meets I
+      (Routine.Spec.ofRel (RCLikeBlas.functions (𝕜 := 𝕜) .scal).rel fun _ => True) := by
+  routine_intro [n] (a, x, z)
+  have hd : Fp.Disj (Store.inBlock z.1 z.2 n) (Store.inBlock a.1 a.2 1) ∧
+      Fp.Disj (Store.inBlock z.1 z.2 n) (Store.inBlock x.1 x.2 n) := by
+    have h : Fp.Disj (Fp.blocks [z] [n]) (Fp.blocks [a, x] [1, n]) := hsep.2.1
+    exact Fp.disj_sup_right.mp (by simpa [Fp.blocks] using h)
+  exact scal_blocks hS hlive hr (.inl hd.2.symm) hd.1.symm hroom
+
+omit [Has StarOp Op] in
+/-- Broadcast scalar division in place meets the specification read off the exact scaling. -/
+theorem scalInPlaceRoutine_meets (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) :
+    (scalInPlaceRoutine (Op := Op) (Tst := Tst)).Meets I
+      (Routine.Spec.ofRel (RCLikeBlas.functions (𝕜 := 𝕜) .scal).rel fun _ => True) := by
+  routine_intro [n] (a, x)
+  have hd : Fp.Disj (Store.inBlock x.1 x.2 n) (Store.inBlock a.1 a.2 1) := by
+    have h : Fp.Disj (Fp.blocks [x] [n]) (Fp.blocks [a] [1]) := hsep.2.1
+    simpa using h
+  exact scal_blocks hS (by simpa only [Mem.live_cons, Mem.live_nil] using
+    ⟨hl.1, hl.2, hl.2, trivial⟩) hr (.inr rfl) hd.symm hroom
+
+omit [Has StarOp Op] in
+/-- Broadcast scalar division realizes the exact scaling contract, with allowed vector alias:
+by cases on the admission, from the routine out of place and the routine in place. -/
+theorem satisfies_scal (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) :
+    (scalRoutine (Op := Op) (Tst := Tst)).impl.Satisfies I .total
       ((RCLikeBlas.functions .scal).rel.spec (RCLikeBlas.admissible .scal)) := by
-  refine Impl.meets_of_writes fun d ins outs tape mem vals hnd hadm hl hread _ hroom => ?_
+  refine Impl.satisfies_of_writes fun d ins outs tape mem vals hnd hadm hl hread hdom hroom => ?_
   obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
   obtain ⟨a, x, as, xs, rfl, ha, hx, rfl⟩ := Mem.readBlocks_two hread
   obtain ⟨z, rfl, hz⟩ := Mem.room_one hroom
-  obtain ⟨alpha, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock ha)
-  have ha' : mem.store.get a.1 a.2 = some alpha := by
-    simpa using Store.get_of_readBlock ha Nat.zero_lt_one alpha
   have hsep : Fp.Disj (Store.inBlock a.1 a.2 1) (Store.inBlock z.1 z.2 n) ∧
       (Fp.Disj (Store.inBlock x.1 x.2 n) (Store.inBlock z.1 z.2 n) ∨ x = z) := by
     simpa [RCLikeBlas.admissible] using hadm
-  refine ⟨⟨rfl, rfl, rfl⟩, (writes_scal hS xs alpha hl hx ha' hsep.2 hsep.1 hz).mono ?_ ?_⟩
-  · exact le_sup_left
-  intro mem' _ h
-  refine ⟨h.1, [List.ofFn fun i : Fin n => xs.getD i 0 / alpha], ?_, rfl⟩
-  exact Mem.readBlocks_cons_eq_some.mpr ⟨_, [], h.2, rfl, rfl⟩
+  refine ⟨⟨rfl, rfl, rfl⟩, ?_⟩
+  rcases hsep.2 with hd | rfl
+  · exact (scalRoutine_meets hS).writes_ofRel (args := [a, x, z]) rfl rfl hl
+      (Routine.separatedAt_of_blocks rfl (Routine.separatedBlocks_of_noIsolated
+        (by simp [scalRoutine, Access.isIsolated]) (Fp.apart_singleton z n)
+        (by
+          change Fp.Disj (Fp.blocks [z] [n]) (Fp.blocks [a, x] [1, n])
+          simpa [Fp.blocks] using Fp.disj_sup_right.mpr ⟨hsep.1.symm, hd.symm⟩)))
+      hread trivial hdom hroom rfl
+  · exact (scalInPlaceRoutine_meets hS).writes_ofRel (args := [a, x]) rfl rfl
+      (by
+        simp only [List.cons_append, List.nil_append, Mem.live_cons, Mem.live_nil,
+          and_true] at hl ⊢
+        exact ⟨hl.1, hl.2.1⟩)
+      (Routine.separatedAt_of_blocks rfl (Routine.separatedBlocks_of_noIsolated
+        (by simp [scalInPlaceRoutine, Access.isIsolated]) (Fp.apart_singleton x n)
+        (by
+          change Fp.Disj (Fp.blocks [x] [n]) (Fp.blocks [a] [1])
+          simpa using hsep.1.symm)))
+      hread trivial hdom hroom rfl
 
 omit [Has StarOp Op] in
-/-- The one-temporary scalar axpy realizes its exact admitted BLAS function. -/
-theorem meets_axpy (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) :
-    (axpy (Op := Op) (Tst := Tst)).Triple I .total
+/-- `axpy` in place on `y`: `[n] (a : read 1, x : read n, y : update n)`, the same tree with
+the second vector and the output on `y`. -/
+def axpyInPlaceRoutine : Routine Op Tst :=
+  routine% [n] (a : 1, x : n, y : n) → (y) by blocks := axpy
+
+omit [Has StarOp Op] in
+/-- `axpy` in place on `x`: `[n] (a : read 1, x : update n, y : read n)`, the same tree with
+the first vector and the output on `x`. -/
+def axpyOnXRoutine : Routine Op Tst :=
+  routine% [n] (a : 1, x : n, y : n) → (x) by blocks := axpy
+
+omit [Has StarOp Op] in
+/-- `axpy` with both vectors and the output one block: `[n] (a : read 1, x : update n)`. -/
+def axpySelfRoutine : Routine Op Tst :=
+  routine% [n] (a : 1, x : n, x) → (x) by blocks := axpy
+
+/-- The specification of `axpy` with both vectors one block: the relation of the exact `axpy`
+with that block as both vectors. -/
+def axpySelfSpec : Routine.Spec 𝕜 where
+  pre _ _ _ := True
+  post d _ X Y := match X with
+    | [as, xs] => (RCLikeBlas.functions (𝕜 := 𝕜) .axpy).rel.rel d [as, xs, xs] [] Y
+    | _ => False
+
+omit [Has StarOp Op] in
+/-- The run of the `axpy` tree on a scalar `a`, vectors `x`, `y` and an output `z` that is
+apart from each vector or is that vector, as the blocks of the exact `axpy`. -/
+theorem axpy_blocks (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) {n : ℕ}
+    {a x y z : ℕ × ℕ} {τ : Tape 𝕜} {μ : Mem 𝕜} {vals : List (List 𝕜)}
+    (hl : μ.Live [a, x, y, z]) (hread : μ.readBlocks [a, x, y] [1, n, n] = some vals)
+    (hxz : Fp.Disj (Store.inBlock x.1 x.2 n) (Store.inBlock z.1 z.2 n) ∨ x = z)
+    (hyz : Fp.Disj (Store.inBlock y.1 y.2 n) (Store.inBlock z.1 z.2 n) ∨ y = z)
+    (haz : Fp.Disj (Store.inBlock a.1 a.2 1) (Store.inBlock z.1 z.2 n))
+    (hz : z.2 + n ≤ μ.store.len z.1) :
+    Writes .total I τ axpy (Env.frame [n] [a, x, y, z]) (Fp.blocks [z] [n])
+      (fun μ' => μ'.pos = μ.pos + 0 ∧ ∃ ys, μ'.readBlocks [z] [n] = some ys ∧
+        (RCLikeBlas.functions (𝕜 := 𝕜) .axpy).rel.rel [n] vals [] ys) μ := by
+  obtain ⟨a', x', y', as, xs, ys, he, ha, hx, hy, rfl⟩ := Mem.readBlocks_three hread
+  obtain ⟨rfl, rfl, rfl⟩ : a = a' ∧ x = x' ∧ y = y' := by simpa using he
+  obtain ⟨alpha, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock ha)
+  have ha' : μ.store.get a.1 a.2 = some alpha := by
+    simpa using Store.get_of_readBlock ha Nat.zero_lt_one alpha
+  refine (axpy_writes hS xs ys alpha hl ha' hx hy hxz hyz haz hz).mono le_sup_left
+    fun μ' _ h => ?_
+  exact ⟨h.1, [List.ofFn fun i : Fin n => ys.getD i 0 + alpha * xs.getD i 0],
+    Mem.readBlocks_cons_eq_some.mpr ⟨_, [], h.2, rfl, rfl⟩, rfl⟩
+
+omit [Has StarOp Op] in
+/-- The scalar `axpy` out of place meets the specification read off the exact `axpy`. -/
+theorem axpyRoutine_meets (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) :
+    (axpyRoutine (Op := Op) (Tst := Tst)).Meets I
+      (Routine.Spec.ofRel (RCLikeBlas.functions (𝕜 := 𝕜) .axpy).rel fun _ => True) := by
+  routine_intro [n] (a, x, y, z)
+  have h : Fp.Disj (Fp.blocks [z] [n]) (Fp.blocks [a, x, y] [1, n, n]) := hsep.2.1
+  obtain ⟨hza, hzx, hzy⟩ : Fp.Disj (Store.inBlock z.1 z.2 n) (Store.inBlock a.1 a.2 1) ∧
+      Fp.Disj (Store.inBlock z.1 z.2 n) (Store.inBlock x.1 x.2 n) ∧
+      Fp.Disj (Store.inBlock z.1 z.2 n) (Store.inBlock y.1 y.2 n) := by
+    simpa [Fp.blocks] using h
+  exact axpy_blocks hS hlive hr (.inl hzx.symm) (.inl hzy.symm) hza.symm hroom
+
+omit [Has StarOp Op] in
+/-- The scalar `axpy` in place on `y` meets the specification read off the exact `axpy`. -/
+theorem axpyInPlaceRoutine_meets (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) :
+    (axpyInPlaceRoutine (Op := Op) (Tst := Tst)).Meets I
+      (Routine.Spec.ofRel (RCLikeBlas.functions (𝕜 := 𝕜) .axpy).rel fun _ => True) := by
+  routine_intro [n] (a, x, y)
+  have h : Fp.Disj (Fp.blocks [y] [n]) (Fp.blocks [a, x] [1, n]) := hsep.2.1
+  obtain ⟨hya, hyx⟩ := Fp.disj_sup_right.mp (by simpa [Fp.blocks] using h)
+  exact axpy_blocks hS (by simpa only [Mem.live_cons, Mem.live_nil] using
+    ⟨hl.1, hl.2.1, hl.2.2, hl.2.2, trivial⟩) hr (.inl hyx.symm) (.inr rfl) hya.symm hroom
+
+omit [Has StarOp Op] in
+/-- The scalar `axpy` in place on `x` meets the specification read off the exact `axpy`. -/
+theorem axpyOnXRoutine_meets (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) :
+    (axpyOnXRoutine (Op := Op) (Tst := Tst)).Meets I
+      (Routine.Spec.ofRel (RCLikeBlas.functions (𝕜 := 𝕜) .axpy).rel fun _ => True) := by
+  routine_intro [n] (a, x, y)
+  have h : Fp.Disj (Fp.blocks [x] [n]) (Fp.blocks [a, y] [1, n]) := hsep.2.1
+  obtain ⟨hxa, hxy⟩ := Fp.disj_sup_right.mp (by simpa [Fp.blocks] using h)
+  exact axpy_blocks hS (by simpa only [Mem.live_cons, Mem.live_nil] using
+    ⟨hl.1, hl.2.1, hl.2.2, hl.2.1, trivial⟩) hr (.inr rfl) (.inl hxy.symm) hxa.symm hroom
+
+omit [Has StarOp Op] in
+/-- The scalar `axpy` with both vectors and the output one block meets its specification. -/
+theorem axpySelfRoutine_meets (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) :
+    (axpySelfRoutine (Op := Op) (Tst := Tst)).Meets I (axpySelfSpec (𝕜 := 𝕜)) := by
+  routine_intro [n] (a, x) reads (as, xs)
+  have hd : Fp.Disj (Store.inBlock x.1 x.2 n) (Store.inBlock a.1 a.2 1) := by
+    have h : Fp.Disj (Fp.blocks [x] [n]) (Fp.blocks [a] [1]) := hsep.2.1
+    simpa using h
+  exact axpy_blocks hS (by simpa only [Mem.live_cons, Mem.live_nil] using
+    ⟨hl.1, hl.2, hl.2, hl.2, trivial⟩) (Mem.readBlocks_of_cons has (Mem.readBlocks_of_cons hxs
+    (Mem.readBlocks_of_cons hxs rfl))) (.inr rfl) (.inr rfl) hd.symm hroom
+
+omit [Has StarOp Op] in
+/-- The one-temporary scalar `axpy` realizes its exact admitted BLAS function: by cases on the
+admission, from the routine of each layout of the two vectors and the output. -/
+theorem satisfies_axpy (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) :
+    (axpyRoutine (Op := Op) (Tst := Tst)).impl.Satisfies I .total
       ((RCLikeBlas.functions .axpy).rel.spec (RCLikeBlas.admissible .axpy)) := by
-  refine Impl.meets_of_writes fun d ins outs tape mem vals hnd hadm hl hread _ hroom => ?_
+  refine Impl.satisfies_of_writes fun d ins outs tape mem vals hnd hadm hl hread hdom hroom => ?_
   obtain ⟨n, rfl⟩ := List.length_eq_one_iff.mp hnd
   obtain ⟨a, x, y, as, xs, ys, rfl, ha, hx, hy, rfl⟩ := Mem.readBlocks_three hread
   obtain ⟨z, rfl, hz⟩ := Mem.room_one hroom
-  obtain ⟨alpha, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock ha)
-  have ha' : mem.store.get a.1 a.2 = some alpha := by
-    simpa using Store.get_of_readBlock ha Nat.zero_lt_one alpha
   have hsep : Fp.Disj (Store.inBlock a.1 a.2 1) (Store.inBlock z.1 z.2 n) ∧
       (Fp.Disj (Store.inBlock x.1 x.2 n) (Store.inBlock z.1 z.2 n) ∨ x = z) ∧
       (Fp.Disj (Store.inBlock y.1 y.2 n) (Store.inBlock z.1 z.2 n) ∨ y = z) := by
     simpa [RCLikeBlas.admissible] using hadm
-  refine ⟨⟨rfl, rfl, rfl⟩, (writes_axpy hS xs ys alpha hl ha' hx hy
-    hsep.2.1 hsep.2.2 hsep.1 hz).mono ?_ ?_⟩
-  · exact le_sup_left
-  intro mem' _ h
-  refine ⟨h.1, [List.ofFn fun i : Fin n => ys.getD i 0 + alpha * xs.getD i 0], ?_, rfl⟩
-  exact Mem.readBlocks_cons_eq_some.mpr ⟨_, [], h.2, rfl, rfl⟩
+  have hl4 : mem.Live [a, x, y, z] := hl
+  simp only [Mem.live_cons, Mem.live_nil, and_true] at hl4
+  refine ⟨⟨rfl, rfl, rfl⟩, ?_⟩
+  rcases hsep.2.1 with hdx | hxz <;> rcases hsep.2.2 with hdy | hyz
+  · exact (axpyRoutine_meets hS).writes_ofRel (args := [a, x, y, z]) rfl rfl hl
+      (Routine.separatedAt_of_blocks rfl (Routine.separatedBlocks_of_noIsolated
+        (by simp [axpyRoutine, Access.isIsolated]) (Fp.apart_singleton z n)
+        (by
+          change Fp.Disj (Fp.blocks [z] [n]) (Fp.blocks [a, x, y] [1, n, n])
+          simpa [Fp.blocks] using Fp.disj_sup_right.mpr
+            ⟨hsep.1.symm, Fp.disj_sup_right.mpr ⟨hdx.symm, hdy.symm⟩⟩)))
+      hread trivial hdom hroom rfl
+  · subst hyz
+    exact (axpyInPlaceRoutine_meets hS).writes_ofRel (args := [a, x, y]) rfl rfl
+      (by
+        simp only [Mem.live_cons, Mem.live_nil, and_true]
+        exact ⟨hl4.1, hl4.2.1, hl4.2.2.1⟩)
+      (Routine.separatedAt_of_blocks rfl (Routine.separatedBlocks_of_noIsolated
+        (by simp [axpyInPlaceRoutine, Access.isIsolated]) (Fp.apart_singleton y n)
+        (by
+          change Fp.Disj (Fp.blocks [y] [n]) (Fp.blocks [a, x] [1, n])
+          simpa [Fp.blocks] using Fp.disj_sup_right.mpr ⟨hsep.1.symm, hdx.symm⟩)))
+      hread trivial hdom hroom rfl
+  · subst hxz
+    exact (axpyOnXRoutine_meets hS).writes_ofRel (args := [a, x, y]) rfl rfl
+      (by
+        simp only [Mem.live_cons, Mem.live_nil, and_true]
+        exact ⟨hl4.1, hl4.2.1, hl4.2.2.1⟩)
+      (Routine.separatedAt_of_blocks rfl (Routine.separatedBlocks_of_noIsolated
+        (by simp [axpyOnXRoutine, Access.isIsolated]) (Fp.apart_singleton x n)
+        (by
+          change Fp.Disj (Fp.blocks [x] [n]) (Fp.blocks [a, y] [1, n])
+          simpa [Fp.blocks] using Fp.disj_sup_right.mpr ⟨hsep.1.symm, hdy.symm⟩)))
+      hread trivial hdom hroom rfl
+  · subst hxz
+    subst hyz
+    obtain rfl : xs = ys := Option.some.inj (hx.symm.trans hy)
+    refine ((axpySelfRoutine_meets hS) [n] [a, y] tape mem [as, xs] rfl rfl
+      (by
+        simp only [Mem.live_cons, Mem.live_nil, and_true]
+        exact ⟨hl4.1, hl4.2.1⟩)
+      (Routine.separatedAt_of_blocks rfl (Routine.separatedBlocks_of_noIsolated
+        (by simp [axpySelfRoutine, Access.isIsolated]) (Fp.apart_singleton y n)
+        (by
+          change Fp.Disj (Fp.blocks [y] [n]) (Fp.blocks [a] [1])
+          simpa using hsep.1.symm)))
+      (Mem.readBlocks_of_cons ha (Mem.readBlocks_of_cons hx rfl)) trivial hroom).mono le_rfl
+      fun m' _ ⟨hpos, ys', hys, hp⟩ => ⟨hpos, ys', hys, hp⟩
 
 /-- The complete exact BLAS table is realized by scalar arithmetic and conjugation alone. -/
-theorem meets_table (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+theorem satisfies_table (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hStar : RCLikeStar.IsExact I) (o : Blas1Op) :
     match table (Op := Op) (Tst := Tst) o with
-    | .inl r => r.Triple I .total ((RCLikeBlas.functions o).rel.spec (RCLikeBlas.admissible o))
+    | .inl r => r.Satisfies I .total ((RCLikeBlas.functions o).rel.spec (RCLikeBlas.admissible o))
     | .inr _ => False := by
   cases o
-  · exact meets_sum hS
-  · exact meets_dot hS hStar
-  · exact meets_axpy hS
-  · exact meets_nrm2 hS hStar
-  · exact meets_scal hS
-  · exact meets_copy hS
+  · exact satisfies_sum hS
+  · exact satisfies_dot hS hStar
+  · exact satisfies_axpy hS
+  · exact satisfies_nrm2 hS hStar
+  · exact satisfies_scal hS
+  · exact satisfies_copy hS
 
 /-- The streamed Hermitian dot product reserves exactly one temporary at zero primitive
 workspace, for every index environment. Its payload is independent of vector length. -/
 theorem dot_peak_zero (idx : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (dot (Tst := Tst)).body idx = 1 := by
+    stmtPeak (fun (_ : Op) _ => 0) (dot (Tst := Tst)) idx = 1 := by
   unfold dot
   rw [stmtPeak_alloc]
   change 1 + stmtPeak (fun (_ : Op) _ => 0) _ idx = 1
@@ -583,7 +511,7 @@ theorem dot_peak_zero (idx : List ℕ) :
 omit [Has StarOp Op] in
 /-- The scalar axpy implementation also reserves exactly one temporary cell. -/
 theorem axpy_peak_zero (idx : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (axpy (Tst := Tst)).body idx = 1 := by
+    stmtPeak (fun (_ : Op) _ => 0) (axpy (Tst := Tst)) idx = 1 := by
   unfold axpy
   rw [stmtPeak_alloc]
   change 1 + stmtPeak (fun (_ : Op) _ => 0) _ idx = 1
@@ -599,8 +527,9 @@ theorem table_peak_zero (o : Blas1Op) (idx : List ℕ) :
   · exact le_of_eq_of_le (stmtPeak_zero_of_allocationFree (by rfl) idx) (by omega)
   · exact le_of_eq (dot_peak_zero idx)
   · exact le_of_eq (axpy_peak_zero idx)
-  · unfold table nrm2
-    change max (stmtPeak (fun (_ : Op) _ => 0) (.frame _ _ dot.body) idx) _ ≤ 1
+  · change stmtPeak (fun (_ : Op) _ => 0) nrm2 idx ≤ 1
+    unfold nrm2
+    change max (stmtPeak (fun (_ : Op) _ => 0) (.frame _ _ dot) idx) _ ≤ 1
     refine max_le (stmtPeak_frame_le_uniform (fun idx => le_of_eq (dot_peak_zero idx)) _ _ _) ?_
     simp [stmtPeak]
   · exact le_of_eq_of_le (stmtPeak_zero_of_allocationFree (by rfl) idx) (by omega)
@@ -609,7 +538,7 @@ theorem table_peak_zero (o : Blas1Op) (idx : List ℕ) :
 /-- A Hermitian dot emits one zero literal and one conjugation, multiplication and addition
 per entry. Structural instructions are counted separately by canonical instrumentation. -/
 theorem stmtCost_dot (n x y out : ℕ) :
-    stmtCost (dot (Op := Op) (Tst := Tst)).body [n, x, y, out] =
+    stmtCost (dot (Op := Op) (Tst := Tst)) [n, x, y, out] =
       Count.one (Has.inj (ScalarOp.lit 0)) [] +
         n • (Count.one (Has.inj StarOp.conj) [] + Count.one (Has.inj ScalarOp.mul) [] +
           Count.one (Has.inj ScalarOp.add) []) := by
@@ -618,37 +547,37 @@ theorem stmtCost_dot (n x y out : ℕ) :
 omit [Has StarOp Op] in
 /-- Each pointwise axpy entry emits one multiplication and one addition. -/
 theorem stmtCost_axpy (n a x y out : ℕ) :
-    stmtCost (axpy (Op := Op) (Tst := Tst)).body [n, a, x, y, out] =
+    stmtCost (axpy (Op := Op) (Tst := Tst)) [n, a, x, y, out] =
       n • (Count.one (Has.inj ScalarOp.mul) [] + Count.one (Has.inj ScalarOp.add) []) := by
   simp [axpy, axpyWithScratch, stmtCost, useCost]
 
 omit [Has StarOp Op] in
 /-- Sequential summation emits one zero literal and one addition per entry. -/
 theorem stmtCost_sum (n x out : ℕ) :
-    stmtCost (sum (Op := Op) (Tst := Tst)).body [n, x, out] =
+    stmtCost (sum (Op := Op) (Tst := Tst)) [n, x, out] =
       Count.one (Has.inj (ScalarOp.lit 0)) [] + n • Count.one (Has.inj ScalarOp.add) [] := by
   simp [sum, stmtCost, useCost]
 
 omit [Has StarOp Op] in
 /-- Scalar division is emitted once per stored vector entry. -/
 theorem stmtCost_scal (n a x out : ℕ) :
-    stmtCost (scal (Op := Op) (Tst := Tst)).body [n, a, x, out] =
+    stmtCost (scal (Op := Op) (Tst := Tst)) [n, a, x, out] =
       n • Count.one (Has.inj ScalarOp.div) [] := by
   simp [scal, scalarBroadcast, stmtCost, useCost]
 
 omit [Has StarOp Op] in
 /-- The scalar copy loop emits one copy per entry, including exact alias. -/
 theorem stmtCost_copy (n x out : ℕ) :
-    stmtCost (copy (Op := Op) (Tst := Tst)).body [n, x, out] =
+    stmtCost (copy (Op := Op) (Tst := Tst)) [n, x, out] =
       n • Count.one (Has.inj ScalarOp.copy) [] := by
   simp [copy, unaryMap, stmtCost, useCost]
 
 /-- The Euclidean norm uses the streamed Hermitian dot and one scalar square root. -/
 theorem stmtCost_nrm2 (n x out : ℕ) :
-    stmtCost (nrm2 (Op := Op) (Tst := Tst)).body [n, x, out] =
+    stmtCost (nrm2 (Op := Op) (Tst := Tst)) [n, x, out] =
       Count.one (Has.inj (ScalarOp.lit 0)) [] +
         n • (Count.one (Has.inj StarOp.conj) [] + Count.one (Has.inj ScalarOp.mul) [] +
           Count.one (Has.inj ScalarOp.add) []) + Count.one (Has.inj ScalarOp.sqrt) [] := by
-  simp [nrm2, stmtCost, stmtCost_dot, useCost]
+  simp [nrm2, dotRoutine, stmtCost, stmtCost_dot, useCost]
 
 end NLAlib.Ops.RCLikeScalar

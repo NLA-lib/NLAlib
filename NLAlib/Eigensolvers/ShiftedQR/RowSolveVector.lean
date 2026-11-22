@@ -33,16 +33,16 @@ open scoped Matrix
 variable {Op Tst : Type} [Has ScalarOp Op]
 
 /-- Apply saved rotation `k` to its two adjacent vector entries using caller-owned scratch. -/
-def vectorRotation : Impl Op Tst := opsImpl% [n, k] (V, Cf, T) → (V) {
-  run rotateRowWithScratch.body []
+def vectorRotation : Stmt Op Tst := ops% [n, k] (V, Cf, T) → (V) {
+  run rotateRowWithScratch []
     (Cf[4 * k], Cf[4 * k + 2], V[2 * k], V[2 * (k + 1)], T,
       V[2 * k], V[2 * (k + 1)])
 }
 
 /-- Visit saved rotations from `n-2` through zero, retaining exactly aliased vector storage. -/
-def reverseVectorRotations : Impl Op Tst := opsImpl% [n] (V, Cf, T) → (V) {
+def reverseVectorRotations : Stmt Op Tst := ops% [n] (V, Cf, T) → (V) {
   for r < n - 1 {
-    run vectorRotation.body [n, n - 2 - r] (V, Cf, T, V)
+    run vectorRotation [n, n - 2 - r] (V, Cf, T, V)
   }
 }
 
@@ -107,7 +107,9 @@ private theorem vector_givens_readback {n : ℕ} {v t : ℕ × ℕ}
     simpa using Store.get_of_readBlock (hkeep q hqi hqj) (j := 1) (by omega) (0 : ℝ)
 
 /-- One saved rotation is read from its actual coefficient words and applied to the two
-adjacent stored vector coordinates. All other vector words are preserved. -/
+adjacent stored vector coordinates. All other vector words are preserved.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem vectorRotation_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M)
     {τ : Tape ℝ} {m : Mem ℝ} {n k : ℕ} {v cf t : ℕ × ℕ}
@@ -115,7 +117,7 @@ theorem vectorRotation_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hV : HoldsVector v w m.store) (hCf : HoldsCoefficients cf D (n - 1) m.store)
     (hk : k + 1 < n) (htv : t.1 ≠ v.1) (htc : t.1 ≠ cf.1)
     (ht : t.2 + 10 ≤ m.store.len t.1) :
-    Writes .total I τ vectorRotation.body (Env.frame [n, k] [v, cf, t, v])
+    Writes .total I τ vectorRotation (Env.frame [n, k] [v, cf, t, v])
       (Store.inBlock v.1 v.2 (2 * n) ⊔ Store.inBlock t.1 t.2 10)
       (fun μ => μ.pos = m.pos ∧ HoldsVector v (reverseRotationStep D w k) μ.store) m := by
   let i : Fin n := ⟨k, by omega⟩
@@ -133,7 +135,7 @@ theorem vectorRotation_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
   have hcl := Store.lt_length_of_get hc0
   have hvl := Store.lt_length_of_get (HoldsVector.get_re hV i)
   have htl := Store.lt_length_of_lt_len (show t.2 < m.store.len t.1 by omega)
-  have hrot := writes_rotateRowWithScratch (τ := τ) (m := m)
+  have hrot := rotateRowWithScratch_writes (τ := τ) (m := m)
     (c := (cf.1, cf.2 + 4 * k)) (s := (cf.1, cf.2 + 4 * k + 2))
     (x := (v.1, v.2 + 2 * k)) (y := (v.1, v.2 + 2 * (k + 1))) (t := t)
     (cv := (stepCoefs D k).1) (sv := (stepCoefs D k).2) (xv := w i) (yv := w j)
@@ -154,7 +156,9 @@ theorem vectorRotation_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 
 /-- The actual reverse loop applies every stored factorization rotation, from the last
-adjacent pair to the first, and returns the mathematical reverse-rotation state. -/
+adjacent pair to the first, and returns the mathematical reverse-rotation state.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem reverseVectorRotations_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M)
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {v cf t : ℕ × ℕ}
@@ -162,7 +166,7 @@ theorem reverseVectorRotations_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hV : HoldsVector v w m.store) (hCf : HoldsCoefficients cf D (n - 1) m.store)
     (hvc : v.1 ≠ cf.1) (htv : t.1 ≠ v.1) (htc : t.1 ≠ cf.1)
     (ht : t.2 + 10 ≤ m.store.len t.1) :
-    Writes .total I τ reverseVectorRotations.body (Env.frame [n] [v, cf, t, v])
+    Writes .total I τ reverseVectorRotations (Env.frame [n] [v, cf, t, v])
       (Store.inBlock v.1 v.2 (2 * n) ⊔ Store.inBlock t.1 t.2 10)
       (fun μ => μ.pos = m.pos ∧
         HoldsVector v (reverseRotations D (n - 1) w (n - 1)) μ.store) m := by

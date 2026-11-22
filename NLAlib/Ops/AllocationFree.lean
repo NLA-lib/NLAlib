@@ -32,7 +32,7 @@ def Stmt.allocationFree : Stmt Op Tst → Bool
   | .skip | .abort | .call .. => true
   | .seq s t | .ite _ _ _ s t | .whileFuel _ _ _ _ s t =>
       s.allocationFree && t.allocationFree
-  | .bindIdx _ _ _ s | .loop _ s | .frame _ _ s => s.allocationFree
+  | .bindIdx _ _ _ s | .loop _ s | .frame _ _ s | .note _ s => s.allocationFree
   | .allocAs .. => false
 
 /-- With zero primitive workspace, a structurally allocation-free body has exactly zero
@@ -60,6 +60,7 @@ theorem stmtPeak_zero_of_allocationFree {s : Stmt Op Tst}
     simp only [stmtPeak]
     cases IExp.evalList idx ds <;> cases IExp.evalList idx (args.map Operand.off) <;>
       simp only [ih h]
+  | note _ _ ih => exact ih h idx
 
 /-- A frame's operand evaluation cannot increase its workspace. A body estimate uniform
 in operand offsets therefore needs only the actual evaluated dimension list. -/

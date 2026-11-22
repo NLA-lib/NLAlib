@@ -28,14 +28,16 @@ open Ops
 variable {Op Tst : Type} [Has IndexOp Op] [Has CmpTst Tst]
 
 /-- The actual comparison keeps the first half on a tie and otherwise moves its start.
-[BanksGarzaVargasSrivastava2021, §4.3]. -/
+[BanksGarzaVargasSrivastava2021, §4.3].
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem findRitzChoice_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hL : IsIndexLit M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {a h : ℕ} {r : ℕ × ℕ} {left right : ℝ}
     (ha : m.store.get r.1 r.2 = some (a : ℝ))
     (hl : m.store.get r.1 (r.2 + 3) = some left)
     (hr : m.store.get r.1 (r.2 + 4) = some right) :
-    Writes .total I τ findRitzChoice.body (Env.frame [a, h] [r, r])
+    Writes .total I τ findRitzChoice (Env.frame [a, h] [r, r])
       (Store.inBlock r.1 r.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.get r.1 r.2 =
         some ((if right ≤ left then a else a + h : ℕ) : ℝ)) m := by
@@ -48,13 +50,15 @@ theorem findRitzChoice_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     exact (Writes.skip ⟨rfl, by simpa only [if_pos hc] using ha⟩).mono bot_le (fun _ _ h => h)
   · simp only [id_eq, hc, decide_false] at ht
     refine writes_ite rfl rfl ht ?_
-    refine (writes_indexNat hL hE rfl rfl ?_).mono le_rfl ?_
+    refine (indexNat_writes hL hE rfl rfl ?_).mono le_rfl ?_
     · exact Store.lt_len_of_get ha
     · intro m' _ hp
       exact ⟨hp.1, by simpa only [if_neg hc] using hp.2⟩
 
 /-- The comparison and actual natural-literal operations advance the start, half length and
-exponent exactly. [BanksGarzaVargasSrivastava2021, §4.3]. -/
+exponent exactly. [BanksGarzaVargasSrivastava2021, §4.3].
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem findRitzDecision_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hL : IsIndexLit M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {a h e : ℕ} {r : ℕ × ℕ} {left right : ℝ}
@@ -62,7 +66,7 @@ theorem findRitzDecision_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hl : m.store.get r.1 (r.2 + 3) = some left)
     (hr : m.store.get r.1 (r.2 + 4) = some right)
     (hcap : r.2 + 3 ≤ m.store.len r.1) :
-    Writes .total I τ findRitzDecision.body (Env.frame [a, h, e] [r, r])
+    Writes .total I τ findRitzDecision (Env.frame [a, h, e] [r, r])
       (Store.inBlock r.1 r.2 3)
       (fun m' => m'.pos = m.pos ∧
         SearchWords r (if right ≤ left then a else a + h) (h / 2) (2 * e) m'.store) m := by
@@ -72,13 +76,13 @@ theorem findRitzDecision_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
   have hw := findRitzChoice_writes hL hE hCmp (τ := τ) (h := h) hwords.1 hl hr
   change Writes .total I τ (.seq _ _) _ _ _ m
   refine Writes.seq_le (hw.in_frame rfl rfl hlive) (by fp_sub) fun m' hfr ⟨hp, hstart⟩ => ?_
-  refine Writes.seq_le (writes_indexNat hL hE rfl rfl (by
+  refine Writes.seq_le (indexNat_writes hL hE rfl rfl (by
     change r.2 + 1 < m'.store.len r.1
     rw [hfr.len_eq]
     omega)) (by fp_sub) fun m'' hfr' ⟨hp', hhalf⟩ => ?_
   have hstart' := hfr'.keep (Store.readsOnly_get _ _ _)
     (Fp.disj_inBlock_of_le (by omega)).symm hstart
-  refine (writes_indexNat hL hE rfl rfl (by
+  refine (indexNat_writes hL hE rfl rfl (by
     change r.2 + 2 < m''.store.len r.1
     rw [hfr'.len_eq, hfr.len_eq]
     omega)).mono (by fp_sub) ?_

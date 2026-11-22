@@ -147,6 +147,7 @@ theorem run_linkContext (I : Interp Lo Tst K) (T : ContextTable Op Lo Tst)
       Operand.evalList_liftContext context slot ρ ins hs, Interp.linkContext,
       iht slot ρ m hs hl, ihe slot ρ m hs hl]
   | frame ds args body ih => exact context_frame I T context τ ih
+  | note _ _ ih => intro slot ρ m hs hl; simpa only [Stmt.linkContext, eval] using ih slot ρ m hs hl
   | loop n body ih => exact context_loop I T context τ ih
   | whileFuel fuel q ds ins body k ih ihk => exact context_while I T context τ ih ihk
   | bindIdx q ins bound body ih =>

@@ -106,7 +106,8 @@ noncomputable def cmpRel (dec : K → ℝ) (readFlag : K → Bool) (c : CmpTst) 
 
 /-- Every comparison call writes the exact comparison of its decoded inputs as a flag. -/
 def IsCmpOp [Has CmpOp Op] (dec : K → ℝ) (readFlag : K → Bool) (I : Interp Op Tst K) : Prop :=
-  ∀ c : CmpTst, I.Meets .total (Has.inj (CmpOp.cmp c)) ((cmpRel dec readFlag c).spec AnyOperands)
+  ∀ c : CmpTst,
+    I.Satisfies .total (Has.inj (CmpOp.cmp c)) ((cmpRel dec readFlag c).spec AnyOperands)
 
 /-- The Boolean read by the flag query, on the single cell it reads. -/
 def FlagTst.fn (readFlag : K → Bool) : List (List K) → Bool
@@ -146,7 +147,7 @@ theorem exists_isCmpOp_isFlagTest :
   · intro c
     have h : I.IsFn .total (.cmp c) (F (.cmp c)) AnyOperands :=
       Interp.ofFns_isFn (Tst := FlagTst) F .total (.cmp c) AnyOperands
-    refine h.meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
+    refine h.satisfies_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
       (fun _ => rfl) (fun _ => rfl) ?_
     intro d w xs m ins outs hnd hw hadm hread hdom
     exact ⟨[[encode (c.fn id xs)]], rfl, rfl, hflag _⟩

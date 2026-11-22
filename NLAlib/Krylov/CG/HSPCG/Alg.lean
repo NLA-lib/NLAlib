@@ -10,6 +10,7 @@ public import NLAlib.Ops.Catalog.Operator
 public import NLAlib.Ops.Catalog.Tagged
 public import NLAlib.Ops.Logic.Builder
 public import NLAlib.Ops.Logic.Count
+public import NLAlib.Ops.RoutineSyntax
 
 /-!
 # Preconditioned Hestenes–Stiefel programs
@@ -101,7 +102,7 @@ variable {K Op Tst : Type} [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op
 contract at its own operation name. -/
 def IsExactPreconditioner [Inhabited K] (dec : K → ℝ) {n : ℕ}
     (M : Matrix (Fin n) (Fin n) ℝ) (I : Interp Op Tst K) : Prop :=
-  I.Meets .total (Tagged.inj Preconditioner OperatorOp.matvec)
+  I.Satisfies .total (Tagged.inj Preconditioner OperatorOp.matvec)
     ((matvecRel dec M).spec (MatvecOperands n n))
 
 /-- One exact-PCG round computes the Hestenes–Stiefel recurrence with one application of the
@@ -125,9 +126,6 @@ def step : Stmt Op Tst := ops% [n] (X, R, Z, P) → (X, R, Z, P) {
   call (Has.inj Blas1Op.copy) [n] (U) → (P)
 }
 
-/-- A PCG round has one size parameter and four state input and output blocks. -/
-def stepImpl : Impl Op Tst := ⟨1, 4, 4, step⟩
-
 /-- Initialization forms the residual, applies the preconditioner, and copies the first
 search direction while retaining the initial iterate. -/
 def initializeState : Stmt Op Tst := ops% [n] (B, X) → (X, R, Z, P) {
@@ -141,29 +139,29 @@ def initializeState : Stmt Op Tst := ops% [n] (B, X) → (X, R, Z, P) {
   call (Has.inj Blas1Op.copy) [n] (Z) → (P)
 }
 
-/-- Initialization reads the right-hand side and initial iterate and outputs all four states. -/
-def initializeImpl : Impl Op Tst := ⟨1, 2, 4, initializeState⟩
+/-- One round as a routine: four vectors of length `n` updated in place. -/
+def stepRoutine : Routine Op Tst :=
+  routine% [n] (x : n, r : n, z : n, p : n) → (x, r, z, p) := step
 
 /-- Each round is a framed call of the same state interface and reuses its scratch. -/
-def rounds : Stmt Op Tst :=
-  .loop (.var 1) (.frame [.var 0]
-    [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩, ⟨3, .var 5⟩,
-      ⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩, ⟨3, .var 5⟩] step)
+def rounds : Stmt Op Tst := ops% [n, k] (X, R, Z, P) → (X, R, Z, P) {
+  for i < k { run (stepRoutine (Op := Op) (Tst := Tst)) [n] (X, R, Z, P) }
+}
 
-/-- The loop has two size parameters and four input and output blocks. -/
-def roundsImpl : Impl Op Tst := ⟨2, 4, 4, rounds⟩
+/-- Initialization as a routine: the right-hand side is read, the iterate is kept in place, the
+residual, the preconditioned residual and the direction are written. -/
+def initializeRoutine : Routine Op Tst :=
+  routine% [n] (b : n, x : n) → (x, r : n, z : n, p : n) := initializeState
+
+/-- The round loop as a routine: four vectors of length `n` updated in place by `k` rounds. -/
+def roundsRoutine : Routine Op Tst :=
+  routine% [n, k] (x : n, r : n, z : n, p : n) → (x, r, z, p) := rounds
 
 /-- Initialize the PCG state and execute a prescribed number of active rounds. -/
-def solve : Stmt Op Tst :=
-  .seq (.frame [.var 0]
-    [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩, ⟨3, .var 5⟩,
-      ⟨4, .var 6⟩, ⟨5, .var 7⟩] initializeState)
-    (.frame [.var 0, .var 1]
-      [⟨2, .var 4⟩, ⟨3, .var 5⟩, ⟨4, .var 6⟩, ⟨5, .var 7⟩,
-        ⟨2, .var 4⟩, ⟨3, .var 5⟩, ⟨4, .var 6⟩, ⟨5, .var 7⟩] rounds)
-
-/-- The full solver reads two blocks and outputs four blocks. -/
-def solveImpl : Impl Op Tst := ⟨2, 2, 4, solve⟩
+def solve : Stmt Op Tst := ops% [n, k] (B, X) → (X, R, Z, P) {
+  run (initializeRoutine (Op := Op) (Tst := Tst)) [n] (B, X, R, Z, P);
+  run (roundsRoutine (Op := Op) (Tst := Tst)) [n, k] (X, R, Z, P)
+}
 
 /-- The two distinct operator charges and scalar/vector operations of one PCG round. -/
 noncomputable def stepCount (n : ℕ) : Count Op Tst :=
@@ -232,28 +230,29 @@ theorem staticPeak_initialize_le (W : Op → List ℕ → ℕ) (n b x x' r z p :
 theorem staticCost_rounds (n k a b c d a' b' c' d' : ℕ) :
     stmtCost (rounds (Op := Op) (Tst := Tst)) [n, k, a, b, c, d, a', b', c', d'] =
       k • stepCount n := by
-  simp [rounds, stmtCost, IExp.eval, IExp.evalList, staticCost_step]
+  simp [rounds, stepRoutine, stmtCost, IExp.eval, IExp.evalList, staticCost_step]
 
 /-- All rounds share the same scratch bound. -/
 theorem staticPeak_rounds_le (W : Op → List ℕ → ℕ) (n k a b c d a' b' c' d' : ℕ) :
     stmtPeak W (rounds (Op := Op) (Tst := Tst)) [n, k, a, b, c, d, a', b', c', d'] ≤
       stepPeak W n := by
-  simp only [rounds, stmtPeak]
+  simp only [rounds, stepRoutine, stmtPeak]
   exact Finset.sup_le fun i _ => by
     simpa [IExp.eval, IExp.evalList, Operand.off] using staticPeak_step_le W n a b c d a b c d
 
 /-- The complete evaluator budget composes initialization with the round loop. -/
 theorem staticCost_solve (n k b x x' r z p : ℕ) :
     stmtCost (solve (Op := Op) (Tst := Tst)) [n, k, b, x, x', r, z, p] = solveCount n k := by
-  simp [solve, stmtCost, IExp.eval, IExp.evalList, staticCost_initialize,
+  simp [solve, initializeRoutine, roundsRoutine, stmtCost, IExp.eval, IExp.evalList,
+    staticCost_initialize,
     staticCost_rounds, solveCount]
 
 /-- The complete evaluator workspace is bounded by the larger block workspace. -/
 theorem staticPeak_solve_le (W : Op → List ℕ → ℕ) (n k b x x' r z p : ℕ) :
     stmtPeak W (solve (Op := Op) (Tst := Tst)) [n, k, b, x, x', r, z, p] ≤ solvePeak W n := by
-  simp only [solve, stmtPeak, solvePeak]
+  simp only [solve, initializeRoutine, roundsRoutine, stmtPeak, solvePeak]
   exact max_le_max
-    (by simpa [IExp.eval, IExp.evalList] using staticPeak_initialize_le W n b x x' r z p)
-    (by simpa [IExp.eval, IExp.evalList] using staticPeak_rounds_le W n k x' r z p x' r z p)
+    (by simpa [IExp.eval, IExp.evalList] using staticPeak_initialize_le W n b x x r z p)
+    (by simpa [IExp.eval, IExp.evalList] using staticPeak_rounds_le W n k x r z p x r z p)
 
 end NLAlib.Krylov.CG.HSPCG

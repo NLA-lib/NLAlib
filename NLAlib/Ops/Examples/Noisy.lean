@@ -8,6 +8,9 @@ module
 public import NLAlib.Ops.Catalog.Random
 public import NLAlib.Ops.Examples.NoisyMath
 public import NLAlib.Ops.Law
+public import NLAlib.Ops.RoutineLink
+public import NLAlib.Ops.Logic.RoutineIntro
+public import NLAlib.Ops.RoutineSyntax
 
 /-!
 # Test case: a noisy product by a matrix (hidden randomness)
@@ -24,7 +27,7 @@ earlier noise.
 
 ## Main results
 
-* `NLAlib.Ops.Examples.runs_npow`: the run, for every interpretation meeting the contract and
+* `NLAlib.Ops.Examples.runs_npow`: the run, for every interpretation satisfying the contract and
   every tape: `2 k` calls, the workspace of one call, the result is `noisyIter` of the tape.
 * `NLAlib.Ops.Examples.runsLaw_npow`: **the abstract theorem**, for every law of the tape:
   `𝔼 x = A^(2k) x₀` and `𝔼 ‖x‖² ≤ (a + n σ²)^(2k) ‖x₀‖²`.
@@ -63,7 +66,7 @@ def nmvRel (dec : K → ℝ) (N : (Fin n → ℝ) → (Fin n → K) → Fin n �
 the input and of a window that only the operation reads. -/
 def IsNoisy (dec : K → ℝ) (N : (Fin n → ℝ) → (Fin n → K) → Fin n → ℝ)
     (J : Interp NOp Tst K) : Prop :=
-  J.Meets .total .nmv ((nmvRel dec N).spec (OutApart (· = n)))
+  J.Satisfies .total .nmv ((nmvRel dec N).spec (OutApart (· = n)))
 
 /-- **The noisy power iteration**: `k` rounds of `y := nmv x; x := nmv y`, in place in `x`, with
 a scratch block `y`. Index variables: `k`, `n`, the offset of `x` (twice), then the loop
@@ -71,9 +74,6 @@ variable; buffer variables: `x` (twice), then `y`. The tree has no draw. -/
 def npow : Stmt NOp Tst :=
   .alloc (.var 1) (.loop (.var 0) (.seq (.call .nmv [.var 1] [⟨0, .var 2⟩] [⟨2, .const 0⟩])
     (.call .nmv [.var 1] [⟨2, .const 0⟩] [⟨0, .var 2⟩])))
-
-/-- **`npow` as an implementation**: two dimensions `k`, `n`, one input and one output. -/
-def npowImpl : Impl NOp Tst := ⟨2, 1, 1, npow⟩
 
 /-- The call counts of `npow`: `2 k` noisy products. -/
 noncomputable def npowCount (k n : ℕ) : Count NOp Tst := k • (2 • Count.one .nmv [n])
@@ -138,9 +138,9 @@ def NpowPost (dec : K → ℝ) (n k : ℕ) (x : ℕ × ℕ) (m : Mem K) (v : Fin
     Prop :=
   ∃ xs, m' = (m.updBlock x xs).advance (2 * k * n) ∧ xs.length = n ∧ decv dec n xs = v
 
-/-- **The run of `npow`**, for every interpretation meeting the contract of `nmv` and every
+/-- **The run of `npow`**, for every interpretation satisfying the contract of `nmv` and every
 tape: the block `x` decodes to the noisy power iteration of the tape entries from the position. -/
-theorem wp_npow {dec : K → ℝ} {N : (Fin n → ℝ) → (Fin n → K) → Fin n → ℝ}
+theorem npow_wp {dec : K → ℝ} {N : (Fin n → ℝ) → (Fin n → K) → Fin n → ℝ}
     {J : Interp NOp Tst K} (hJ : IsNoisy dec N J) {τ : Tape K} {k : ℕ} {x : ℕ × ℕ}
     {m : Mem K} {xs₀ : List K} (hx : m.store.readBlock x.1 x.2 n = some xs₀)
     (hxl : x.2 + n ≤ m.store.len x.1) (hlx : x.1 < m.store.length) :
@@ -176,21 +176,46 @@ theorem wp_npow {dec : K → ℝ} {N : (Fin n → ℝ) → (Fin n → K) → Fin
     exact ⟨xs, by simp [Mem.updBlock, Mem.advance, hfr.pop.eq_updBlock hg],
       Store.length_of_readBlock hr, hdx⟩
 
-/-- **The certificate of `npow`**: for every interpretation meeting the contract of `nmv`,
-`npow` meets its contract with a window. -/
-theorem npow_spec {dec : K → ℝ} {N : (Fin n → ℝ) → (Fin n → K) → Fin n → ℝ}
+/-- `npow` as a routine: `[k, n] (x : update n)`, drawing `2 k n` positions. The tree has two
+buffer variables for `x`. -/
+def npowRoutine (n : ℕ) : Routine NOp Tst :=
+  routine% [k, m] (x : ↑n) → (x) draws ↑(2 * k * n) := npow
+
+/-- `npow` meets the specification read off its relation, over every interpretation satisfying the
+contract of `nmv`. -/
+theorem npowRoutine_meets {dec : K → ℝ} {N : (Fin n → ℝ) → (Fin n → K) → Fin n → ℝ}
     {J : Interp NOp Tst K} (hJ : IsNoisy dec N J) :
-    (npowImpl (Tst := Tst)).Triple J .total ((npowRel dec N).spec (NpowOperands n)) := by
-  refine Impl.meets_rel fun d ins outs τ m X hnd hadm hl hr _ hz => ?_
+    (npowRoutine (Tst := Tst) n).Meets J
+      (Routine.Spec.ofRel (npowRel dec N) fun d => d.getD 1 0 = n) := by
+  refine Routine.meets_ofRel_of_post (fun d => by rcases d with _ | ⟨_, _⟩ <;> rfl)
+    (fun _ _ => rfl)
+    fun d args τ m X hnd hlen hl _ hr hok _ hz => ?_
   obtain ⟨k, n', rfl⟩ := List.length_eq_two.mp hnd
-  obtain ⟨rfl, rfl⟩ : n' = n ∧ outs = ins := hadm
-  obtain ⟨x, xs₀, rfl, hx, rfl⟩ := Mem.readBlocks_one hr
-  refine ⟨⟨rfl, rfl, rfl⟩, (wp_npow hJ (τ := τ) (k := k) hx hz.1 (by simpa using hl)).mono ?_⟩
-  rintro m' ⟨xs, rfl, hlen, hv⟩
-  exact ⟨[xs], by simp [hlen], ⟨xs₀, xs, τ, m.pos, rfl, rfl, rfl, hv⟩, rfl⟩
+  obtain rfl : n' = n := hok
+  obtain ⟨x, rfl⟩ := List.length_eq_one_iff.mp hlen
+  change m.readBlocks [x] [n'] = some X at hr
+  change m.Room [x] [n'] at hz
+  obtain ⟨x', xs₀, he, hx, rfl⟩ := Mem.readBlocks_one hr
+  obtain rfl : x = x' := by simpa using he
+  refine (npow_wp hJ (τ := τ) (k := k) hx hz.1 (by simpa using hl)).mono ?_
+  rintro m' ⟨xs, rfl, hlen', hv⟩
+  exact ⟨[xs], by simp [hlen'], ⟨xs₀, xs, τ, m.pos, rfl, rfl, rfl, hv⟩, rfl⟩
+
+/-- The routine of `npow` implements its contract: its operand is the input. -/
+theorem npowRoutine_implements (dec : K → ℝ) (N : (Fin n → ℝ) → (Fin n → K) → Fin n → ℝ) :
+    (npowRoutine (Tst := Tst) n).Implements (npowRel dec N) (NpowOperands n)
+      (fun ins _ => ins) := by
+  implements [k, n] (x) → (x) with hadm
+
+/-- The certificate of `npow`: for every interpretation satisfying the contract of `nmv`,
+`npow` satisfies its contract with a window. A consequence of the judgment of its routine. -/
+theorem npow_satisfies {dec : K → ℝ} {N : (Fin n → ℝ) → (Fin n → K) → Fin n → ℝ}
+    {J : Interp NOp Tst K} (hJ : IsNoisy dec N J) :
+    (npowRoutine (Tst := Tst) n).impl.Satisfies J .total ((npowRel dec N).spec (NpowOperands n)) :=
+  (npowRoutine_meets hJ).satisfies_ofRel (npowRoutine_implements dec N) fun _ _ _ h => h.2.1.1
 
 /-- **The abstract theorem of the noisy power iteration**, from its certificate by the law-level
-bridge, for every interpretation meeting the contract of `nmv`, every noise function with the
+bridge, for every interpretation satisfying the contract of `nmv`, every noise function with the
 conditional law of `A v + σ ‖v‖ g`, and every law of the tape. For every sample: `2 k` calls
 within `n` scratch cells and the workspace of one call. In law: the result is unbiased,
 `𝔼 x = A^(2k) x₀`, and `𝔼 ‖x‖² ≤ (a + n σ²)^(2k) ‖x₀‖²` when `‖A v‖² ≤ a ‖v‖²`. -/
@@ -206,7 +231,7 @@ theorem runsLaw_npow [MeasurableSpace K] {dec : K → ℝ}
       (NpowPost dec n k x m) fun X =>
         (∀ i, ∫ ω, X ω i ∂P = (A ^ (2 * k)).mulVec (decv dec n xs₀) i) ∧
         ∫ ω, sqNorm (X ω) ∂P ≤ (a + n * σ ^ 2) ^ (2 * k) * sqNorm (decv dec n xs₀) := by
-  refine ((npow_spec hJ).runsLaw W ξ (fun ys => decv dec n ys.flatten) (d := [k, n])
+  refine ((npow_satisfies hJ).runsLaw W ξ (fun ys => decv dec n ys.flatten) (d := [k, n])
     (ins := [x]) (outs := [x]) (xs := [xs₀]) rfl ⟨rfl, rfl⟩ (by simp [hlx])
     (by simp [Mem.readBlocks, hx]) (fun _ => trivial) ⟨hxl, trivial⟩ fun X hX => ?_).mono
     (le_of_eq (staticCost_npow ..)) (staticPeak_npow_le ..) ?_

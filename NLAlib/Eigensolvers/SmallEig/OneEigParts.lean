@@ -51,7 +51,7 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has
 $e^{i\pi j/3}$, $j < 6$, into `D`, from the literals $1$, $0$, $1/2$, $3$, a rounded square root
 and negations. The interface is `[] () → (D, K)`.
 Algorithm: small-eig -/
-def oneEigDirections : Impl O Q := opsImpl% [] () → (D, K) {
+def oneEigDirections : Stmt O Q := ops% [] () → (D, K) {
   call (Has.inj (ScalarOp.lit (66 / 100))) [] () → (K);
   call (Has.inj (ScalarOp.lit 1)) [] () → (D);
   call (Has.inj (ScalarOp.lit 0)) [] () → (D[1]);
@@ -75,14 +75,14 @@ the point `Lam` and the sample `Z`), its estimate by `NLAlib.SmallEig.distSpec` 
 if the estimate is at most the best one `Bt[2]`, the point and its estimate into `Bt` and the
 mark $1$ into `K[1]`. The interface is `[N, m, q, j] (H, Tau, D, Lam, Z) → (Pt, Tc, Bt, K)`.
 Algorithm: small-eig -/
-def oneEigPoint : Impl O Q := opsImpl% [N, m, q, j] (H, Tau, D, Lam, Z) → (Pt, Tc, Bt, K) {
+def oneEigPoint : Stmt O Q := ops% [N, m, q, j] (H, Tau, D, Lam, Z) → (Pt, Tc, Bt, K) {
   call (Has.inj ScalarOp.mul) [] (Tau, D[2 * j]) → (Pt);
   call (Has.inj ScalarOp.add) [] (Pt, Lam) → (Pt);
   call (Has.inj ScalarOp.add) [] (Pt, Z) → (Pt);
   call (Has.inj ScalarOp.mul) [] (Tau, D[2 * j + 1]) → (Pt[1]);
   call (Has.inj ScalarOp.add) [] (Pt[1], Lam[1]) → (Pt[1]);
   call (Has.inj ScalarOp.add) [] (Pt[1], Z[1]) → (Pt[1]);
-  run (distSpec (O := O) (Q := Q)).body [N, m, q] (H, Pt, Tc);
+  run (distSpec (O := O) (Q := Q)) [N, m, q] (H, Pt, Tc);
   if (Has.inj CmpTst.le) [] (Tc, Bt[2]) {
     call (Has.inj ScalarOp.copy) [] (Pt) → (Bt);
     call (Has.inj ScalarOp.copy) [] (Pt[1]) → (Bt[1]);
@@ -95,7 +95,7 @@ def oneEigPoint : Impl O Q := opsImpl% [N, m, q, j] (H, Tau, D, Lam, Z) → (Pt,
 its estimate `Bt[2]` into `Lam` and `Tau`; otherwise the flag $1$ and the estimate $0$. The
 interface is `[] (Bt, K) → (Lam, Tau, Fl)`.
 Algorithm: small-eig -/
-def oneEigMove : Impl O Q := opsImpl% [] (Bt, K) → (Lam, Tau, Fl) {
+def oneEigMove : Stmt O Q := ops% [] (Bt, K) → (Lam, Tau, Fl) {
   if (Has.inj CmpTst.isPos) [] (K[1]) {
     call (Has.inj ScalarOp.copy) [] (Bt) → (Lam);
     call (Has.inj ScalarOp.copy) [] (Bt[1]) → (Lam[1]);
@@ -112,15 +112,15 @@ bar $0.66\,\tau$ into `Bt[2]`, the mark $0$ into `K[1]`, the six candidate point
 flag $1$ and the estimate $0$ (`NLAlib.SmallEig.oneEigMove`). The interface is
 `[N, m, q] (H, Qw, D) → (Lam, Tau, Fl, Z, Pt, Tc, Bt, K)`.
 Algorithm: small-eig -/
-def oneEigRound : Impl O Q :=
-    opsImpl% [N, m, q] (H, Qw, D) → (Lam, Tau, Fl, Z, Pt, Tc, Bt, K) {
+def oneEigRound : Stmt O Q :=
+    ops% [N, m, q] (H, Qw, D) → (Lam, Tau, Fl, Z, Pt, Tc, Bt, K) {
   call (Has.inj DiskSampleOp.polar) [] (Qw[4]) → (Z);
   call (Has.inj ScalarOp.mul) [] (Tau, K) → (Bt[2]);
   call (Has.inj IndexOp.lit) [0] () → (K[1]);
   for j < 6 {
-    run (oneEigPoint (O := O) (Q := Q)).body [N, m, q, j] (H, Tau, D, Lam, Z, Pt, Tc, Bt, K)
+    run (oneEigPoint (O := O) (Q := Q)) [N, m, q, j] (H, Tau, D, Lam, Z, Pt, Tc, Bt, K)
   };
-  run (oneEigMove (O := O) (Q := Q)).body [] (Bt, K, Lam, Tau, Fl)
+  run (oneEigMove (O := O) (Q := Q)) [] (Bt, K, Lam, Tau, Fl)
 }
 
 /-- **The start of `OneEig`**: the six directions (`NLAlib.SmallEig.oneEigDirections`) into `D`
@@ -128,17 +128,17 @@ and `K`, a polar sample of the radius $\eta_2$ = `Qw[4]` into `Lam`, its estimat
 `NLAlib.SmallEig.distSpec` into `Tau`, and the flag $0$. The interface is
 `[N, m, q] (H, Qw) → (Lam, Tau, Fl, D, K)`.
 Algorithm: small-eig -/
-def oneEigStart : Impl O Q := opsImpl% [N, m, q] (H, Qw) → (Lam, Tau, Fl, D, K) {
-  run (oneEigDirections (O := O) (Q := Q)).body [] (D, K);
+def oneEigStart : Stmt O Q := ops% [N, m, q] (H, Qw) → (Lam, Tau, Fl, D, K) {
+  run (oneEigDirections (O := O) (Q := Q)) [] (D, K);
   call (Has.inj DiskSampleOp.polar) [] (Qw[4]) → (Lam);
-  run (distSpec (O := O) (Q := Q)).body [N, m, q] (H, Lam, Tau);
+  run (distSpec (O := O) (Q := Q)) [N, m, q] (H, Lam, Tau);
   call (Has.inj IndexOp.lit) [0] () → (Fl)
 }
 
 /-- **The flag at the cap of `OneEig`**: if $0.9\beta'$ = `Th` $< \tau$ = `Tau`, the flag $1$
 into `Fl`. The interface is `[] (Th, Tau) → (Fl)`.
 Algorithm: small-eig -/
-def oneEigCheck : Impl O Q := opsImpl% [] (Th, Tau) → (Fl) {
+def oneEigCheck : Stmt O Q := ops% [] (Th, Tau) → (Fl) {
   if (Has.inj CmpTst.lt) [] (Th, Tau) {
     call (Has.inj IndexOp.lit) [1] () → (Fl)
   } else { skip }
@@ -201,7 +201,8 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has
 
 omit [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] in
 /-- A polar sample stores a pair: on an exact polar disk sampler, from a radius word at `rd` and
-room for two words at `z`, the call writes only those two words and stores a pair there. -/
+room for two words at `z`, the call writes only those two words and stores a pair there.
+The rule for one call of the operation. -/
 theorem polar_writes_pair {I : Interp O Q ℝ} {sU : ℕ} (hDisk : IsPolarDiskSampler sU I)
     {τ : Tape ℝ} {μ : Mem ℝ} {ρ : Env} {ins outs : List Operand} {rd z : ℕ × ℕ} {R : ℝ}
     (ha : Operand.evalList ρ ins = some [rd]) (hb : Operand.evalList ρ outs = some [z])
@@ -225,11 +226,13 @@ theorem polar_writes_pair {I : Interp O Q ℝ} {sU : ℕ} (hDisk : IsPolarDiskSa
 
 omit [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] in
 /-- `NLAlib.SmallEig.oneEigDirections` on a scalar machine: with room for twelve words at `d`
-and one at `k` in another buffer, it writes only those words and stores words there. -/
+and one at `k` in another buffer, it writes only those words and stores words there.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem oneEigDirections_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {μ : Mem ℝ} {L : ℕ} (hlen : L + 7 ≤ μ.store.length)
     (h5 : μ.store.len (L + 5) = 12) (h6 : μ.store.len (L + 6) = 2) :
-    Writes .total I τ (oneEigDirections (O := O) (Q := Q)).body
+    Writes .total I τ (oneEigDirections (O := O) (Q := Q))
       (Env.frame [] [(L + 5, 0), (L + 6, 0)])
       (Store.inBlock (L + 5) 0 12 ⊔ Store.inBlock (L + 6) 0 1)
       (fun μ' => HoldsWords μ'.store ((L + 6, 0) :: (List.range 12).map fun i => (L + 5, i)))
@@ -261,7 +264,9 @@ omit [Has DiskSampleOp O] in
 `NLAlib.SmallEig.oneEig` from `L`: on a scalar machine with the literal $0$ exact, index literals
 and exact comparisons, from any matrix of order $n + 1$ at `h`, words at the cells read and the
 mark `K[1]` $0$ or the best point stored, it writes only `Pt`, `Tc`, `Bt` and `K[1]`, keeps the
-tape position, and keeps the best estimate and the mark stored. -/
+tape position, and keeps the best estimate and the mark stored.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem oneEigPoint_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hzero : M.lit 0 = 0) (hL : IsIndexLit M I) (hCmp : IsCmp id I) {n m q j L : ℕ}
     (hNat : IsExactNatLit id M n)
@@ -274,7 +279,7 @@ theorem oneEigPoint_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
     (hb2 : ∃ v, μ.store.get (L + 4) 2 = some v)
     (hK : μ.store.get (L + 6) 1 = some 0 ∨
       HoldsWords μ.store [(L + 6, 1), (L + 4, 2), (L + 4, 1), (L + 4, 0)]) :
-    Writes .total I τ (oneEigPoint (O := O) (Q := Q)).body
+    Writes .total I τ (oneEigPoint (O := O) (Q := Q))
       (Env.frame [n + 1, m, q, j] [h, (L, 0), (L + 5, 0), lam, (L + 1, 0), (L + 2, 0),
         (L + 3, 0), (L + 4, 0), (L + 6, 0)])
       (Store.inBlock (L + 2) 0 2 ⊔ Store.inBlock (L + 3) 0 1 ⊔ Store.inBlock (L + 4) 0 3 ⊔
@@ -341,7 +346,9 @@ omit [Has DiskSampleOp O] in
 `NLAlib.SmallEig.oneEig` from `L`: on a scalar machine with index literals and exact
 comparisons, from the mark `K[1]` $0$ or the best point stored, a pair at `lam` and a
 flag $0$ or $1$ at `f` apart from it, it writes only `lam`, `Tau` and `f`, and stores words in
-`Tau` and `lam` and a flag $0$ or $1$. -/
+`Tau` and `lam` and a flag $0$ or $1$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem oneEigMove_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hL : IsIndexLit M I) (hCmp : IsCmp id I) {L : ℕ} {τ : Tape ℝ}
     {μ : Mem ℝ} {lam f : ℕ × ℕ} (hlam : lam.1 < L) (hf : f.1 < L)
@@ -352,7 +359,7 @@ theorem oneEigMove_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar 
     (hK : μ.store.get (L + 6) 1 = some 0 ∨
       HoldsWords μ.store [(L + 6, 1), (L + 4, 2), (L + 4, 1), (L + 4, 0)])
     (hF : OneEigFlag M f μ.store) :
-    Writes .total I τ (oneEigMove (O := O) (Q := Q)).body
+    Writes .total I τ (oneEigMove (O := O) (Q := Q))
       (Env.frame [] [(L + 4, 0), (L + 6, 0), lam, (L, 0), f])
       (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock L 0 1 ⊔ Store.inBlock f.1 f.2 1)
       (fun μ' => HoldsWords μ'.store [(L, 0), lam, (lam.1, lam.2 + 1)] ∧
@@ -391,12 +398,14 @@ theorem oneEigMove_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar 
 
 omit [Has ScalarOp O] [Has DiskSampleOp O] in
 /-- `NLAlib.SmallEig.oneEigCheck` with index literals and exact comparisons: from words at `th`
-and `tau` and a flag $0$ or $1$ at `f`, it writes only the flag and keeps it $0$ or $1$. -/
+and `tau` and a flag $0$ or $1$ at `f`, it writes only the flag and keeps it $0$ or $1$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem oneEigCheck_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hL : IsIndexLit M I)
     (hCmp : IsCmp id I) {τ : Tape ℝ} {μ : Mem ℝ} {th tau f : ℕ × ℕ} {a b : ℝ}
     (hth : μ.store.get th.1 th.2 = some a) (htau : μ.store.get tau.1 tau.2 = some b)
     (hroomf : f.2 < μ.store.len f.1) (hF : OneEigFlag M f μ.store) :
-    Writes .total I τ (oneEigCheck (O := O) (Q := Q)).body (Env.frame [] [th, tau, f])
+    Writes .total I τ (oneEigCheck (O := O) (Q := Q)) (Env.frame [] [th, tau, f])
       (Store.inBlock f.1 f.2 1) (fun μ' => OneEigFlag M f μ'.store) μ := by
   unfold oneEigCheck
   refine writes_ite (a := [th, tau]) rfl rfl (hCmp.test_lt hth htau) ?_
@@ -433,7 +442,9 @@ theorem holdsWords_oneEigCells {s : Store ℝ} {L : ℕ} {lam : ℕ × ℕ}
 with the literal $0$ exact, index literals, exact comparisons and an exact polar sampler, from any
 matrix of order $n + 1$ at `h`, at least six words at `qw`, words at
 `NLAlib.SmallEig.oneEigCells` and a flag $0$ or $1$ at `f` apart from `lam`, it writes only `lam`,
-`f` and the scratch, and keeps the words and the flag. -/
+`f` and the scratch, and keeps the words and the flag.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem oneEigRound_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hzero : M.lit 0 = 0) (hL : IsIndexLit M I) (hCmp : IsCmp id I) {sU : ℕ}
     (hDisk : IsPolarDiskSampler sU I) {n m q L : ℕ} (hNat : IsExactNatLit id M n)
@@ -447,7 +458,7 @@ theorem oneEigRound_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
     (hlf : Fp.Disj (Store.inBlock lam.1 lam.2 2) (Store.inBlock f.1 f.2 1))
     (hH : HoldsMatrix h H μ.store) (hq : μ.store.readBlock qw.1 qw.2 qs.length = some qs)
     (hw : HoldsWords μ.store (oneEigCells L lam)) (hF : OneEigFlag M f μ.store) :
-    Writes .total I τ (oneEigRound (O := O) (Q := Q)).body
+    Writes .total I τ (oneEigRound (O := O) (Q := Q))
       (Env.frame [n + 1, m, q] [h, qw, (L + 5, 0), lam, (L, 0), f, (L + 1, 0), (L + 2, 0),
         (L + 3, 0), (L + 4, 0), (L + 6, 0)])
       (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
@@ -513,7 +524,9 @@ theorem oneEigRound_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
 `L`: on a scalar machine with the literal $0$ exact, index literals, exact comparisons and an
 exact polar sampler, from any matrix of order $n + 1$ at `h` apart from `lam` and at least five
 words at `qw`, it writes only `lam`, `f` and the scratch, and stores words at
-`NLAlib.SmallEig.oneEigCells` and the flag $0$. -/
+`NLAlib.SmallEig.oneEigCells` and the flag $0$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem oneEigStart_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hzero : M.lit 0 = 0) (hL : IsIndexLit M I) (hCmp : IsCmp id I) {sU : ℕ}
     (hDisk : IsPolarDiskSampler sU I) {n m q L : ℕ} (hNat : IsExactNatLit id M n)
@@ -525,7 +538,7 @@ theorem oneEigStart_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
     (hroom : lam.2 + 2 ≤ μ.store.len lam.1) (hroomf : f.2 < μ.store.len f.1)
     (hlh : Fp.Disj (Store.inBlock lam.1 lam.2 2) (Store.inBlock h.1 h.2 (2 * ((n + 1) * (n + 1)))))
     (hH : HoldsMatrix h H μ.store) (hq4 : μ.store.get qw.1 (qw.2 + 4) = some r) :
-    Writes .total I τ (oneEigStart (O := O) (Q := Q)).body
+    Writes .total I τ (oneEigStart (O := O) (Q := Q))
       (Env.frame [n + 1, m, q] [h, qw, lam, (L, 0), f, (L + 5, 0), (L + 6, 0)])
       (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
       (fun μ' => HoldsWords μ'.store (oneEigCells L lam) ∧ OneEigFlag M f μ'.store) μ := by
@@ -563,11 +576,13 @@ omit [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] in
 /-- `NLAlib.SmallEig.oneEigDirections` on a scalar machine stores its words: with room for twelve
 words at `d` and two at `k` in other buffers, it writes only those words, keeps the position and
 stores the factor $\mathrm{fl}(0.66)$ at `K[0]` and the words `NLAlib.SmallEig.oneEigDirWords`
-at `D`. -/
+at `D`.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem oneEigDirections_writes_value {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {μ : Mem ℝ} {L : ℕ} (hlen : L + 7 ≤ μ.store.length)
     (h5 : μ.store.len (L + 5) = 12) (h6 : μ.store.len (L + 6) = 2) :
-    Writes .total I τ (oneEigDirections (O := O) (Q := Q)).body
+    Writes .total I τ (oneEigDirections (O := O) (Q := Q))
       (Env.frame [] [(L + 5, 0), (L + 6, 0)])
       (Store.inBlock (L + 5) 0 12 ⊔ Store.inBlock (L + 6) 0 1)
       (fun μ' => μ'.pos = μ.pos ∧ μ'.store.get (L + 6) 0 = some (M.lit (66 / 100)) ∧
@@ -596,7 +611,8 @@ omit [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] in
 /-- A polar sample stores the sample of the window: on an exact polar disk sampler on the stream
 `sU`, from a radius word $R$ at `rd` and room for two words at `z`, the call writes only those
 two words, stores the polar sample `NLAlib.polarDisk` of the window at the current
-position and advances the position by two. -/
+position and advances the position by two.
+The rule for one call of the operation. -/
 theorem polar_writes_sample {I : Interp O Q ℝ} {sU : ℕ} (hDisk : IsPolarDiskSampler sU I)
     {τ : Tape ℝ} {μ : Mem ℝ} {ρ : Env} {ins outs : List Operand} {rd z : ℕ × ℕ} {R : ℝ}
     (ha : Operand.evalList ρ ins = some [rd]) (hb : Operand.evalList ρ outs = some [z])
@@ -636,7 +652,7 @@ def DistSpecAccurateOn (I : Interp O Q ℝ) {n : ℕ} (H : Matrix (Fin (n + 1)) 
   ∀ (τ : Tape ℝ) (μ : Mem ℝ) (h sp tau : ℕ × ℕ) (p : ℂ), p ∈ P → μ.Live [h, sp, tau] →
     HoldsMatrix h H μ.store → μ.store.readBlock sp.1 sp.2 2 = some [p.re, p.im] →
     tau.2 < μ.store.len tau.1 → tau.1 ≠ h.1 → tau.1 ≠ sp.1 →
-    Writes .total I τ (distSpec (O := O) (Q := Q)).body (Env.frame [n + 1, m, q] [h, sp, tau])
+    Writes .total I τ (distSpec (O := O) (Q := Q)) (Env.frame [n + 1, m, q] [h, sp, tau])
       (Store.inBlock tau.1 tau.2 1)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ t : ℝ, μ'.store.get tau.1 tau.2 = some t ∧
         0.9 * (⨅ i, ‖p - d i‖) ≤ t ∧ t ≤ 1.1 * (⨅ i, ‖p - d i‖)) μ
@@ -675,7 +691,7 @@ theorem oneEigPoint_best {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M
     (hw : μ.store.readBlock (L + 1) 0 2 = some [w.re, w.im])
     (hP : oneEigPointWord M t₀ (oneEigDir M j) s w ∈ P)
     (hB : OneEigBest d L bar θ (fun k => oneEigPointWord M t₀ (oneEigDir M k) s w) j μ.store) :
-    Writes .total I τ (oneEigPoint (O := O) (Q := Q)).body
+    Writes .total I τ (oneEigPoint (O := O) (Q := Q))
       (Env.frame [n + 1, m, q, j] [h, (L, 0), (L + 5, 0), lam, (L + 1, 0), (L + 2, 0),
         (L + 3, 0), (L + 4, 0), (L + 6, 0)])
       (Store.inBlock (L + 2) 0 2 ⊔ Store.inBlock (L + 3) 0 1 ⊔ Store.inBlock (L + 4) 0 3 ⊔
@@ -749,7 +765,7 @@ theorem oneEigMove_marked {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar 
     (hroom : lam.2 + 2 ≤ μ.store.len lam.1) {x y b : ℝ}
     (hK : μ.store.get (L + 6) 1 = some 1) (hx : μ.store.get (L + 4) 0 = some x)
     (hy : μ.store.get (L + 4) 1 = some y) (hb : μ.store.get (L + 4) 2 = some b) :
-    Writes .total I τ (oneEigMove (O := O) (Q := Q)).body
+    Writes .total I τ (oneEigMove (O := O) (Q := Q))
       (Env.frame [] [(L + 4, 0), (L + 6, 0), lam, (L, 0), f])
       (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock L 0 1)
       (fun μ' => μ'.pos = μ.pos ∧ μ'.store.readBlock lam.1 lam.2 2 = some [x, y] ∧
@@ -790,7 +806,7 @@ theorem oneEigRound_good {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M
       (polarDisk 0 r (Tape.windowFn τ sU μ.pos 2)) ∈ P)
     (hcov : ∃ j < 6, 1.1 * (⨅ i, ‖oneEigPointWord M t₀ (oneEigDir M j) s
       (polarDisk 0 r (Tape.windowFn τ sU μ.pos 2)) - d i‖) ≤ θ) (hθ : θ < M.mul t₀ k₀) :
-    Writes .total I τ (oneEigRound (O := O) (Q := Q)).body
+    Writes .total I τ (oneEigRound (O := O) (Q := Q))
       (Env.frame [n + 1, m, q] [h, qw, (L + 5, 0), lam, (L, 0), f, (L + 1, 0), (L + 2, 0),
         (L + 3, 0), (L + 4, 0), (L + 6, 0)])
       (Store.inBlock lam.1 lam.2 2 ⊔ Fp.above L)
@@ -879,7 +895,7 @@ theorem oneEigStart_good {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M
     (hlf : Fp.Disj (Store.inBlock lam.1 lam.2 2) (Store.inBlock f.1 f.2 1))
     (hH : HoldsMatrix h H μ.store) (hq4 : μ.store.get qw.1 (qw.2 + 4) = some r)
     (hP : polarDisk 0 r (Tape.windowFn τ sU μ.pos 2) ∈ P) :
-    Writes .total I τ (oneEigStart (O := O) (Q := Q)).body
+    Writes .total I τ (oneEigStart (O := O) (Q := Q))
       (Env.frame [n + 1, m, q] [h, qw, lam, (L, 0), f, (L + 5, 0), (L + 6, 0)])
       (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
       (fun μ' => (∀ i < 12, μ'.store.get (L + 5) i = some (oneEigDirWords M i)) ∧

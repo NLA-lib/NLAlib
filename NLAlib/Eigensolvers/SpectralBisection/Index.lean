@@ -19,7 +19,7 @@ buffer. Exact endpoint decoding makes the existing generic clamp conversion rule
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_nodeSplitIndex`: exact computed clamp word and sparse frame.
+* `NLAlib.SpectralBisection.nodeSplitIndex_writes`: exact computed clamp word and sparse frame.
 -/
 
 @[expose] public section
@@ -34,8 +34,9 @@ def indexCells (t : ℕ × ℕ) : Fp :=
 
 /-- The executed index preparation returns the exact clamped rounded trace on actual words.
 Only its four declared cells may change; in particular the node's half-radii and sampled
-shift remain available to the selected child or split branch. -/
-theorem writes_nodeSplitIndex {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
+shift remain available to the selected child or split branch.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem nodeSplitIndex_writes {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     [Has IndexOp Op] [Has CmpTst Tst] {M : Machine K} (dec : K → ℝ)
     (mm : MatMulMap (K × K)) (qr : QRMap (K × K)) (unif : K → Su → K)
     (normal : Sg → K × K) {I : Interp Op Tst K} (hS : IsScalar M I)
@@ -48,7 +49,7 @@ theorem writes_nodeSplitIndex {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarO
     (hroom : t.2 + 7 ≤ μ.store.len t.1)
     (hsep : Fp.Disj (Store.inBlock t.1 t.2 7)
       (Fp.blocks [pp, (c.1, c.2 + 2)] [2 * (k * k), 1])) :
-    Writes .total I τ (nodeSplitIndex (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (nodeSplitIndex (Op := Op) (Tst := Tst))
       (Env.frame [k] [pp, c, t]) (indexCells t)
       (fun μ' => μ'.pos = μ.pos ∧ μ'.store.get t.1 (t.2 + 6) =
         some (clampWord dec (M.lit 0) (M.lit (k : ℚ))
@@ -56,7 +57,7 @@ theorem writes_nodeSplitIndex {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarO
   have hpp := hl pp (by simp)
   have hc := hl c (by simp)
   have ht := hl t (by simp)
-  refine (writes_frame rfl rfl (by room) (PairMatrix.writes_traceRe_packed
+  refine (writes_frame rfl rfl (by room) (PairMatrix.traceRe_writes_packed
     (dec := dec) (mm := mm) (qr := qr) (unif := unif) (normal := normal) hS Pp hPp
     (by room) (hsep.mono (by fp_sub) (by fp_sub)))).seq_le (by fp_sub [indexCells]) ?_
   intro μ₁ hfr₁ ⟨hp₁, htrace⟩
@@ -69,7 +70,7 @@ theorem writes_nodeSplitIndex {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarO
   intro μ₃ hfr₃ ⟨hp₃, hzero⟩
   refine (writes_indexLit hL rfl rfl (by room)).seq_le (by fp_sub [indexCells]) ?_
   intro μ₄ hfr₄ ⟨hp₄, hsize⟩
-  refine (writes_frame rfl rfl (by room) (writes_clamp hS hC
+  refine (writes_frame rfl rfl (by room) (clamp_writes hS hC
     (by kept) (by kept) (by kept) (by room))).mono (by fp_sub [indexCells]) ?_
   intro μ₅ _ ⟨hp₅, hword⟩
   exact ⟨hp₅.trans (hp₄.trans (hp₃.trans (hp₂.trans hp₁))), hword⟩

@@ -29,7 +29,7 @@ namespace NLAlibTools.OpsSmoke
 /-- One fixed scalar-only dense matvec tree; dimensions are supplied at execution. -/
 def denseProgram : Program ScalarOp Empty 2 3 :=
   ⟨.frame [.var 0, .var 1] [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩]
-    (StoredDense.impl (Op := ScalarOp) (Tst := Empty)).body⟩
+    (StoredDense.impl (Op := ScalarOp) (Tst := Empty))⟩
 
 /-- Actual raw column-major words and initially uninitialized output slots. -/
 def input : Mem ℚ := ⟨[[some 1, some 3, some 2, some 4], [some 5, some 6], [none, none]], 0⟩

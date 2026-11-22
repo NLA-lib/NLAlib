@@ -8,6 +8,9 @@ module
 public import NLAlib.Ops.Catalog.Isotropic
 public import NLAlib.Ops.Catalog.Random
 public import NLAlib.Ops.Law
+public import NLAlib.Ops.RoutineLink
+public import NLAlib.Ops.Logic.RoutineIntro
+public import NLAlib.Ops.RoutineSyntax
 
 /-!
 # Test case: the Girard–Hutchinson trace estimator (visible randomness)
@@ -21,7 +24,7 @@ in its store and it computes with them: `matvec`, then `dot` of the probe with t
 * `NLAlib.Ops.Examples.integral_hutchF`, `variance_hutchF`: mathematics. For probes whose
   decoded law is isotropic, `𝔼 Σᵢ gᵢᵀ A gᵢ = N tr A`; the probes are independent (they are
   windows at disjoint positions), so the variance is `N` times that of one quadratic form.
-* `NLAlib.Ops.Examples.runs_hutch`: the run, for every interpretation meeting the contracts and
+* `NLAlib.Ops.Examples.runs_hutch`: the run, for every interpretation satisfying the contracts and
   every tape: `N` calls of each operation, `2 n + 1` scratch cells and the workspace of one
   operation.
 * `NLAlib.Ops.Examples.runsLaw_hutch`: **the abstract theorem**: the estimate `est / N` is
@@ -46,9 +49,6 @@ def hutch : Stmt ROp Tst :=
       (.seq (.call (.operator .matvec) [.var 1, .var 1] [⟨2, .const 0⟩] [⟨3, .const 0⟩])
         (.seq (.call .dot [.var 1] [⟨2, .const 0⟩, ⟨3, .const 0⟩] [⟨4, .const 0⟩])
           (.call .add [] [⟨0, .var 2⟩, ⟨4, .const 0⟩] [⟨0, .var 2⟩])))))))
-
-/-- **`hutch` as an implementation**: two dimensions `N`, `n`, one input and one output. -/
-def hutchImpl : Impl ROp Tst := ⟨2, 1, 1, hutch⟩
 
 /-- The call counts of `hutch`: `N` vector draws, products, dot products and additions. -/
 noncomputable def hutchCount (N n : ℕ) : Count ROp Tst :=
@@ -202,10 +202,10 @@ theorem sum_quadForm_window [Inhabited K] (dec : K → ℝ) {n : ℕ} (A : Matri
     omega
   rw [vec_window τ Stream.gauss p this, probe, Nat.add_assoc]
 
-/-- **The run of `hutch`**, for every interpretation meeting the contracts and every tape: the
+/-- **The run of `hutch`**, for every interpretation satisfying the contracts and every tape: the
 cell `est` receives a word that decodes to its old value plus the sum of the quadratic forms of
 the `N` probes, the position advances by `N n`, nothing else is written. -/
-theorem wp_hutch {dec : K → ℝ} {n : ℕ} {A : Matrix (Fin n) (Fin n) ℝ} {J : Interp ROp Tst K}
+theorem hutch_wp {dec : K → ℝ} {n : ℕ} {A : Matrix (Fin n) (Fin n) ℝ} {J : Interp ROp Tst K}
     (hJ : IsRandLin dec A J) {τ : Tape K} {N : ℕ} {e : ℕ × ℕ} {m : Mem K} {z₀ : K}
     (he : m.store.get e.1 e.2 = some z₀) :
     Wp .total J τ hutch (Env.frame [N, n] [e, e]) (fun m' => ∃ v,
@@ -261,24 +261,49 @@ theorem wp_hutch {dec : K → ℝ} {n : ℕ} {A : Matrix (Fin n) (Fin n) ℝ} {J
           Store.get_pop_of_lt (by omega), hv])
     exact ⟨v, by simp [Mem.upd, Mem.advance, h3.eq_updBlock hg], hdv⟩
 
-/-- **The certificate of `hutch`**: for every interpretation meeting the contracts, `hutch`
-meets its contract with a window. The statement of an implementation of an operation with hidden
-randomness. -/
-theorem hutch_spec {dec : K → ℝ} {n : ℕ} {A : Matrix (Fin n) (Fin n) ℝ} {J : Interp ROp Tst K}
-    (hJ : IsRandLin dec A J) :
-    (hutchImpl (Tst := Tst)).Triple J .total ((hutchRel dec A).spec (HutchOperands n)) := by
-  refine Impl.meets_rel fun d ins outs τ m X hnd hadm hl hr _ hz => ?_
+/-- `hutch` as a routine: `[N, n] (est : update 1)`, drawing `N n` positions. The tree has two
+buffer variables for the cell. -/
+def hutchRoutine (n : ℕ) : Routine ROp Tst :=
+  routine% [N, m] (est : 1) → (est) draws ↑(N * n) := hutch
+
+/-- `hutch` meets the specification read off its relation, over every interpretation satisfying the
+contracts of the randomized linear operations. -/
+theorem hutchRoutine_meets {dec : K → ℝ} {n : ℕ} {A : Matrix (Fin n) (Fin n) ℝ}
+    {J : Interp ROp Tst K} (hJ : IsRandLin dec A J) :
+    (hutchRoutine (Tst := Tst) n).Meets J
+      (Routine.Spec.ofRel (hutchRel dec A) fun d => d.getD 1 0 = n) := by
+  refine Routine.meets_ofRel_of_post (fun d => by rcases d with _ | ⟨_, _⟩ <;> rfl)
+    (fun _ _ => rfl)
+    fun d args τ m X hnd hlen hl _ hr hok _ hz => ?_
   obtain ⟨N, n', rfl⟩ := List.length_eq_two.mp hnd
-  obtain ⟨rfl, rfl⟩ : n' = n ∧ outs = ins := hadm
-  obtain ⟨e, xs, rfl, hx, rfl⟩ := Mem.readBlocks_one hr
+  obtain rfl : n' = n := hok
+  obtain ⟨e, rfl⟩ := List.length_eq_one_iff.mp hlen
+  change m.readBlocks [e] [1] = some X at hr
+  obtain ⟨e', xs, he', hx, rfl⟩ := Mem.readBlocks_one hr
+  obtain rfl : e = e' := by simpa using he'
   obtain ⟨z₀, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock hx)
   have he : m.store.get e.1 e.2 = some z₀ := by
     simpa using Store.get_of_readBlock hx Nat.zero_lt_one z₀
-  refine ⟨⟨rfl, rfl, rfl⟩, (wp_hutch hJ (τ := τ) (N := N) he).mono ?_⟩
+  refine (hutch_wp hJ (τ := τ) (N := N) he).mono ?_
   rintro m' ⟨v, rfl, hv⟩
   exact ⟨[[v]], rfl, ⟨z₀, v, rfl, rfl, by
     rw [hv]
     exact congrArg _ (sum_quadForm_window dec A τ m.pos N).symm⟩, rfl⟩
+
+/-- The routine of `hutch` implements its contract: its operand is the input. -/
+theorem hutchRoutine_implements (dec : K → ℝ) {n : ℕ} (A : Matrix (Fin n) (Fin n) ℝ) :
+    (hutchRoutine (Tst := Tst) n).Implements (hutchRel dec A) (HutchOperands n)
+      (fun ins _ => ins) := by
+  implements [N, n] (e) → (e) with hadm
+
+/-- The certificate of `hutch`: for every interpretation satisfying the contracts of the
+randomized linear operations, `hutch` satisfies its contract with a window. A consequence of the
+judgment of its routine. -/
+theorem hutch_satisfies {dec : K → ℝ} {n : ℕ} {A : Matrix (Fin n) (Fin n) ℝ} {J : Interp ROp Tst K}
+    (hJ : IsRandLin dec A J) :
+    (hutchRoutine (Tst := Tst) n).impl.Satisfies J .total ((hutchRel dec A).spec (HutchOperands n))
+      :=
+  (hutchRoutine_meets hJ).satisfies_ofRel (hutchRoutine_implements dec A) fun _ _ _ h => h.2.1.1
 
 variable [MeasurableSpace K]
 
@@ -288,7 +313,7 @@ def HutchPost (dec : K → ℝ) (N n : ℕ) (e : ℕ × ℕ) (m : Mem K) (x : �
   ∃ v, m' = (m.upd e v).advance (N * n) ∧ dec v = x
 
 /-- **The abstract theorem of the Girard–Hutchinson estimator**, from its certificate by the
-law-level bridge, for every interpretation meeting the contracts and every law of the tape whose
+law-level bridge, for every interpretation satisfying the contracts and every law of the tape whose
 decoded probes are isotropic. For every sample: `N` calls of each operation, `2 n + 1` scratch
 cells. In law, from `est = 0`: the estimate `est / N` has mean `tr A` and the variance of one
 quadratic form divided by `N`. -/
@@ -303,7 +328,7 @@ theorem runsLaw_hutch {dec : K → ℝ} {n : ℕ} {A : Matrix (Fin n) (Fin n) �
       (HutchPost dec N n e m) fun X => ∫ ω, X ω / N ∂P = A.trace ∧
         Var[fun ω => X ω / N; P] = Var[quadForm A; probeLaw dec (law Stream.gauss) n] / N := by
   have hN' : (N : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr hN.ne'
-  refine ((hutch_spec hJ).runsLaw W ξ (fun ys => dec (vec ys.flatten 0)) (d := [N, n])
+  refine ((hutch_satisfies hJ).runsLaw W ξ (fun ys => dec (vec ys.flatten 0)) (d := [N, n])
     (ins := [e]) (outs := [e]) (xs := [[z₀]]) rfl ⟨rfl, rfl⟩ (by
       simp [Store.lt_length_of_get he]) (by
       simp [Mem.readBlocks, BlockFn.readBlock_one, he]) (fun _ => trivial)

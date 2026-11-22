@@ -16,7 +16,7 @@ matrix. Both outputs are retained in scratch before their exactly aliased source
 ## Main results
 
 * `NLAlib.ShiftedQR.rotateRowWithScratch`: actual scalar computation of row-vector times Givens.
-* `NLAlib.ShiftedQR.writes_rotateRowWithScratch`: total exact mathematical pair output.
+* `NLAlib.ShiftedQR.rotateRowWithScratch_writes`: total exact mathematical pair output.
 -/
 
 @[expose] public section
@@ -43,8 +43,8 @@ def rowInstructions : List (ScalarIns ScalarOp) :=
    ⟨.copy, [scratchWord 3], ⟨6, .var 6 + .const 1⟩⟩]
 
 /-- Rotate a stored complex row-vector by the Givens matrix using ten scratch words. -/
-def rotateRowWithScratch : Impl Op Tst :=
-  ⟨0, 5, 2, .scalarBlock (rowInstructions.map ScalarIns.lift)⟩
+def rotateRowWithScratch : Stmt Op Tst :=
+  .scalarBlock (rowInstructions.map ScalarIns.lift)
 
 private def rowPrefix (M : Machine ℝ) (t _x _y : ℕ × ℕ) (c s u v : ℝ × ℝ) :=
   [((t.1, t.2 + 4), M.neg s.1), ((t.1, t.2 + 5), s.2),
@@ -98,8 +98,10 @@ private theorem eval_row {M : Machine ℝ} {m : Mem ℝ} {c s x y t : ℕ × ℕ
 
 /-- The actual row-vector scalar rotation always terminates under the exact scalar model and
 stores the two mathematical Givens outputs. Input/output views are exactly aliased.
-[GolubVanLoan2013, §5.1.8]. -/
-theorem writes_rotateRowWithScratch {M : Machine ℝ} {I : Interp Op Tst ℝ}
+[GolubVanLoan2013, §5.1.8].
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
+theorem rotateRowWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hI : IsScalar M I) (hM : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {c s x y t : ℕ × ℕ} {cv sv xv yv : ℂ}
     (htc : t.1 ≠ c.1) (hts : t.1 ≠ s.1) (htx : t.1 ≠ x.1) (hty : t.1 ≠ y.1)
@@ -114,7 +116,7 @@ theorem writes_rotateRowWithScratch {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hy1 : m.store.get y.1 (y.2 + 1) = some yv.im)
     (ht : t.2 + 10 ≤ m.store.len t.1)
     (hx : x.2 + 2 ≤ m.store.len x.1) (hy : y.2 + 2 ≤ m.store.len y.1) :
-    Writes .total I τ rotateRowWithScratch.body (Env.frame [] [c, s, x, y, t, x, y])
+    Writes .total I τ rotateRowWithScratch (Env.frame [] [c, s, x, y, t, x, y])
       (Fp.blocks [t, x, y] [10, 2, 2])
       (fun μ => μ.pos = m.pos ∧ μ.readBlocks [x, y] [2, 2] =
         some [[(xv*cv-yv*star sv).re, (xv*cv-yv*star sv).im],
@@ -131,7 +133,7 @@ theorem writes_rotateRowWithScratch {M : Machine ℝ} {I : Interp Op Tst ℝ}
       rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
       rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> dsimp <;> omega
   have hwrite := writes_machineScalarBlock (τ := τ) hI hev hroom
-  change Writes .total I τ rotateRowWithScratch.body _ _ _ m at hwrite
+  change Writes .total I τ rotateRowWithScratch _ _ _ m at hwrite
   refine hwrite.mono ?_ ?_
   · intro b i hi
     simp only [rowTrace, rowPrefix, Pair.linearTrace, List.map_append, List.map_cons,

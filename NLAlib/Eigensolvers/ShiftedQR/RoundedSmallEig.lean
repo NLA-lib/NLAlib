@@ -95,9 +95,8 @@ def ShQRSmallEigInput {n : ℕ} (k : ℕ) (B Γ S δ φ : ℝ) (c₁ c₂ : Poly
     μ.Room [a, t, p, out, f]
       [2 * ((n + 1) * (n + 1)), 1, (shqrSmallEigParams n k B Γ S δ φ c₁ c₂).length,
         2 * ((n + 1) * (n + 1)), 1] ∧
-    Fp.Apart [a, t, p, out, f]
-      [2 * ((n + 1) * (n + 1)), 1, (shqrSmallEigParams n k B Γ S δ φ c₁ c₂).length,
-        2 * ((n + 1) * (n + 1)), 1] ∧
+    ShQRViewsApart (n + 1) (shqrSmallEigParams n k B Γ S δ φ c₁ c₂).length
+          a t p out f ∧
     (∃ U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix out U μ.store) ∧
     HoldsMatrix a H μ.store ∧ μ.store.get t.1 t.2 = some (shqrDeflationThreshold n k B Γ S δ φ) ∧
     μ.store.readBlock p.1 p.2 (shqrSmallEigParams n k B Γ S δ φ c₁ c₂).length =
@@ -172,7 +171,7 @@ Theorem 1.1]): `NLAlib.ShiftedQR.roundedShQRWith` at the program
 `NLAlib.SmallEig.smallEigProg` (the Schur leaf) with the Gaussian stream `sG`, in Schur mode. The
 interface is `[N, k, np, F, T, ns, w] (A, Thr, P, U) → (A, U, Fl)`. No eigenvalue oracle.
 Algorithm: shifted-qr-rounded -/
-def roundedShQRSmallEig (sG : ℕ) : Impl O Q :=
+def roundedShQRSmallEig (sG : ℕ) : Stmt O Q :=
   roundedShQRWith (smallEigProg (O := O) (Q := Q) sG)
 
 /-- **The rounded shifted QR algorithm as the Schur core of the dense pipeline**
@@ -181,7 +180,7 @@ Theorem 1.1], in Schur form): `NLAlib.ShiftedQR.roundedShQRSchurWith` with the s
 program `NLAlib.SmallEig.smallEigProg` as the leaf. The interface is
 `[N, np, k, F, T] (A, P, U) → (A, U, Fl)`; the threshold is the first word.
 Algorithm: shifted-qr-rounded -/
-def roundedShQRSchur (sG : ℕ) : Impl O Q :=
+def roundedShQRSchur (sG : ℕ) : Stmt O Q :=
   roundedShQRSchurWith (smallEigProg (O := O) (Q := Q) sG)
 
 end Program
@@ -357,7 +356,7 @@ theorem roundedShQRSchur_measureReal_not_schur_le {Mch : Machine ℝ} {I : Inter
     {U₀ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     (hin : ShQRSchurInput k B Γ S δ φ c₁ c₂ a p uo f U₀ H μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSchur (O := O) (Q := Q) sG).body
+    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSchur (O := O) (Q := Q) sG)
       (Env.frame [n + 1, (shqrSchurParams n k B Γ S δ φ c₁ c₂).length, k, shqrCap n B Γ S δ,
         shqrSmallEigCap n k B Γ S δ φ c₁ c₂] [a, p, uo, a, uo, f]) (shqrFp n a uo f)
       (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧
@@ -413,7 +412,7 @@ theorem roundedShQRSmallEig_measureReal_not_spectrum_le {Mch : Machine ℝ} {I :
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : ShQRSmallEigInput k B Γ S δ φ c₁ c₂ a t p out f H μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG).body
+    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG)
       (Env.frame (shqrSmallEigDims n k B Γ S δ φ c₁ c₂) [a, t, p, out, a, out, f])
           (shqrFp n a out f)
       (ShQRSpectrum a out f H δ) μ} ≤ φ := by
@@ -454,7 +453,7 @@ theorem roundedShQRSmallEig_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} 
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {k : ℕ} {B Γ S δ φ : ℝ}
     (hk : k = shqrDegree (4 * B)) {a t p out f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : ShQRSmallEigInput k B Γ S δ φ c₁ c₂ a t p out f H μ) (τ : Tape ℝ) :
-    Writes .total I τ (roundedShQRSmallEig (O := O) (Q := Q) sG).body
+    Writes .total I τ (roundedShQRSmallEig (O := O) (Q := Q) sG)
       (Env.frame (shqrSmallEigDims n k B Γ S δ φ c₁ c₂) [a, t, p, out, a, out, f])
           (shqrFp n a out f)
       (fun _ => True) μ := by
@@ -714,7 +713,7 @@ $F(k + 1 + n_p)$, $k(n + 1)$ and the offsets $0, n_p, n_p, 0, \dots$ is
 $369224\,b_0^3 b_1^4 b_2 b_3 b_4^2$, by kernel evaluation. It serves both the count of the
 program and that of its Schur core frame (`NLAlib.ShiftedQR.roundedShQRSchur`). -/
 theorem stmtWorkMono_roundedShQRSmallEig (sG : ℕ) :
-    stmtWorkMono (roundedShQRSmallEig (O := O) (Q := Q) sG).body.instrument
+    stmtWorkMono (roundedShQRSmallEig (O := O) (Q := Q) sG).instrument
       ([⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 0, 1]⟩, ⟨1, [0, 0, 0, 0, 1]⟩,
         ⟨1, [0, 1, 1, 1]⟩, ⟨1, [1, 1]⟩, WorkMono.const 0, ⟨1, [0, 0, 1]⟩, ⟨1, [0, 0, 1]⟩] ++
         List.replicate 4 (WorkMono.const 0)) =
@@ -730,7 +729,7 @@ slots of $k(n + 1)$ entries (`NLAlib.ShiftedQR.shqrSmallEigDims`) and the zero o
 operands is at most $369224(n + 1)^3(k + 1)^4(n_p + 1)(F + 1)(T + 1)^2$: the cost of `SmallEig`
 is counted. -/
 theorem roundedShQRSmallEig_work_le (sG n k np F T : ℕ) :
-    Count.size (stmtCost (roundedShQRSmallEig (O := O) (Q := Q) sG).body.instrument
+    Count.size (stmtCost (roundedShQRSmallEig (O := O) (Q := Q) sG).instrument
         [n + 1, k, np, F, T, F * (k + 1 + np), k * (n + 1), 0, 0, 0, 0, 0, 0, 0]) ≤
       369224 * (n + 1) ^ 3 * (k + 1) ^ 4 * (np + 1) * (F + 1) * (T + 1) ^ 2 := by
   have hσ : SlotsLe [n + 1, k + 1, np + 1, F + 1, T + 1]
@@ -745,7 +744,7 @@ theorem roundedShQRSmallEig_work_le (sG n k np F T : ℕ) :
     have h2 := Nat.mul_le_mul_left F h1
     constructor <;> nlinarith
   have h := size_stmtCost_le_stmtWorkMono (by simp)
-    (roundedShQRSmallEig (O := O) (Q := Q) sG).body.instrument hσ
+    (roundedShQRSmallEig (O := O) (Q := Q) sG).instrument hσ
   rw [stmtWorkMono_roundedShQRSmallEig] at h
   simpa [WorkMono.eval, mul_assoc] using h
 
@@ -757,7 +756,7 @@ $36$ structural instructions and the count of `NLAlib.ShiftedQR.roundedShQRSmall
 dimensions and offsets (`NLAlib.ShiftedQR.stmtWorkMono_roundedShQRSmallEig`), the cost of
 `SmallEig` included. -/
 theorem size_stmtCost_roundedShQRSchur_le (sG n nq k F T p : ℕ) :
-    Count.size (stmtCost (roundedShQRSchur (O := O) (Q := Q) sG).body.instrument
+    Count.size (stmtCost (roundedShQRSchur (O := O) (Q := Q) sG).instrument
         [n + 1, nq, k, F, T, 0, p, 0, 0, 0, 0]) ≤
       380748 * (n + 1) ^ 3 * (k + 1) ^ 4 * (p + nq + 1) * (F + 1) * (T + 1) ^ 2 := by
   have hσ : SlotsLe [n + 1, k + 1, p + nq + 1, F + 1, T + 1]
@@ -772,15 +771,15 @@ theorem size_stmtCost_roundedShQRSchur_le (sG n nq k F T p : ℕ) :
     have h2 := Nat.mul_le_mul_left F h1
     refine ⟨by omega, by nlinarith, by nlinarith, by omega⟩
   have h := size_stmtCost_le_stmtWorkMono (by simp)
-    (roundedShQRSmallEig (O := O) (Q := Q) sG).body.instrument hσ
+    (roundedShQRSmallEig (O := O) (Q := Q) sG).instrument hσ
   rw [stmtWorkMono_roundedShQRSmallEig] at h
-  have hin : Count.size (stmtCost (roundedShQRSmallEig (O := O) (Q := Q) sG).body.instrument
+  have hin : Count.size (stmtCost (roundedShQRSmallEig (O := O) (Q := Q) sG).instrument
       [n + 1, k, nq - 1, F, T, F * (k + 1 + (nq - 1)), k * (n + 1), 0, p, p + 1, 0, 0, 0, 0]) ≤
       369224 * ((n + 1) ^ 3 * (k + 1) ^ 4 * (p + nq + 1) * (F + 1) * (T + 1) ^ 2) := by
     simpa [WorkMono.eval, mul_assoc] using h
-  have hframe : ∀ X, Count.size (stmtCost (roundedShQRSmallEig (O := O) (Q := Q) sG).body.instrument
+  have hframe : ∀ X, Count.size (stmtCost (roundedShQRSmallEig (O := O) (Q := Q) sG).instrument
       [n + 1, k, nq - 1, F, T, F * (k + 1 + (nq - 1)), k * (n + 1), 0, p, p + 1, 0, 0, 0, 0]) ≤ X →
-      Count.size (stmtCost (roundedShQRSchur (O := O) (Q := Q) sG).body.instrument
+      Count.size (stmtCost (roundedShQRSchur (O := O) (Q := Q) sG).instrument
         [n + 1, nq, k, F, T, 0, p, 0, 0, 0, 0]) ≤ 36 + X := fun X hX => by
     have e : (IExp.var 1 - IExp.const 1) = IExp.sub (IExp.var 1) (IExp.const 1) := rfl
     simp only [roundedShQRSmallEig] at hX
@@ -824,7 +823,7 @@ theorem roundedShQRSmallEig_relative {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : ShQRSmallEigInput k B Γ S (δ * S / c) φ c₁ c₂ a t p out f H μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG).body
+    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG)
       (Env.frame (shqrSmallEigDims n k B Γ S (δ * S / c) φ c₁ c₂) [a, t, p, out, a, out, f])
       (shqrFp n a out f) (ShQRSpectrum a out f H (δ * specNorm H)) μ} ≤ φ := by
   have hc0 : 0 < c := by linarith
@@ -863,7 +862,7 @@ theorem roundedShQRSmallEig_hermitian {Mch : Machine ℝ} {I : Interp O Q ℝ} {
     (hu : u ≤ uShQRSchur n k 1 Γ S δ φ c₁ c₂)
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ} (hin : ShQRSmallEigInput k 1 Γ S δ φ c₁ c₂ a t p out f H μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG).body
+    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG)
       (Env.frame (shqrSmallEigDims n k 1 Γ S δ φ c₁ c₂) [a, t, p, out, a, out, f])
           (shqrFp n a out f)
       (ShQRSpectrum a out f H δ) μ} ≤ φ := by
@@ -911,7 +910,7 @@ theorem roundedShQRSmallEig_measureReal_not_spectrum_le_unconditional {Mch : Mac
     (hin : ShQRSmallEigInput k B Γ S δ φ ginibreGapTail
       ginibreConditionTail a t p out f H μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG).body
+    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG)
       (Env.frame (shqrSmallEigDims n k B Γ S δ φ ginibreGapTail
         ginibreConditionTail) [a, t, p, out, a, out, f]) (shqrFp n a out f)
       (ShQRSpectrum a out f H δ) μ} ≤ φ := by
@@ -946,7 +945,7 @@ theorem roundedShQRSmallEig_relative_unconditional {Mch : Machine ℝ} {I : Inte
     (hin : ShQRSmallEigInput k B Γ S (δ * S / c) φ ginibreGapTail
       ginibreConditionTail a t p out f H μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG).body
+    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG)
       (Env.frame (shqrSmallEigDims n k B Γ S (δ * S / c) φ ginibreGapTail
         ginibreConditionTail) [a, t, p, out, a, out, f])
       (shqrFp n a out f) (ShQRSpectrum a out f H (δ * specNorm H)) μ} ≤ φ := by
@@ -976,7 +975,7 @@ theorem roundedShQRSmallEig_hermitian_unconditional {Mch : Machine ℝ} {I : Int
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ} (hin : ShQRSmallEigInput k 1 Γ S δ φ
       ginibreGapTail ginibreConditionTail a t p out f H μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG).body
+    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig (O := O) (Q := Q) sG)
       (Env.frame (shqrSmallEigDims n k 1 Γ S δ φ ginibreGapTail
         ginibreConditionTail) [a, t, p, out, a, out, f]) (shqrFp n a out f)
       (ShQRSpectrum a out f H δ) μ} ≤ φ := by

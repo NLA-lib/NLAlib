@@ -1,0 +1,185 @@
+/-
+Copyright (c) 2026 NLAlib contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: NLAlib contributors
+-/
+module
+
+public import NLAlib.Krylov.CG.HSPCG.Rounded.Rounds
+public import NLAlib.Ops.Logic.Allocation
+public import NLAlib.Ops.RoutineSyntax
+public import NLAlib.Ops.Logic.RoutineIntro
+
+/-!
+# Total capped rounded PCG execution
+
+The copied right-hand side and actual approximate preconditioner establish the initial
+state. The scoped stopping cache and capped loop retain an existing numerical PCG prefix.
+Spectral and explicit finite-cap precision assumptions justify every division; the cache
+is removed before returning the four physical output vectors.
+
+## Main definitions
+
+* `NLAlib.Krylov.CG.HSPCG.Rounded.PrefixValues`: the output claim on blocks.
+* `NLAlib.Krylov.CG.HSPCG.Rounded.solveSpec`: the specification of the solver.
+
+## Main results
+
+* `NLAlib.Krylov.CG.HSPCG.Rounded.solveRoutine_meets`: total initialized rounded PCG execution.
+-/
+
+@[expose] public section
+
+namespace NLAlib.Krylov.CG.HSPCG.Rounded
+
+open Ops
+open scoped Matrix
+
+variable {Op Tst : Type} [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op]
+  [Has (Tagged Preconditioner OperatorOp) Op] [Has CmpTst Tst]
+
+/-- Raw positive spectral windows and an explicit cap-dependent precision window imply total
+rounded PCG execution. The output is its actual initialized prefix, with an early stop only
+at a zero computed residual. The geometric precision bound is a conservative sufficient
+condition, rather than a practical long-cap tolerance.
+
+This is the run of the tree of `NLAlib.Krylov.CG.HSPCG.Rounded.solveRoutine` on its operands, a
+step of the proof of its judgment kept apart for its length. -/
+private theorem solve_writes_prefix {F : Machine ℝ} {em u e : ℝ} {ε : Blas1Err}
+    {ok : ℕ → Prop} {n cap : ℕ} {A P : Matrix (Fin n) (Fin n) ℝ}
+    {O : MatvecOracle P} {I : Interp Op Tst ℝ}
+    (hS : IsScalar F I) (hF : StdModel u id F) (hB : IsBlas1 id ε ok I) (hok : ok n)
+    (hA : IsMatvec id A (em * specNorm A) I)
+    (hP : I.IsFn .total (Tagged.inj Preconditioner OperatorOp.matvec)
+      (matvecFn O.mulVec) (MatvecOperands n n))
+    (hD : I.IsFn .total (Has.inj Blas1Op.dot) (dotSeqFn F) (OutApart (fun _ => True)))
+    (hCmp : IsCmp id I) (hAT : Aᵀ = A) (hPT : Pᵀ = P) {a a' p p' : ℝ}
+    (ha : 0 < a) (hp : 0 < p)
+    (hAs : spectrum ℝ A ⊆ Set.Icc a a') (hPs : spectrum ℝ P ⊆ Set.Icc p p')
+    (hu : 0 ≤ u) (hd : 0 ≤ ε.dot n) (haa : 0 ≤ ε.axpy)
+    (hem : em ≤ e) (hue : u ≤ e) (hde : ε.dot n ≤ e) (hae : ε.axpy ≤ e)
+    (he : e ≤ 1 / 100) (hOe : O.ε ≤ e)
+    (hAp : 6 * e * a' ≤ a) (hPp : 6 * e * p' ≤ p)
+    (hwindow : e * (1024 * (a' / a) * (p' / p)) ^ (cap + 1) ≤ 1 / 2)
+    {τ : Tape ℝ} {μ : Mem ℝ} {b x r z v : ℕ × ℕ} {bs xs : List ℝ}
+    (hbx : b.1 ≠ x.1) (hbr : b.1 ≠ r.1) (hbz : b.1 ≠ z.1) (hbv : b.1 ≠ v.1)
+    (hxr : x.1 ≠ r.1) (hxz : x.1 ≠ z.1) (hxv : x.1 ≠ v.1)
+    (hrz : r.1 ≠ z.1) (hrv : r.1 ≠ v.1) (hzv : z.1 ≠ v.1)
+    (hl : μ.Live [b, x, r, z, v]) (hbs : μ.store.readBlock b.1 b.2 n = some bs)
+    (hxs : μ.store.readBlock x.1 x.2 n = some xs) (hx0 : decv id n xs = 0)
+    (hz : μ.Room [x, r, z, v] [n, n, n, n]) :
+    Writes .total I τ solve (Env.frame [n, cap] [b, x, x, r, z, v])
+      (Fp.blocks [x, r, z, v] [n, n, n, n])
+      (fun ν => ν.pos = μ.pos ∧ ∃ m ≤ cap, ∃ s rho,
+        StoresState id n x r z v s ν ∧ RunPrefix A P O (decv id n bs) e m s rho ∧
+          (m < cap → s.r = 0)) μ := by
+  call (initializeRoutine_meets_oracle (Tst := Tst) (O := O) hB hok hP) [n] (b, x, r, z, v)
+    (pre := ⟨rfl, hx0⟩) as ν hfr hpos (xs₁, rs₁, zs₁, vs₁) hst
+  have hinit : StoresState id n x r z v
+      ⟨0, decv id n bs, O.mulVec (decv id n bs), O.mulVec (decv id n bs)⟩ ν :=
+    ⟨xs₁, rs₁, zs₁, vs₁, Mem.readBlocks_of_cons hxs₁ (Mem.readBlocks_of_cons hrs₁
+      (Mem.readBlocks_of_cons hzs₁ (Mem.readBlocks_of_cons hvs₁ rfl))), hst⟩
+  have hlvec : ∀ a ∈ [x, r, z, v], a.1 < ν.store.length := by
+    intro a ha
+    rw [hfr.length_eq]
+    exact hl a (by simp only [List.mem_cons, List.not_mem_nil, or_false] at ha ⊢; tauto)
+  have hzvec : ν.Room [x, r, z, v] [n, n, n, n] := by
+    simpa only [Mem.Room, hfr.len_eq] using hz
+  refine writes_allocs_preserving_post (lens := [.const 1]) (ns := [1]) rfl ?_ ?_
+  · rintro s₁ s₂ q hBelow ⟨hq, m, hm, s, rho, hstate, hprefix, hstop⟩
+    exact ⟨hq, m, hm, s, rho, hstate.of_below hBelow hlvec, hprefix, hstop⟩
+  · intro s₁ hlen hlens hBelow
+    let cache : ℕ × ℕ := (ν.store.length, 0)
+    let ν₁ : Mem ℝ := ⟨s₁, ν.pos⟩
+    have hclen : s₁.len cache.1 = 1 := by simpa [cache] using hlens 0 (by simp)
+    have hcachelive : cache.1 < s₁.length := by
+      simp only [cache, hlen, List.length_singleton]
+      omega
+    have hxl : x.1 < ν.store.length := hlvec x (by simp)
+    have hrl : r.1 < ν.store.length := hlvec r (by simp)
+    have hzl : z.1 < ν.store.length := hlvec z (by simp)
+    have hvl : v.1 < ν.store.length := hlvec v (by simp)
+    have hinit' := hinit.of_below (ν := ν₁) hBelow hlvec
+    have hz' : ν₁.Room [x, r, z, v] [n, n, n, n] := by
+      rw [Mem.room_eq_of_below hBelow hlvec]
+      exact hzvec
+    have hl' : ν₁.Live [x, r, z, v, cache] := by
+      intro a ha
+      simp only [List.mem_cons, List.not_mem_nil, or_false] at ha
+      rcases ha with rfl | rfl | rfl | rfl | rfl <;> dsimp [ν₁, Mem.Live] at * <;> omega
+    dsimp only [Env.frame, List.append, List.range_succ, List.range_zero, List.map,
+      List.length_cons, List.length_nil, Nat.add_zero]
+    have hzcache : cache.2 + 1 ≤ ν₁.store.len cache.1 := by
+      change 0 + 1 ≤ s₁.len cache.1
+      rw [hclen]
+    refine Writes.seq_le
+      (cache_writes hB hok hD rfl rfl rfl (by simp; omega)
+        (by simp; omega) (by simp; omega) (by simp; omega)
+        (fun a ha => hl' a (by
+          simp only [List.mem_cons, List.not_mem_nil, or_false] at ha ⊢; tauto))
+        hinit' (by change 0 < s₁.len cache.1; rw [hclen]; norm_num))
+      (Fp.inBlock_le_sup_above (by rfl)) fun ω hfr' ⟨hpos', rho, hstored, hnum, hfn⟩ => ?_
+    have hlω : ω.Live [x, r, z, v, cache] := by
+      simpa only [Mem.Live, hfr'.length_eq] using hl'
+    have hzω : ω.Room [x, r, z, v, cache] [n, n, n, n, 1] := by
+      have hz₁ : ν₁.Room [x, r, z, v, cache] [n, n, n, n, 1] := by
+        simpa only [Mem.room_cons, Mem.room_nil, and_true] using
+          And.intro hz'.1 (And.intro hz'.2.1
+            (And.intro hz'.2.2.1 (And.intro hz'.2.2.2.1 hzcache)))
+      simpa only [Mem.Room, hfr'.len_eq] using hz₁
+    refine (writes_frame rfl rfl ((ω.live_append _ _).mpr ⟨hlω, hlω⟩)
+      (rounds_writes hS hF hB hok hA hP hD hCmp hAT hPT ha hAs hp hPs
+        hu hd haa hem hue hde hae he hOe hAp hPp hwindow
+        hxr hxz hxv (by simp [cache]; omega) hrz hrv (by simp [cache]; omega)
+        hzv (by simp [cache]; omega) (by simp [cache]; omega)
+        hlω hstored hnum hfn hzω)).mono (by fp_sub) ?_
+    rintro ω' _ ⟨hpos'', m, hm, s, rho', hstate, hprefix, hstop⟩
+    exact ⟨hpos''.trans (hpos'.trans hpos), m, hm, s, rho', hstate.1, hprefix, hstop⟩
+
+/-- The output claim on the four written blocks: they hold a state that is a prefix of length at
+most `cap` of a rounded preconditioned run for the matrices `A`, `P` and the preconditioner action
+`O`, and the residual is zero if the prefix stopped before the cap. -/
+def PrefixValues {n : ℕ} (A P : Matrix (Fin n) (Fin n) ℝ) (O : MatvecOracle P) (b : Fin n → ℝ)
+    (e : ℝ) (cap : ℕ) (ys : List (List ℝ)) : Prop :=
+  ∃ m ≤ cap, ∃ s rho, (∃ xs rs zs ps, ys = [xs, rs, zs, ps] ∧ decodedState id n xs rs zs ps = s) ∧
+    RunPrefix A P O b e m s rho ∧ (m < cap → s.r = 0)
+
+/-- For the order `n`, a zero iterate and a cap within the precision window, the written blocks
+are a prefix of the rounded preconditioned run for the right-hand side read. -/
+noncomputable def solveSpec {n : ℕ} (A P : Matrix (Fin n) (Fin n) ℝ) (O : MatvecOracle P)
+    (e a a' p p' : ℝ) : Routine.Spec ℝ :=
+  spec% [m, cap] (bs, xs₀) → (xs, rs, zs, ps)
+    requires m = n ∧ decv id n xs₀ = 0 ∧
+      e * (1024 * (a' / a) * (p' / p)) ^ (cap + 1) ≤ 1 / 2
+    ensures PrefixValues A P O (decv id n bs) e cap [xs, rs, zs, ps]
+
+/-- The capped rounded solver meets its specification: raw positive spectral windows and the
+cap-dependent precision window give total execution, and the written blocks are the initialized
+prefix, with an early stop only at a zero computed residual. -/
+theorem solveRoutine_meets {F : Machine ℝ} {em u e : ℝ} {ε : Blas1Err}
+    {ok : ℕ → Prop} {n : ℕ} {A P : Matrix (Fin n) (Fin n) ℝ}
+    {O : MatvecOracle P} {I : Interp Op Tst ℝ}
+    (hS : IsScalar F I) (hF : StdModel u id F) (hB : IsBlas1 id ε ok I) (hok : ok n)
+    (hA : IsMatvec id A (em * specNorm A) I)
+    (hP : I.IsFn .total (Tagged.inj Preconditioner OperatorOp.matvec)
+      (matvecFn O.mulVec) (MatvecOperands n n))
+    (hD : I.IsFn .total (Has.inj Blas1Op.dot) (dotSeqFn F) (OutApart (fun _ => True)))
+    (hCmp : IsCmp id I) (hAT : Aᵀ = A) (hPT : Pᵀ = P) {a a' p p' : ℝ}
+    (ha : 0 < a) (hp : 0 < p)
+    (hAs : spectrum ℝ A ⊆ Set.Icc a a') (hPs : spectrum ℝ P ⊆ Set.Icc p p')
+    (hu : 0 ≤ u) (hd : 0 ≤ ε.dot n) (haa : 0 ≤ ε.axpy)
+    (hem : em ≤ e) (hue : u ≤ e) (hde : ε.dot n ≤ e) (hae : ε.axpy ≤ e)
+    (he : e ≤ 1 / 100) (hOe : O.ε ≤ e)
+    (hAp : 6 * e * a' ≤ a) (hPp : 6 * e * p' ≤ p) :
+    (solveRoutine (Op := Op) (Tst := Tst)).Meets I (solveSpec A P O e a a' p p') := by
+  routine_intro [n', cap] (b, x, r, z, v) reads (bs, xs₀) memory μ
+  obtain ⟨hn, hx0, hwindow⟩ := hpre
+  obtain rfl : n = n' := hn.symm
+  refine (solve_writes_prefix hS hF hB hok hA hP hD hCmp hAT hPT ha hp hAs hPs
+    hu hd haa hem hue hde hae he hOe hAp hPp hwindow
+    hbx hbr hbz hbv hxr hxz hxv hrz hrv hzv hlive hbs hxs₀ hx0 hrooms).mono le_rfl ?_
+  rintro μ' _ ⟨hpos', m', hm', st, rho, ⟨xs, rs, zs, ps, hr, hst⟩, hrun, hstop⟩
+  exact ⟨hpos'.trans (Nat.add_zero _).symm, [xs, rs, zs, ps], hr, m', hm', st, rho,
+    ⟨xs, rs, zs, ps, rfl, hst⟩, hrun, hstop⟩
+
+end NLAlib.Krylov.CG.HSPCG.Rounded

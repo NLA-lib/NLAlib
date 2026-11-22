@@ -74,17 +74,16 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has CmpTst Tst]
 
 /-- Compute the two Givens coefficients using seven caller-owned scratch cells. Inputs and
 outputs are two-word complex views; the captured inputs permit exact output/input aliasing. -/
-def coefficientsWithScratch : Impl Op Tst := ⟨0, 3, 2,
+def coefficientsWithScratch : Stmt Op Tst :=
   .seq (.scalarBlock (coefficientPrefix.map ScalarIns.lift))
     (.ite (Has.inj CmpTst.isZero) [] [⟨2, .var 2 + .const 4⟩]
       (.scalarBlock (coefficientZero.map ScalarIns.lift))
-      (.scalarBlock (coefficientDivide.map ScalarIns.lift)))⟩
+      (.scalarBlock (coefficientDivide.map ScalarIns.lift)))
 
 /-- The coefficient routine with one scoped scratch buffer of seven real words. -/
-def coefficients : Impl Op Tst := ⟨0, 2, 2,
-  .alloc (.const 7) (.frame []
+def coefficients : Stmt Op Tst := .alloc (.const 7) (.frame []
     [⟨0, .var 0⟩, ⟨1, .var 1⟩, ⟨4, .const 0⟩, ⟨2, .var 2⟩, ⟨3, .var 3⟩]
-    coefficientsWithScratch.body)⟩
+    coefficientsWithScratch)
 
 /-- The component squares equal the complex squared norms used by the mathematical rotation. -/
 theorem coefficient_radius_eq (u v : ℂ) :
@@ -202,7 +201,8 @@ private theorem coefficientPrefix_reads {M : Machine ℝ} {m : Mem ℝ} {t : ℕ
   constructor <;> store_simp
 
 omit [Has CmpTst Tst] in
-/-- The prefix writes only the seven scratch cells and returns its captured values. -/
+/-- The prefix writes only the seven scratch cells and returns its captured values. A fragment: its
+tree runs only inside the tree of `NLAlib.ShiftedQR.coefficientsWithScratch`. -/
 private theorem coefficientPrefix_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {a b t c s : ℕ × ℕ} {u v : ℂ}
@@ -256,8 +256,9 @@ private theorem eval_coefficientZero (M : Machine ℝ)
     Operand.eval, IExp.eval, coefficientZeroWrites]
 
 omit [Has CmpTst Tst] in
-/-- The zero branch writes its two packed output blocks, including spatially separate
-views in a single caller buffer. -/
+/-- The zero branch writes its two packed output blocks, including spatially separate views in a
+single caller buffer. A fragment: its tree runs only inside the tree of
+`NLAlib.ShiftedQR.coefficientsWithScratch`. -/
 private theorem coefficientZero_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {a b t c s : ℕ × ℕ}
@@ -328,7 +329,8 @@ private theorem eval_coefficientDivide {M : Machine ℝ}
   rfl
 
 omit [Has CmpTst Tst] in
-/-- The nonzero-radius branch writes the conjugated component quotients. -/
+/-- The nonzero-radius branch writes the conjugated component quotients. A fragment: its tree runs
+only inside the tree of `NLAlib.ShiftedQR.coefficientsWithScratch`. -/
 private theorem coefficientDivide_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {a b t c s : ℕ × ℕ} {u v : ℂ} {r : ℝ}
@@ -377,7 +379,11 @@ private theorem coefficientDivide_writes {M : Machine ℝ} {I : Interp Op Tst �
 stores `NLAlib.roundedGivensCoeffs` for every pair, including the zero pair. The scratch
 buffer is separate from all inputs and outputs; the two output views are spatially disjoint and
 may share a buffer. Outputs may coincide with the original inputs because their components are
-captured first. [GolubVanLoan2013, Algorithm 5.1.3]. -/
+captured first. [GolubVanLoan2013, Algorithm 5.1.3].
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
+`NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem coefficientsWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {a b t c s : ℕ × ℕ} {u v : ℂ}
@@ -389,7 +395,7 @@ theorem coefficientsWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst
     (hv1 : m.store.get b.1 (b.2 + 1) = some v.im)
     (ht : t.2 + 7 ≤ m.store.len t.1)
     (hc : c.2 + 2 ≤ m.store.len c.1) (hs : s.2 + 2 ≤ m.store.len s.1) :
-    Writes .total I τ coefficientsWithScratch.body (Env.frame [] [a, b, t, c, s])
+    Writes .total I τ coefficientsWithScratch (Env.frame [] [a, b, t, c, s])
       (Fp.blocks [t, c, s] [7, 2, 2])
       (fun m' => m'.pos = m.pos ∧ m'.readBlocks [c, s] [2, 2] =
         some [[(roundedGivensCoeffs M u v).1.re, (roundedGivensCoeffs M u v).1.im],
@@ -419,7 +425,11 @@ theorem coefficientsWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst
 coefficients for every pair, including the zero pair. The scratch buffer is separate from
 all inputs and outputs; the two output views are spatially disjoint and may share a buffer.
 Outputs may coincide with the original inputs because their components are captured first.
-[GolubVanLoan2013, Algorithm 5.1.3]. -/
+[GolubVanLoan2013, Algorithm 5.1.3].
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
+`NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem coefficientsWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {a b t c s : ℕ × ℕ} {u v : ℂ}
@@ -431,7 +441,7 @@ theorem coefficientsWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hv1 : m.store.get b.1 (b.2 + 1) = some v.im)
     (ht : t.2 + 7 ≤ m.store.len t.1)
     (hc : c.2 + 2 ≤ m.store.len c.1) (hs : s.2 + 2 ≤ m.store.len s.1) :
-    Writes .total I τ coefficientsWithScratch.body (Env.frame [] [a, b, t, c, s])
+    Writes .total I τ coefficientsWithScratch (Env.frame [] [a, b, t, c, s])
       (Fp.blocks [t, c, s] [7, 2, 2])
       (fun m' => m'.pos = m.pos ∧ m'.readBlocks [c, s] [2, 2] =
         some [[(givensCoeffs u v).1.re, (givensCoeffs u v).1.im],
@@ -443,7 +453,11 @@ theorem coefficientsWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 /-- Scoped coefficient computation on any machine stores `NLAlib.roundedGivensCoeffs`
 and releases all scratch. Input and output views may overlap; the two output views are apart.
 The actual radius test covers the zero pair without a division by zero.
-[GolubVanLoan2013, Algorithm 5.1.3]. -/
+[GolubVanLoan2013, Algorithm 5.1.3].
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
+`NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem coefficients_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {a b c s : ℕ × ℕ} {u v : ℂ}
@@ -453,7 +467,7 @@ theorem coefficients_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hv0 : m.store.get b.1 b.2 = some v.re)
     (hv1 : m.store.get b.1 (b.2 + 1) = some v.im)
     (hc : c.2 + 2 ≤ m.store.len c.1) (hs : s.2 + 2 ≤ m.store.len s.1) :
-    Writes .total I τ coefficients.body (Env.frame [] [a, b, c, s])
+    Writes .total I τ coefficients (Env.frame [] [a, b, c, s])
       (Fp.blocks [c, s] [2, 2])
       (fun m' => m'.pos = m.pos ∧ m'.readBlocks [c, s] [2, 2] =
         some [[(roundedGivensCoeffs M u v).1.re, (roundedGivensCoeffs M u v).1.im],
@@ -504,7 +518,11 @@ theorem coefficients_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
 /-- Scoped coefficient computation returns the exact complex Givens coefficients and
 releases all scratch. Input and output views may overlap; the two output views are apart.
 The actual radius test covers the zero pair without a division by zero.
-[GolubVanLoan2013, Algorithm 5.1.3]. -/
+[GolubVanLoan2013, Algorithm 5.1.3].
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
+`NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem coefficients_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {a b c s : ℕ × ℕ} {u v : ℂ}
@@ -514,7 +532,7 @@ theorem coefficients_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hv0 : m.store.get b.1 b.2 = some v.re)
     (hv1 : m.store.get b.1 (b.2 + 1) = some v.im)
     (hc : c.2 + 2 ≤ m.store.len c.1) (hs : s.2 + 2 ≤ m.store.len s.1) :
-    Writes .total I τ coefficients.body (Env.frame [] [a, b, c, s])
+    Writes .total I τ coefficients (Env.frame [] [a, b, c, s])
       (Fp.blocks [c, s] [2, 2])
       (fun m' => m'.pos = m.pos ∧ m'.readBlocks [c, s] [2, 2] =
         some [[(givensCoeffs u v).1.re, (givensCoeffs u v).1.im],

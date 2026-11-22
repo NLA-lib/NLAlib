@@ -7,7 +7,7 @@ module
 
 public import NLAlib.Estimation.Trace.HutchPlusPlus.Sketch
 public import NLAlib.Estimation.Trace.HutchPlusPlus.Math
-public import NLAlib.Matrix.Factorizations.MGS.Factor
+public import NLAlib.Matrix.Factorizations.MGS.Routine
 
 /-!
 # Preparing the Hutch++ basis and probes
@@ -17,7 +17,7 @@ tail are retained through that in-place prefix factorization.
 
 ## Main results
 
-* `NLAlib.HutchPlusPlus.writes_prepare` computes the packed basis and actual probes.
+* `NLAlib.HutchPlusPlus.prepare_writes` computes the packed basis and actual probes.
 -/
 
 @[expose] public section
@@ -64,8 +64,10 @@ variable [Has ScalarOp Op] [Has Blas1Op Op] [Has CmpTst Tst]
   {I : Interp Op Tst 𝕜} {τ : Tape 𝕜} {m : Mem 𝕜}
 
 /-- The preparation returns the rank-revealing basis and actual untouched probes.
-Every temporary allocation is cleaned up and both sample windows are identified exactly. -/
-theorem writes_prepare (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+Every temporary allocation is cleaned up and both sample windows are identified exactly.
+A fragment of `NLAlib.HutchPlusPlus.estimateRoutine`: run only inside its tree, on its
+operands and the buffers it allocates. -/
+theorem prepare_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hB : RCLikeBlas.IsExact I) (hC : IsCmp RCLike.re I)
     {dataLength : ℕ → ℕ → ℕ}
     {matrix : (m n : ℕ) → List 𝕜 → Matrix (Fin m) (Fin n) 𝕜}
@@ -75,7 +77,7 @@ theorem writes_prepare (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hBA : Fp.Disj (Store.inBlock b.1 b.2 ((k + ell) * n))
       (Store.inBlock data.1 data.2 (dataLength n n)))
     (hb : b.2 + (k + ell) * n ≤ m.store.len b.1) :
-    Writes .total I τ (prepare stream).body (Env.frame [n, k, ell] [data, b])
+    Writes .total I τ (prepare stream) (Env.frame [n, k, ell] [data, b])
       (Store.inBlock b.1 b.2 ((k + ell) * n))
       (fun m' => m'.pos = m.pos + n * (k + ell) ∧
         m'.store.readBlock b.1 b.2 ((k + ell) * n) =
@@ -94,14 +96,13 @@ theorem writes_prepare (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
       (Store.inBlock b.1 (b.2 + n * k) (n * ell)) :=
     Fp.disj_inBlock_of_le (by rw [Nat.mul_comm n k])
   unfold prepare
-  dsimp only
-  refine Writes.seq_le ((writes_sketch hI hSample stream as hl hA
+  refine Writes.seq_le ((sketch_writes hI hSample stream as hl hA
     (hBA.mono hsub le_rfl) (by rw [Nat.add_mul] at hb; omega)).in_frame rfl rfl hl) hsub ?_
   intro m₁ hfr₁ ⟨hp₁, hImage⟩
   have hlG : m₁.Live [(b.1, b.2 + n * k)] := by
     simp only [Mem.live_cons, Mem.live_nil]
     exact ⟨(hl.congr hfr₁.length_eq) b (by simp), trivial⟩
-  refine Writes.seq_le ((writes_sampleVector hSample stream
+  refine Writes.seq_le ((sampleVector_writes hSample stream
     (by change b.2 + n * k + n * ell ≤ m₁.store.len b.1
         rw [hfr₁.len_eq]
         rw [hsize] at hb
@@ -120,13 +121,24 @@ theorem writes_prepare (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
   have hlB : m₂.Live [b] := by
     simp only [Mem.live_cons, Mem.live_nil]
     exact ⟨(hl.congr (hfr₂.length_eq.trans hfr₁.length_eq)) b (by simp), trivial⟩
-  refine ((MGS.writes_factor hS hB hC (matrix n n as * S) hlB hImage₂
-    (by rw [hfr₂.len_eq, hfr₁.len_eq]; rw [Nat.add_mul] at hb; omega)).in_frame
-      rfl rfl hlB).mono hsub ?_
-  intro m₃ hfr₃ ⟨hp₃, hQ⟩
+  call (MGS.factorRoutine_meets (Op := Op) (Tst := Tst) hS hB hC) [n, k] (b)
+    as m₃ hfr₃ hp₃ (qs) hpost
+  case hroom =>
+    routine_nf
+    simp only [Mem.room_cons, Mem.room_nil, and_true]
+    rw [hfr₂.len_eq, hfr₁.len_eq]
+    rw [Nat.add_mul] at hb
+    omega
+  obtain rfl : qs = (EntryCodec.scalar 𝕜).packFinMatrix
+      (gramSchmidtQ ((EntryCodec.scalar 𝕜).matrix n k
+        ((EntryCodec.scalar 𝕜).packFinMatrix (matrix n n as * S)))) := hpost
+  have hQ : m₃.store.readBlock b.1 b.2 (k * n) =
+      some ((EntryCodec.scalar 𝕜).packFinMatrix (gramSchmidtQ (matrix n n as * S))) := by
+    rw [EntryCodec.matrix_packFinMatrix] at hqs
+    exact hqs
   refine ⟨by rw [hp₃, hp₂, hp₁, Nat.mul_add]; omega, ?_⟩
   apply read_basisProbes _ _ hQ
   exact hfr₃.keep (Store.readsOnly_readBlock _ _ _ _) (by
-    simpa only [Nat.mul_comm n ell] using hdis) hG
+    simpa [Fp.blocks, Nat.mul_comm n ell] using hdis) hG
 
 end NLAlib.HutchPlusPlus

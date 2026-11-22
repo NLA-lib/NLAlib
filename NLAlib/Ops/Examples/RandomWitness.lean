@@ -21,7 +21,7 @@ The hypotheses of the randomized examples can be met jointly.
   standard Gaussian. `NLAlib.Ops.Examples.exists_isTapeLaw_stdLaw`: there is a tape with these
   laws; its Gaussian stream is a standard law (`isStdLaw_stdLaw_gauss`).
 * `NLAlib.Ops.Examples.exists_isRandLin`: for every matrix there is an interpretation over the
-  real numbers, in exact arithmetic, that meets the contracts `IsRandLin` with tape-local
+  real numbers, in exact arithmetic, that satisfies the contracts `IsRandLin` with tape-local
   operations at the registered windows.
 * `NLAlib.Ops.Examples.exists_isRandLin_isTapeLaw`: the joint witness at the law level
   (interpretation, tape with the standard laws, standard decoded stream, isotropic probes).
@@ -119,15 +119,15 @@ noncomputable def randFns (A : Matrix (Fin n) (Fin n) ℝ) : ROp → BlockFn ℝ
   | .axpy => .of3 1 (fun _ => 1) (fun d => d.headD 0) (fun d => d.headD 0) (fun d => d.headD 0)
       fun _ a x y => some (List.ofFn fun i => decv id n y i + vec a 0 * decv id n x i)
 
-/-- **Witness**: for every matrix, the interpretation by exact real arithmetic meets the
+/-- **Witness**: for every matrix, the interpretation by exact real arithmetic satisfies the
 contracts of the randomized examples, and its operations read the tape only in the registered
 windows. -/
 theorem exists_isRandLin (A : Matrix (Fin n) (Fin n) ℝ) :
     ∃ I : Interp ROp Tst ℝ, IsRandLin id A I ∧ ∀ o, I.TapeLocal o (randWindow o) := by
   have hfn := fun o => Interp.ofFns_isFn (Tst := Tst) (randFns A) .total o AnyOperands
   refine ⟨Interp.ofFns (randFns A), ⟨⟨hfn .draw, ?_, ?_, ?_, ?_, fun q => ?_, ?_⟩, ?_⟩, fun o => ?_⟩
-  · exact Interp.IsFn.meets_matvec (A := A) (hfn (.operator .matvec))
-  · refine (hfn .dot).meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
+  · exact Interp.IsFn.satisfies_matvec (A := A) (hfn (.operator .matvec))
+  · refine (hfn .dot).satisfies_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
       (fun _ => rfl) (fun _ => rfl) ?_
     intro d w xs m ins outs hnd _ hadm hr _
     obtain ⟨k, rfl⟩ := List.length_eq_one_iff.mp hnd
@@ -135,14 +135,14 @@ theorem exists_isRandLin (A : Matrix (Fin n) (Fin n) ℝ) :
     obtain ⟨x, y, xs, ys, rfl, hx, hy, rfl⟩ := Mem.readBlocks_two hr
     exact ⟨[[∑ i, decv id n xs i * decv id n ys i]], by simp [randFns, BlockFn.of2], rfl,
       Fin.sum_univ_eq_sum_range (fun i => vec xs i * vec ys i) n⟩
-  · refine (hfn .add).meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
+  · refine (hfn .add).satisfies_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
       (fun _ => rfl) (fun _ => rfl) ?_
     intro d w xs m ins outs hnd _ hadm hr _
     obtain ⟨x, y, xs, ys, rfl, hx, hy, rfl⟩ := Mem.readBlocks_two hr
     obtain ⟨a, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock hx)
     obtain ⟨b, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock hy)
     exact ⟨[[a + b]], by simp [randFns, BlockFn.bin], rfl, rfl⟩
-  · refine (hfn .nrm2).meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
+  · refine (hfn .nrm2).satisfies_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
       (fun _ => rfl) (fun _ => rfl) ?_
     intro d w xs m ins outs hnd _ hadm hr _
     obtain ⟨k, rfl⟩ := List.length_eq_one_iff.mp hnd
@@ -150,13 +150,13 @@ theorem exists_isRandLin (A : Matrix (Fin n) (Fin n) ℝ) :
     obtain ⟨x, xs, rfl, hx, rfl⟩ := Mem.readBlocks_one hr
     exact ⟨[[√(∑ i, decv id n xs i ^ 2)]], by simp [randFns, BlockFn.of1], rfl,
       congrArg Real.sqrt (Fin.sum_univ_eq_sum_range (fun i => vec xs i ^ 2) n)⟩
-  · refine (hfn (.mulc q)).meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
+  · refine (hfn (.mulc q)).satisfies_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
       (fun _ => rfl) (fun _ => rfl) ?_
     intro d w xs m ins outs hnd _ hadm hr _
     obtain ⟨x, xs, rfl, hx, rfl⟩ := Mem.readBlocks_one hr
     obtain ⟨a, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock hx)
     exact ⟨[[(q : ℝ) * a]], by simp [randFns, BlockFn.un], rfl, rfl⟩
-  · refine (hfn .axpy).meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
+  · refine (hfn .axpy).satisfies_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl)
       (fun _ => rfl) (fun _ => rfl) ?_
     intro d w xs m ins outs hnd _ hadm hr _
     obtain ⟨k, rfl⟩ := List.length_eq_one_iff.mp hnd
@@ -168,14 +168,14 @@ theorem exists_isRandLin (A : Matrix (Fin n) (Fin n) ℝ) :
       intro j hj
       exact congrFun (decv_ofFn (fun i : Fin n =>
         decv id n ys i + vec [a] 0 * decv id n xs i)) ⟨j, hj⟩⟩
-  · exact (hfn .gauss).meets_drawRel fun _ _ _ _ => trivial
+  · exact (hfn .gauss).satisfies_drawRel fun _ _ _ _ => trivial
   · have := Interp.ofFns_tapeLocal (Tst := Tst) (randFns A) o
     cases o
     case operator op => cases op; exact this
     all_goals exact this
 
 /-- **Joint witness of the randomized examples at the law level**: for every matrix, an
-interpretation meeting the contracts of the exact operations and the draws with tape-local
+interpretation satisfying the contracts of the exact operations and the draws with tape-local
 operations, a random tape with the standard laws, whose Gaussian stream decodes to a standard
 law and whose probes are isotropic. This is the contract set of `runsLaw_hutch`,
 `runsLaw_hutch_link` and `runsLaw_npow_link`. -/
@@ -207,7 +207,7 @@ interpretation that applies it to the window. -/
 theorem exists_isNoisy (N : (Fin n → ℝ) → (Fin n → ℝ) → Fin n → ℝ) :
     ∃ J : Interp NOp Tst ℝ, IsNoisy id N J := by
   refine ⟨Interp.ofFns fun _ => nmvFn N,
-    (Interp.ofFns_isFn (Tst := Tst) (fun _ : NOp => nmvFn N) .total .nmv AnyOperands).meets_rel
+    (Interp.ofFns_isFn (Tst := Tst) (fun _ : NOp => nmvFn N) .total .nmv AnyOperands).satisfies_rel
       (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) ?_⟩
   intro d w xs m ins outs hnd _ hadm hr _
   obtain ⟨k, rfl⟩ := List.length_eq_one_iff.mp hnd
@@ -217,7 +217,7 @@ theorem exists_isNoisy (N : (Fin n → ℝ) → (Fin n → ℝ) → Fin n → �
     by simp [nmvRel, decv_ofFn]⟩
 
 /-- **Joint witness of the noisy power iteration at the law level**: for every matrix and every
-`σ`, an interpretation meeting the contract of `nmv` for a noise function with the conditional
+`σ`, an interpretation satisfying the contract of `nmv` for a noise function with the conditional
 law of `A v + σ ‖v‖ g`, `g` isotropic, and a random tape with the standard laws. This is the
 contract set of `runsLaw_npow`. -/
 theorem exists_isNoisy_isNoisyMv (A : Matrix (Fin n) (Fin n) ℝ) (σ : ℝ) :

@@ -5,7 +5,6 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Eigensolvers.ShiftedQR.Step
 public import NLAlib.Eigensolvers.ShiftedQR.StepProgram
 
 /-!
@@ -34,18 +33,24 @@ matrix words and shift words are unrestricted.
 Algorithm: shifted-qr-step (run model) -/
 noncomputable def stepAlgorithm (M : Machine ℝ) (hE : ExactModel id M) :
     Algorithm (RoundedScalarBlas.model stepProblem M) stepSpecification := by
-  refine Algorithm.ofWp stepProgram wellTyped_stepProgram ?_
-    (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) ?_
-  · intro d _ x I hI τ
+  refine stepInputs.algorithm (fun _ _ => stepSpec) (ht := wellTyped_stepProgram)
+    ?_ ?_ ?_ (hmemory := ?_)
+  · intro d _ x I hI
     obtain ⟨hS, hCmp⟩ := RoundedScalarBlas.model_laws hI
-    rcases initial_step_geometry d x with ⟨hl, hz, hlength, _⟩
-    have hstep := shiftedStep_writes (τ := τ) hS hE hCmp hl
-      (initial_step_matrix d x) (initial_step_shift d x)
-      (by simpa only [Nat.zero_add] using hz.ge) (by disjoint) (by disjoint)
-    refine (hstep.in_frame ?_ rfl hl).wp ?_
-    · simp [Program.environment, List.ofFn_succ, IExp.evalList, IExp.eval]
-    · intro m' hfr ⟨hp, hH⟩ c _
-      exact ⟨hp, hfr.length_eq.trans hlength, hH⟩
+    exact stepRoutine_meets hS hE hCmp
+  · intro d _ x _ _
+    trivial
+  · intro d _ x τ m' hfr hpos ys hys hrel c _
+    read_outputs hys as (zs)
+    have hval : zs = matrixWords (shiftedQRStep (stepInputMatrix d x) (stepInputShift d x)) := by
+      have h : zs = matrixWords (shiftedQRStep
+          (matrixOfWords (d 0 + 1) (matrixWords (stepInputMatrix d x)))
+          (stepInputShift d x)) := hrel
+      rw [matrixOfWords_matrixWords] at h
+      exact h
+    refine ⟨hpos, by simpa [Problem.initial] using hfr.length_eq, ?_⟩
+    rw [hval] at hzs
+    exact hzs
   · intro d _ x
     rw [initialBytes_stepProblem]
     exact le_rfl
@@ -56,5 +61,14 @@ included in this value. -/
 noncomputable def exactStepAlgorithm :
     Algorithm (RoundedScalarBlas.model stepProblem exactMachine) stepSpecification :=
   stepAlgorithm exactMachine exactModel_exactMachine
+
+/-- What the certificate states: at every admitted size, for every admitted input, every
+interpretation satisfying the contracts of the model and every tape, the run of the fixed program
+from the supplied buffers succeeds within the scratch, the budget, the work and the span of the
+specification, and its final memory satisfies the output condition
+(`NLAlib.Ops.Routine.Domain.Checked`). Every matrix and shift is admitted. -/
+theorem step_checked (M : Machine ℝ) (hE : ExactModel id M) :
+    stepInputs.Checked (stepAlgorithm M hE) :=
+  stepInputs.checked_all _
 
 end NLAlib.ShiftedQR

@@ -8,6 +8,7 @@ module
 public meta import NLAlib.Ops.Tools.LintRegistry
 public meta import NLAlib.Ops.Law
 public meta import NLAlib.Ops.Profile
+public meta import NLAlib.Ops.Routine
 
 /-!
 # Tools: the target linter
@@ -17,14 +18,15 @@ access models, total execution, format typing, and full resource accounting in t
 linter provides additional heuristic statement guidance for raw conditional proof consumers.
 
 This is heuristic guidance for conditional judgments, not a certification boundary.
-Canonical `Runs`, `Program.Certifies`, and `Impl.Meets` are recognized but reported as
-unsupported by these conditional heuristics, never marked as passing them.
+Canonical `Runs` and `Program.Certifies` are recognized but reported as unsupported by these
+conditional heuristics, never marked as passing them.
 
 A **conditional headline** contains `ConditionalRuns`, `ConditionalRunsW`, `ConditionalRunsL`,
-`ConditionalRunsLaw`, or `Impl.Triple`. For each conditional occurrence the linter checks:
+`ConditionalRunsLaw`, `Impl.Satisfies` or `Routine.Meets` (the judgment of a routine, which is
+total). For each conditional occurrence the linter checks:
 
-* **(a) uniformity.** The program (the tree of `ConditionalRuns …`, or the implementation
-  of `Impl.Triple`),
+* **(a) uniformity.** The program (the tree of `ConditionalRuns …`, the implementation
+  of `Impl.Satisfies`, or the routine of `Routine.Meets`),
   with the tables of `Stmt.link` set apart, mentions no variable of the statement other than
   universally quantified sizes (`ℕ`), rational constants (`ℚ`), types and instances; and
   reaches no `noncomputable` definition (a function of the sizes that no machine computes).
@@ -44,16 +46,16 @@ A **conditional headline** contains `ConditionalRuns`, `ConditionalRunsW`, `Cond
 * **(d) closed-form counts.** The counts and the workspace of the statement reach no
   `Count.push`, `stmtCost`, `stmtPeak`, `staticCost`, `staticPeak`, `Count.upper` or `Profile.cost`.
 * **(e) liberal headlines.** A liberal statement (`ConditionalRunsL`,
-  `Impl.Triple … .liberal`) has a
+  `Impl.Satisfies … .liberal`) has a
   companion success statement (`ConditionalRuns`, `ConditionalRunsW`, `ConditionalRunsLaw`,
-  or a total `Impl.Triple`) about the same program. The companion is in the same module or
+  or a total `Impl.Satisfies`) about the same program. The companion is in the same module or
   named `<name>_success`. Its conclusion must
   establish the success judgment, either directly or in a conjunction. Programs are compared
   syntactically up to renaming of parameters, including the arguments of linked tables.
   The companion's program and interpretation must be independent of existential choices.
 * **(f) ξ only in tables.** The algorithm's tree (the program with its tables set apart) reaches
-  no ξ-taking primitive (`ops_register_xi`, or a constructor named `…Xi`). An `Impl.Triple` about an
-  implementation that a table or profile uses is exempt.
+  no ξ-taking primitive (`ops_register_xi`, or a constructor named `…Xi`). An `Impl.Satisfies` or a
+  `Routine.Meets` about an implementation or a routine that a table or profile uses is exempt.
 
 Commands: `#ops_lint c₁ c₂ …` (an error per conditional violation, information for a pass
 or explicit `UNSUPPORTED` schema diagnostic) and
@@ -93,10 +95,10 @@ def heads : List Head :=
    ⟨``NLAlib.Ops.ConditionalRunsW, `s, [`M, `Q], false⟩,
    ⟨``NLAlib.Ops.ConditionalRunsL, `s, [], true⟩,
    ⟨``NLAlib.Ops.ConditionalRunsLaw, `s, [`B, `M], false⟩,
-   ⟨``NLAlib.Ops.Impl.Triple, `R, [], false⟩,
+   ⟨``NLAlib.Ops.Impl.Satisfies, `E, [], false⟩,
    ⟨``NLAlib.Ops.Runs, `p, [], false⟩,
    ⟨``NLAlib.Ops.Program.Certifies, `p, [], false⟩,
-   ⟨``NLAlib.Ops.Impl.Meets, `R, [], false⟩,
+   ⟨``NLAlib.Ops.Routine.Meets, `R, [], false⟩,
    ⟨``NLAlib.Ops.Profile.Refines, `P, [], false⟩]
 
 /-- An occurrence of a headline judgment in a conclusion. -/
@@ -376,7 +378,7 @@ def successKeysOf (n : Name) : MetaM (Array Expr) := do
   let mut keys := #[]
   for o in occs do
     if o.head.liberal then continue
-    if o.head.name == ``NLAlib.Ops.Impl.Triple then
+    if o.head.name == ``NLAlib.Ops.Impl.Satisfies then
       let some md ← argByName o.head.name o.args `md | continue
       let md ← withLCtx o.lctx o.localInsts (whnf md)
       unless md.isConstOf ``NLAlib.Ops.Mode.total do continue
@@ -402,7 +404,12 @@ def tableImpls : MetaM NameSet := do
     let some (.defnInfo d) := env.find? n | continue
     if !inLib n then continue
     if !(← isTableLike d.type) then continue
-    for c in d.value.getUsedConstants do s := s.insert c
+    for c in d.value.getUsedConstants do
+      s := s.insert c
+      -- an implementation obtained from a routine (`R.impl`) makes the routine one too
+      if let some (.defnInfo dc) := env.find? c then
+        if dc.type.getForallBody.getAppFn.isConstOf ``NLAlib.Ops.Impl then
+          for c' in dc.value.getUsedConstants do s := s.insert c'
   return s
 
 /-- The forbidden constants of closed-form counts. -/
@@ -420,8 +427,7 @@ structure Ctx where
 
 /-- Schemas that are recognized but are outside conditional headline guidance. -/
 def schemaIssue (h : Head) : Option String :=
-  if [``NLAlib.Ops.Runs, ``NLAlib.Ops.Program.Certifies,
-      ``NLAlib.Ops.Impl.Meets].contains h.name then
+  if [``NLAlib.Ops.Runs, ``NLAlib.Ops.Program.Certifies].contains h.name then
     some ("canonical structural certificate: conditional (a)-(f) guidance does " ++
       "not inspect this schema; totality, formats, and accounting are enforced by the core")
   else if h.name == ``NLAlib.Ops.Profile.Refines then
@@ -487,7 +493,7 @@ def lintOcc (ctx : Ctx) (n : Name) (o : Occ) : MetaM (Array (String × String)) 
             out := out.push ("d", s!"the bound `{nm}` is not in closed form: it uses `{c}`")
     -- (e)
     let mdLib ← do
-      if h.name == ``NLAlib.Ops.Impl.Triple then
+      if h.name == ``NLAlib.Ops.Impl.Satisfies then
         match ← argByName h.name o.args `md with
         | some md => pure ((← whnf md).isConstOf ``NLAlib.Ops.Mode.liberal)
         | none => pure false
@@ -500,7 +506,7 @@ def lintOcc (ctx : Ctx) (n : Name) (o : Occ) : MetaM (Array (String × String)) 
         out := out.push ("e", "a liberal statement without a success statement about the \
           same program")
     -- (f)
-    let exempt := h.name == ``NLAlib.Ops.Impl.Triple &&
+    let exempt := (h.name == ``NLAlib.Ops.Impl.Satisfies || h.name == ``NLAlib.Ops.Routine.Meets) &&
       ((p.getAppFn.constName?).map ctx.impls.contains).getD false
     unless exempt do
       for c in ← xiPrims cs do

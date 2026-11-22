@@ -64,7 +64,7 @@ $0.66\,\tau$, otherwise the flag $1$ and the estimate $0$, which ends the loop);
 $0.9\beta' < \tau$, the flag $1$ (`NLAlib.SmallEig.oneEigCheck`). The interface is
 `[N, m, q, t] (H, Q) → (Lam, Fl)`; the scratch is scoped.
 Algorithm: small-eig -/
-def oneEig : Impl O Q := opsImpl% [N, m, q, t] (H, Qw) → (Lam, Fl) {
+def oneEig : Stmt O Q := ops% [N, m, q, t] (H, Qw) → (Lam, Fl) {
   let Tau ← alloc 1;
   let Z ← alloc 2;
   let Pt ← alloc 2;
@@ -72,12 +72,12 @@ def oneEig : Impl O Q := opsImpl% [N, m, q, t] (H, Qw) → (Lam, Fl) {
   let Bt ← alloc 3;
   let D ← alloc 12;
   let K ← alloc 2;
-  run (oneEigStart (O := O) (Q := Q)).body [N, m, q] (H, Qw, Lam, Tau, Fl, D, K);
+  run (oneEigStart (O := O) (Q := Q)) [N, m, q] (H, Qw, Lam, Tau, Fl, D, K);
   while i < t, (Has.inj CmpTst.lt) [] (Qw[5], Tau) {
-    run (oneEigRound (O := O) (Q := Q)).body [N, m, q]
+    run (oneEigRound (O := O) (Q := Q)) [N, m, q]
       (H, Qw, D, Lam, Tau, Fl, Z, Pt, Tc, Bt, K)
   } then {
-    run (oneEigCheck (O := O) (Q := Q)).body [] (Qw[5], Tau, Fl)
+    run (oneEigCheck (O := O) (Q := Q)) [] (Qw[5], Tau, Fl)
   }
 }
 
@@ -117,14 +117,16 @@ theorem OneEigInput.disj {n : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} 
 /-- `NLAlib.SmallEig.oneEig` on a scalar machine with the literal $0$ exact, index literals,
 exact comparisons and an exact polar sampler: from `NLAlib.SmallEig.OneEigInput` with at least
 six words, on every tape, it writes only the pair `lam` and the flag `f`, and stores a pair and a
-flag $0$ or $1$. -/
+flag $0$ or $1$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem oneEig_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hzero : M.lit 0 = 0) (hL : IsIndexLit M I) (hCmp : IsCmp id I) {sU : ℕ}
     (hDisk : IsPolarDiskSampler sU I) {n m q t : ℕ} (hNat : IsExactNatLit id M n)
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {qs : List ℝ} (hqs : 6 ≤ qs.length) {τ : Tape ℝ} {μ : Mem ℝ} {h qw lam f : ℕ × ℕ}
     (hin : OneEigInput H qs h qw lam f μ) :
-    Writes .total I τ (oneEig (O := O) (Q := Q)).body (Env.frame [n + 1, m, q, t] [h, qw, lam, f])
+    Writes .total I τ (oneEig (O := O) (Q := Q)) (Env.frame [n + 1, m, q, t] [h, qw, lam, f])
       (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1)
       (fun μ' => (∃ z : ℂ, μ'.store.readBlock lam.1 lam.2 2 = some [z.re, z.im]) ∧
         (μ'.store.get f.1 f.2 = some (M.lit 0) ∨ μ'.store.get f.1 f.2 = some (M.lit 1))) μ := by
@@ -366,7 +368,7 @@ theorem oneEigRound_step {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : 
     (hgood : Tape.windowFn τ sU μ.pos 2 ∉ {x : Fin 2 → ℝ | (∃ k, x k ∉ Set.Icc (0 : ℝ) 1) ∨
       ∃ (j : Fin 6) (i : Fin (n + 1)),
         ‖oneEigCentre M lam L j μ + polarDisk 0 η₂ x - d i‖ < η₁ + 40 * u * S}) :
-    Writes .total I τ (oneEigRound (O := O) (Q := Q)).body
+    Writes .total I τ (oneEigRound (O := O) (Q := Q))
       (Env.frame [n + 1, m, q] [h, qw, (L + 5, 0), lam, (L, 0), f, (L + 1, 0), (L + 2, 0),
         (L + 3, 0), (L + 4, 0), (L + 6, 0)])
       (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
@@ -433,7 +435,7 @@ theorem oneEigStart_step {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M
     (hF : OneEigFrame H qs h qw lam f L μ)
     (hgood : Tape.windowFn τ sU μ.pos 2 ∉ {x : Fin 2 → ℝ | (∃ k, x k ∉ Set.Icc (0 : ℝ) 1) ∨
       ∃ i, ‖polarDisk 0 η₂ x - d i‖ < η₁ + ε}) :
-    Writes .total I τ (oneEigStart (O := O) (Q := Q)).body
+    Writes .total I τ (oneEigStart (O := O) (Q := Q))
       (Env.frame [n + 1, m, q] [h, qw, lam, (L, 0), f, (L + 5, 0), (L + 6, 0)])
       (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
       (OneEigLoopInv M H d qs h qw lam f L β η₁ η₂ η 0) μ := by
@@ -469,7 +471,7 @@ theorem oneEigCheck_exit {M : Machine ℝ} {I : Interp O Q ℝ} (hCmp : IsCmp id
     (hq5 : qs.getD 5 0 = 0.9 * β) {τ : Tape ℝ} {μ : Mem ℝ} {h qw lam f : ℕ × ℕ} {i : ℕ}
     (hI : OneEigLoopInv M H d qs h qw lam f L β η₁ η₂ η i μ)
     (hτ : ∀ v, μ.store.get L 0 = some v → v ≤ 0.9 * β) :
-    Writes .total I τ (oneEigCheck (O := O) (Q := Q)).body
+    Writes .total I τ (oneEigCheck (O := O) (Q := Q))
       (Env.frame [] [(qw.1, qw.2 + 5), (L, 0), f]) (Store.inBlock f.1 f.2 1)
       (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧ ∃ z : ℂ,
         μ'.store.readBlock lam.1 lam.2 2 = some [z.re, z.im] ∧
@@ -486,15 +488,16 @@ theorem oneEigCheck_exit {M : Machine ℝ} {I : Interp O Q ℝ} (hCmp : IsCmp id
   · rw [← infDist_range_eq_iInf]; linarith [(hrun.accurate i le_rfl).1]
 
 open MeasureTheory in
-/-- The start of `OneEig` as a probabilistic block: on a scalar machine with index literals,
-the literal $0$ exact and an exact polar sampler on a stream `sU` uniform on $[0, 1]$, with
-`DistSpec` accurate (`NLAlib.SmallEig.DistSpecAccurateOn`) on the points of modulus at most
-$10\Sigma$ at distance at least $\eta_1$ from the $d_i$, $0 < \eta_2 \le 0.02\,\Sigma$,
-$\varepsilon \ge 0$, $\eta_1 + \varepsilon \ge 0$, distinct $d_i$ at distance at least
-$2(\eta_1 + \varepsilon + \eta_2)$ and the word $\eta_2$ at `qw[4]` of at least six words: from
-the frame `NLAlib.SmallEig.OneEigFrame`, except with probability at most
-$((\eta_1 + \varepsilon)/\eta_2)^2$, the start writes only the point, the flag and the scratch and
-ends in the loop invariant `NLAlib.SmallEig.OneEigLoopInv` before round $0$. -/
+/-- The start of `OneEig` as a probabilistic block: on a scalar machine with index literals, the
+literal $0$ exact and an exact polar sampler on a stream `sU` uniform on $[0, 1]$, with `DistSpec`
+accurate (`NLAlib.SmallEig.DistSpecAccurateOn`) on the points of modulus at most $10\Sigma$ at
+distance at least $\eta_1$ from the $d_i$, $0 < \eta_2 \le 0.02\,\Sigma$, $\varepsilon \ge 0$,
+$\eta_1 + \varepsilon \ge 0$, distinct $d_i$ at distance at least $2(\eta_1 + \varepsilon + \eta_2)$
+and the word $\eta_2$ at `qw[4]` of at least six words: from the frame
+`NLAlib.SmallEig.OneEigFrame`, except with probability at most $((\eta_1 + \varepsilon)/\eta_2)^2$,
+the start writes only the point, the flag and the scratch and ends in the loop invariant
+`NLAlib.SmallEig.OneEigLoopInv` before round $0$. A fragment: its tree runs only inside the tree of
+`NLAlib.SmallEig.oneEig`. -/
 theorem oneEigStart_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hL : IsIndexLit M I) (h0 : M.lit 0 = 0) {sU : ℕ} (hDisk : IsPolarDiskSampler sU I)
     {law : ℕ → Measure ℝ} (hU : law sU = volume.restrict (Set.Icc 0 1))
@@ -505,7 +508,7 @@ theorem oneEigStart_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScala
     (hη₂ : 0 < η₂) (hη₂S : η₂ ≤ 0.02 * S) (hε : 0 ≤ ε) (hη₁ε : 0 ≤ η₁ + ε)
     (hsep : ∀ i j, d i ≠ d j → 2 * (η₁ + ε + η₂) ≤ ‖d i - d j‖) {qs : List ℝ}
     (hqs : 6 ≤ qs.length) (hq4 : qs.getD 4 0 = η₂) {h qw lam f : ℕ × ℕ} :
-    PWrites law I (oneEigStart (O := O) (Q := Q)).body
+    PWrites law I (oneEigStart (O := O) (Q := Q))
       (Env.frame [n + 1, m, q] [h, qw, lam, (L, 0), f, (L + 5, 0), (L + 6, 0)])
       (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
       (OneEigFrame H qs h qw lam f L) (OneEigLoopInv M H d qs h qw lam f L β η₁ η₂ η 0)
@@ -528,17 +531,18 @@ theorem oneEigStart_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScala
   simpa using measureReal_polarDisk_bad_le (fun _ : Fin 1 => (0 : ℂ)) d hη₂ hη₁ε hsep
 
 open MeasureTheory in
-/-- A round of `OneEig` as a probabilistic block: on a scalar machine in the standard model at
-$0 \le \boldsymbol{u} \le 1/5000$ with index literals, the literals $0$ and $1$ exact, exact
+/-- A round of `OneEig` as a probabilistic block: on a scalar machine in the standard model at $0
+\le \boldsymbol{u} \le 1/5000$ with index literals, the literals $0$ and $1$ exact, exact
 comparisons and an exact polar sampler on a stream `sU` uniform on $[0, 1]$, with `DistSpec`
 accurate (`NLAlib.SmallEig.DistSpecAccurateOn`) on the points of modulus at most $10\Sigma$ at
-distance at least $\eta_1$ from the $d_i$, $\lvert d_i\rvert \le \Sigma$,
-$0 < \eta_2 \le 0.02\,\Sigma$, $\beta > 0$, $\eta_2 + 60\boldsymbol{u}\Sigma \le 0.027\,\beta$,
-$\eta_1 + 40\boldsymbol{u}\Sigma \ge 0$, distinct $d_i$ at distance at least
-$2(\eta_1 + 40\boldsymbol{u}\Sigma + \eta_2)$ and the word $\eta_2$ at `qw[4]` of at least six
-words: round $i$ from the loop invariant `NLAlib.SmallEig.OneEigLoopInv` with an estimate above
-$0.9\beta$ ends in the invariant before round $i + 1$, writing only the point, the flag and the
-scratch, except with probability at most $6((\eta_1 + 40\boldsymbol{u}\Sigma)/\eta_2)^2$. -/
+distance at least $\eta_1$ from the $d_i$, $\lvert d_i\rvert \le \Sigma$, $0 < \eta_2 \le
+0.02\,\Sigma$, $\beta > 0$, $\eta_2 + 60\boldsymbol{u}\Sigma \le 0.027\,\beta$, $\eta_1 +
+40\boldsymbol{u}\Sigma \ge 0$, distinct $d_i$ at distance at least $2(\eta_1 +
+40\boldsymbol{u}\Sigma + \eta_2)$ and the word $\eta_2$ at `qw[4]` of at least six words: round $i$
+from the loop invariant `NLAlib.SmallEig.OneEigLoopInv` with an estimate above $0.9\beta$ ends in
+the invariant before round $i + 1$, writing only the point, the flag and the scratch, except with
+probability at most $6((\eta_1 + 40\boldsymbol{u}\Sigma)/\eta_2)^2$. A fragment: its tree runs only
+inside the tree of `NLAlib.SmallEig.oneEig`. -/
 theorem oneEigRound_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hu0 : 0 ≤ u) (hu : u ≤ 1 / 5000) (hL : IsIndexLit M I)
     (h0 : M.lit 0 = 0) (h1 : M.lit 1 = 1) (hCmp : IsCmp id I) {sU : ℕ}
@@ -551,7 +555,7 @@ theorem oneEigRound_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS
     (hηr : η₂ + 60 * u * S ≤ 0.027 * β) (hη₁ε : 0 ≤ η₁ + 40 * u * S)
     (hsep : ∀ i j, d i ≠ d j → 2 * (η₁ + 40 * u * S + η₂) ≤ ‖d i - d j‖) {qs : List ℝ}
     (hqs : 6 ≤ qs.length) (hq4 : qs.getD 4 0 = η₂) {h qw lam f : ℕ × ℕ} (i : ℕ) :
-    PWrites law I (oneEigRound (O := O) (Q := Q)).body
+    PWrites law I (oneEigRound (O := O) (Q := Q))
       (Env.frame [n + 1, m, q] [h, qw, (L + 5, 0), lam, (L, 0), f, (L + 1, 0), (L + 2, 0),
         (L + 3, 0), (L + 4, 0), (L + 6, 0)])
       (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1 ⊔ Fp.above L)
@@ -645,19 +649,19 @@ theorem OneEigLoopInv.le_of_testAt {M : Machine ℝ} {I : Interp O Q ℝ} (hCmp 
   simpa using ht
 
 open MeasureTheory in
-/-- `OneEig` as a probabilistic block, from the precision facts: on a scalar machine in the
-standard model at $0 \le \boldsymbol{u} \le 1/5000$ with index literals, the literals $0$ and $1$
-exact, exact comparisons, a measurable interpretation reading the tape only in its windows and an
-exact polar sampler on a stream `sU` uniform on $[0, 1]$, with `DistSpec` accurate on the points
-of modulus at most $10\Sigma$ at distance at least $\eta_1$ from the $d_i$, $\lvert d_i\rvert \le
-\Sigma$, $0 < \eta_2 \le 0.02\,\Sigma$, $\beta > 0$,
-$\eta_2 + 60\boldsymbol{u}\Sigma \le 0.027\,\beta$, $\eta_1 + 40\boldsymbol{u}\Sigma \ge 0$,
-distinct $d_i$ at distance at least $2(\eta_1 + 40\boldsymbol{u}\Sigma + \eta_2)$,
-$2.3 \cdot 0.66^t \cdot 2\Sigma \le 0.9\beta$ and the words `qs` with $\eta_2$ at $4$ and
-$0.9\beta$ at $5$: from `NLAlib.SmallEig.OneEigInput`, except with probability at most
-$(6t + 1)((\eta_1 + 40\boldsymbol{u}\Sigma)/\eta_2)^2$, the run writes only the pair and the flag,
-sets the flag to $0$ and stores a point $z$ with $\eta_1 \le \min_i\lvert z - d_i\rvert \le
-\beta$. -/
+/-- `OneEig` as a probabilistic block, from the precision facts: on a scalar machine in the standard
+model at $0 \le \boldsymbol{u} \le 1/5000$ with index literals, the literals $0$ and $1$ exact,
+exact comparisons, a measurable interpretation reading the tape only in its windows and an exact
+polar sampler on a stream `sU` uniform on $[0, 1]$, with `DistSpec` accurate on the points of
+modulus at most $10\Sigma$ at distance at least $\eta_1$ from the $d_i$, $\lvert d_i\rvert \le
+\Sigma$, $0 < \eta_2 \le 0.02\,\Sigma$, $\beta > 0$, $\eta_2 + 60\boldsymbol{u}\Sigma \le
+0.027\,\beta$, $\eta_1 + 40\boldsymbol{u}\Sigma \ge 0$, distinct $d_i$ at distance at least
+$2(\eta_1 + 40\boldsymbol{u}\Sigma + \eta_2)$, $2.3 \cdot 0.66^t \cdot 2\Sigma \le 0.9\beta$ and the
+words `qs` with $\eta_2$ at $4$ and $0.9\beta$ at $5$: from `NLAlib.SmallEig.OneEigInput`, except
+with probability at most $(6t + 1)((\eta_1 + 40\boldsymbol{u}\Sigma)/\eta_2)^2$, the run writes only
+the pair and the flag, sets the flag to $0$ and stores a point $z$ with $\eta_1 \le \min_i\lvert z -
+d_i\rvert \le \beta$. A fragment: its tree runs only inside the tree of
+`NLAlib.SmallEig.smallEigDecoupler`. -/
 theorem oneEig_pwrites_of {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hu0 : 0 ≤ u) (hu : u ≤ 1 / 5000) (hL : IsIndexLit M I)
     (h0 : M.lit 0 = 0) (h1 : M.lit 1 = 1) (hCmp : IsCmp id I) (hI : I.IsMeasurable)
@@ -672,7 +676,7 @@ theorem oneEig_pwrites_of {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
     (hsep : ∀ i j, d i ≠ d j → 2 * (η₁ + 40 * u * S + η₂) ≤ ‖d i - d j‖)
     (ht : 2.3 * 0.66 ^ t * (2 * S) ≤ 0.9 * β) {qs : List ℝ} (hqs : 6 ≤ qs.length)
     (hq4 : qs.getD 4 0 = η₂) (hq5 : qs.getD 5 0 = 0.9 * β) {h qw lam f : ℕ × ℕ} :
-    PWrites law I (oneEig (O := O) (Q := Q)).body (Env.frame [n + 1, m, q, t] [h, qw, lam, f])
+    PWrites law I (oneEig (O := O) (Q := Q)) (Env.frame [n + 1, m, q, t] [h, qw, lam, f])
       (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1) (OneEigInput H qs h qw lam f)
       (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧ ∃ z : ℂ,
         μ'.store.readBlock lam.1 lam.2 2 = some [z.re, z.im] ∧
@@ -803,7 +807,9 @@ shift reach $10\Sigma''$: $(n + 1)\boldsymbol{u} \le 1/2500$, $30000(m + 1)\bold
 $300(n + 1)^2\boldsymbol{u} \le (8004\kappa)^{-1}(\eta_1/(2\|\mathbf{H}\|_2 + 20\Sigma''))^m$. Then
 from `NLAlib.SmallEig.OneEigInput`, except with probability at most $\varphi$, the run writes only
 the pair and the flag, sets the flag to $0$ and stores a point $z$ with $\eta_1 \le \min_i\lvert z -
-d_i\rvert \le \beta'$. -/
+d_i\rvert \le \beta'$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem oneEig_pwrites_of_norm_le {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hL : IsIndexLit M I) {n : ℕ} (hNat : IsExactNatLit id M n)
     (hCmp : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
@@ -821,7 +827,7 @@ theorem oneEig_pwrites_of_norm_le {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
     (hxu : 300 * (n + 1) ^ 2 * u ≤ (8004 * κ)⁻¹ * (η₁ / (2 * specNorm H + 20 * S'')) ^ m)
     {qs : List ℝ} (hq4 : qs.getD 4 0 = η₂) (hq5 : qs.getD 5 0 = 0.9 * β') (hqs : 6 ≤ qs.length)
     {h qw lam f : ℕ × ℕ} :
-    PWrites law I (oneEig (O := O) (Q := Q)).body (Env.frame [n + 1, m, q, t] [h, qw, lam, f])
+    PWrites law I (oneEig (O := O) (Q := Q)) (Env.frame [n + 1, m, q, t] [h, qw, lam, f])
       (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1) (OneEigInput H qs h qw lam f)
       (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧ ∃ z : ℂ,
         μ'.store.readBlock lam.1 lam.2 2 = some [z.re, z.im] ∧
@@ -915,7 +921,9 @@ $(n + 1)\boldsymbol{u} \le 1/2500$, $30000(m + 1)\boldsymbol{u} \le 1$ and
 $300(n + 1)^2\boldsymbol{u} \le (8004\kappa)^{-1}(\eta_1/(2\|\mathbf{H}\|_2 + 20\Sigma'))^m$. Then
 from `NLAlib.SmallEig.OneEigInput`, except with probability at most $\varphi$, the run writes only
 the pair and the flag, sets the flag to $0$ and stores a point $z$ with
-$\eta_1 \le \min_i\lvert z - d_i\rvert \le \beta'$. -/
+$\eta_1 \le \min_i\lvert z - d_i\rvert \le \beta'$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem oneEig_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hL : IsIndexLit M I) {n : ℕ} (hNat : IsExactNatLit id M n)
     (hCmp : IsCmp id I) (hI : I.IsMeasurable) {win : O → List ℕ → ℕ}
@@ -932,7 +940,7 @@ theorem oneEig_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : Is
     (hxu : 300 * (n + 1) ^ 2 * u ≤ (8004 * κ)⁻¹ * (η₁ / (2 * specNorm H + 20 * S')) ^ m)
     {qs : List ℝ} (hq4 : qs.getD 4 0 = η₂) (hq5 : qs.getD 5 0 = 0.9 * β') (hqs : 6 ≤ qs.length)
     {h qw lam f : ℕ × ℕ} :
-    PWrites law I (oneEig (O := O) (Q := Q)).body (Env.frame [n + 1, m, q, t] [h, qw, lam, f])
+    PWrites law I (oneEig (O := O) (Q := Q)) (Env.frame [n + 1, m, q, t] [h, qw, lam, f])
       (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1) (OneEigInput H qs h qw lam f)
       (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧ ∃ z : ℂ,
         μ'.store.readBlock lam.1 lam.2 2 = some [z.re, z.im] ∧
@@ -951,7 +959,7 @@ theorem oneEig_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar 
     {n m q t : ℕ} (hNat : IsExactNatLit id M n) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {qs : List ℝ} (hqs : 6 ≤ qs.length)
     {τ : Tape ℝ} {μ : Mem ℝ} {h qw lam f : ℕ × ℕ} (hin : OneEigInput H qs h qw lam f μ) :
-    Writes .total I τ (oneEig (O := O) (Q := Q)).body (Env.frame [n + 1, m, q, t] [h, qw, lam, f])
+    Writes .total I τ (oneEig (O := O) (Q := Q)) (Env.frame [n + 1, m, q, t] [h, qw, lam, f])
       (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1)
       (fun μ' => (∃ z : ℂ, μ'.store.readBlock lam.1 lam.2 2 = some [z.re, z.im]) ∧
         ∃ x, μ'.store.get f.1 f.2 = some x) μ :=

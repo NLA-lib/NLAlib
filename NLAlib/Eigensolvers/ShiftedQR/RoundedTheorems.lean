@@ -69,11 +69,11 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O
 block `Bk` with a scoped accumulator and copy the diagonal of the triangular result to `Ev` (the
 eigenvalues of the leaf's perturbed block). `Regularize` needs only these Ritz values. The
 interface is `[d, nq, T] (Bk, Qw) → (Ev)`, that of a small-eigenvalue routine. -/
-def schurDiag (L : Impl O Q) : Impl O Q := opsImpl% [d, nq, T] (Bk, Qw) → (Ev) {
+def schurDiag (L : Stmt O Q) : Stmt O Q := ops% [d, nq, T] (Bk, Qw) → (Ev) {
   let W ← alloc (2 * (d * d));
   let Ub ← alloc (2 * (d * d));
-  run (unaryMap (Has.inj ScalarOp.copy)).body [2 * (d * d)] (Bk, W);
-  run L.body [d, nq, T] (W, Qw, W, Ub);
+  run (unaryMap (Has.inj ScalarOp.copy)) [2 * (d * d)] (Bk, W);
+  run L [d, nq, T] (W, Qw, W, Ub);
   for i < d {
     call (Has.inj ScalarOp.copy) [] (W[2 * (i * d + i)]) → (Ev[2 * i]);
     call (Has.inj ScalarOp.copy) [] (W[2 * (i * d + i) + 1]) → (Ev[2 * i + 1])
@@ -85,8 +85,8 @@ with the last $12$ of the $n_p$ parameter words, `P[np - 12]`, as its words. The
 `[d, np, T] (Bk, P) → (Bk, Ub)`, that of the leaf routine of `NLAlib.ShiftedQR.solveRoundedWith`;
 the decoupling loop hands the same tail to the leaf's eigenvalue routine
 (`NLAlib.ShiftedQR.roundedDecoupleLoopWith`). -/
-def leafOnTailWords (L : Impl O Q) : Impl O Q := opsImpl% [d, np, T] (Bk, P) → (Bk, Ub) {
-  run L.body [d, 12, T] (Bk, P[np - 12], Bk, Ub)
+def leafOnTailWords (L : Stmt O Q) : Stmt O Q := ops% [d, np, T] (Bk, P) → (Bk, Ub) {
+  run L [d, 12, T] (Bk, P[np - 12], Bk, Ub)
 }
 
 /-- **The rounded shifted QR algorithm in Schur mode with a Schur leaf**
@@ -98,7 +98,7 @@ def leafOnTailWords (L : Impl O Q) : Impl O Q := opsImpl% [d, np, T] (Bk, P) →
 leaf reads the last $12$ parameter words and the cap $T$. The interface is
 `[N, k, np, F, T, ns, w] (A, Thr, P, U) → (A, U, Fl)`.
 Algorithm: shifted-qr-rounded -/
-def roundedShQRWith (L : Impl O Q) : Impl O Q :=
+def roundedShQRWith (L : Stmt O Q) : Stmt O Q :=
   solveRoundedWith (roundedDecoupleWith (schurDiag L)) (leafOnTailWords L)
 
 /-- **The rounded shifted QR algorithm as a Schur core stage** with the Schur leaf `L`: the
@@ -107,9 +107,9 @@ $n_s = F(k + 1 + n_p')$ slots of $w = kN$ entries ($n_p' = n_p - 1$ the remainin
 interface is `[N, np, k, F, T] (A, P, U) → (A, U, Fl)`, that of the core stage of the dense Schur
 pipeline (`NLAlib.Schur.RandomSchurCoreContract`).
 Algorithm: shifted-qr-rounded -/
-def roundedShQRSchurWith (L : Impl O Q) : Impl O Q :=
-  opsImpl% [N, np, k, F, T] (A, P, U) → (A, U, Fl) {
-    run (roundedShQRWith L).body [N, k, np - 1, F, T, F * (k + 1 + (np - 1)), k * N]
+def roundedShQRSchurWith (L : Stmt O Q) : Stmt O Q :=
+  ops% [N, np, k, F, T] (A, P, U) → (A, U, Fl) {
+    run (roundedShQRWith L) [N, k, np - 1, F, T, F * (k + 1 + (np - 1)), k * N]
       (A, P, P[1], U, A, U, Fl)
   }
 
@@ -140,8 +140,8 @@ def ShQRInput {n : ℕ} (k : ℕ) (B Γ S δ φ : ℝ) (a t p out f : ℕ × ℕ
   μ.Live [a, t, p, out, f] ∧
     μ.Room [a, t, p, out, f]
       [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ).length, 2 * ((n + 1) * (n + 1)), 1] ∧
-    Fp.Apart [a, t, p, out, f]
-      [2 * ((n + 1) * (n + 1)), 1, (shqrParams n k B Γ S δ φ).length, 2 * ((n + 1) * (n + 1)), 1] ∧
+    ShQRViewsApart (n + 1) (shqrParams n k B Γ S δ φ).length
+          a t p out f ∧
     (∃ U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix out U μ.store) ∧
     HoldsMatrix a H μ.store ∧ μ.store.get t.1 t.2 = some (shqrDeflationThreshold n k B Γ S δ φ) ∧
     μ.store.readBlock p.1 p.2 (shqrParams n k B Γ S δ φ).length = some (shqrParams n k B Γ S δ φ)
@@ -280,7 +280,7 @@ the Schur leaf `L` completes on orders at most $k_{\max}$ with the $12$ words `q
 small-eigenvalue routine (`NLAlib.ShiftedQR.TerminatingSmallEigAt`) on the same orders. -/
 theorem CompletingLeafRoutine.terminatingSmallEigAt_schurDiag {Mch : Machine ℝ}
     {I : Interp O Q ℝ} (hS : IsScalar Mch I) {kmax T : ℕ} {qs : List ℝ}
-    {L : Impl O Q} (hLf : CompletingLeafRoutine kmax qs T L I) (hq : qs.length = 12) :
+    {L : Stmt O Q} (hLf : CompletingLeafRoutine kmax qs T L I) (hq : qs.length = 12) :
     TerminatingSmallEigAt kmax 12 T qs (schurDiag L) I := by
   intro d w q o tape μ B hd hB hqs hl ho hwo hqo
   have hwl : w.1 < μ.store.length := hl w (by simp)
@@ -300,7 +300,7 @@ theorem CompletingLeafRoutine.terminatingSmallEigAt_schurDiag {Mch : Machine ℝ
   have hab : ∀ {X : Fp}, (∀ b i, X b i → Lc ≤ b) →
       X ≤ Store.inBlock o.1 o.2 (2 * d) ⊔ Fp.above Lc :=
     fun hX b i h => Or.inr (hX b i h)
-  refine (writes_unaryMap_of_disj_or_eq (hS .copy) (τ := tape) (m := ⟨s₁, μ.pos⟩) (x := w)
+  refine (unaryMap_writes_of_disj_or_eq (hS .copy) (τ := tape) (m := ⟨s₁, μ.pos⟩) (x := w)
     (y := (Lc, 0)) (n := 2 * (d * d)) (Or.inl (Fp.disj_inBlock_of_ne (by omega)))
     (by rw [hBelow.readBlock hwl]; exact hB) (by simp [hL0])).frame_seq_le
     (by simp [IExp.evalList, IExp.eval, Env.frame])
@@ -367,7 +367,7 @@ omit [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has I
 the tail words of `ps ++ qs`: `NLAlib.ShiftedQR.leafOnTailWords L` is such a leaf routine with
 the words `ps ++ qs`. -/
 theorem TerminatingLeafRoutineIf.onTailWords {P : Prop} {εL : ℝ} {kmax T : ℕ} {qs : List ℝ}
-    {L : Impl O Q} {I : Interp O Q ℝ} (hLf : TerminatingLeafRoutineIf P εL kmax qs T L I)
+    {L : Stmt O Q} {I : Interp O Q ℝ} (hLf : TerminatingLeafRoutineIf P εL kmax qs T L I)
     (hq : qs.length = 12) (ps : List ℝ) :
     TerminatingLeafRoutineIf P εL kmax (ps ++ qs) T (leafOnTailWords L) I := by
   intro d w p ub tape μ B hd hB hp hl hroom hwu hpd
@@ -390,7 +390,7 @@ omit [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has I
 /-- A terminating Schur leaf on its $12$ words `qs` terminates on the tail words of `ps ++ qs`
 (`NLAlib.ShiftedQR.TerminatingLeafRoutineIf.onTailWords`). -/
 theorem TerminatingLeafRoutine.onTailWords {εL : ℝ} {kmax T : ℕ} {qs : List ℝ}
-    {L : Impl O Q} {I : Interp O Q ℝ} (hLf : TerminatingLeafRoutine εL kmax qs T L I)
+    {L : Stmt O Q} {I : Interp O Q ℝ} (hLf : TerminatingLeafRoutine εL kmax qs T L I)
     (hq : qs.length = 12) (ps : List ℝ) :
     TerminatingLeafRoutine εL kmax (ps ++ qs) T (leafOnTailWords L) I :=
   TerminatingLeafRoutineIf.terminating
@@ -400,7 +400,7 @@ omit [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has I
 /-- A completing Schur leaf on its $12$ words `qs` completes on the tail words of `ps ++ qs`
 (`NLAlib.ShiftedQR.TerminatingLeafRoutineIf.onTailWords`). -/
 theorem CompletingLeafRoutine.onTailWords {kmax T : ℕ} {qs : List ℝ}
-    {L : Impl O Q} {I : Interp O Q ℝ} (hLf : CompletingLeafRoutine kmax qs T L I)
+    {L : Stmt O Q} {I : Interp O Q ℝ} (hLf : CompletingLeafRoutine kmax qs T L I)
     (hq : qs.length = 12) (ps : List ℝ) :
     CompletingLeafRoutine kmax (ps ++ qs) T (leafOnTailWords L) I :=
   TerminatingLeafRoutineIf.completing
@@ -410,7 +410,7 @@ omit [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has I
 /-- A Schur leaf on its $12$ words `qs` is a Schur leaf on the tail words of `ps ++ qs`:
 `NLAlib.ShiftedQR.leafOnTailWords L` meets the contract of `L` with the words `ps ++ qs`. -/
 theorem _root_.NLAlib.Schur.RandomSchurLeafContract.onTailWords {law : ℕ → Measure ℝ}
-    {εL βL φL Nmax : ℝ} {kmax T : ℕ} {qs : List ℝ} {L : Impl O Q} {I : Interp O Q ℝ}
+    {εL βL φL Nmax : ℝ} {kmax T : ℕ} {qs : List ℝ} {L : Stmt O Q} {I : Interp O Q ℝ}
     (hLf : Schur.RandomSchurLeafContract law εL βL φL kmax Nmax qs T L I)
     (hq : qs.length = 12) (ps : List ℝ) :
     Schur.RandomSchurLeafContract law εL βL φL kmax Nmax (ps ++ qs) T (leafOnTailWords L) I := by
@@ -570,7 +570,7 @@ the block. -/
 theorem _root_.NLAlib.Schur.RandomSchurLeafContract.randomSmallEigContractAt_schurDiag
     {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar Mch I) (hI : I.IsMeasurable)
     {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
-    {εL βL φL N β : ℝ} {kmax T : ℕ} {qs : List ℝ} {L : Impl O Q}
+    {εL βL φL N β : ℝ} {kmax T : ℕ} {qs : List ℝ} {L : Stmt O Q}
     (hLf : Schur.RandomSchurLeafContract law εL βL φL kmax N qs T L I) (hq : qs.length = 12)
     (hφL : 0 ≤ φL) (hβ : 0 < β) (hβN : β ≤ N)
     (hβL : βL ≤ SmallEig.forwardBackwardError kmax N β) :
@@ -614,7 +614,7 @@ theorem _root_.NLAlib.Schur.RandomSchurLeafContract.randomSmallEigContractAt_sch
       (by simp)
   · -- the copy of the block to the scratch block `(Lc, 0)`
     obtain ⟨hlen, hL0, hL1, hW, hqs, ho, hwL, hqL, hoL⟩ := h
-    refine ((writes_unaryMap_of_disj_or_eq (hS .copy) (τ := τ) (m := μ) (x := w) (y := (Lc, 0))
+    refine ((unaryMap_writes_of_disj_or_eq (hS .copy) (τ := τ) (m := μ) (x := w) (y := (Lc, 0))
       (n := 2 * (d * d)) (Or.inl (Fp.disj_inBlock_of_ne (by omega)))
       hW
       (by simp [hL0])).in_frame (by simp [IExp.evalList, IExp.eval, Env.frame])

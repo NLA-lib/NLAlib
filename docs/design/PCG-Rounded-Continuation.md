@@ -17,7 +17,7 @@ The files are:
   residual growth, dimensionless direction norm growth, and relative defect propagation.
 - `Krylov/FinitePrecision/PCGContinuationPrecision.lean`: scalar geometric estimates,
   simultaneous induction, and the endpoint direction certificate.
-- `Krylov/CG/HSPCG/FinitePrecision/Rounds.lean`: the initialized-prefix oracle/direction
+- `Krylov/CG/HSPCG/Rounded/Rounds.lean`: the initialized-prefix oracle/direction
   projections and total capped-loop execution, using the same stored cache as the program.
 
 The endpoint signature uses the existing run model directly:

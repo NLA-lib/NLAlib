@@ -74,7 +74,7 @@ Gaussian stream `sG`, the bottom-up Hessenberg reduction with its accumulated un
 rounded shifted QR algorithm with the leaf `L` as the Schur core. The interface is
 `[N, nr, nq, k, F, T] (A, P) → (A, U, Fl)`.
 Algorithm: dense-schur -/
-def denseSchurWith (sG : ℕ) (L : Impl O Q) : Impl O Q :=
+def denseSchurWith (sG : ℕ) (L : Stmt O Q) : Stmt O Q :=
   schurPipelineWith (frobNormStage (O := O) (Q := Q)) (ginibrePerturb (O := O) (Q := Q) sG)
     (hessenbergReduceQ (O := O) (Q := Q)) (roundedShQRSchurWith L)
 
@@ -82,7 +82,7 @@ def denseSchurWith (sG : ℕ) (L : Impl O Q) : Impl O Q :=
 `NLAlib.SmallEig.smallEigProg` as the leaf, on the Gaussian stream `sG`. No oracle. The interface
 is `[N, nr, nq, k, F, T] (A, P) → (A, U, Fl)`.
 Algorithm: dense-schur -/
-def denseSchur (sG : ℕ) : Impl O Q :=
+def denseSchur (sG : ℕ) : Stmt O Q :=
   denseSchurWith sG (smallEigProg (O := O) (Q := Q) sG)
 
 end Program
@@ -141,7 +141,7 @@ theorem denseSchurWith_measureReal_not_schur_le {Mch : Machine ℝ} {I : Interp 
     (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
     (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
     (hG : law sG = gaussianReal 0 1) {δ φ : ℝ} (hδ : 0 < δ) (hδ1 : δ ≤ 1) (hφ : 0 < φ)
-    (hφ1 : φ ≤ 1) {εL βL φL : ℝ} {T RL : ℕ} {qs : List ℝ} {L : Impl O Q}
+    (hφ1 : φ ≤ 1) {εL βL φL : ℝ} {T RL : ℕ} {qs : List ℝ} {L : Stmt O Q}
     (hLeaf : RandomSchurLeafContract law εL βL φL (min (denseSchurDegree n δ φ) (n + 1)) 32 qs T
       L I)
     (hqs : qs.length = 12) (hεL : 0 ≤ εL) (hεLR : εL ≤ (1 + 24 * u) ^ RL - 1) (hβL0 : 0 ≤ βL)
@@ -151,7 +151,7 @@ theorem denseSchurWith_measureReal_not_schur_le {Mch : Machine ℝ} {I : Interp 
     {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {a p uo f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : SchurPipelineInput (denseSchurParamsWith n δ φ qs) a p uo f A μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (denseSchurWith (O := O) (Q := Q) sG L).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (denseSchurWith (O := O) (Q := Q) sG L)
       (Env.frame (denseSchurDimsWith n δ φ qs T) [a, p, a, uo, f]) (schurFp n a uo f)
       (SchurOutput a uo f A δ
         (58 * denseSchurRotationsWith n δ φ (denseSchurShQRParams n δ φ ++ qs).length RL * u))
@@ -263,7 +263,7 @@ theorem denseSchur_measureReal_not_schur_le {Mch : Machine ℝ} {I : Interp O Q 
     (hδ : 0 < δ) (hδ1 : δ ≤ 1) (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hu : u ≤ uDenseSchur n δ φ)
     {a p uo f : ℕ × ℕ} {μ : Mem ℝ} (hin : SchurPipelineInput (denseSchurParams n δ φ) a p uo f A μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (denseSchur (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (denseSchur (O := O) (Q := Q) sG)
       (Env.frame (denseSchurDims n δ φ) [a, p, a, uo, f]) (schurFp n a uo f)
       (SchurOutput a uo f A δ (58 * denseSchurRotations n δ φ * u)) μ} ≤ φ := by
   obtain ⟨hd0, hd1, -, -, -, hB, hΓ⟩ := denseSchur_params_basic (n := n) hδ hδ1 hφ hφ1
@@ -324,7 +324,7 @@ theorem denseSchur_writes_orth {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
     {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {δ φ : ℝ}
     (hu : 400 * ((n : ℝ) + 1) ^ 2 * u ≤ 1) {a p uo f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : SchurPipelineInput (denseSchurParams n δ φ) a p uo f A μ) (τ : Tape ℝ) :
-    Writes .total I τ (denseSchur (O := O) (Q := Q) sG).body
+    Writes .total I τ (denseSchur (O := O) (Q := Q) sG)
       (Env.frame (denseSchurDims n δ φ) [a, p, a, uo, f]) (schurFp n a uo f)
       (SchurOrth (n := n) uo
         (2 * ((1 + 27 * ((n : ℝ) + 1) ^ 2 * u) * (1 + 24 * u) ^ shqrSchurRotations n
@@ -361,7 +361,7 @@ theorem denseSchur_writes_orth {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
         some (denseSchurRegParams n δ φ) → μ.Live [a, q] →
       Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
         (Store.inBlock q.1 q.2 (denseSchurRegParams n δ φ).length) →
-      Writes .total I τ (ginibrePerturb (O := O) (Q := Q) sG).body
+      Writes .total I τ (ginibrePerturb (O := O) (Q := Q) sG)
         (Env.frame [n + 1, (denseSchurRegParams n δ φ).length] [a, q, a])
         (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
         (fun μ' => ∃ A' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A' μ'.store) μ :=
@@ -395,7 +395,7 @@ theorem denseSchur_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {δ φ : ℝ} (hδ : 0 < δ) (hδ1 : δ ≤ 1)
     (hu : u ≤ uDenseSchur n δ φ) {a p uo f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : SchurPipelineInput (denseSchurParams n δ φ) a p uo f A μ) (τ : Tape ℝ) :
-    Writes .total I τ (denseSchur (O := O) (Q := Q) sG).body
+    Writes .total I τ (denseSchur (O := O) (Q := Q) sG)
       (Env.frame (denseSchurDims n δ φ) [a, p, a, uo, f]) (schurFp n a uo f)
       (SchurOrth (n := n) uo (58 * denseSchurRotations n δ φ * u)) μ := by
   obtain ⟨-, hu2, -, -, -, -, -, hu8⟩ := le_of_le_uDenseSchurWith (hu.trans (min_le_left _ _))
@@ -442,7 +442,7 @@ theorem denseSchur_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp O
     (hδ : 0 < δ) (hδ1 : δ ≤ 1) (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hu : u ≤ uDenseSchur n δ φ)
     {a p uo f : ℕ × ℕ} {μ : Mem ℝ} (hin : SchurPipelineInput (denseSchurParams n δ φ) a p uo f A μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (denseSchur (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (denseSchur (O := O) (Q := Q) sG)
       (Env.frame (denseSchurDims n δ φ) [a, p, a, uo, f]) (schurFp n a uo f)
       (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧
         ∃ T E : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a T μ'.store ∧
@@ -489,7 +489,7 @@ theorem denseSchur_measureReal_not_exact_schur_le {Mch : Machine ℝ} {I : Inter
     (hδ : 0 < δ) (hδ1 : δ ≤ 1) (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hu : u ≤ uDenseSchur n δ φ)
     {a p uo f : ℕ × ℕ} {μ : Mem ℝ} (hin : SchurPipelineInput (denseSchurParams n δ φ) a p uo f A μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (denseSchur (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (denseSchur (O := O) (Q := Q) sG)
       (Env.frame (denseSchurDims n δ φ) [a, p, a, uo, f]) (schurFp n a uo f)
       (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧
         ∃ U T V E : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a T μ'.store ∧
@@ -513,16 +513,16 @@ omit [Has SampleOp O] [Has DiskSampleOp O] in
 `NLAlib.hessenbergReduceQ` at the order $n + 1$ and zero offsets is at most $2998(n + 1)^3$ (the
 monomial bound, by `kernel_rfl`). -/
 theorem size_stmtCost_hessenbergReduceQ_le (n : ℕ) :
-    Count.size (stmtCost (hessenbergReduceQ (O := O) (Q := Q)).body.instrument
+    Count.size (stmtCost (hessenbergReduceQ (O := O) (Q := Q)).instrument
         [n + 1, 0, 0, 0, 0]) ≤ 2998 * (n + 1) ^ 3 := by
-  have hw : stmtWorkMono (hessenbergReduceQ (O := O) (Q := Q)).body.instrument
+  have hw : stmtWorkMono (hessenbergReduceQ (O := O) (Q := Q)).instrument
       (⟨1, [1]⟩ :: List.replicate 4 (WorkMono.const 0)) = ⟨2998, [3]⟩ := by
     rw [stmtWorkMono_instrument]; kernel_rfl
   have hσ : SlotsLe [n + 1] [n + 1, 0, 0, 0, 0]
       (⟨1, [1]⟩ :: List.replicate 4 (WorkMono.const 0)) := by
     simp [SlotsLe, WorkMono.eval, WorkMono.const]
   have h := size_stmtCost_le_stmtWorkMono (by simp)
-    (hessenbergReduceQ (O := O) (Q := Q)).body.instrument hσ
+    (hessenbergReduceQ (O := O) (Q := Q)).instrument hσ
   rw [hw] at h
   simpa [WorkMono.eval, mul_assoc] using h
 
@@ -536,7 +536,7 @@ the regularizer's $201$ and the glue's $4 \cdot 120$
 (`NLAlib.Schur.size_stmtCost_schurPipelineWith_le`). The power of $k$ is that of the eigenvalue
 solver: the replays on the couplings and on the accumulator cost no more than a step. -/
 theorem denseSchur_work_le (sG n nr nq k F T : ℕ) :
-    Count.size (stmtCost (denseSchur (O := O) (Q := Q) sG).body.instrument
+    Count.size (stmtCost (denseSchur (O := O) (Q := Q) sG).instrument
         [n + 1, nr, nq, k, F, T, 0, 0, 0, 0, 0]) ≤
       384547 * (n + 1) ^ 3 * (k + 1) ^ 4 * (nr + nq + 1) * (F + 1) * (T + 1) ^ 2 := by
   refine (size_stmtCost_schurPipelineWith_le _ _ _ _ _ _ _ _ _ _).trans ?_

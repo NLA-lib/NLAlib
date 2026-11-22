@@ -16,7 +16,7 @@ updated exactly in place or copied between disjoint regions of one arena.
 ## Main results
 
 * `NLAlib.Ops.scalarBroadcast`: the explicit vector/scalar loop.
-* `NLAlib.Ops.writes_scalarBroadcast`: its total pointwise mathematical result.
+* `NLAlib.Ops.scalarBroadcast_writes`: its total pointwise mathematical result.
 -/
 
 @[expose] public section
@@ -24,23 +24,20 @@ updated exactly in place or copied between disjoint regions of one arena.
 namespace NLAlib.Ops
 
 /-- Apply a binary scalar operation with a fixed stored right operand. -/
-def scalarBroadcast {Op Tst : Type} (o : Op) : Impl Op Tst where
-  nd := 1
-  nin := 2
-  nout := 1
-  body := .loop (.var 0)
+def scalarBroadcast {Op Tst : Type} (o : Op) : Stmt Op Tst :=
+  .loop (.var 0)
     (.call o [] [⟨0, .var 1 + .var 4⟩, ⟨1, .var 2⟩] [⟨2, .var 3 + .var 4⟩])
 
 /-- A stored broadcast operation returns its pointwise value. The vector operands may alias
 exactly; the broadcast scalar must be disjoint from the entire output vector. -/
-theorem writes_scalarBroadcast {K Op Tst : Type} {o : Op} {f : K → K → K}
+theorem scalarBroadcast_writes {K Op Tst : Type} {o : Op} {f : K → K → K}
     {I : Interp Op Tst K} (hI : I.IsFn .total o (.bin fun x y => some (f x y)) AnyOperands)
     {τ : Tape K} {m : Mem K} {n : ℕ} {x a y : ℕ × ℕ} {v : ℕ → K} {c : K}
     (hx : m.store.HoldsVec x.1 x.2 n v) (ha : m.store.get a.1 a.2 = some c)
     (hy : y.2 + n ≤ m.store.len y.1)
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 n) (Store.inBlock y.1 y.2 n) ∨ x = y)
     (hay : Fp.Disj (Store.inBlock a.1 a.2 1) (Store.inBlock y.1 y.2 n)) :
-    Writes .total I τ (scalarBroadcast (Tst := Tst) o).body (Env.frame [n] [x, a, y])
+    Writes .total I τ (scalarBroadcast (Tst := Tst) o) (Env.frame [n] [x, a, y])
       (Store.inBlock y.1 y.2 n)
       (fun m' => m'.store.HoldsVec y.1 y.2 n (fun i => f (v i) c) ∧ m'.pos = m.pos) m := by
   refine writes_fill rfl (fun i => f (v i) c) (fun _ => m.pos) rfl
@@ -64,7 +61,7 @@ theorem writes_scalarBroadcast {K Op Tst : Type} {o : Op} {f : K → K → K}
     Store.get_upd_self hz _, hpos⟩
 
 /-- Packed vector readback of the same broadcast loop. -/
-theorem writes_scalarBroadcast_readBlock {K Op Tst : Type} [Inhabited K]
+theorem scalarBroadcast_writes_readBlock {K Op Tst : Type} [Inhabited K]
     {o : Op} {f : K → K → K} {I : Interp Op Tst K}
     (hI : I.IsFn .total o (.bin fun x y => some (f x y)) AnyOperands)
     {τ : Tape K} {m : Mem K} {n : ℕ} {x a y : ℕ × ℕ} {xs : List K} {c : K}
@@ -72,11 +69,11 @@ theorem writes_scalarBroadcast_readBlock {K Op Tst : Type} [Inhabited K]
     (hy : y.2 + n ≤ m.store.len y.1)
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 n) (Store.inBlock y.1 y.2 n) ∨ x = y)
     (hay : Fp.Disj (Store.inBlock a.1 a.2 1) (Store.inBlock y.1 y.2 n)) :
-    Writes .total I τ (scalarBroadcast (Tst := Tst) o).body (Env.frame [n] [x, a, y])
+    Writes .total I τ (scalarBroadcast (Tst := Tst) o) (Env.frame [n] [x, a, y])
       (Store.inBlock y.1 y.2 n)
       (fun m' => m'.pos = m.pos ∧
         m'.store.readBlock y.1 y.2 n = some (xs.map fun v => f v c)) m := by
-  refine (writes_scalarBroadcast hI (Store.holdsVec_of_readBlock hx) ha hy hxy hay).mono
+  refine (scalarBroadcast_writes hI (Store.holdsVec_of_readBlock hx) ha hy hxy hay).mono
     le_rfl ?_
   intro m' _ ⟨hv, hp⟩
   refine ⟨hp, Store.readBlock_eq_some_iff.mpr ⟨?_, ?_⟩⟩

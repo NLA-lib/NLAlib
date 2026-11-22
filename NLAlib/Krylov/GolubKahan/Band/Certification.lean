@@ -6,17 +6,19 @@ Authors: NLAlib contributors
 module
 
 public import Mathlib.Data.Fin.VecNotation
-public import NLAlib.Krylov.GolubKahan.Band.Run
+public import NLAlib.Krylov.GolubKahan.Band.Solve
 public import NLAlib.Ops.AllocationFree
 public import NLAlib.Ops.Catalog.Functional
 public import NLAlib.Ops.Certification
 public import NLAlib.Ops.Profiles.Confined
+public import NLAlib.Ops.RoutineProblem
 public import NLAlib.Ops.Workspace
 
 /-!
 # Canonical exact certificate of the block Golub–Kahan program
 
-The program `NLAlib.Krylov.GolubKahan.Band.program` is certified against a closed operation model
+The program `NLAlib.Krylov.GolubKahan.Band.solveProgram` is certified against a closed operation
+model
 whose operations are the two products with a matrix $\mathbf{A}$, the extension of a stored basis
 by a block and scalar draws. The matrix is the semantic datum of the problem and is reached only
 through the two products (the matrix-free form of the Lanczos certificates); the five supplied
@@ -78,8 +80,8 @@ Design: `docs/design/LowRank-BlockLanczos.md` §4.1.
   `NLAlib.Krylov.GolubKahan.Band.Certification.coefBot_stackCoef`,
   `NLAlib.Krylov.GolubKahan.Band.Certification.decodeMatrix_packFinMatrix`: the packed round trip.
 * `NLAlib.Krylov.GolubKahan.Band.Certification.isBasisExtension_exactExtension`,
-  `NLAlib.Krylov.GolubKahan.Band.Certification.meets_exactExtendFn`: the chosen extension realizes
-  the exact contract.
+  `NLAlib.Krylov.GolubKahan.Band.Certification.satisfies_exactExtendFn`: the chosen extension
+  realizes the exact contract.
 * `NLAlib.Krylov.GolubKahan.Band.Certification.confined_contract`,
   `NLAlib.Krylov.GolubKahan.Band.Certification.confined_model`: the model is confined.
 * `NLAlib.Krylov.GolubKahan.Band.Certification.laws`: the contracts of an interpretation of the
@@ -87,13 +89,13 @@ Design: `docs/design/LowRank-BlockLanczos.md` §4.1.
 * `NLAlib.Krylov.GolubKahan.Band.Certification.initial_len`,
   `NLAlib.Krylov.GolubKahan.Band.Certification.initial_room`,
   `NLAlib.Krylov.GolubKahan.Band.Certification.initialBytes_problem`: the initial memory.
-* `NLAlib.Krylov.GolubKahan.Band.Certification.wellTyped_program`,
+* `NLAlib.Krylov.GolubKahan.Band.Certification.wellTyped_solveProgram`,
   `NLAlib.Krylov.GolubKahan.Band.Certification.original_staticBudget`,
-  `NLAlib.Krylov.GolubKahan.Band.Certification.staticPeak_program_le`,
-  `NLAlib.Krylov.GolubKahan.Band.Certification.staticPeak_program_le_solvePeak`: formats, counts,
-  scratch.
+  `NLAlib.Krylov.GolubKahan.Band.Certification.staticPeak_solveProgram_le`,
+  `NLAlib.Krylov.GolubKahan.Band.Certification.staticPeak_solveProgram_le_solvePeak`: formats,
+  counts, scratch.
 * `NLAlib.Krylov.GolubKahan.Band.Certification.Good.storedProduct_eq_rsvd`: the stored factors.
-* `NLAlib.Krylov.GolubKahan.Band.Certification.wp_program`,
+* `NLAlib.Krylov.GolubKahan.Band.Certification.solveProgram_wp`,
   `NLAlib.Krylov.GolubKahan.Band.Certification.certifies`: total execution and certification.
 -/
 
@@ -128,7 +130,7 @@ omit [Has OrthOp Op] [Has OperatorPairOp Op] [Has SampleOp Op] in
 /-- The static count of a block of products: `b` calls of the operation `o` at the dimensions
 `[m, n]`, for all offsets `x`, `y` of the two operands. -/
 theorem stmtCost_applyColumns (o : Op) (m n b x y : ℕ) :
-    stmtCost (applyColumns (Tst := Tst) o).body [m, n, b, x, y] = b • Count.one o [m, n] := by
+    stmtCost (applyColumns (Tst := Tst) o) [m, n, b, x, y] = b • Count.one o [m, n] := by
   simp [applyColumns, stmtCost, useCost]
 
 omit [Has SampleOp Op] in
@@ -137,7 +139,7 @@ $\mathbf{A}$, one basis extension at `[m, j * b, b]`, `b` products with
 $\mathbf{A}^{\mathsf{H}}$ and one basis extension at `[n, (j + 1) * b, b]`, for all offsets
 of the five operands. -/
 theorem stmtCost_step (m n b j u v r s w : ℕ) :
-    stmtCost (step (Op := Op) (Tst := Tst)).body [m, n, b, j, u, v, r, s, w] =
+    stmtCost (step (Op := Op) (Tst := Tst)) [m, n, b, j, u, v, r, s, w] =
       b • Count.one (Has.inj OperatorPairOp.matvec) [m, n] +
         Count.one (Has.inj OrthOp.extend) [m, j * b, b] +
         b • Count.one (Has.inj OperatorPairOp.rmatvec) [n, m] +
@@ -149,7 +151,7 @@ theorem stmtCost_step (m n b j u v r s w : ℕ) :
 dimensions $(m, n, b, q)$ and all offsets `u`, `v`, `g`, `r`, `s` of the five output operands:
 the counts depend on the dimensions only. -/
 theorem stmtCost_solve (stream m n b q u v g r s : ℕ) :
-    stmtCost (solve (Op := Op) (Tst := Tst) stream).body [m, n, b, q, u, v, g, r, s] =
+    stmtCost (solve (Op := Op) (Tst := Tst) stream) [m, n, b, q, u, v, g, r, s] =
       solveCount stream m n b q := by
   simp [solve, stmtCost, useCost, stmtCost_sampleVector, stmtCost_step, solveCount,
     Finset.sum_add_distrib, ← mul_nsmul']
@@ -161,13 +163,13 @@ common bound `w` of the workspace of every primitive, for all offsets `u`, `v`, 
 the five output operands. -/
 theorem stmtPeak_solve_le (W : Op → List ℕ → ℕ) (w : ℕ) (hW : ∀ o ds, W o ds ≤ w)
     (stream m n b q u v g r s : ℕ) :
-    stmtPeak W (solve (Op := Op) (Tst := Tst) stream).body [m, n, b, q, u, v, g, r, s] ≤
+    stmtPeak W (solve (Op := Op) (Tst := Tst) stream) [m, n, b, q, u, v, g, r, s] ≤
       (m + (n - m)) * b + w := by
   refine (stmtPeak_le_zero_add W w hW _ _).trans (Nat.add_le_add_right ?_ w)
   have hSample (idx : List ℕ) := stmtPeak_zero_of_allocationFree
-    (s := (sampleVector (Op := Op) (Tst := Tst) stream).body) (idx := idx) (by rfl)
+    (s := (sampleVector (Op := Op) (Tst := Tst) stream)) (idx := idx) (by rfl)
   have hStep (idx : List ℕ) := stmtPeak_zero_of_allocationFree
-    (s := (step (Op := Op) (Tst := Tst)).body) (idx := idx) (by rfl)
+    (s := (step (Op := Op) (Tst := Tst))) (idx := idx) (by rfl)
   have hz (t : Finset ℕ) : (t.sup fun _ => (0 : ℕ)) = 0 := Finset.sup_bot t
   simp [solve, stmtPeak, Stmt.alloc, hSample, hStep, hz]
 
@@ -192,7 +194,7 @@ def solvePeak (W : Op → List ℕ → ℕ) (stream m n b q : ℕ) : ℕ :=
 offsets `u`, `v`, `g`, `r`, `s` of the five output operands. No common bound of `W` is assumed:
 only the calls of the run contribute. -/
 theorem stmtPeak_solve_le_solvePeak (W : Op → List ℕ → ℕ) (stream m n b q u v g r s : ℕ) :
-    stmtPeak W (solve (Op := Op) (Tst := Tst) stream).body [m, n, b, q, u, v, g, r, s] ≤
+    stmtPeak W (solve (Op := Op) (Tst := Tst) stream) [m, n, b, q, u, v, g, r, s] ≤
       solvePeak W stream m n b q := by
   have hsmul (k : ℕ) (o : Op) (ds : List ℕ) (h : W o ds ≤ primitivePeak W stream m n b q) :
       (k • (Count.one o ds : Count Op Tst)).BoundsWorkspace W
@@ -315,12 +317,12 @@ noncomputable def exactExtendFn : BlockFn ℝ where
           (EntryCodec.scalar ℝ).packFinMatrix (stackCoef E.2.1 E.2.2)]
     | _ => none
 
-/-- An operation interpreted as the block function of the chosen exact extension meets the exact
+/-- An operation interpreted as the block function of the chosen exact extension satisfies the exact
 contract of a basis extension over real words, at all dimensions and on all admitted operands. -/
-theorem meets_exactExtendFn {Op Tst : Type} {I : Interp Op Tst ℝ} {o : Op}
+theorem satisfies_exactExtendFn {Op Tst : Type} {I : Interp Op Tst ℝ} {o : Op}
     (h : I.IsFn .total o exactExtendFn AnyOperands) :
-    I.Meets .total o ((exactExtendRel (𝕜 := ℝ) id).spec ExtendOperands) := by
-  refine h.meets_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl) (fun _ => rfl)
+    I.Satisfies .total o ((exactExtendRel (𝕜 := ℝ) id).spec ExtendOperands) := by
+  refine h.satisfies_rel (fun _ _ _ _ => trivial) rfl rfl (fun _ => rfl) (fun _ => rfl)
     (fun _ => rfl) ?_
   intro d w X μ ins outs hnd hw hadm hr hdom
   obtain ⟨x, y, qs, ws, -, hq, hws, rfl⟩ := Mem.readBlocks_two hr
@@ -355,16 +357,34 @@ lengths of `U`, `V`, `G`, `R`, `S`. -/
 def slots (d : Fin 4 → ℕ) : Fin 5 → Buf ℝ :=
   fun i => List.replicate ((outLens (d 0) (d 1) (d 2) (d 3)).getD i.val 0) none
 
-/-- The problem of the abstract driver. The sizes are $(m, n, b, q)$ and all of them are
-admitted; the datum is a real $m \times n$ matrix, reached through the two products only; the
-supplied buffers are the five uninitialized output blocks. -/
-def problem : Problem ℝ 4 5 where
-  formats _ := .cell
+/-- The admitted inputs of the abstract driver. The sizes are $(m, n, b, q)$ and all of them
+are admitted; the one input is a real $m \times n$ matrix, which is in no buffer: it is the
+declared unstored input, reached through the two products only
+(`NLAlib.Krylov.GolubKahan.Band.Certification.oracles`). The five operands are blank. -/
+def inputs : (solveRoutine (Op := Operation) (Tst := CmpTst) 0).Domain ℝ 4 5 where
   valid _ := True
-  Data d := Matrix (Fin (d 0)) (Fin (d 1)) ℝ
-  admissible d _ buffers := buffers = slots d
+  In d := Matrix (Fin (d 0)) (Fin (d 1)) ℝ
+  accepts _ _ := True
+  slot d i := .blank ((outLens (d 0) (d 1) (d 2) (d 3)).getD i.val 0)
+  fits := by
+    intro d i p hp
+    fin_cases i <;> (
+      have hport := Option.some.inj hp
+      subst hport
+      exact ⟨rfl, rfl⟩)
+  Unstored d := Matrix (Fin (d 0)) (Fin (d 1)) ℝ
+  unstored _ A := A
+  faithful _ _ _ h _ := h
   admitted := ⟨fun _ => 0, trivial⟩
-  supply d _ := ⟨0, slots d, rfl⟩
+  inhabited _ _ := ⟨0, trivial⟩
+
+/-- The problem of the abstract driver: every real $m \times n$ matrix, in no buffer, and the
+five uninitialized output blocks. -/
+abbrev problem : Problem ℝ 4 5 := inputs.problem
+
+/-- The supplied buffers of an input are the five uninitialized blocks. -/
+theorem buffers_input {d : Fin 4 → ℕ} (x : problem.Input d) : x.val.2 = slots d :=
+  inputs.buffers_eq x
 
 /-- The matrix $\mathbf{A}$ of an input of the problem, with its type as a real $m \times n$
 matrix. -/
@@ -378,7 +398,7 @@ def outputs : List (ℕ × ℕ) := [(0, 0), (1, 0), (2, 0), (3, 0), (4, 0)]
 theorem initial_len (d : Fin 4 → ℕ) (x : problem.Input d) (i : Fin 5) :
     (problem.initial d x).store.len i.val =
       (outLens (d 0) (d 1) (d 2) (d 3)).getD i.val 0 := by
-  have h : x.val.2 = slots d := x.property
+  have h : x.val.2 = slots d := buffers_input x
   rw [Problem.initial_len, h, slots, List.length_replicate]
 
 /-- The supplied buffers have room for the five output blocks. -/
@@ -392,11 +412,11 @@ theorem initial_room (d : Fin 4 → ℕ) (x : problem.Input d) :
 blocks. -/
 theorem initialBytes_problem (d : Fin 4 → ℕ) (x : problem.Input d) :
     problem.initialBytes d x = (outLens (d 0) (d 1) (d 2) (d 3)).sum := by
-  have h : x.val.2 = slots d := x.property
+  have h : x.val.2 = slots d := buffers_input x
   rw [Problem.initialBytes_of_lengths d x
     (fun i => (outLens (d 0) (d 1) (d 2) (d 3)).getD i.val 0)
     (fun i => by rw [h, slots, List.length_replicate])]
-  simp [problem, outLens, List.ofFn_succ]
+  simp [problem, inputs, Routine.Domain.problem, outLens, List.ofFn_succ]
 
 /-! ### The model -/
 
@@ -422,10 +442,10 @@ noncomputable def model (work workspace : Operation → List ℕ → ℕ) :
       Interp.ofFns_isFn (Tst := CmpTst) (functions x.val.1) .total o AnyOperands
     rintro (o | o | o)
     · cases o
-      exact meets_exactExtendFn (hF (.inl .extend))
+      exact satisfies_exactExtendFn (hF (.inl .extend))
     · cases o
-      · exact (hF (.inr (.inl .matvec))).meets_matvec
-      · exact (hF (.inr (.inl .rmatvec))).meets_matvec
+      · exact (hF (.inr (.inl .matvec))).satisfies_matvec
+      · exact (hF (.inr (.inl .rmatvec))).satisfies_matvec
     · cases o with
       | draw stream => exact hF (.inr (.inr (.draw stream)))
 
@@ -449,7 +469,8 @@ an exact basis extension, and draws that return the words of the tape. -/
 theorem laws {work workspace : Operation → List ℕ → ℕ} {d : Fin 4 → ℕ} {x : problem.Input d}
     {I : Interp Operation CmpTst ℝ} (h : (model work workspace).contracts d x I) :
     IsExactMatvecPair id x.val.1 I ∧
-      I.Meets .total (Has.inj OrthOp.extend) ((exactExtendRel (𝕜 := ℝ) id).spec ExtendOperands) ∧
+      I.Satisfies .total (Has.inj OrthOp.extend)
+        ((exactExtendRel (𝕜 := ℝ) id).spec ExtendOperands) ∧
       IsSample I :=
   ⟨⟨h.1 (.inr (.inl .matvec)), h.1 (.inr (.inl .rmatvec))⟩, h.1 (.inl .extend),
     fun stream => h.1 (.inr (.inr (.draw stream)))⟩
@@ -510,11 +531,11 @@ theorem Good.storedProduct_eq_rsvd {stream : ℕ} {d : Fin 4 → ℕ}
 /-- The full static count of the fixed program, with index expressions, addressing, allocation
 and control. -/
 noncomputable def staticBudget (stream : ℕ) (d : Fin 4 → ℕ) :
-    Count (Operation ⊕ Bookkeeping) CmpTst := staticCost (program stream) d
+    Count (Operation ⊕ Bookkeeping) CmpTst := staticCost (solveProgram stream) d
 
 /-- The fixed program is well typed for the scalar-cell resources of the model. -/
-theorem wellTyped_program (work workspace : Operation → List ℕ → ℕ) (stream : ℕ) :
-    (program (Op := Operation) (Tst := CmpTst) stream).wellTyped (resources work workspace)
+theorem wellTyped_solveProgram (work workspace : Operation → List ℕ → ℕ) (stream : ℕ) :
+    (solveProgram (Op := Operation) (Tst := CmpTst) stream).wellTyped (resources work workspace)
       (fun _ => .cell) = true := by
   rfl
 
@@ -526,31 +547,31 @@ theorem original_staticBudget (stream : ℕ) (d : Fin 4 → ℕ) :
     Count.original (staticBudget stream d) =
       solveCount (Op := Operation) (Tst := CmpTst) stream (d 0) (d 1) (d 2) (d 3) := by
   rw [staticBudget, staticCost, original_stmtCost_instrument]
-  change stmtCost (solve stream).body [d 0, d 1, d 2, d 3, 0, 0, 0, 0, 0] = _
+  change stmtCost (solve stream) [d 0, d 1, d 2, d 3, 0, 0, 0, 0, 0] = _
   exact stmtCost_solve ..
 
 /-- The scratch of the fixed program at the sizes $(m, n, b, q)$ is at most the block of
 $\max(m, n)\,b$ words that holds the drawn block and the products, plus a common bound `w` of the
 workspace of every primitive and the reservation of the queries. -/
-theorem staticPeak_program_le (R : ResourceModel Operation CmpTst) (w : ℕ)
+theorem staticPeak_solveProgram_le (R : ResourceModel Operation CmpTst) (w : ℕ)
     (hW : ∀ o ds, R.workspace o ds ≤ w) (stream : ℕ) (d : Fin 4 → ℕ) :
-    staticPeak R (program stream) d ≤
+    staticPeak R (solveProgram stream) d ≤
       (d 0 + (d 1 - d 0)) * d 2 + w + R.queryReserve (staticBudget stream d) := by
   rw [staticPeak_eq]
-  change stmtPeak R.workspace (solve stream).body [d 0, d 1, d 2, d 3, 0, 0, 0, 0, 0] + _ ≤ _
+  change stmtPeak R.workspace (solve stream) [d 0, d 1, d 2, d 3, 0, 0, 0, 0, 0] + _ ≤ _
   exact Nat.add_le_add_right
     (stmtPeak_solve_le R.workspace w hW stream (d 0) (d 1) (d 2) (d 3) 0 0 0 0 0) _
 
 /-- The scratch of the fixed program at the sizes $(m, n, b, q)$ is at most the closed form
 `NLAlib.Krylov.GolubKahan.Band.solvePeak` at the workspace of the resource model `R`, plus the
 reservation of the queries; no common bound of the workspace of the primitives is assumed. -/
-theorem staticPeak_program_le_solvePeak (R : ResourceModel Operation CmpTst) (stream : ℕ)
+theorem staticPeak_solveProgram_le_solvePeak (R : ResourceModel Operation CmpTst) (stream : ℕ)
     (d : Fin 4 → ℕ) :
-    staticPeak R (program stream) d ≤
+    staticPeak R (solveProgram stream) d ≤
       solvePeak R.workspace stream (d 0) (d 1) (d 2) (d 3) +
         R.queryReserve (staticBudget stream d) := by
   rw [staticPeak_eq]
-  change stmtPeak R.workspace (solve stream).body [d 0, d 1, d 2, d 3, 0, 0, 0, 0, 0] + _ ≤ _
+  change stmtPeak R.workspace (solve stream) [d 0, d 1, d 2, d 3, 0, 0, 0, 0, 0] + _ ≤ _
   exact Nat.add_le_add_right
     (stmtPeak_solve_le_solvePeak R.workspace stream (d 0) (d 1) (d 2) (d 3) 0 0 0 0 0) _
 
@@ -576,29 +597,75 @@ noncomputable def specification (work workspace : Operation → List ℕ → ℕ
 
 /-- Total execution of the fixed program from the initial memory, for any signature that contains
 the operations of the driver. If the two products are the exact products with the supplied matrix
-$\mathbf{A}$ and with $\mathbf{A}^{\mathsf{H}}$, the basis extension meets the exact contract
+$\mathbf{A}$ and with $\mathbf{A}^{\mathsf{H}}$, the basis extension satisfies the exact contract
 and the draws return the words of the tape, then at all sizes $(m, n, b, q)$ and on every tape
 the program terminates in a memory that satisfies the postcondition
 `NLAlib.Krylov.GolubKahan.Band.Certification.Good`. The interpretation may be one induced by
-linking an orthogonalization scheme. -/
-theorem wp_program {Op Tst : Type} [Has OrthOp Op] [Has OperatorPairOp Op] [Has SampleOp Op]
+linking an orthogonalization scheme. This is the judgment of
+`NLAlib.Krylov.GolubKahan.Band.solveRoutine` read at the initial memory of the problem; it is
+stated apart from the certificate because it holds for every signature, and the certificate
+fixes one. -/
+theorem solveProgram_wp {Op Tst : Type} [Has OrthOp Op] [Has OperatorPairOp Op] [Has SampleOp Op]
     {d : Fin 4 → ℕ} {x : problem.Input d} {I : Interp Op Tst ℝ}
     (hA : IsExactMatvecPair id x.val.1 I)
-    (hO : I.Meets .total (Has.inj OrthOp.extend)
+    (hO : I.Satisfies .total (Has.inj OrthOp.extend)
       ((exactExtendRel (𝕜 := ℝ) id).spec ExtendOperands))
     (hSample : IsSample I) (stream : ℕ) (τ : Tape ℝ) :
-    Wp .total I τ (program stream).body (Program.environment (b := 5) d)
+    Wp .total I τ (solveProgram stream).body (Program.environment (b := 5) d)
       (Good stream d x.val.1 τ) (problem.initial d x) := by
   have hl : (problem.initial d x).Live outputs := by
     simp [outputs, Mem.Live, Problem.initial]
-  have hRun := solve_writes hA hO hSample stream (τ := τ) (μ := problem.initial d x)
-    (U := (0, 0)) (V := (1, 0)) (G := (2, 0)) (R := (3, 0)) (S := (4, 0)) (b := d 2)
-    (q := d 3) (by simp) hl (initial_room d x)
-  change Wp .total I τ (.frame _ _ _) _ _ (problem.initial d x)
-  apply wp_frame rfl rfl hl
-  exact hRun.wp fun μ' hfr hp =>
-    ⟨by simpa [Problem.initial] using hp.1, by simpa [Problem.initial] using hfr.length_eq,
-      hp.2⟩
+  have hRun := (solveRoutine_meets hA hO hSample stream) [d 0, d 1, d 2, d 3] outputs τ
+    (problem.initial d x) [] rfl rfl hl
+    (Routine.separatedAt_of_separated (Routine.separated_of_nodup _ (by simp [outputs]))) rfl
+    ⟨rfl, rfl, trivial, fun _ _ => ⟨trivial, trivial⟩⟩ (initial_room d x)
+  change Wp .total I τ (solve stream) (Env.frame [d 0, d 1, d 2, d 3] outputs) _
+    (problem.initial d x)
+  exact hRun.wp fun μ' hfr ⟨hpos, ys, hys, hpost⟩ =>
+    ⟨hpos.eq_of_start rfl, by simpa [Problem.initial] using hfr.length_eq,
+      solveSpecOf_post hys hpost⟩
+
+/-- The canonical exact certificate of the abstract driver: the fixed program with its total
+certification against the model and the specification. The model is confined and, because the
+pair of products with the supplied matrix is a declared oracle, not uniform; the budget is the
+static count of the program (a manifest) and the scratch is the closed form
+`NLAlib.Krylov.GolubKahan.Band.solvePeak` plus the reservation of the queries. -/
+noncomputable def algorithm (work workspace : Operation → List ℕ → ℕ) (stream : ℕ) :
+    Algorithm (model work workspace) (specification work workspace stream) := by
+  refine (inputs.cast (solveRoutine stream) rfl rfl).algorithm
+    (fun _ A => solveSpec stream id A)
+    (ht := wellTyped_solveProgram work workspace stream) ?_ ?_ ?_
+    (hspace := fun d _ => staticPeak_solveProgram_le_solvePeak _ stream d) (hmemory := ?_)
+  · intro d _ x I hI
+    obtain ⟨hA, hO, hSample⟩ := laws hI
+    exact solveRoutine_meets hA hO hSample stream
+  · intro d _ x _ τ
+    exact ⟨rfl, rfl, trivial, fun _ _ => ⟨trivial, trivial⟩⟩
+  · intro d _ x τ μ' hfr hpos ys hys hpost c _
+    read_outputs hys as (us, vs, gs, rs, ss)
+    exact ⟨hpos.eq_of_start rfl, by simpa [Problem.initial] using hfr.length_eq,
+      us, vs, gs, rs, ss, hys, hpost⟩
+  · intro d _ x
+    exact Nat.add_le_add_right (initialBytes_problem d x).le _
+
+/-- **The oracles of the model.** The matrix of the input is in no buffer. It is reached
+through the two products only: the contracts of the basis extension, of the draws and of the
+comparisons are the same at every size and input, and the contract of a product depends on the
+input through the matrix alone. The cost of the certificate is therefore counted in calls of
+the two products, with the weights of `NLAlib.Krylov.GolubKahan.Band.Certification.resources`. -/
+noncomputable def oracles (work workspace : Operation → List ℕ → ℕ) :
+    inputs.Oracles (model work workspace) where
+  ops := [.inr (.inl .matvec), .inr (.inl .rmatvec)]
+  operation o ho d x d' x' := by
+    match o, ho with
+    | .inl .extend, _ => rfl
+    | .inr (.inr (.draw _)), _ => rfl
+    | .inr (.inl .matvec), h => exact absurd (by simp) h
+    | .inr (.inl .rmatvec), h => exact absurd (by simp) h
+  query _ _ _ _ _ := rfl
+  through o _ d X Y h := by
+    change contract X.val.1 o = contract Y.val.1 o
+    rw [show X.val.1 = Y.val.1 from h]
 
 /-- The fixed program is certified in total mode. For all sizes $(m, n, b, q)$, every real
 $m \times n$ matrix $\mathbf{A}$, every interpretation whose products are the exact products with
@@ -609,28 +676,20 @@ words of the tape, releases its scratch and leaves five output blocks that decod
 run for $\mathbf{A}$ from the start block decoded from the tape. There is no rank, nonbreakdown
 or success hypothesis. -/
 theorem certifies (work workspace : Operation → List ℕ → ℕ) (stream : ℕ) :
-    (program stream).Certifies (model work workspace) (specification work workspace stream) := by
-  refine (Algorithm.ofWp (M := model work workspace)
-    (S := specification work workspace stream) (program stream)
-    (wellTyped_program work workspace stream) ?_ (fun _ _ => le_rfl)
-    (fun d _ => staticPeak_program_le_solvePeak _ stream d)
-    (fun _ _ => le_rfl) (fun _ _ => le_rfl) ?_).correct
-  · intro d _ x I hI τ
-    obtain ⟨hA, hO, hSample⟩ := laws hI
-    exact (wp_program hA hO hSample stream τ).mono fun _ h _ _ => h
-  · intro d _ x
-    rw [initialBytes_problem]
-    exact le_rfl
+    (solveProgram stream).Certifies (model work workspace) (specification work workspace stream) :=
+  (algorithm work workspace stream).correct
 
-/-- The canonical exact certificate of the abstract driver: the fixed program with its total
-certification against the model and the specification. The model is confined and, because the
-pair of products with the supplied matrix is a declared oracle, not uniform; the budget is the
-static count of the program (a manifest) and the scratch is the closed form
-`NLAlib.Krylov.GolubKahan.Band.solvePeak` plus the reservation of the queries. -/
-noncomputable def algorithm (work workspace : Operation → List ℕ → ℕ) (stream : ℕ) :
-    Algorithm (model work workspace) (specification work workspace stream) where
-  program := program stream
-  correct := certifies work workspace stream
+/-- What the certificate states: at every admitted size, for every admitted input, every
+interpretation satisfying the contracts of the model and every tape, the run of the fixed program
+from the supplied buffers succeeds within the scratch, the budget, the work and the span of the
+specification, and its final memory satisfies the output condition
+(`NLAlib.Ops.Routine.Domain.Checked`). The matrix is not in memory: it is reached only
+through the two products of the model (`NLAlib.Krylov.GolubKahan.Band.Certification.oracles`),
+and the work is counted in those products and the vector operations. The accuracy of the stored
+product for a Gaussian start block is `NLAlib.BlockKrylov.gaussianClaim`. -/
+theorem algorithm_checked (work workspace : Operation → List ℕ → ℕ) (stream : ℕ) :
+    (inputs.cast (solveRoutine stream) rfl rfl).Checked (algorithm work workspace stream) :=
+  (inputs.cast (solveRoutine stream) rfl rfl).checked_all _
 
 end Certification
 

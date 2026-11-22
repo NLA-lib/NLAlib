@@ -24,6 +24,9 @@ loop has its own threshold $t_L$: the iteration certifies only
 $(1 - \boldsymbol{u})^2\lvert h\rvert^2 \le t$, which a rounded scan with the same threshold can
 miss, so $(1 + \boldsymbol{u})^2 t \le (1 - \boldsymbol{u})^2 t_L$.
 
+The operand-form lemmas of this file are about trees shared by
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`.
+
 ## Main definitions
 
 * `NLAlib.ShiftedQR.roundedDecoupleWith`: the program with a small-eigenvalue routine;
@@ -56,8 +59,8 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O
 
 /-- The exit of the decoupling loop: the flag is $0$ if the last scan passed (scan flag `R[3]`
 positive) and $1$ otherwise. The interface is `[] (R) → (Fl)`. -/
-def roundedDecoupleExit : Impl O Q :=
-  opsImpl% [] (R) → (Fl) {
+def roundedDecoupleExit : Stmt O Q :=
+  ops% [] (R) → (Fl) {
     if (Has.inj CmpTst.isPos) [] (R[3]) {
       call (Has.inj IndexOp.lit) [0] () → (Fl)
     } else {
@@ -73,15 +76,15 @@ $12$ words as the tail `P[np - 12]` of the parameter words and the cap $T$, reco
 $k + 1 + n_0$ trial sites in the slots $j(k + 1 + n_0), \dots$ of the log `Lg` (slot width $w$),
 then scan again; then `NLAlib.ShiftedQR.roundedDecoupleExit`. The interface is
 `[N, k, np, F, T, m, n0, w] (W, P, R) → (W, Fl, Lg)`. -/
-def roundedDecoupleLoopWith (SE : Impl O Q) : Impl O Q :=
-  opsImpl% [N, k, np, F, T, m, n0, w] (W, P, R) → (W, Fl, Lg) {
-    run (bottomScan (O := O) (Q := Q)).body [N, k] (W, P, R);
+def roundedDecoupleLoopWith (SE : Stmt O Q) : Stmt O Q :=
+  ops% [N, k, np, F, T, m, n0, w] (W, P, R) → (W, Fl, Lg) {
+    run (bottomScan (O := O) (Q := Q)) [N, k] (W, P, R);
     while j < F, (Has.inj CmpTst.isZero) [] (R[3]) {
-      run (shIterationWith SE).body [N, m, k, n0, 12, T, w, j * (k + 1 + n0)]
+      run (shIterationWith SE) [N, m, k, n0, 12, T, w, j * (k + 1 + n0)]
         (W, P[1], P[2], P[3], P[4], P[5], P[6], P[7], P[10], P[np - 12], W, Fl, Lg);
-      run (bottomScan (O := O) (Q := Q)).body [N, k] (W, P, R)
+      run (bottomScan (O := O) (Q := Q)) [N, k] (W, P, R)
     } then {
-      run (roundedDecoupleExit (O := O) (Q := Q)).body [] (R, Fl)
+      run (roundedDecoupleExit (O := O) (Q := Q)) [] (R, Fl)
     }
   }
 
@@ -91,13 +94,13 @@ $m$ ($k = 2^m$) and $n_0$ from `P[8]`, `P[9]`, zero-fill the slotted log `Lg` of
 `w` entries (`NLAlib.slottedLogOpen`), and run `NLAlib.ShiftedQR.roundedDecoupleLoopWith`. The
 interface is `[N, k, np, F, T, ns, w] (W, P) → (W, Fl, Lg)`, that of the decoupling routine of
 `NLAlib.ShiftedQR.solveRoundedWith`; it needs $F(k + 1 + n_0) \le n_s$ and $k(N - 1) \le w$. -/
-def roundedDecoupleWith (SE : Impl O Q) : Impl O Q :=
-  opsImpl% [N, k, np, F, T, ns, w] (W, P) → (W, Fl, Lg) {
+def roundedDecoupleWith (SE : Stmt O Q) : Stmt O Q :=
+  ops% [N, k, np, F, T, ns, w] (W, P) → (W, Fl, Lg) {
     let R ← alloc 5;
     let m ← index (Has.inj IdxTst.toNat) (P[8]) ≤ k;
     let n0 ← index (Has.inj IdxTst.toNat) (P[9]) ≤ np;
-    run (slottedLogOpen (O := O) (Q := Q)).body [ns, w] (Lg);
-    run (roundedDecoupleLoopWith SE).body [N, k, np, F, T, m, n0, w] (W, P, R, W, Fl, Lg)
+    run (slottedLogOpen (O := O) (Q := Q)) [ns, w] (Lg);
+    run (roundedDecoupleLoopWith SE) [N, k, np, F, T, m, n0, w] (W, P, R, W, Fl, Lg)
   }
 
 end Program
@@ -294,7 +297,8 @@ scan with the loop's threshold $t_L$ (the first parameter word) reaches the stat
 next round. An entry that passed the iteration's test,
 $(1 - \boldsymbol{u})^2\lvert h\rvert^2 \le t$, passes the loop's when
 $(1 + \boldsymbol{u})^2 t \le (1 - \boldsymbol{u})^2 t_L$, so a matrix the scan finds coupled has
-had its potential contracted. -/
+had its potential contracted.
+Also in the tree of `NLAlib.SmallEig.smallEigRoutine`. -/
 theorem roundedDecoupleScan_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u < 1) (hL : IsIndexLit M I)
     (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {τ : Tape ℝ} {μ : Mem ℝ} {k L : ℕ}
@@ -303,7 +307,7 @@ theorem roundedDecoupleScan_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
     (hthr : (1 + u) ^ 2 * tv ≤ (1 - u) ^ 2 * tL) (hctx : DecoupleLoopCtx n L w q f ps μ)
     {lg : ℕ × ℕ} {ns ws s : ℕ} (hlgL : lg.1 ≠ L)
     (hmid : DecoupleLoopMid u k H tv c E w i lg ns ws s μ) :
-    Writes .total I τ (bottomScan (O := O) (Q := Q)).body (Env.frame [n + 1, k] [w, q, (L, 0)])
+    Writes .total I τ (bottomScan (O := O) (Q := Q)) (Env.frame [n + 1, k] [w, q, (L, 0)])
       (Store.inBlock L 0 5)
       (fun μ' => DecoupleLoopCtx n L w q f ps μ' ∧
           DecoupleLoopState u k H tL c E w (L, 0) i lg ns ws s μ')
@@ -496,7 +500,8 @@ with a scan that passed, the loop sets the flag to $0$ and holds an upper Hessen
 unitary similarity with error $FE$ and a bottom entry of modulus at most $\omega_D$
 ($t_L \le (1 - \boldsymbol{u})^2\omega_D^2$). At the cap the scan has passed: a coupled matrix
 has $\psi_k \le c^F\psi_k(\mathbf{H}) \le c^F N_{\max}$, and one of its bottom entries is at most
-$\psi_k$, which fails the loop's test when $(1 + \boldsymbol{u})^2(c^F N_{\max})^2 \le t_L$. -/
+$\psi_k$, which fails the loop's test when $(1 + \boldsymbol{u})^2(c^F N_{\max})^2 \le t_L$.
+Also in the tree of `NLAlib.SmallEig.smallEigRoutine`. -/
 theorem roundedDecoupleExit_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hu1 : u < 1)
     (hL : IsIndexLit M I) (hC : IsCmp id I) (h0lit : M.lit (0 : ℚ) = 0) {τ : Tape ℝ}
     {μ : Mem ℝ} {k L i F : ℕ} (hk : 0 < k) (hkn : k ≤ n) {w p f : ℕ × ℕ} {ps : List ℝ}
@@ -507,7 +512,7 @@ theorem roundedDecoupleExit_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
     {lg : ℕ × ℕ} {ns ws s : ℕ}
     (hst : DecoupleLoopState u k H tL c E w (L, 0) i lg ns ws s μ)
     (hend : i = F ∨ I.test (Has.inj CmpTst.isZero) [] [(L, 3)] μ = some false) :
-    Writes .total I τ (roundedDecoupleExit (O := O) (Q := Q)).body (Env.frame [] [(L, 0), f])
+    Writes .total I τ (roundedDecoupleExit (O := O) (Q := Q)) (Env.frame [] [(L, 0), f])
       (Store.inBlock f.1 f.2 1)
       (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧ ∃ H' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
         IsPerturbedUnitarySimilar H H' (F * E) ∧ IsUpperHessenberg H' ∧
@@ -517,7 +522,7 @@ theorem roundedDecoupleExit_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
   obtain ⟨_, -, -, -, H', hHH', hHess', hW', ⟨h1, j, hj, hjt⟩ | ⟨h0, hall, hψ⟩⟩ := hst
   · simp only [zero_add] at h1
     refine writes_ite (a := [(L, 3)]) rfl rfl (hC.test_isPos h1) ?_
-    rw [show decide (0 < id (1 : ℝ)) = true by simp, if_pos rfl]
+    rw [if_pos (by simp)]
     refine (writes_indexLit hL rfl rfl (by have := hctx.2.2.2.2.2.2.1; omega)).mono le_rfl ?_
     rintro μ' hfr ⟨-, hF⟩
     have hh : (1 - u) ^ 2 * ‖H' j.succ j.castSucc‖ ^ 2 ≤ (1 - u) ^ 2 * ωD ^ 2 := hjt.trans hcut
@@ -541,11 +546,12 @@ theorem roundedDecoupleExit_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
 omit [Has ScalarOp O] [Has IdxTst Q] in
 /-- The exit of the decoupling loop on any scan flag: on every tape, from any word at `r[3]`
 and room for the flag `f`, `NLAlib.ShiftedQR.roundedDecoupleExit` writes only the flag and
-stores a word there. -/
+stores a word there.
+Also in the tree of `NLAlib.SmallEig.smallEigRoutine`. -/
 theorem roundedDecoupleExit_writes_word {M : Machine ℝ} {I : Interp O Q ℝ}
     (hL : IsIndexLit M I) (hC : IsCmp id I) {τ : Tape ℝ} {μ : Mem ℝ} {r f : ℕ × ℕ} {x : ℝ}
     (hx : μ.store.get r.1 (r.2 + 3) = some x) (hf : f.2 < μ.store.len f.1) :
-    Writes .total I τ (roundedDecoupleExit (O := O) (Q := Q)).body (Env.frame [] [r, f])
+    Writes .total I τ (roundedDecoupleExit (O := O) (Q := Q)) (Env.frame [] [r, f])
       (Store.inBlock f.1 f.2 1) (fun μ' => ∃ x, μ'.store.get f.1 f.2 = some x) μ := by
   unfold roundedDecoupleExit
   refine writes_ite (a := [(r.1, r.2 + 3)]) rfl rfl (hC.test_isPos hx) ?_
@@ -561,9 +567,9 @@ section Iteration
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O]
   [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q]
 
--- The default heartbeat budget does not cover the elaboration of this statement.
-set_option maxHeartbeats 1000000 in
 -- The hypothesis list of the iteration, with its long real constants, makes elaboration heavy.
+set_option maxHeartbeats 1000000 in
+-- (the reason is stated above)
 omit [Has EigenvalueKernelOp O] in
 /-- One iteration of the decoupling loop on the good tapes: from the state before round $i$
 with the scan flag $0$, the iterate is in the class of `NLAlib.ShiftedQR.shIteration_pwrites`
@@ -624,11 +630,11 @@ theorem roundedDecoupleIteration_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} 
         Bi ^ ((k : ℝ)⁻¹) * S)) ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) *
       (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * Bi ^ 4) ^ ((2 * k : ℝ)⁻¹)) * α *
         Bi ^ ((k : ℝ)⁻¹) * ω) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 8)
-    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) {T : ℕ} {SE : Impl O Q}
+    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) {T : ℕ} {SE : Stmt O Q}
     (hj : (i + 1) * (k + 1 + (excNet ε).length) ≤ ns) (hw : k * n ≤ ws)
     (hlgv : ∀ b ∈ [w, p, f], b.1 ≠ lg.1)
     (hSE : RandomSmallEigContractAt law β φse k 12 T S qs SE I) (hq12 : qs = [] ∨ qs.length = 12) :
-    PWrites law I (shIterationWith SE).body
+    PWrites law I (shIterationWith SE)
       (Env.frame [n + 1, q, k, (excNet ε).length, 12, T, ws, i * (k + 1 + (excNet ε).length)]
           [w, (p.1, p.2 + 1), (p.1, p.2 + 2),
         (p.1, p.2 + 3), (p.1, p.2 + 4), (p.1, p.2 + 5), (p.1, p.2 + 6), (p.1, p.2 + 7),
@@ -735,7 +741,7 @@ theorem roundedDecoupleLoop_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : 
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u < 1) (hL : IsIndexLit M I)
     (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {law : ℕ → Measure ℝ}
-    {k q n0 F L T : ℕ} {SE : Impl O Q} (hk : 0 < k)
+    {k q n0 F L T : ℕ} {SE : Stmt O Q} (hk : 0 < k)
         (hkn : k ≤ n) {w p f lg : ℕ × ℕ} {ns ws : ℕ} {ps : List ℝ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {tL tv c E ωD Nmax φ : ℝ}
     (hps : ps.getD 0 0 = tL) (hps0 : 0 < ps.length) (hHess : IsUpperHessenberg H)
@@ -744,7 +750,7 @@ theorem roundedDecoupleLoop_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : 
     (hφ : 0 ≤ φ) (hfuel : (1 + u) ^ 2 * (c ^ F * Nmax) ^ 2 ≤ tL)
     (hj : F * (k + 1 + n0) ≤ ns) (hlgv : ∀ b ∈ [w, p, f], b.1 ≠ lg.1)
     (hlgL : lg.1 < L)
-    (hit : ∀ i < F, PWrites law I (shIterationWith SE).body
+    (hit : ∀ i < F, PWrites law I (shIterationWith SE)
       (Env.frame [n + 1, q, k, n0, 12, T, ws, i * (k + 1 + n0)]
           [w, (p.1, p.2 + 1), (p.1, p.2 + 2), (p.1, p.2 + 3),
         (p.1, p.2 + 4), (p.1, p.2 + 5), (p.1, p.2 + 6), (p.1, p.2 + 7), (p.1, p.2 + 10),
@@ -757,7 +763,7 @@ theorem roundedDecoupleLoop_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : 
       (fun μ' => DecoupleLoopCtx n L w p f ps μ' ∧
           DecoupleLoopMid u k H tv c E w (i + 1) lg ns ws (k + 1 + n0) μ')
       φ) :
-    PWrites law I (roundedDecoupleLoopWith SE).body
+    PWrites law I (roundedDecoupleLoopWith SE)
       (Env.frame [n + 1, k, ps.length, F, T, q, n0, ws] [w, p, (L, 0), w, f, lg])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
         Store.inBlock L 0 5 ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * ws)))

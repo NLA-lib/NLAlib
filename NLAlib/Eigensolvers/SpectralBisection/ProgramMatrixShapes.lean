@@ -16,7 +16,8 @@ bottom boundary, reconstruction and final copies compose to one root-bounded sup
 
 ## Main results
 
-* `NLAlib.SpectralBisection.program_matrixShapes`: exact static matrix shapes of the fixed program.
+* `NLAlib.SpectralBisection.bisectionProgram_matrixShapes`: exact static matrix shapes of the fixed
+  program.
 -/
 
 @[expose] public section
@@ -26,7 +27,7 @@ namespace NLAlib.SpectralBisection
 open Ops
 
 private theorem reconstruct_shape (n L : ℕ) (offs : List ℕ) :
-    (stmtCost (reconstructResult (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body
+    (stmtCost (reconstructResult (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))
       ([n, L] ++ offs)).CallsSatisfy (MatrixShape n) := by
   refine (Count.callsSatisfy_add _ _ (MatrixShape n)).mpr
     ⟨matrixShapes_of_allOps n _ (by rfl) _, ?_⟩
@@ -61,12 +62,12 @@ theorem solve_matrixShapes (n L cap : ℕ) (offs : List ℕ) :
 /-- Every matrix operation in the fixed program's static support has its declared arity
 and logical dimensions bounded by the root. This includes invalid or unreachable data
 branches admitted by conservative static analysis, without execution or accuracy assumptions. -/
-theorem program_matrixShapes (d : Fin 3 → ℕ) :
-    (stmtCost (program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body
+theorem bisectionProgram_matrixShapes (d : Fin 3 → ℕ) :
+    (stmtCost (bisectionProgram (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body
       (Program.environment (b := 4) d).idx).CallsSatisfy (MatrixShape (d 0)) := by
   have hd : List.ofFn d = [d 0, d 1, d 2] := by
     simp [List.ofFn_succ, Fin.succ]
-  simpa only [program, Program.environment, hd] using
+  simpa only [bisectionProgram, Program.environment, hd] using
     solve_matrixShapes (d 0) (d 1) (d 2) (List.replicate 4 0)
 
 end NLAlib.SpectralBisection

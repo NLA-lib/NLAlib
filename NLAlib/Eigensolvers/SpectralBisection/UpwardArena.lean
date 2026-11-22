@@ -18,7 +18,7 @@ identity/zero results suffice for total execution of the existing reverse-depth 
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_upwardPass_of_arenas`: root reconstruction from full arenas.
+* `NLAlib.SpectralBisection.upwardPass_writes_of_arenas`: root reconstruction from full arenas.
 -/
 
 @[expose] public section
@@ -42,8 +42,9 @@ local notation "ST" => (fun d lo => eighStep F n fuel R0 beta (EighNode.A (X d l
   (EighNode.R (X d lo)) (EighNode.ε (X d lo)) (EighNode.ℓ (X d lo)) (eighTapeSample n d lo))
 
 /-- Full arena capacity and apartness supply every geometric prerequisite for actual upward
-execution. The returned root is exactly the existing pure recursion with budget `L + 1`. -/
-theorem writes_upwardPass_of_arenas (unif : K → Su → K) (normal : Sg → K × K)
+execution. The returned root is exactly the existing pure recursion with budget `L + 1`.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem upwardPass_writes_of_arenas (unif : K → Su → K) (normal : Sg → K × K)
     {I : Interp Op Tst K} (hS : IsScalar M I) (hQ : IsToNat dec I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) {m : Mem K}
     (hl : m.Live (arenaOperands c ma ua qa ea sz kd kp lv su sg))
@@ -56,7 +57,7 @@ theorem writes_upwardPass_of_arenas (unif : K → Su → K) (normal : Sg → K �
       0 (L + 1) ua ea m.store)
     (hTwo : m.store.get c.1 (c.2 + 1) = some (M.lit 2))
     (hLit : IsExactNatLit dec M (max n 4)) :
-    Writes .total I τ (upwardPass (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (upwardPass (Op := Op) (Tst := Tst))
       (Env.frame [n, L] [lv, ua, qa, ea, sz, kd, kp, c]) (resultArenaFp n L ua ea)
       (fun m' => m'.pos = m.pos ∧ StoresResult n 0 0 ua ea
         (eighAux F n fuel R0 beta (L + 1) A R0 eps ell
@@ -71,7 +72,7 @@ theorem writes_upwardPass_of_arenas (unif : K → Su → K) (normal : Sg → K �
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hz
     rcases hz with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
       exact hl _ (by simp [arenaOperands])
-  refine (writes_upwardPass (M := M) (dec := dec) (mm := mm) (qr := qr)
+  refine (upwardPass_writes (M := M) (dec := dec) (mm := mm) (qr := qr)
     (n := n) (base := base) (fuel := fuel) (L := L) (R0 := R0) (eps := eps) (beta := beta)
     (ell := ell) (A := A) (τ := τ) (ma := ma) (lv := lv) (ua := ua) (qa := qa)
     (ea := ea) (sz := sz) (kd := kd) (kp := kp) (c := c) (m := m)

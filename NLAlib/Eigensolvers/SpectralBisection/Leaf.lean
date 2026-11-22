@@ -17,8 +17,8 @@ contracts. No spectral assumption, rounding estimate or successful-execution pre
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_leafValues`: stored real diagonal words or literal zeros.
-* `NLAlib.SpectralBisection.writes_leaf`: complete stored identity, eigenvalues and node kind.
+* `NLAlib.SpectralBisection.leafValues_writes`: stored real diagonal words or literal zeros.
+* `NLAlib.SpectralBisection.leaf_writes`: complete stored identity, eigenvalues and node kind.
 -/
 
 @[expose] public section
@@ -30,8 +30,9 @@ open Ops
 variable {Op Tst K : Type} [Has ScalarOp Op]
 
 /-- A leaf's eigenvalues are copied from its stored real diagonal or initialized to literal
-zero. A readable source and disjoint output capacity suffice for total execution. -/
-theorem writes_leafValues {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+zero. A readable source and disjoint output capacity suffice for total execution.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem leafValues_writes {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     (diagonal : Bool) {τ : Tape K} {m : Mem K} {n : ℕ} {a e : ℕ × ℕ} {v : ℕ → K}
     (ha : m.store.HoldsVec a.1 a.2 (2 * (n * n)) v)
     (he : e.2 + n ≤ m.store.len e.1)
@@ -41,7 +42,7 @@ theorem writes_leafValues {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M
       (fun m' => m'.store.HoldsVec e.1 e.2 n
         (fun i => if diagonal then v (2 * (i * n + i)) else M.lit 0) ∧ m'.pos = m.pos) m := by
   cases diagonal with
-  | true => exact PairMatrix.writes_diagonalReal hI ha he hdisj
+  | true => exact PairMatrix.diagonalReal_writes hI ha he hdisj
   | false =>
     refine writes_fill rfl (fun _ => M.lit 0) (fun _ => m.pos) rfl
       fun i hi m' hfr _ hpos => ?_
@@ -52,8 +53,9 @@ theorem writes_leafValues {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M
 
 /-- Every leaf writes its complete identity, its eigenvalue vector and the literal leaf kind.
 The pairwise apartness includes the source matrix and all three outputs. These are total
-functional guarantees for actual machine words, with no arithmetic-accuracy hypothesis. -/
-theorem writes_leaf [Has IndexOp Op] {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+functional guarantees for actual machine words, with no arithmetic-accuracy hypothesis.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem leaf_writes [Has IndexOp Op] {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     (hL : IsIndexLit M I) (diagonal : Bool) {τ : Tape K} {m : Mem K} {n : ℕ}
     {a u e kind : ℕ × ℕ} {v : ℕ → K} (hl : m.Live [a, u, e, kind])
     (ha : m.store.HoldsVec a.1 a.2 (2 * (n * n)) v)
@@ -76,7 +78,7 @@ theorem writes_leaf [Has IndexOp Op] {M : Machine K} {I : Interp Op Tst K} (hI :
     (ds := [.var 0]) (args := [⟨1, .var 2⟩]) rfl rfl (show m.Live [u] from fun z hz => hl z (by
       obtain rfl := List.mem_singleton.mp hz
       simp))
-    (PairMatrix.writes_identity hI hu)
+    (PairMatrix.identity_writes hI hu)
   refine hU.seq fun m₁ hfr₁ ⟨hU₁, hp₁⟩ => ?_
   have hA₁ := hfr₁.keep (Store.readsOnly_holdsVec a.1 a.2 (2 * (n * n)) v) hUA ha
   have hE := writes_frame (τ := τ) (ρ := Env.frame [n] [a, u, e, kind])
@@ -86,7 +88,7 @@ theorem writes_leaf [Has IndexOp Op] {M : Machine K} {I : Interp Op Tst K} (hI :
       exact hl z (by
         simp only [List.mem_cons, List.not_mem_nil, or_false] at hz ⊢
         rcases hz with rfl | rfl <;> simp)))
-    (writes_leafValues hI diagonal hA₁ (by rwa [hfr₁.len_eq]) hEA)
+    (leafValues_writes hI diagonal hA₁ (by rwa [hfr₁.len_eq]) hEA)
   refine (hE.keep (Store.readsOnly_holdsVec u.1 u.2 (2 * (n * n)) _) hUE.symm hU₁).seq
     fun m₂ hfr₂ ⟨⟨hE₂, hp₂⟩, hU₂⟩ => ?_
   have hK := writes_indexLit (τ := τ) (ρ := Env.frame [n] [a, u, e, kind])

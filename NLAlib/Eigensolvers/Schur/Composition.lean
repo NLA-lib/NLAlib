@@ -45,7 +45,7 @@ theorem schurPipelineWith_measureReal_not_schur_le [Has ScalarOp O] [Has IndexOp
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hC : IsCmp id I)
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
-    {law : ℕ → Measure ℝ} {Nm Reg Red Core : Impl O Q} {k F T : ℕ}
+    {law : ℕ → Measure ℝ} {Nm Reg Red Core : Stmt O Q} {k F T : ℕ}
     {c₁ c₂ δR φR εHU εHT εCU εCT φC : ℝ} {qR qC : List ℝ}
     {C C' : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop}
     (hNm : FrobNormEstimateContract c₁ c₂ (n + 1) Nm I)
@@ -60,7 +60,7 @@ theorem schurPipelineWith_measureReal_not_schur_le [Has ScalarOp O] [Has IndexOp
     {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {a p uo f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : SchurPipelineInput (qR ++ qC) a p uo f A μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (schurPipelineWith Nm Reg Red Core).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (schurPipelineWith Nm Reg Red Core)
       (Env.frame [n + 1, qR.length, qC.length, k, F, T] [a, p, a, uo, f]) (schurFp n a uo f)
       (SchurOutput a uo f A
         (2 * c₂ * √((n : ℝ) + 1) * (δR + 3 * εHT / c₁ + εCT +
@@ -99,7 +99,7 @@ theorem schurPipelineWith_measureReal_not_schur_le [Has ScalarOp O] [Has IndexOp
     HoldsMatrix a A m.store ∧ ∃ x : ℝ, m.store.get L 0 = some x ∧ c₁ * frobNorm A ≤ x ∧
       x ≤ c₂ * frobNorm A with hMidN
   have hnm : ∀ m τ, SchurPipelineMem n (qR ++ qC) a p uo f L m ∧ HoldsMatrix a A m.store →
-      Writes .total I τ (Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨5, .const 0⟩] Nm.body)
+      Writes .total I τ (Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨5, .const 0⟩] Nm)
         (schurPipelineEnv n qR.length qC.length k F T a p uo f L) (Store.inBlock L 0 1) MidN m := by
     rintro m τ ⟨hm, hA'⟩
     obtain ⟨-, ha, hp, -, -, -, hLl, -⟩ := id hm
@@ -182,13 +182,13 @@ instrumented counts, each at the offsets the pipeline passes to it (zero, and $n
 parameter words), plus $120(N + 1)^2$ for the glue (the scaling loops, the identity, the branch
 and the frames). -/
 theorem size_stmtCost_schurPipelineWith_le [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
-    (Nm Reg Red Core : Impl O Q) (N nr nq k F T : ℕ) :
-    Count.size (stmtCost (schurPipelineWith Nm Reg Red Core).body.instrument
+    (Nm Reg Red Core : Stmt O Q) (N nr nq k F T : ℕ) :
+    Count.size (stmtCost (schurPipelineWith Nm Reg Red Core).instrument
         [N, nr, nq, k, F, T, 0, 0, 0, 0, 0]) ≤
-      Count.size (stmtCost Nm.body.instrument [N, 0, 0]) +
-        Count.size (stmtCost Reg.body.instrument [N, nr, 0, 0, 0]) +
-        Count.size (stmtCost Red.body.instrument [N, 0, 0, 0, 0]) +
-        Count.size (stmtCost Core.body.instrument [N, nq, k, F, T, 0, nr, 0, 0, 0, 0]) +
+      Count.size (stmtCost Nm.instrument [N, 0, 0]) +
+        Count.size (stmtCost Reg.instrument [N, nr, 0, 0, 0]) +
+        Count.size (stmtCost Red.instrument [N, 0, 0, 0, 0]) +
+        Count.size (stmtCost Core.instrument [N, nq, k, F, T, 0, nr, 0, 0, 0, 0]) +
         120 * (N + 1) ^ 2 := by
   have hsup : ∀ x y : Count (O ⊕ Bookkeeping) Q,
       Count.size (x ⊔ y) = Count.size x + Count.size y - Count.size (x ⊓ y) := fun x y => by

@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Link
+public meta import Lean.Elab.Term
 
 /-!
 # The program builder: named variables, elaborated to plain trees
@@ -18,7 +19,10 @@ tree built with the notation is `rfl`-equal to the positional one (the examples 
 `NLAlib.Ops.Examples.Built`). There is no compile function in the kernel and no kernel `rfl` of a
 compiled tree.
 
-`opsImpl% …` is the same with the numbers of dimensions and operands: an `NLAlib.Ops.Impl`.
+Under `noted% t` the trees built inside the term `t` also carry the names of the source as notes
+(`NLAlib.Ops.Stmt.note`): the names of the header, of each loop variable, scratch buffer and
+index binding, and of the routine or tree that each `run` frames. A note changes no run, count
+or judgment; `NLAlib.Ops.Stmt.pretty` reads the names back.
 
 ## The header
 
@@ -32,7 +36,8 @@ occurrence.
 
 ```
 call op [dims] (ins) → (outs)          -- Stmt.call
-run body [dims] (args)                -- Stmt.frame, a subprogram in an explicit context
+run R [dims] (operands)               -- a routine, by its interface (one operand per operand)
+run body [dims] (args)                -- a tree, by its buffer variables (Stmt.frame)
 let t ← allocAs fmt len                -- explicit StorageFormat, scoped over the rest
 let t ← alloc len                      -- one-byte StorageFormat.cell, scoped over the rest
 let v ← index q (ins) ≤ bound          -- Stmt.bindIdx, scoped over the rest of the block
@@ -43,6 +48,14 @@ while i < fuel, q [dims] (ins) { … } then { … }   -- Stmt.whileFuel; `i` is 
 ifPos e { … }   ifZero e { … }         -- Stmt.ifPos, Stmt.ifZero
 skip   abort   { … }
 ```
+
+`run` takes either a routine or a tree. A routine (`NLAlib.Ops.Routine`) is run by its interface:
+one operand per operand of the routine, and the frame is laid out by the routine's layout, so an
+operand updated in place is named once. This is the frame `call` expects. A tree (`Stmt`, for
+instance a fragment of a routine) is run by its buffer variables, which the caller lists in the
+tree's own order. A routine with an operand that continues another has no frame of its own
+operands (the continued position is computed from lengths, which are not index expressions) and
+is not run by `run`.
 
 Statements are separated by `;`; a sequence is nested to the right. An operand is `X` or `X[e]`:
 for an operand of the header, the offset is the offset variable of `X` plus the summands of `e`,
@@ -69,12 +82,72 @@ instances.
 ## Main results
 
 * `ops%`: a program with named variables, elaborated to a plain `Stmt`.
-* `opsImpl%`: an implementation with named variables, elaborated to a plain `Impl`.
 -/
 
 @[expose] public section
 
 namespace NLAlib.Ops
+
+/-! ### Running a routine or a tree -/
+
+/-- `ops_run% R ds [ops]`: the frame of `run` (internal to the builder). For a routine `R`, the
+frame of its tree at the operands of its interface: the layout of `R` is applied when the term is
+elaborated, so the result is the literal `Stmt.frame ds ops' R.body`. For a tree, `Stmt.frame ds
+ops t`. -/
+syntax (name := opsRun) "ops_run% " term:max term:max " [" term,* "]" : term
+
+open Lean Elab Term Meta in
+/-- The literal list of natural numbers of an expression, if it reduces to one. -/
+private meta def natListLit? (e : Expr) : MetaM (Option (Array Nat)) := do
+  let mut e ← whnfD e
+  let mut out : Array Nat := #[]
+  for _ in [0:4096] do
+    if e.isAppOfArity ``List.nil 1 then return some out
+    unless e.isAppOfArity ``List.cons 3 do return none
+    let some h ← (evalNat (← whnfD e.appFn!.appArg!)).run | return none
+    out := out.push h
+    e ← whnfD e.appArg!
+  return none
+
+open Lean Elab Term Meta in
+/-- Elaborate `ops_run%`. -/
+@[term_elab opsRun] meta def elabOpsRun : TermElab := fun stx expected? => do
+  match stx with
+  | `(ops_run% $body $ds [$ops,*]) =>
+    let ops := ops.getElems
+    let (o, t) ← do
+      match expected? with
+      | some e =>
+        let e ← whnfR (← instantiateMVars e)
+        if e.isAppOfArity `NLAlib.Ops.Stmt 2 then pure (e.appFn!.appArg!, e.appArg!)
+        else pure (← mkFreshTypeMVar, ← mkFreshTypeMVar)
+      | none => pure (← mkFreshTypeMVar, ← mkFreshTypeMVar)
+    let rty := mkApp2 (mkConst `NLAlib.Ops.Routine) o t
+    let saved ← saveState
+    let routine? ← try
+        let r ← withoutErrToSorry (elabTermEnsuringType body rty)
+        synthesizeSyntheticMVarsNoPostponing
+        pure (some r)
+      catch _ => saved.restore; pure none
+    match routine? with
+    | none => elabTerm (← `(Stmt.frame $ds [$ops,*] $body)) expected?
+    | some r =>
+      let flat ← whnfD (mkApp3 (mkConst `NLAlib.Ops.Routine.flat) o t r)
+      unless flat.isConstOf ``Bool.true do
+        throwErrorAt body "run: a routine with an operand that continues another is called by an \
+          explicit frame of its tree"
+      let binds ← whnfD (mkApp3 (mkConst `NLAlib.Ops.Routine.binds) o t r)
+      let ops' ← if binds.isAppOfArity ``Option.none 1 then pure ops
+        else if binds.isAppOfArity ``Option.some 2 then
+          match ← natListLit? binds.appArg! with
+          | some l => l.mapM fun i => do
+              let some a := ops[i]? | throwErrorAt body "run: too few operands for the routine"
+              pure a
+          | none => throwErrorAt body "run: the layout of the routine is not a literal list"
+        else throwErrorAt body "run: the layout of the routine does not reduce"
+      let bodyFn := mkCIdent `NLAlib.Ops.Routine.body
+      elabTerm (← `(Stmt.frame $ds [$ops',*] ($bodyFn $body))) expected?
+  | _ => throwUnsupportedSyntax
 
 /-! ### Syntax -/
 
@@ -114,7 +187,8 @@ syntax "skip" : opsStmt
 syntax &"abort" : opsStmt
 /-- `call op [dims] (ins) → (outs)`: a call. -/
 syntax &"call " term:max " [" opsIdx,* "]" " (" opsArg,* ")" " → " "(" opsArg,* ")" : opsStmt
-/-- `run body [dims] (args)`: run an explicit subprogram in the supplied frame. -/
+/-- `run R [dims] (operands)`: run a routine by its interface, or a tree by its buffer
+variables, in a frame. -/
 syntax &"run " term:max " [" opsIdx,* "]" " (" opsArg,* ")" : opsStmt
 /-- `let t ← alloc len`: one-byte-cell scratch for the rest of the block.
 Use `allocAs` when the resource model requires an explicit storage format. -/
@@ -143,10 +217,6 @@ syntax opsBlock : opsStmt
 /-- **A program with named variables**, elaborated to a plain `Stmt`. See the module docstring. -/
 syntax (name := opsProg) "ops% " "[" ident,* "]" " (" ident,* ")" " → " "(" ident,* ")" ppSpace
   opsBlock : term
-
-/-- **An implementation with named variables**: `Impl.mk nd nin nout tree`. -/
-syntax (name := opsImpl) "opsImpl% " "[" ident,* "]" " (" ident,* ")" " → " "(" ident,* ")"
-  ppSpace opsBlock : term
 
 /-! ### The translation -/
 
@@ -256,6 +326,62 @@ meta def argL (sc : Scope) (as : Array (TSyntax `opsArg)) : MacroM (TSyntax `ter
   let ts ← as.mapM (argE sc)
   `([$ts,*])
 
+/-- **`noted% t`** elaborates the term `t` with notes: the trees that `ops%` and `routine%` build
+inside `t` carry the names of their header, of each bound variable and of the routine each `run`
+frames, as `NLAlib.Ops.Stmt.note`. Without `noted%` a tree has no note. -/
+syntax (name := opsNoted) "noted% " term : term
+
+open Lean Elab Term in
+/-- Elaborate `noted%`: the flag `ops.notes` is set while the term is elaborated. -/
+@[term_elab opsNoted] meta def elabOpsNoted : TermElab := fun stx expected? => do
+  match stx with
+  | `(noted% $t) => withOptions (·.setBool `ops.notes true) (elabTerm t expected?)
+  | _ => throwUnsupportedSyntax
+
+/-- `ops_note% n s` is `Stmt.note n s` under `noted%`, and `s` otherwise. -/
+syntax (name := opsNote) "ops_note% " term:max term:max : term
+
+open Lean Elab Term in
+/-- Elaborate `ops_note%`. -/
+@[term_elab opsNote] meta def elabOpsNote : TermElab := fun stx expected? => do
+  match stx with
+  | `(ops_note% $n $s) =>
+    if (← getOptions).getBool `ops.notes false then elabTerm (← `(Stmt.note $n $s)) expected?
+    else elabTerm s expected?
+  | _ => throwUnsupportedSyntax
+
+/-- `ops_note_run% body dims operands s` is `s`, the frame of a `run`, with the note naming the
+routine or tree `body` under `noted%`. -/
+syntax (name := opsNoteRun) "ops_note_run% " term:max term:max term:max term:max : term
+
+open Lean Elab Term Meta in
+/-- Elaborate `ops_note_run%`: the name is that of the constant at the head of `body`. -/
+@[term_elab opsNoteRun] meta def elabOpsNoteRun : TermElab := fun stx expected? => do
+  match stx with
+  | `(ops_note_run% $body $ds $as $s) =>
+    unless (← getOptions).getBool `ops.notes false do return ← elabTerm s expected?
+    let saved ← saveState
+    let name? ← try
+        let b ← instantiateMVars (← withoutErrToSorry (elabTerm body none))
+        let b := if b.isAppOf `NLAlib.Ops.Routine.body then b.appArg! else b
+        saved.restore
+        pure b.getAppFn.constName?
+      catch _ => saved.restore; pure none
+    match name? with
+    | some name =>
+      let lit : TSyntax `term := ⟨Syntax.mkStrLit (toString name)⟩
+      elabTerm (← `(Stmt.note (Note.routine $lit $ds $as) $s)) expected?
+    | none => elabTerm s expected?
+  | _ => throwUnsupportedSyntax
+
+/-- A list of names as a term: the strings of a note. -/
+meta def strL (xs : Array String) : MacroM (TSyntax `term) := do
+  let ts : Array (TSyntax `term) := xs.map fun x => ⟨Syntax.mkStrLit x⟩
+  `([$ts,*])
+
+/-- The source text of a piece of syntax, for a note. -/
+meta def srcText (stx : Syntax) : String := (stx.reprint.getD "").trimAscii.toString
+
 mutual
 
 /-- Translate a sequence of statements: nested to the right; a `let` scopes over the rest. -/
@@ -266,14 +392,17 @@ meta def seqE (sc : Scope) : Nat → List (TSyntax `opsStmt) → MacroM (TSyntax
     match s with
     | `(opsStmt| let $t:ident ← allocAs $fmt $len) =>
       sc.fresh t
-      `(Stmt.allocAs $fmt $(← idxE sc depth len) $(← seqE (sc.pushBuf t.getId) f rest))
+      `(ops_note% (Note.var $(⟨Syntax.mkStrLit (toString t.getId)⟩))
+        (Stmt.allocAs $fmt $(← idxE sc depth len) $(← seqE (sc.pushBuf t.getId) f rest)))
     | `(opsStmt| let $t:ident ← alloc $len) =>
       sc.fresh t
-      `(Stmt.alloc $(← idxE sc depth len) $(← seqE (sc.pushBuf t.getId) f rest))
+      `(ops_note% (Note.var $(⟨Syntax.mkStrLit (toString t.getId)⟩))
+        (Stmt.alloc $(← idxE sc depth len) $(← seqE (sc.pushBuf t.getId) f rest)))
     | `(opsStmt| let $v:ident ← index $q ($as,*) ≤ $bd) =>
       sc.fresh v
-      `(Stmt.bindIdx $q $(← argL sc as.getElems) $(← idxE sc depth bd)
-        $(← seqE (sc.pushIdx v.getId) f rest))
+      `(ops_note% (Note.var $(⟨Syntax.mkStrLit (toString v.getId)⟩))
+        (Stmt.bindIdx $q $(← argL sc as.getElems) $(← idxE sc depth bd)
+          $(← seqE (sc.pushIdx v.getId) f rest)))
     | _ =>
       if rest.isEmpty then stmtE sc f s
       else `(Stmt.seq $(← stmtE sc f s) $(← seqE sc f rest))
@@ -293,20 +422,25 @@ meta def stmtE (sc : Scope) : Nat → TSyntax `opsStmt → MacroM (TSyntax `term
     | `(opsStmt| abort) => `(Stmt.abort)
     | `(opsStmt| call $o [$ds,*] ($as,*) → ($zs,*)) =>
       `(Stmt.call $o $(← idxL sc ds.getElems) $(← argL sc as.getElems) $(← argL sc zs.getElems))
-    | `(opsStmt| run $body [$ds,*] ($as,*)) =>
-      `(Stmt.frame $(← idxL sc ds.getElems) $(← argL sc as.getElems) $body)
+    | `(opsStmt| run $body [$ds,*] ($as,*)) => do
+      let ops ← as.getElems.mapM (argE sc)
+      `(ops_note_run% $body $(← strL (ds.getElems.map (srcText ·.raw)))
+        $(← strL (as.getElems.map (srcText ·.raw)))
+        (ops_run% $body $(← idxL sc ds.getElems) [$ops,*]))
     | `(opsStmt| for $i:ident < $n $b:opsBlock) =>
       sc.fresh i
-      `(Stmt.loop $(← idxE sc depth n) $(← blockE (sc.pushIdx i.getId) f b))
+      `(ops_note% (Note.var $(⟨Syntax.mkStrLit (toString i.getId)⟩))
+        (Stmt.loop $(← idxE sc depth n) $(← blockE (sc.pushIdx i.getId) f b)))
     | `(opsStmt| if $q [$ds,*] ($as,*) $t:opsBlock else $e:opsBlock) =>
       `(Stmt.ite $q $(← idxL sc ds.getElems) $(← argL sc as.getElems) $(← blockE sc f t)
         $(← blockE sc f e))
     | `(opsStmt| while $i:ident < $fu, $q [$ds,*] ($as,*) $b:opsBlock then $k:opsBlock) =>
       sc.fresh i
       let sc' := sc.pushIdx i.getId
-      `(Stmt.whileFuel $(← idxE sc depth fu) $q $(← idxL sc' ds.getElems)
-        $(← argL sc' as.getElems)
-        $(← blockE sc' f b) $(← blockE sc' f k))
+      `(ops_note% (Note.var $(⟨Syntax.mkStrLit (toString i.getId)⟩))
+        (Stmt.whileFuel $(← idxE sc depth fu) $q $(← idxL sc' ds.getElems)
+          $(← argL sc' as.getElems)
+          $(← blockE sc' f b) $(← blockE sc' f k)))
     | `(opsStmt| ifPos $e $b:opsBlock) =>
       `(Stmt.ifPos $(← idxE sc depth e) $(← blockE (sc.pushIdx Name.anonymous) f b))
     | `(opsStmt| ifZero $e $b:opsBlock) =>
@@ -340,14 +474,11 @@ end Builder
 open Lean in
 macro_rules
   | `(ops% [$ds,*] ($ins,*) → ($outs,*) $b:opsBlock) =>
-    do Builder.blockE (← Builder.header ds.getElems ins.getElems outs.getElems) Builder.depth b
-
-open Lean in
-macro_rules
-  | `(opsImpl% [$ds,*] ($ins,*) → ($outs,*) $b:opsBlock) => do
-    let body ← Builder.blockE (← Builder.header ds.getElems ins.getElems outs.getElems)
-      Builder.depth b
-    `(Impl.mk $(Builder.lit ds.getElems.size) $(Builder.lit ins.getElems.size)
-      $(Builder.lit outs.getElems.size) $body)
+    do
+      let names (xs : Array Ident) := xs.map fun x => toString x.getId
+      let tree ← Builder.blockE (← Builder.header ds.getElems ins.getElems outs.getElems)
+        Builder.depth b
+      `(ops_note% (Note.header $(← Builder.strL (names ds.getElems))
+        $(← Builder.strL (names (ins.getElems ++ outs.getElems)))) $tree)
 
 end NLAlib.Ops

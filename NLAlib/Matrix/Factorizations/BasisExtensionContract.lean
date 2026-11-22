@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Matrix.Perturbation.BasisExtension
-public import NLAlib.Ops.Catalog.Orth
+public import NLAlib.Ops.Catalog.OrthRoutine
 
 /-!
 # The contracts of a basis extension
@@ -25,7 +25,7 @@ Design: `docs/design/LowRank-BlockLanczos.md` §3.1a.
 
 ## Main results
 
-* `NLAlib.Ops.Interp.Meets.extendRel_mono`: the rounded contract is monotone in its parameters.
+* `NLAlib.Ops.Interp.Satisfies.extendRel_mono`: the rounded contract is monotone in its parameters.
 -/
 
 @[expose] public section
@@ -50,16 +50,24 @@ exact extension predicate `NLAlib.IsBasisExtension`, at all dimensions. -/
 def exactExtendRel {𝕜 : Type} [RCLike 𝕜] (dec : K → 𝕜) : BlockRel K :=
   extendRelOf dec (fun _ _ _ => True) fun _ _ _ Q W Q' H R => IsBasisExtension Q W Q' H R
 
-/-- An operation that meets the rounded contract of a basis extension with parameters
+/-- The rounded specification of a basis extension: that of `NLAlib.Ops.extendRel`. -/
+abbrev extendSpec (dec : K → ℝ) (η₀ μ ε : ℝ) (ok : ℕ → ℕ → ℕ → Prop) : Routine.Spec K :=
+  Routine.Spec.ofRel (extendRel dec η₀ μ ε ok) fun _ => True
+
+/-- The exact specification of a basis extension: that of `NLAlib.Ops.exactExtendRel`. -/
+abbrev exactExtendSpec {𝕜 : Type} [RCLike 𝕜] (dec : K → 𝕜) : Routine.Spec K :=
+  Routine.Spec.ofRel (exactExtendRel dec) fun _ => True
+
+/-- An operation that satisfies the rounded contract of a basis extension with parameters
 $(\eta_0, \mu, \varepsilon)$, $\mu \ge 0$, meets it with a smaller window $\eta_0' \le \eta_0$,
 larger parameters $\mu \le \mu'$, $\varepsilon \le \varepsilon'$ and fewer admitted
 dimensions. -/
-theorem Interp.Meets.extendRel_mono {dec : K → ℝ} {η₀ μ ε η₀' μ' ε' : ℝ}
+theorem Interp.Satisfies.extendRel_mono {dec : K → ℝ} {η₀ μ ε η₀' μ' ε' : ℝ}
     {ok ok' : ℕ → ℕ → ℕ → Prop} {I : Interp Op Tst K} {o : Op}
-    (h : I.Meets .total o ((extendRel dec η₀ μ ε ok).spec ExtendOperands))
+    (h : I.Satisfies .total o ((extendRel dec η₀ μ ε ok).spec ExtendOperands))
     (hok : ∀ n k b, ok' n k b → ok n k b) (hμ0 : 0 ≤ μ) (hη : η₀' ≤ η₀) (hμ : μ ≤ μ')
     (hε : ε ≤ ε') :
-    I.Meets .total o ((extendRel dec η₀' μ' ε' ok').spec ExtendOperands) :=
+    I.Satisfies .total o ((extendRel dec η₀' μ' ε' ok').spec ExtendOperands) :=
   h.extendRelOf_mono hok fun _ _ _ _ _ _ _ _ hE => hE.mono hμ0 hη hμ hε
 
 end NLAlib.Ops

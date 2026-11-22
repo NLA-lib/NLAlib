@@ -44,7 +44,7 @@ theorem iteration_contract {M : Machine ℝ} {I : Interp O Q ℝ} {θ : ℝ}
     ritzSearchContract_findRitzSearch hS hE hC hL hQ
   have hIter := iterationWith_writes (tape := tape) (μ := μ) hS hE hL hC hK hFind
     hHess hk hτ hB hDp hD hH hP hCst hl
-  change Writes .total I tape (iterationWith findRitzSearch).body _ _ _ μ
+  change Writes .total I tape (iterationWith findRitzSearch) _ _ _ μ
   refine hIter.mono le_rfl ?_
   intro μ' _ ⟨hp, hW⟩
   exact ⟨hp, K.ritz (n + 1) (2 ^ m) H, K.length_ritz _ _ _,

@@ -28,16 +28,16 @@ open Ops
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 
 /-- Allocate only two persistent per-block constant words around the actual scalar loop. -/
-def decouple (Iter : Impl O Q) : Impl O Q :=
-  opsImpl% [N, m, k, F, M] (W, Params) → (W, R) {
+def decouple (Iter : Stmt O Q) : Stmt O Q :=
+  ops% [N, m, k, F, M] (W, Params) → (W, R) {
     let Const ← alloc 2;
-    run (decoupleWithConstants Iter).body [N, m, k, F, M] (W, Params, Const, W, R)
+    run (decoupleWithConstants Iter) [N, m, k, F, M] (W, Params, Const, W, R)
   }
 
 /-- The scoped implementation satisfies the worklist's local decoupling interface. -/
 theorem decouple_contract {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (hE : ExactModel id Mch) (hL : IsIndexLit Mch I)
-    (hC : IsCmp id I) {θ : ℝ} (Iter : Impl O Q) (hIter : IterationContract θ Iter I) :
+    (hC : IsCmp id I) {θ : ℝ} (Iter : Stmt O Q) (hIter : IterationContract θ Iter I) :
     DecouplingContract θ (decouple Iter) I := by
   intro n m F M τ B α γ δ w p r tape μ H hHess hyp hkn hτ hM hMpos hW hP hl hw hr hWR hPW
   have hwl := hl w (by simp)

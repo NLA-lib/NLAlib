@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Krylov.Lanczos.Reorth.SweepExact
-public import NLAlib.Krylov.Lanczos.Reorth.TwoPassInterface
+public import NLAlib.Krylov.Lanczos.Reorth.TwoPass
 public import NLAlib.Ops.Profiles.BlasCert
 
 /-!
@@ -59,10 +59,11 @@ theorem runs_cgs2_seq {M : Machine K} {dec : K → ℝ} {u : ℝ} {I : Interp Op
     (hws : μ.store.readBlock w.1 w.2 n = some ws) (hz : μ.Room [w] [n]) :
     ConditionalRuns I (Blas.ws 0) τ (cgs2.link (Blas.seq (Op := Op) (Tst := Tst)).table)
       (Env.frame [n, k] [Q, w, w]) μ (cgs2SeqCount n k) (k + n + 2)
-      ((twoPassRel dec (Blas.seq.err u).dot (Blas.seq.err u).axpy).Post
-        [n, k] [qs, ws] [w] [] μ) := by
+      (fun μ' => ∃ ws', ws'.length = n ∧
+        TwoPassOut dec ((Blas.seq.err u).dot n) (Blas.seq.err u).axpy n k qs ws ws' ∧
+        μ' = μ.updBlocks [w] [ws']) := by
   have hcert := Blas.seq_certifies (Op := Op) (Tst := Tst) hM hu (fun _ => True)
-  obtain ⟨hS', hB⟩ := hcert.meets I hS
+  obtain ⟨hS', hB⟩ := hcert.satisfies I hS
   have hrun := runs_cgs2 hS' hB.dot hB.axpy hM.neg (Blas.ws 0)
     (τ := τ) (qs := qs) (ws := ws) trivial hQw hl hqs hws hz
   exact (hcert.transfer I τ _ _ _ _ _ _ hrun).mono
@@ -86,7 +87,7 @@ theorem exists_inflModels (u : ℝ) (hu : 0 < u) :
   have hI : IsScalar (inflMachine u) (Interp.ofFns F : Interp (ScalarOp ⊕ Blas1Op) Tst ℝ) :=
     isScalar_ofFns _ _ fun _ => rfl
   obtain ⟨hS, hB⟩ := (Blas.seq_certifies (Op := ScalarOp ⊕ Blas1Op) (Tst := Tst)
-    (stdModel_infl hu.le) hu.le (fun _ => True)).meets _ hI
+    (stdModel_infl hu.le) hu.le (fun _ => True)).satisfies _ hI
   refine ⟨_, stdModel_infl hu.le, hS, hB, ?_⟩
   change (1 + 1) * (1 + u) ≠ 2
   intro h

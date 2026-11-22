@@ -10,6 +10,7 @@ public import NLAlib.Ops.Catalog.Blas1
 public import NLAlib.Ops.Catalog.Compare
 public import NLAlib.Ops.Logic.Builder
 public import NLAlib.Ops.Logic.Count
+public import NLAlib.Ops.Blas.Fill
 
 /-!
 # The ordinary Lanczos program over operations
@@ -35,28 +36,9 @@ section Zero
 
 variable {Op Tst : Type} [Has ScalarOp Op]
 
-/-- Initialize an output block with the machine's literal zero. -/
-def zero : Stmt Op Tst := ops% [n] () → (Q) {
-  for i < n { call (Has.inj (ScalarOp.lit 0)) [] () → (Q[i]) }
-}
-
-/-- A zero fill reads no input block and initializes one output block. -/
-def zeroImpl : Impl Op Tst := ⟨1, 0, 1, zero⟩
-
 /-- A zero fill performs one literal call per output cell. -/
 noncomputable def zeroCount (n : ℕ) : Count Op Tst :=
   n • Count.one (Has.inj (ScalarOp.lit 0)) []
-
-/-- Static evaluation counts every initialized cell. -/
-theorem stmtCost_zero (n q : ℕ) :
-    stmtCost (zero (Op := Op) (Tst := Tst)) [n, q] = zeroCount n := by
-  simp [zero, zeroCount, stmtCost, useCost]
-
-/-- The fill borrows only a literal implementation's workspace. -/
-theorem stmtPeak_zero_le (W : Op → List ℕ → ℕ) (n q : ℕ) :
-    stmtPeak W (zero (Op := Op) (Tst := Tst)) [n, q] ≤ W (Has.inj (ScalarOp.lit 0)) [] := by
-  simp only [zero, stmtPeak]
-  exact Finset.sup_le fun _ _ => le_rfl
 
 end Zero
 
@@ -103,9 +85,6 @@ def normalize : Stmt Op Tst := ops% [n] (Work, sigma, Q, beta) → (Q, beta) {
   } else { skip }
 }
 
-/-- Guarded normalization has four inputs and two aliased outputs. -/
-def normalizeImpl : Impl Op Tst := ⟨1, 4, 2, normalize⟩
-
 /-- The branch budget includes its test, square root, copy and reciprocal scaling. -/
 noncomputable def normalizeCount (n : ℕ) : Count Op Tst :=
   Count.test (Has.inj CmpTst.isPos) [] + Count.one (Has.inj ScalarOp.sqrt) [] +
@@ -150,9 +129,10 @@ def rounds : Stmt Op Tst :=
 B,V,C,Prev,t; the coefficient length is an explicit dimension so reorthogonalization can add ν.
 No work-vector buffer is needed during initialization. -/
 def initializeState : Stmt Op Tst :=
-  .seq (.frame [(.var 1 + .const 1) * .var 0] [⟨1, .var 4⟩] zero)
-    (.seq (.frame [.var 2] [⟨2, .var 5⟩] zero)
-      (.seq (.frame [.var 0] [⟨3, .var 6⟩] zero)
+  .seq (.frame [(.var 1 + .const 1) * .var 0] [⟨1, .var 4⟩]
+      (fillRoutine (Has.inj (ScalarOp.lit 0))).body)
+    (.seq (.frame [.var 2] [⟨2, .var 5⟩] (fillRoutine (Has.inj (ScalarOp.lit 0))).body)
+      (.seq (.frame [.var 0] [⟨3, .var 6⟩] (fillRoutine (Has.inj (ScalarOp.lit 0))).body)
         (.seq (.call (Has.inj Blas1Op.dot) [.var 0]
           [⟨0, .var 3⟩, ⟨0, .var 3⟩] [⟨4, .var 7⟩])
           (.frame [.var 0]
@@ -168,8 +148,6 @@ def solve : Stmt Op Tst :=
       [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩, ⟨3, .const 0⟩, ⟨5, .const 0⟩] initializeState)
       rounds)))
 
-/-- The complete program has dimensions n,cap, one input and two packed outputs. -/
-def solveImpl : Impl Op Tst := ⟨2, 1, 2, solve⟩
 
 /-- Calls and normalization test of one active round; the loop adds its continuation test. -/
 noncomputable def advanceCount (n : ℕ) : Count Op Tst :=

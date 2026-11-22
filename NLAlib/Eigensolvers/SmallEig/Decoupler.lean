@@ -21,8 +21,8 @@ One node of the deflation of [BanksGarzaVargasSrivastava2025, §6] (the paper's 
 with `RHess` at every node, decision D7 of the design): `RHess` makes the last-row weights large,
 `OneEig` finds a shift within $\beta' = \omega/20$ of an eigenvalue and at least $\eta_1$ away from
 the spectrum, and `Decouple` makes the last subdiagonal entry at most $\omega$. As the decoupler of
-the rounded worklist at the bottom width $k = 1$ it meets the randomized decoupling contract on the
-class of the blocks; Lemma 6.2's preservation of the class is carried by the composition of the
+the rounded worklist at the bottom width $k = 1$ it satisfies the randomized decoupling contract on
+the class of the blocks; Lemma 6.2's preservation of the class is carried by the composition of the
 three contracts, and the class inside the node by one doubling
 (`NLAlib.SmallEig.class_of_rhess`).
 
@@ -60,18 +60,18 @@ steps of `decoupleLast` from the slot $N - 1$ on (so $N - 1 + m_2 \le n_s$ and $
 The interface is `[N, k, np, F, T, ns, w] (W, P) → (W, Fl, Lg)`, that of the decoupling routine
 of `NLAlib.ShiftedQR.solveRoundedWith`; the bottom width and the iteration cap are not read.
 Algorithm: small-eig -/
-def smallEigDecoupler (sG : ℕ) : Impl O Q :=
-  opsImpl% [N, k, np, F, T, ns, w] (W, P) → (W, Fl, Lg) {
+def smallEigDecoupler (sG : ℕ) : Stmt O Q :=
+  ops% [N, k, np, F, T, ns, w] (W, P) → (W, Fl, Lg) {
   let m ← index (Has.inj IdxTst.toNat) (P[8]) ≤ T;
   let q ← index (Has.inj IdxTst.toNat) (P[9]) ≤ m;
   let t ← index (Has.inj IdxTst.toNat) (P[10]) ≤ T;
   let m2 ← index (Has.inj IdxTst.toNat) (P[11]) ≤ T;
   let Lam ← alloc 2;
-  run (slottedLogOpen (O := O) (Q := Q)).body [ns, w] (Lg);
-  run (rhess (O := O) (Q := Q) sG).body [N, w, 0] (W, W, Lg);
-  run (oneEig (O := O) (Q := Q)).body [N, m, q, t] (W, P, Lam, Fl);
+  run (slottedLogOpen (O := O) (Q := Q)) [ns, w] (Lg);
+  run (rhess (O := O) (Q := Q) sG) [N, w, 0] (W, W, Lg);
+  run (oneEig (O := O) (Q := Q)) [N, m, q, t] (W, P, Lam, Fl);
   if (Has.inj CmpTst.isZero) [] (Fl) {
-    run (decoupleLast (O := O) (Q := Q)).body [N, m2, w, N - 1] (W, Lam, P, W, Fl, Lg)
+    run (decoupleLast (O := O) (Q := Q)) [N, m2, w, N - 1] (W, Lam, P, W, Fl, Lg)
   } else { skip }
 }
 
@@ -196,7 +196,9 @@ condition at most $4B_c$, separation
 $g_c/4$, last-row weights at least $p$, norm at most
 $2\Sigma(1 + 200(n_{\max} + 1)^2\boldsymbol{u})$), `OneEig` with the cap words $m = 2^q$, $q$,
 $t$ sets the flag to $0$ and stores a point at distance between $\eta_1$ and
-$\beta'$ from the spectrum, except with probability at most $\varphi_D/2$. -/
+$\beta'$ from the spectrum, except with probability at most $\varphi_D/2$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem smallEigDecoupler_oneEig_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hL : IsIndexLit M I)
     (hC : IsCmp id I) (hI : I.IsMeasurable)
@@ -212,7 +214,7 @@ theorem smallEigDecoupler_oneEig_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} 
     (hgap : ∀ i j, i ≠ j → smallEigSeparation nmax S δ φ c₁ / 4 ≤ ‖d i - d j‖)
     (hw : ∀ i, smallEigWeight nmax S δ φ c₂ ≤ lastRowWeights V i)
     (hHS : specNorm H ≤ 2 * S * (1 + 200 * ((nmax : ℝ) + 1) ^ 2 * u)) {h qw lam f : ℕ × ℕ} :
-    PWrites law I (oneEig (O := O) (Q := Q)).body
+    PWrites law I (oneEig (O := O) (Q := Q))
       (Env.frame [n + 1, 2 ^ smallEigDegreeLog nmax S δ φ c₂, smallEigDegreeLog nmax S δ φ c₂,
         smallEigRounds nmax S δ φ c₁ c₂] [h, qw, lam, f])
       (Store.inBlock lam.1 lam.2 2 ⊔ Store.inBlock f.1 f.2 1)
@@ -276,7 +278,10 @@ with the closed slots `LL` and room for $m_2$ more, sets the flag to $0$, closes
 slots `Ls` (planes below $k + 1$), and stores an upper Hessenberg perturbed unitary similarity of
 $\mathbf{H}$ by $\mathbf{Q}_1$ times the unitary of `Ls` with the error
 `NLAlib.SmallEig.smallEigDecoupleError` at $N$ whose last subdiagonal entry is at most
-$1.5\,\omega$. -/
+$1.5\,\omega$.
+
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem smallEigDecoupler_decouple_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {c₁ c₂ : PolyLogTail} (hb₁ : 0 < c₁.b) (hb₂ : 0 < c₂.b) {nmax : ℕ} (hn1 : 1 ≤ nmax)
@@ -298,7 +303,7 @@ theorem smallEigDecoupler_decouple_writes {M : Machine ℝ} {I : Interp O Q ℝ}
     (hlog : HoldsSlottedLog lg ns ws LL [] μ.store)
     (hj : LL.length + smallEigDecoupleSteps nmax S δ φ c₂ ≤ ns) (hws : k + 1 ≤ ws)
     (hlgl : μ.Live [lg]) (hlgb : ∀ b ∈ [h, lam, qw, f], b.1 ≠ lg.1) :
-    Writes .total I τ (decoupleLast (O := O) (Q := Q)).body
+    Writes .total I τ (decoupleLast (O := O) (Q := Q))
       (Env.frame [k + 1 + 1, smallEigDecoupleSteps nmax S δ φ c₂, ws, LL.length]
         [h, lam, qw, h, f, lg])
       (Store.inBlock h.1 h.2 (2 * ((k + 1 + 1) * (k + 1 + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
@@ -385,7 +390,10 @@ $n + 1$, $1 \le n \le n_{\max}$, with exact natural literals up to $n_l \ge n$, 
 $N \le 2\Sigma$ in the class $(2B_c, g_c/2)$, and an empty log with room for $n$ slots of at least
 $n$ entries, `RHess` closes $n$ slots `Ls` (planes below $n$) and stores a block in
 `NLAlib.SmallEig.SmallEigRHessClass` by the unitary of `Ls` with the error
-$200(n + 1)^2\boldsymbol{u}N$, except with probability at most $\varphi_D/2$. -/
+$200(n + 1)^2\boldsymbol{u}N$, except with probability at most $\varphi_D/2$.
+
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem smallEigDecoupler_rhess_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hzero : M.lit 0 = 0) (hC : IsCmp id I)
     (hL : IsIndexLit M I) (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sG : ℕ}
@@ -398,7 +406,7 @@ theorem smallEigDecoupler_rhess_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {
     (hκ : pseudoConditionNumber V ≤ 2 * smallEigCondition nmax S δ φ c₂)
     (hgap : ∀ i j, i ≠ j → smallEigSeparation nmax S δ φ c₁ / 2 ≤ ‖d i - d j‖) {w lg : ℕ × ℕ}
     {ns ws : ℕ} (hns : n ≤ ns) (hws : n ≤ ws) :
-    PWrites law I (rhess (O := O) (Q := Q) sG).body (Env.frame [n + 1, ws, 0] [w, w, lg])
+    PWrites law I (rhess (O := O) (Q := Q) sG) (Env.frame [n + 1, ws, 0] [w, w, lg])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * ws)))
       (fun μ => HoldsMatrix w H μ.store ∧ μ.Live [w] ∧ HoldsSlottedLog lg ns ws [] [] μ.store ∧
@@ -494,9 +502,9 @@ theorem smallEigDecoupler_tail_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u
     (hd₂ : IExp.evalList ρ.idx ds₂ = some [k + 1 + 1, smallEigDecoupleSteps nmax S δ φ c₂, ws,
       k + 1])
     (ha₂ : Operand.evalList ρ args₂ = some [w, (L, 0), q, w, f, lg]) :
-    PWrites law I ((Stmt.frame ds₁ args₁ (oneEig (O := O) (Q := Q)).body).seq
+    PWrites law I ((Stmt.frame ds₁ args₁ (oneEig (O := O) (Q := Q))).seq
         (Stmt.ite (Has.inj CmpTst.isZero) [] tins
-          (Stmt.frame ds₂ args₂ (decoupleLast (O := O) (Q := Q)).body) Stmt.skip)) ρ
+          (Stmt.frame ds₂ args₂ (decoupleLast (O := O) (Q := Q))) Stmt.skip)) ρ
       (Store.inBlock L 0 2 ⊔ Store.inBlock f.1 f.2 1 ⊔
         (Store.inBlock w.1 w.2 (2 * ((k + 1 + 1) * (k + 1 + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
           Store.inBlock lg.1 lg.2 (ns * (1 + 5 * ws))))
@@ -657,7 +665,7 @@ theorem smallEigDecoupler_open_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u 
     {args : List Operand} (hd : IExp.evalList ρ.idx ds = some [ns, ws])
     (ha : Operand.evalList ρ args = some [lg]) {τ : Tape ℝ} {μ : Mem ℝ}
     (hμ : SmallEigDecouplerAlloc H qs w q f lg ns ws L μ) :
-    Writes .total I τ (.frame ds args (slottedLogOpen (O := O) (Q := Q)).body) ρ
+    Writes .total I τ (.frame ds args (slottedLogOpen (O := O) (Q := Q))) ρ
       (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * ws)))
       (SmallEigDecouplerOpened H qs w q f lg ns ws L) μ := by
   obtain ⟨hin, hlgl, hlgr, hne⟩ := hμ

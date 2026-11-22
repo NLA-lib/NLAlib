@@ -20,7 +20,7 @@ certificate and remain attached to this same output.
 ## Main results
 
 * `NLAlib.Sign.StoresApproximation` describes the actual returned sign approximation.
-* `NLAlib.Sign.accepts_fixedProgram_of_isArithAccurate` guarantees that output and all
+* `NLAlib.Sign.accepts_signProgram_of_isArithAccurate` guarantees that output and all
   declared resources under the numerical assumptions of the sign analysis.
 -/
 
@@ -43,7 +43,7 @@ def StoresApproximation {n : ℕ} (dec : K → ℝ)
 tolerance, under the Hermitian spectral-gap, scaling, arithmetic-error and cap assumptions
 of the capped Newton–Schulz analysis. All resource bounds concern the same execution.
 [Shah2024, Theorem 2.6]. -/
-theorem accepts_fixedProgram_of_isArithAccurate
+theorem accepts_signProgram_of_isArithAccurate
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     (unif : K → ℝ → K) (normal : ℂ → K × K)
     (domain : (Fin 2 → ℕ) → Prop) (admitted : ∃ d, domain d)
@@ -59,22 +59,22 @@ theorem accepts_fixedProgram_of_isArithAccurate
     (hf : floor * (2 * d 0) ≤ 1) (hOmega : 9 * (d 0 + 1) ≤ Omega)
     (hA : (decodeMatrix dec (inputMatrix d x)).IsHermitian) {a : ℝ} (ha : 0 < a)
     (hspec : ∀ y ∈ spectrum ℝ (decodeMatrix dec (inputMatrix d x)), a ≤ |y|)
-    (hb : specNorm (decodeMatrix dec (inputMatrix d x)) ≤ dec (vec x.val.1.2 1))
-    (heps : 0 < dec (vec x.val.1.2 0)) (heps1 : dec (vec x.val.1.2 0) ≤ 1 / 2)
+    (hb : specNorm (decodeMatrix dec (inputMatrix d x)) ≤ dec (scale d x))
+    (heps : 0 < dec (tolerance d x)) (heps1 : dec (tolerance d x) ≤ 1 / 2)
     (hu : 640 * d 0 * Real.sqrt (d 0 : ℝ) * (8 + mu (d 0)) *
-      (newtonSchulzSteps (a / (2 * dec (vec x.val.1.2 1)))
-        (dec (vec x.val.1.2 0) / (16 * d 0)) + 1) * u ≤
-      a / dec (vec x.val.1.2 1) * dec (vec x.val.1.2 0))
-    (hcap : newtonSchulzSteps (a / (2 * dec (vec x.val.1.2 1)))
-      (dec (vec x.val.1.2 0) / (16 * d 0)) ≤ d 1) :
+      (newtonSchulzSteps (a / (2 * dec (scale d x)))
+        (dec (tolerance d x) / (16 * d 0)) + 1) * u ≤
+      a / dec (scale d x) * dec (tolerance d x))
+    (hcap : newtonSchulzSteps (a / (2 * dec (scale d x)))
+      (dec (tolerance d x) / (16 * d 0)) ≤ d 1) :
     (wordSpecification M dec mm qr unif normal domain admitted matrixWork matrixWorkspace).Accepts
       (Dense.resources matrixWork matrixWorkspace) d x
-      (exec fixedProgram I (Dense.resources matrixWork matrixWorkspace)
+      (exec signProgram I (Dense.resources matrixWork matrixWorkspace)
         (problem (K := K) domain admitted).formats tape d
         ((problem (K := K) domain admitted).initial d x))
-      (fun _ m => StoresApproximation dec (inputMatrix d x) (dec (vec x.val.1.2 0)) m) := by
+      (fun _ m => StoresApproximation dec (inputMatrix d x) (dec (tolerance d x)) m) := by
   obtain ⟨st, hr, hp, hc, hw, hs, hm, hg⟩ :=
-    (certifiedAlgorithm M dec mm qr unif normal domain admitted matrixWork matrixWorkspace
+    (signAlgorithm M dec mm qr unif normal domain admitted matrixWork matrixWorkspace
       h01).correct d hd x I hI tape
   refine ⟨st, hr, hp, hc, hw, hs, hm, ?_⟩
   refine ⟨_, hg.1, ?_⟩

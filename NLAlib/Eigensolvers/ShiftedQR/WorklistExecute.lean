@@ -32,21 +32,22 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has EigenvalueKernelOp O
 
 /-- Initialize a singleton range stack and process the actual worklist. The four output
 views include reserved scratch supplied by an allocating caller. -/
-def worklistSolve (D : Impl O Q) : Impl O Q :=
-  opsImpl% [N, m, k, F, M] (A, Params) → (St, Out, W, R) {
-    run (stackInit (Op := O) (Tst := Q)).body [N, 0, N] (St);
-    run (worklistLoop (worklistRound D)).body [N, m, k, F, M] (A, Params, St, Out, W, R)
+def worklistSolve (D : Stmt O Q) : Stmt O Q :=
+  ops% [N, m, k, F, M] (A, Params) → (St, Out, W, R) {
+    run (stackInit (Op := O) (Tst := Q)) [N, 0, N] (St);
+    run (worklistLoop (worklistRound D)) [N, m, k, F, M] (A, Params, St, Out, W, R)
   }
 
 /-- The initialized exact worklist returns the actual stored roots of a perturbation of
 norm at most $n\tau$, for an input matrix of order $n+1$. The input spectral separation,
 conditioning and iteration/grid parameters imply all local progress and capacity guarantees.
-The substituted decoupling theorem is about the fixed scalar implementation on one block. -/
+The substituted decoupling theorem is about the fixed scalar implementation on one block.
+A fragment of `NLAlib.ShiftedQR.deflationRoutine`. -/
 theorem worklistSolve_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (hE : ExactModel id Mch) (hL : IsIndexLit Mch I)
     (hQ : IsToNat id I) (hC : IsCmp id I)
     {θ : ℝ} {K : KernelRoutines θ} (hK : IsEigenvalueKernels K I)
-    (D : Impl O Q) (hD : DecouplingContract θ D I)
+    (D : Stmt O Q) (hD : DecouplingContract θ D I)
     {tape : Tape ℝ} {μ : Mem ℝ} {n m F M : ℕ} {a p stack out w r : ℕ × ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {τ B α γ δ g : ℝ}
     (hG : WorklistGeometry (n + 1) a p stack out w r μ)
@@ -54,7 +55,7 @@ theorem worklistSolve_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hGlobal : ShiftedQRHyps H B θ α γ δ g m F) (hτ : τ = δ * frobNorm H)
     (hM : M = ⌈Real.sqrt 2 / exceptionalSpacing (2 ^ m) B θ α ((1 - γ) ^ 2)⌉₊)
     (hParams : μ.store.readBlock p.1 p.2 5 = some [τ, B, θ, α, γ]) :
-    Writes .total I tape (worklistSolve D).body
+    Writes .total I tape (worklistSolve D)
       (Env.frame [n + 1, m, 2 ^ m, F, M] [a, p, stack, out, w, r])
       (worklistFp (n + 1) a stack out w r)
       (fun μ' => μ'.pos = μ.pos ∧

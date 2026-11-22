@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Krylov.CG.HSCG.Alg
-public import NLAlib.Krylov.CG.Reorth.Interface
+public import NLAlib.Krylov.CG.Reorth.Exact
 
 /-!
 # A CG round with full residual reorthogonalization
@@ -51,19 +51,14 @@ def direction : Stmt Op Tst := ops% [n] (R, P, Z, t) → (P) {
 
 /-- The dimensions are `n,k`; inputs are `X,R,P,Q` and outputs are `X,R,P`.
 The basis `Q` contains `k` columns. Projection precedes the new norm and direction update. -/
-def round : Stmt Op Tst :=
-  .alloc (.var 0) (.alloc (.var 0) (.alloc (.const 4)
-    (.seq (.frame [.var 0]
-      [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩, ⟨7, .const 0⟩, ⟨9, .const 0⟩,
-        ⟨0, .var 2⟩, ⟨1, .var 3⟩] update)
-      (.seq (.frame [.var 0, .var 1]
-        [⟨3, .var 5⟩, ⟨1, .var 3⟩, ⟨1, .var 3⟩] sweep)
-        (.frame [.var 0]
-          [⟨1, .var 3⟩, ⟨2, .var 4⟩, ⟨8, .const 0⟩, ⟨9, .const 0⟩,
-            ⟨2, .var 4⟩] direction)))))
-
-/-- One reorthogonalized round has four inputs and three state outputs. -/
-def roundImpl : Impl Op Tst := ⟨2, 4, 3, round⟩
+def round : Stmt Op Tst := ops% [n, k] (X, R, P, Q) → (X, R, P) {
+  let W ← alloc n;
+  let Z ← alloc n;
+  let t ← alloc 4;
+  run (update (Op := Op) (Tst := Tst)) [n] (X, R, P, W, t, X, R);
+  run (sweepRoutine (Op := Op) (Tst := Tst)) [n, k] (Q, R);
+  run (direction (Op := Op) (Tst := Tst)) [n] (R, P, Z, t, P)
+}
 
 /-- The ordinary round's calls plus every full projection against the basis. -/
 noncomputable def roundCount (n k : ℕ) : Count Op Tst :=
@@ -76,8 +71,8 @@ def roundPeak (W : Op → List ℕ → ℕ) (n : ℕ) : ℕ := HSCG.stepPeak W n
 theorem staticCost_round (n k x r p q x' r' p' : ℕ) :
     stmtCost (round (Op := Op) (Tst := Tst)) [n, k, x, r, p, q, x', r', p'] =
       roundCount n k := by
-  simp [round, update, direction, sweep, stmtCost, useCost, roundCount, HSCG.stepCount,
-    sweepCount]
+  simp [round, update, direction, sweepRoutine, sweep, stmtCost, useCost, roundCount,
+    HSCG.stepCount, sweepCount]
   module
 
 /-- The sweep reuses the outer vector scratch and adds only its two temporary scalar cells. -/
@@ -86,7 +81,7 @@ theorem staticPeak_round_le (W : Op → List ℕ → ℕ) (n k x r p q x' r' p' 
       roundPeak W n := by
   have hs := staticPeak_sweep_le (Op := Op) (Tst := Tst) W n k q r r
   simp only [sweepPeak] at hs
-  simp [round, update, direction, stmtPeak, roundPeak, HSCG.stepPeak]
+  simp [round, update, direction, sweepRoutine, stmtPeak, roundPeak, HSCG.stepPeak]
   omega
 
 end NLAlib.Krylov.CG.Reorth

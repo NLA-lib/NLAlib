@@ -138,6 +138,18 @@ public import NLAlib.Ops.Profiles.RoundedScalarBlas
 public import NLAlib.Ops.Profiles.ContextDenseRounded
 public import NLAlib.Ops.Profiles.ContextLinearRounded
 public import NLAlib.Ops.Profiles.Confined
+public import NLAlib.Ops.Catalog.OrthRoutine
+public import NLAlib.Ops.Examples.Integrator
+public import NLAlib.Ops.Examples.IntegratorLink
+public import NLAlib.Ops.Examples.Notes
+public import NLAlib.Ops.Examples.Routine
+public import NLAlib.Ops.Examples.RoutineCertification
+public import NLAlib.Ops.Examples.RoutineLink
+public import NLAlib.Ops.Examples.RoutineProblem
+public import NLAlib.Ops.Examples.Strided
+public import NLAlib.Ops.Profiles.ContextLinearGuarded
+public import NLAlib.Ops.Profiles.ContextLinearRoundedGuarded
+public import NLAlib.Ops.Profiles.StandardOracles
 
 /-!
 # Conditional headline guidance over imported Ops modules

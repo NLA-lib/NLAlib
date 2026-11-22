@@ -48,7 +48,7 @@ of a basis extension are instances stated where the matrix predicates are availa
 
 * `NLAlib.Ops.decv_drop_take`: a column of a stored block, decoded, is the column of the decoded
   block.
-* `NLAlib.Ops.extendRelOf_rel_mono`, `NLAlib.Ops.Interp.Meets.extendRelOf_mono`: a contract with
+* `NLAlib.Ops.extendRelOf_rel_mono`, `NLAlib.Ops.Interp.Satisfies.extendRelOf_mono`: a contract with
   a weaker predicate and fewer admitted dimensions is met.
 -/
 
@@ -146,14 +146,14 @@ theorem extendRelOf_rel_mono {dec : K → 𝕜} {ok ok' : ℕ → ℕ → ℕ �
   · exact hP _ _ _ _ _ _ _ _ h
   · exact h.elim
 
-/-- An operation that meets the contract of a basis extension for the predicate `P` at the
+/-- An operation that satisfies the contract of a basis extension for the predicate `P` at the
 dimensions `ok` meets it for every weaker predicate and every smaller set of dimensions. -/
-theorem Interp.Meets.extendRelOf_mono {dec : K → 𝕜} {ok ok' : ℕ → ℕ → ℕ → Prop}
+theorem Interp.Satisfies.extendRelOf_mono {dec : K → 𝕜} {ok ok' : ℕ → ℕ → ℕ → Prop}
     {P P' : ExtendPred 𝕜} {I : Interp Op Tst K} {o : Op}
-    (h : I.Meets .total o ((extendRelOf dec ok P).spec ExtendOperands))
+    (h : I.Satisfies .total o ((extendRelOf dec ok P).spec ExtendOperands))
     (hok : ∀ n k b, ok' n k b → ok n k b)
     (hP : ∀ n k b Q W Q' H R, P n k b Q W Q' H R → P' n k b Q W Q' H R) :
-    I.Meets .total o ((extendRelOf dec ok' P').spec ExtendOperands) := by
+    I.Satisfies .total o ((extendRelOf dec ok' P').spec ExtendOperands) := by
   refine h.mono ?_ ?_
   · rintro d ins outs τ m ⟨hnd, hadm, hn⟩
     refine ⟨hnd, hadm, fun hm => ?_⟩

@@ -29,16 +29,18 @@ open scoped Matrix
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 
 /-- Initialize the actual scan before entering the flag-controlled counted loop. -/
-def decouplePrepared (Iter : Impl O Q) : Impl O Q :=
-  opsImpl% [N, m, k, F, M] (W, Params, Const) → (W, R) {
-    run (scan (Op := O) (Tst := Q)).body [N] (W, Const, R);
-    run (decoupleLoop Iter).body [N, m, k, F, M] (W, Params, Const, W, R)
+def decouplePrepared (Iter : Stmt O Q) : Stmt O Q :=
+  ops% [N, m, k, F, M] (W, Params, Const) → (W, R) {
+    run (scan (Op := O) (Tst := Q)) [N] (W, Const, R);
+    run (decoupleLoop Iter) [N, m, k, F, M] (W, Params, Const, W, R)
   }
 
-/-- Initial scan and capped iteration return an actual decoupled matrix under raw hypotheses. -/
+/-- Initial scan and capped iteration return an actual decoupled matrix under raw hypotheses.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem decouplePrepared_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (hE : ExactModel id Mch) (hL : IsIndexLit Mch I)
-    (hC : IsCmp id I) {θ : ℝ} (Iter : Impl O Q) (hIter : IterationContract θ Iter I)
+    (hC : IsCmp id I) {θ : ℝ} (Iter : Stmt O Q) (hIter : IterationContract θ Iter I)
     {tape : Tape ℝ} {μ : Mem ℝ} {n m F M : ℕ} {τ B α γ δ : ℝ} {w p c r : ℕ × ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     (hyp : RapidDecouplingHyps H τ B θ α γ δ m F) (hHess : IsUpperHessenberg H)
@@ -55,7 +57,7 @@ theorem decouplePrepared_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hSep : Fp.Disj
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock r.1 r.2 5)
       (Store.inBlock p.1 p.2 5 ⊔ Store.inBlock c.1 c.2 2)) :
-    Writes .total I tape (decouplePrepared Iter).body
+    Writes .total I tape (decouplePrepared Iter)
       (Env.frame [n + 1, m, 2 ^ m, F, M] [w, p, c, w, r])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock r.1 r.2 5)
       (fun μ' => μ'.pos = μ.pos ∧

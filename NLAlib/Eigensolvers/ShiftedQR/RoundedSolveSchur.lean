@@ -306,10 +306,10 @@ couplings and the accumulator. -/
 def roundedLeafRest : Stmt O Q :=
   (Stmt.frame [IExp.var 0, IExp.var 7, IExp.var 8]
       [{ buf := 5, off := IExp.var 14 }, { buf := 0, off := IExp.var 9 }]
-      (copyToGlobal (Op := O) (Tst := Q)).body).seq
+      (copyToGlobal (Op := O) (Tst := Q))).seq
     (Stmt.frame [IExp.var 0, IExp.var 7, IExp.var 8]
       [{ buf := 6, off := IExp.var 15 }, { buf := 0, off := IExp.var 9 },
-        { buf := 4, off := IExp.var 13 }] (roundedLeafUpdate (O := O) (Q := Q)).body)
+        { buf := 4, off := IExp.var 13 }] (roundedLeafUpdate (O := O) (Q := Q)))
 
 omit [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- The rest of a leaf round on the good tapes: on a scalar machine with the standard model
@@ -351,10 +351,11 @@ theorem roundedLeafRest_reached {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
       Store.inBlock wk.1 wk.2 (2 * ((n + 1) * (n + 1))) := by fp_sub
   have hUd : Store.inBlock ub.1 ub.2 (2 * (d * d)) ≤
       Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1))) := by fp_sub
-  have g : ∀ i j : Fin 9, i ≠ j → _ := fun i j h => hG.disj' i j h
+  have g : ∀ i j : Fin 9, i ≠ j → ¬(i = 1 ∧ j = 2) ∧ ¬(i = 2 ∧ j = 1) → _ :=
+    fun i j h h' => hG.disj' i j h h'
   have hAW : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock wk.1 wk.2 (2 * ((n + 1) * (n + 1)))) :=
-        by simpa [schurBlock] using g 0 6 (by simp)
+        by simpa [schurBlock] using g 0 6 (by simp) (by decide)
   have hlWA : μ.Live [wk, a] := hG.live_of_subset (by simp)
   unfold roundedLeafRest
   refine ((copyToGlobal_writes (τ := tape) hS hlWA hA hTb hfit0.2 hG.room.1
@@ -364,21 +365,22 @@ theorem roundedLeafRest_reached {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
   have hAX : ∀ i : Fin 9, i ≠ 0 → Fp.Disj ((EntryCodec.pair ℝ).regionFp a.1
       (a.2 + 2 * (lo * (n + 1) + lo)) d (fun i j => j * (n + 1) + i) (fun _ => d))
       (schurBlock (n + 1) ps.length a t p uo f st wk ub r i) :=
-    fun i h0 => (g 0 i (Ne.symm h0)).mono (blockFp_le a hfit0.2) le_rfl
+    fun i h0 => (g 0 i (Ne.symm h0) SchurGeometry.side).mono (blockFp_le a hfit0.2) le_rfl
   have hUb₂ := hUb.of_eqOff hfr₂ ((hAX 7 (by simp)).mono le_rfl hUd)
   have hU₂ := hU'.of_eqOff hfr₂ (hAX 3 (by simp))
   have hG₂ := hG.of_eqOff hfr₂
   have hlU : μ₂.Live [ub, a, uo] := hG₂.live_of_subset (by simp)
   refine ((roundedLeafUpdate_writes (O := O) (Q := Q) (τ := tape) (M := Mch) hS hfit0.2 hlU hUb₂
-    hA₂ hU₂ hG₂.room.1 hG₂.room.2.2.2.1 ((g 7 0 (by simp)).mono hUd le_rfl)
-    (by simpa [schurBlock] using g 0 3 (by simp))).in_frame rfl rfl hlU).mono
+    hA₂ hU₂ hG₂.room.1 hG₂.room.2.2.2.1 ((g 7 0 (by simp) (by decide)).mono hUd le_rfl)
+    (by simpa [schurBlock] using g 0 3 (by simp) (by decide))).in_frame rfl rfl hlU).mono
     (by fp_sub [schurRoundFp]) ?_
   rintro μ₃ hfr₃ ⟨-, hA₃, hU₃⟩
   have hAU3 : ∀ i : Fin 9, i ≠ 0 → i ≠ 3 → Fp.Disj
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))))
       (schurBlock (n + 1) ps.length a t p uo f st wk ub r i) :=
-    fun i h0 h3 => Fp.disj_sup_left.mpr ⟨g 0 i (Ne.symm h0), g 3 i (Ne.symm h3)⟩
+    fun i h0 h3 => Fp.disj_sup_left.mpr
+      ⟨g 0 i (Ne.symm h0) SchurGeometry.side, g 3 i (Ne.symm h3) SchurGeometry.side⟩
   have hlen := (hsh.deflationInv (H := A) (V := 1) (ε := 0)
     (by simpa using IsPerturbedUnitarySimilarBy.refl A)).length_le
   simp only [List.length_append, List.length_cons, List.length_nil] at hlen
@@ -443,10 +445,10 @@ theorem roundedSplitUpdate_reached {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
     Writes .total I tape
       ((Stmt.frame [IExp.var 0, IExp.var 7, IExp.var 8, IExp.var 17]
           [{ buf := 0, off := IExp.var 9 }, { buf := 3, off := IExp.var 12 },
-            { buf := 5, off := IExp.var 14 }] (writeAndSplit (O := O) (Q := Q)).body).seq
+            { buf := 5, off := IExp.var 14 }] (writeAndSplit (O := O) (Q := Q))).seq
         (Stmt.frame [IExp.var 0, IExp.var 7, IExp.var 8, IExp.var 17, IExp.var 5, IExp.var 6]
           [{ buf := 8, off := IExp.const 0 }, { buf := 0, off := IExp.var 9 },
-            { buf := 4, off := IExp.var 13 }] (roundedDecoupleUpdate (O := O) (Q := Q)).body))
+            { buf := 4, off := IExp.var 13 }] (roundedDecoupleUpdate (O := O) (Q := Q))))
       ((⟨(Env.frame [n + 1, k, np, F, T, ns, w, lo, d + 1] [a, t, p, st, uo, wk, r, f]).idx,
         (Env.frame [n + 1, k, np, F, T, ns, w, lo, d + 1] [a, t, p, st, uo, wk, r, f]).buf ++
           [lgb]⟩ : Env).pushIdx i)
@@ -467,25 +469,27 @@ theorem roundedSplitUpdate_reached {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
   have hWw : Store.inBlock wk.1 wk.2 (2 * ((d + 1) * (d + 1))) ≤
       Store.inBlock wk.1 wk.2 (2 * ((n + 1) * (n + 1))) := by
     have := Nat.mul_le_mul hd hd; fp_sub
-  have g : ∀ i j : Fin 9, i ≠ j → _ := fun i j h => hG.disj' i j h
+  have g : ∀ i j : Fin 9, i ≠ j → ¬(i = 1 ∧ j = 2) ∧ ¬(i = 2 ∧ j = 1) → _ :=
+    fun i j h h' => hG.disj' i j h h'
   have hWA : Fp.Disj (Store.inBlock wk.1 wk.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) := by
-    simpa [schurBlock] using g 6 0 (by simp)
+    simpa [schurBlock] using g 6 0 (by simp) (by decide)
   have hAS : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
-      (Store.inBlock st.1 st.2 (1 + 2 * (n + 1))) := by simpa [schurBlock] using g 0 5 (by simp)
+      (Store.inBlock st.1 st.2 (1 + 2 * (n + 1))) := by
+    simpa [schurBlock] using g 0 5 (by simp) (by decide)
   have hAU : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) := by
-    simpa [schurBlock] using g 0 3 (by simp)
+    simpa [schurBlock] using g 0 3 (by simp) (by decide)
   have hSU : Fp.Disj (Store.inBlock st.1 st.2 (1 + 2 * (n + 1)))
       (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) := by
-    simpa [schurBlock] using g 5 3 (by simp)
+    simpa [schurBlock] using g 5 3 (by simp) (by decide)
   have hFA : Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) :=
-    by simpa [schurBlock] using g 4 0 (by simp)
+    by simpa [schurBlock] using g 4 0 (by simp) (by decide)
   have hFS : Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock st.1 st.2 (1 + 2 * (n + 1))) := by
-    simpa using g 4 5 (by simp)
+    simpa using g 4 5 (by simp) (by decide)
   have hFU : Fp.Disj (Store.inBlock f.1 f.2 1)
       (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) := by
-    simpa [schurBlock] using g 4 3 (by simp)
+    simpa [schurBlock] using g 4 3 (by simp) (by decide)
   have hlASW : μ.Live [a, st, wk] := hG.live_of_subset (by simp)
   have hsplit := writeAndSplit_writes_mem (O := O) (Q := Q) (τ := tape) (i := i) hS hL hQ hNat
     hlASW hA hW hSt hfit0.2 (by omega) (by omega) hG.room.1 hG.room.2.2.2.2.2.1

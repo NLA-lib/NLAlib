@@ -41,7 +41,7 @@ theorem exactModel_of_zero {K : Type} {dec : K → ℝ} {M : Machine K}
 theorem isExactMatvec_of_zero {K Op Tst : Type} [Inhabited K] [Has OperatorOp Op]
     {dec : K → ℝ} {m n : ℕ} {A : Matrix (Fin m) (Fin n) ℝ} {I : Interp Op Tst K}
     (h : IsMatvec dec A 0 I) : IsExactMatvec dec A I := by
-  refine Interp.Meets.mono h (fun _ _ _ _ _ hp => hp) ?_
+  refine Interp.Satisfies.mono h (fun _ _ _ _ _ hp => hp) ?_
   rintro d ins outs τ μ μ' _ ⟨xs, hr, hz, ys, hlen, hrel, rfl⟩
   refine ⟨xs, hr, hz, ys, hlen, ?_, rfl⟩
   cases xs with

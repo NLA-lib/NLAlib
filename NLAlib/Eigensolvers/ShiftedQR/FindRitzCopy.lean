@@ -29,7 +29,9 @@ open Ops
 variable {Op Tst : Type} [Has ScalarOp Op] [Has IdxTst Tst]
 
 /-- The actual bounded index query followed by two scalar copies returns the selected stored
-candidate. Its whole source shift block is spatially disjoint from the output pair. -/
+candidate. Its whole source shift block is spatially disjoint from the output pair. Shared by the
+trees of `NLAlib.ShiftedQR.findRitzSearchWithScratch` and `NLAlib.ShiftedQR.findRoundedWithScratch`.
+-/
 theorem findRitzCopy_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hQ : IsToNat id I) {τ : Tape ℝ} {m : Mem ℝ}
     {k a : ℕ} {ss r center : ℕ × ℕ} {shifts : List ℂ}
@@ -38,7 +40,7 @@ theorem findRitzCopy_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hsep : Fp.Disj (Store.inBlock ss.1 ss.2 (2 * k))
       (Store.inBlock center.1 center.2 2))
     (hCenter : center.2 + 2 ≤ m.store.len center.1) :
-    Writes .total I τ findRitzCopy.body (Env.frame [k] [ss, r, center])
+    Writes .total I τ findRitzCopy (Env.frame [k] [ss, r, center])
       (Store.inBlock center.1 center.2 2)
       (fun μ => μ.pos = m.pos ∧ μ.store.readBlock center.1 center.2 2 =
         some [(shifts.getD a 0).re, (shifts.getD a 0).im]) m := by
@@ -54,7 +56,7 @@ theorem findRitzCopy_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
   have hcLive := Store.lt_length_of_lt_len
     (show center.2 < m.store.len center.1 by omega)
   have hcopy := Writes.of_wp_eq_updBlock
-    (Hermitian.wp_copyPair_of_disj (md := .total) (τ := τ)
+    (Hermitian.copyPair_wp_of_disj (md := .total) (τ := τ)
       (x := (ss.1, ss.2 + 2 * a)) (z := center) hS hlocal hre him hCenter rfl)
   refine (hcopy.in_frame rfl rfl (by simp [Mem.Live]; omega)).mono le_rfl ?_
   rintro μ _ rfl

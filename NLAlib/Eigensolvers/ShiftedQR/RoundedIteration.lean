@@ -58,11 +58,11 @@ points and `Thr`. The iteration's $k + 1 + n_0$ trial sites record their rotatio
 $j_0, \dots, j_0 + k + n_0$ of the slotted log `Lg` of slot width $w$: `Regularize`'s trials at
 $j_0 + t$, `Sh`'s test step at $j_0 + k$ and its exceptional trials after it. The interface is
 `[N, m, k, n0, nq, T, w, j0] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw, S) → (A, Fl, Lg)`. -/
-def shIterationWithScratchWith (SE : Impl O Q) : Impl O Q :=
-  opsImpl% [N, m, k, n0, nq, T, w, j0] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw, S) → (A, Fl, Lg) {
-    run (regularizeWith SE).body [N, k, nq, T, w, j0] (A, Rd, C, Thr, Qw, A, S, Fl, Lg);
+def shIterationWithScratchWith (SE : Stmt O Q) : Stmt O Q :=
+  ops% [N, m, k, n0, nq, T, w, j0] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw, S) → (A, Fl, Lg) {
+    run (regularizeWith SE) [N, k, nq, T, w, j0] (A, Rd, C, Thr, Qw, A, S, Fl, Lg);
     if (Has.inj CmpTst.isZero) [] (Fl) {
-      run (shStep (O := O) (Q := Q)).body [N, m, k, n0, w, j0 + k]
+      run (shStep (O := O) (Q := Q)) [N, m, k, n0, w, j0 + k]
         (A, S, Cg, Cr, Cw, Cp, G, Thr, A, Fl, Lg)
     } else { skip }
   }
@@ -72,10 +72,10 @@ def shIterationWithScratchWith (SE : Impl O Q) : Impl O Q :=
 routine `SE`, then `Sh` with its shifts if they are optimal. The scratch for the $k$ shift pairs
 is scoped; the rotations go to the slots $j_0, \dots, j_0 + k + n_0$ of the log `Lg`. The
 interface is `[N, m, k, n0, nq, T, w, j0] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw) → (A, Fl, Lg)`. -/
-def shIterationWith (SE : Impl O Q) : Impl O Q :=
-  opsImpl% [N, m, k, n0, nq, T, w, j0] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw) → (A, Fl, Lg) {
+def shIterationWith (SE : Stmt O Q) : Stmt O Q :=
+  ops% [N, m, k, n0, nq, T, w, j0] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw) → (A, Fl, Lg) {
     let S ← alloc (2 * k);
-    run (shIterationWithScratchWith SE).body [N, m, k, n0, nq, T, w, j0]
+    run (shIterationWithScratchWith SE) [N, m, k, n0, nq, T, w, j0]
       (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Qw, S, A, Fl, Lg)
   }
 
@@ -85,9 +85,9 @@ body of the loop): `NLAlib.ShiftedQR.shIterationWith` with the `SmallEig` kernel
 shifts if they are optimal, recording the rotations in the slots $j_0, \dots, j_0 + k + n_0$ of
 the log `Lg`. The interface is `[N, m, k, n0, w, j0] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G) →
 (A, Fl, Lg)`. -/
-def shIteration : Impl O Q :=
-  opsImpl% [N, m, k, n0, w, j0] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G) → (A, Fl, Lg) {
-    run (shIterationWith (smallEigKernel (O := O) (Q := Q))).body [N, m, k, n0, 0, 0, w, j0]
+def shIteration : Stmt O Q :=
+  ops% [N, m, k, n0, w, j0] (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G) → (A, Fl, Lg) {
+    run (shIterationWith (smallEigKernel (O := O) (Q := Q))) [N, m, k, n0, 0, 0, w, j0]
       (A, Rd, C, Thr, Cg, Cr, Cw, Cp, G, Rd, A, Fl, Lg)
   }
 
@@ -333,7 +333,8 @@ $\mathbb{D}(0, 1.1\|\mathbf{H}\|_2)$, `NLAlib.ShiftedQR.shStep` writes only the 
 flag and ends in `NLAlib.ShiftedQR.ShIterationOutcome` with the error
 $(1 + C)\|\mathbf{H}\|_2((1 + x)^k - 1)$ except with probability at most $\varphi$. One good set
 serves all shifts: the outcome is measurable
-(`NLAlib.ShiftedQR.measurableSet_iterationOutcome`). -/
+(`NLAlib.ShiftedQR.measurableSet_iterationOutcome`).
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem shStep_pwrites_of_forall {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I)
@@ -369,7 +370,7 @@ theorem shStep_pwrites_of_forall {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
         (hj : LL.length + (excNet ε).length < ns) (hw : k * n ≤ w)
     (hlgv : ∀ b ∈ [a, s, wg, wr, ww, wp, g, thr, f], b.1 ≠ lg.1) :
-    PWrites law I (shStep (O := O) (Q := Q)).body
+    PWrites law I (shStep (O := O) (Q := Q))
       (Env.frame [n + 1, q, k, (excNet ε).length, w, LL.length]
           [a, s, wg, wr, ww, wp, g, thr, a, f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
@@ -439,12 +440,13 @@ theorem shStep_pwrites_of_forall {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
 
 variable [Has EigenvalueKernelOp O]
 
--- The default heartbeat budget does not cover the elaboration of this statement.
-set_option maxHeartbeats 1000000 in
 -- The hypothesis lists of `Regularize` and the kept words of `Sh` make elaboration heavy.
+set_option maxHeartbeats 1000000 in
+-- (the reason is stated above)
 omit [Has IdxTst Q] [Has EigenvalueKernelOp O] in
 /-- `Regularize` with a small-eigenvalue routine inside an iteration: the outcome of
-`NLAlib.ShiftedQR.regularizeWith_pwrites_at`, with the words of `Sh` kept. -/
+`NLAlib.ShiftedQR.regularizeWith_pwrites_at`, with the words of `Sh` kept.
+A step in the proof of `shIterationWithScratchWith_pwrites`. -/
 theorem shIteration_regularize_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I)
@@ -461,7 +463,7 @@ theorem shIteration_regularize_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u
         (Store.inBlock rd.1 rd.2 1 ⊔ Store.inBlock c.1 c.2 1 ⊔ Store.inBlock thr.1 thr.2 1 ⊔
           Store.inBlock wg.1 wg.2 1 ⊔ Store.inBlock wr.1 wr.2 1 ⊔ Store.inBlock ww.1 ww.2 1 ⊔
           Store.inBlock wp.1 wp.2 1 ⊔ Store.inBlock g.1 g.2 (2 * (excNet ε).length)))
-    {nq T : ℕ} {qs : List ℝ} {SE : Impl O Q} {qw : ℕ × ℕ}
+    {nq T : ℕ} {qs : List ℝ} {SE : Stmt O Q} {qw : ℕ × ℕ}
     (hqw : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
       Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock f.1 f.2 1)
         (Store.inBlock qw.1 qw.2 qs.length))
@@ -488,7 +490,7 @@ theorem shIteration_regularize_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u
       √(n + 1) * (300 * (n + 1) ^ 2 * u) ≤ ω / 2)
     (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv)
     (hSE : RandomSmallEigContractAt law β φse k nq T S qs SE I) :
-    PWrites law I (.frame ds args (regularizeWith SE).body) ρ
+    PWrites law I (.frame ds args (regularizeWith SE)) ρ
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
         Store.inBlock f.1 f.2 1 ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun m => HoldsSlottedLog lg ns w LL [] m.store ∧ m.Live [lg] ∧
@@ -565,14 +567,15 @@ theorem one_le_regularizeTheta {B : ℝ} (hB : 1 ≤ B) (k : ℕ) :
     Real.one_le_rpow (by nlinarith [one_le_pow₀ (n := 4) hB]) (by positivity)
   nlinarith
 
--- The default heartbeat budget does not cover the elaboration of this statement.
-set_option maxHeartbeats 1000000 in
 -- The hypothesis lists of `Regularize` and `Sh` together, with their long real constants, make
 -- the elaboration of the composition heavy.
+set_option maxHeartbeats 1000000 in
+-- (the reason is stated above)
 omit [Has EigenvalueKernelOp O] in
 /-- One iteration with caller-owned scratch as a probabilistic block: the hypotheses of
 `NLAlib.ShiftedQR.shIteration_pwrites`, with the $k$ shift pairs at `s` apart from the other
-views. -/
+views.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem shIterationWithScratchWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I)
@@ -629,7 +632,7 @@ theorem shIterationWithScratchWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ
         B ^ ((k : ℝ)⁻¹) * S)) ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) *
       (1.01 * (0.998 : ℝ) ^ (-(k : ℝ)⁻¹) * (2 * B ^ 4) ^ ((2 * k : ℝ)⁻¹)) * α *
         B ^ ((k : ℝ)⁻¹) * ω) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 8)
-    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) {nq T : ℕ} {qs : List ℝ} {SE : Impl O Q}
+    (hthrω : (1 + u) ^ 2 * ω ^ 2 ≤ tv) {nq T : ℕ} {qs : List ℝ} {SE : Stmt O Q}
     (hSE : RandomSmallEigContractAt law β φse k nq T S qs SE I) {qw : ℕ × ℕ}
     (hqw : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
       Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock f.1 f.2 1)
@@ -637,7 +640,7 @@ theorem shIterationWithScratchWith_pwrites {M : Machine ℝ} {I : Interp O Q ℝ
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
         (hj : LL.length + (k + 1 + (excNet ε).length) ≤ ns) (hw : k * n ≤ w)
     (hlgv : ∀ b ∈ [a, rd, c, thr, wg, wr, ww, wp, g, qw, s, f], b.1 ≠ lg.1) :
-    PWrites law I (shIterationWithScratchWith SE).body
+    PWrites law I (shIterationWithScratchWith SE)
       (Env.frame [n + 1, q, k, (excNet ε).length, nq, T, w, LL.length]
         [a, rd, c, thr, wg, wr, ww, wp, g, qw, s, a, f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔

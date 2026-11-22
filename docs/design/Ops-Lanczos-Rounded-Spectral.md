@@ -5,7 +5,7 @@ chosen strict test `tau * savedRawNorm < beta`. That prefix may be shorter than 
 history. Its first excluded step satisfies the opposite non-strict inequality, so an empty
 prefix is an informative numerical boundary, not an arbitrary escape alternative.
 
-`Reorth/RoundedSpectral.lean` composes this checked prefix theorem with the existing pure
+`Reorth/Rounded/Spectral.lean` composes this checked prefix theorem with the existing pure
 LanczosReorthRun spectral theorem. Its input assumptions are symmetry, the common primitive
 precision envelope, the dimension-only actual-CGS2 error budget, `0 < tau <= 1`, eta/c in
 [0,.01], and the size-only fixed-point and recurrence windows. Write

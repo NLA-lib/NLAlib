@@ -5,7 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
-public import NLAlib.Krylov.CG.Reorth.Interface
+public import NLAlib.Krylov.CG.Reorth.Exact
 
 /-!
 # Initialized residual history for full reorthogonalization

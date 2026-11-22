@@ -41,7 +41,7 @@ theorem stmtPeak_upLevel_zero (n d : ℕ) (offs : List ℕ) :
 omit [Has IndexOp Op] [Has CmpTst Tst] in
 /-- Reverse reconstruction shares the same two scalar cells between all levels. -/
 theorem stmtPeak_upwardPass_zero_le (n L : ℕ) (offs : List ℕ) (hlen : offs.length = 8) :
-    stmtPeak (fun (_ : Op) _ => 0) (upwardPass (Tst := Tst)).body
+    stmtPeak (fun (_ : Op) _ => 0) (upwardPass (Tst := Tst))
       ([n, L] ++ offs) ≤ 2 := by
   apply Finset.sup_le
   intro r hr
@@ -53,7 +53,7 @@ omit [Has IndexOp Op] [Has CmpTst Tst] in
 /-- Bottom identities, zero values and the final copies add no stored scratch beyond the
 two scalar cells reused by reverse reconstruction. -/
 theorem stmtPeak_reconstructResult_zero_le (n L : ℕ) (offs : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (reconstructResult (Tst := Tst)).body
+    stmtPeak (fun (_ : Op) _ => 0) (reconstructResult (Tst := Tst))
       ([n, L] ++ offs) ≤ 2 := by
   apply max_le
   · rw [stmtPeak_zero_of_allocationFree (by rfl)]
@@ -71,7 +71,7 @@ variable [Has SampleOp Op]
 loop does not multiply the stored workspace by the recursion depth. -/
 theorem stmtPeak_downwardPass_zero_le (n L cap : ℕ) (offs : List ℕ)
     (hlen : offs.length = 12) (hn : 2 ≤ n) :
-    stmtPeak (fun (_ : Op) _ => 0) (downwardPass (node (Op := Op) (Tst := Tst))).body
+    stmtPeak (fun (_ : Op) _ => 0) (downwardPass (node (Op := Op) (Tst := Tst)))
       ([n, L, cap] ++ offs) ≤ 18 * (n * n) + 14 := by
   apply Finset.sup_le
   intro d hd

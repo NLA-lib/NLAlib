@@ -26,6 +26,15 @@ sizes.
 `frame` runs a body in a new environment made of the dimensions and operands it is given: it is
 the instance of a procedure, and linking (`NLAlib.Ops.Stmt.link`) turns a call into the frame of
 its implementation.
+
+`note` attaches metadata (`NLAlib.Ops.Note`: the routine a frame runs, the source name of a
+variable) to a subtree and does nothing else: a tree with a note is run, counted, checked and
+linked as the tree without it. It is the one place where a tree carries metadata.
+
+## Main definitions
+
+* `NLAlib.Ops.Stmt`, `NLAlib.Ops.Note`: trees and the metadata they may carry.
+
 ## Main results
 
 * `NLAlib.Ops.Operand.evalList_append`, `NLAlib.Ops.Operand.evalList_off_of_evalList`: the
@@ -226,6 +235,26 @@ theorem evalList_off_of_evalList {ρ : Env} {as : List Operand} {xs : List (ℕ 
 
 end Operand
 
+/-- **A note**: metadata attached to a subtree by `NLAlib.Ops.Stmt.note`. The evaluator, the
+counts, the scratch, the storage check, linking and every judgment ignore notes: a tree with a
+note is the tree without it. Notes are the only place where a tree carries metadata, and a new
+kind of metadata is a new constructor here; the type of trees and the functions defined on it do
+not change. -/
+inductive Note where
+  /-- The enclosed frame runs the routine `name` at the dimensions and operands written in the
+  source as `dims` and `operands`. -/
+  | routine (name : String) (dims operands : List String)
+  /-- The variable bound by the enclosed loop, allocation, counted loop with a test or index
+  binding is called `name` in the source. -/
+  | var (name : String)
+  /-- The tree is a fragment with the header names `dims` and `operands`. -/
+  | header (dims operands : List String)
+  /-- A label of the enclosed subtree. -/
+  | label (text : String)
+  /-- Any other metadata, as a key and a value. -/
+  | tag (key value : String)
+  deriving DecidableEq, Repr
+
 /-- **Programs** over the operations `Op` and the queries `Tst`: first-order trees whose only
 effects are calls of operations. A query is a name used as a test or as an index; it is a
 primitive of the access model and is never implemented, so linking leaves it alone. -/
@@ -259,6 +288,9 @@ inductive Stmt (Op Tst : Type) where
   /-- A procedure instance: run `body` in the environment `Env.frame` of the dimensions and
   operands. The run fails if an operand handle is not a buffer of the store. -/
   | frame (dims : List IExp) (args : List Operand) (body : Stmt Op Tst)
+  /-- The tree `s` with the metadata `n`. A note changes nothing: it is run, counted, checked and
+  linked as `s`. -/
+  | note (n : Note) (s : Stmt Op Tst)
 
 namespace Stmt
 
@@ -380,6 +412,7 @@ def Stmt.instrument : Stmt Op Tst → Stmt (Op ⊕ Bookkeeping) Tst
   | .frame ds args body =>
       .seq (tally (indexBookkeeping ds ++ operandBookkeeping args ++ [.frame]))
         (.frame ds args body.instrument)
+  | .note _ s => s.instrument
 
 
 /-- One fixed first-order tree for every size and input: `r` sizes and `b` initial buffers.
@@ -474,6 +507,7 @@ def Stmt.wellTyped {Op Tst : Type} (R : ResourceModel Op Tst) :
       match Operand.formatList ctx args with
       | some fs => body.wellTyped R fs
       | none => false
+  | .note _ s, ctx => s.wellTyped R ctx
 
 /-- A fixed program uses only declared formats and matches all primitive/query signatures. -/
 def Program.wellTyped {Op Tst : Type} {r b : ℕ} (p : Program Op Tst r b)

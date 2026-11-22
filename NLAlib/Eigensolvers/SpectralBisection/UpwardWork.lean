@@ -92,7 +92,7 @@ theorem upwardPass_weight_le_of_levels (unif : K → Su → K) (normal : Sg → 
         (Env.frame [n, L - r] [lv, ua, qa, ea, sz, kd, kp, c]) a = some b →
       weight b.cost ≤ weight a.cost + levelCost)
     {a b : St Op Tst K} (ha : a.mem = m)
-    (hrun : evalCounted I W τ (upwardPass (Op := Op) (Tst := Tst)).body
+    (hrun : evalCounted I W τ (upwardPass (Op := Op) (Tst := Tst))
       (Env.frame [n, L] [lv, ua, qa, ea, sz, kd, kp, c]) a = some b) :
     weight b.cost ≤ weight a.cost + (L + 1) * levelCost := by
   let ρ := Env.frame [n, L] [lv, ua, qa, ea, sz, kd, kp, c]
@@ -133,7 +133,7 @@ theorem upwardPass_weight_le_of_levels (unif : K → Su → K) (normal : Sg → 
     have hLive : m'.Live [lv, ua, qa, ea, sz, kd, kp, c] := by
       intro z hz
       exact hl' z (List.mem_append_left [ma] hz)
-    have hw := writes_upLevel_eighAux (M := M) (dec := dec) (mm := mm) (qr := qr)
+    have hw := upLevel_writes_eighAux (M := M) (dec := dec) (mm := mm) (qr := qr)
       (n := n) (base := base) (fuel := fuel) (R0 := R0) (eps := eps) (beta := beta)
       (ell := ell) (A := A) (d := L - r) (budget := r) (τ := τ) (m := m')
       unif normal hS hQ hMM hL hRec' hResults hl' hC hLit

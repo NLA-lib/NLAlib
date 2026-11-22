@@ -34,7 +34,10 @@ variable [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op]
 
 /-- The Paige-order raw update borrows Prev=L, Work=L+1 and two scalar cells at L+2.
 The current vector and coefficient cells lie below those buffers; the current vector and
-alpha output use different buffers. No spectral or nonbreakdown assumption is needed. -/
+alpha output use different buffers. No spectral or nonbreakdown assumption is needed.
+
+A fragment of `NLAlib.Krylov.Lanczos.solveRoutine`: the raw three-term update of one round, on
+the previous and work vectors the solver allocates and a column of `V` at the round index. -/
 theorem update_writes {M : Machine K} {dec : K → ℝ} {n L : ℕ} {I : Interp Op Tst K}
     {A : Matrix (Fin n) (Fin n) ℝ} {ok : ℕ → Prop}
     (hS : IsScalar M I) (hM : ExactModel dec M) (hB : IsExactBlas1 dec ok I)

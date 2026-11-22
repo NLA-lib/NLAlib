@@ -44,10 +44,12 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 /-- Complete the actual three-phase search in the enclosing iteration's fresh register and
 trial buffers. Singular candidate shifts are safe: a rejected shift is mathematically
 nonsingular before the promising search uses its inverse. A wholly rejected list returns the
-actual promising-shift fallback matrix, rather than an uninitialized or stale output. -/
+actual promising-shift fallback matrix, rather than an uninitialized or stale output.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem finishRitzSearchWith_writes {M : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
-    {F : Impl O Q} (hF : RitzSearchContract F I)
+    {F : Stmt O Q} (hF : RitzSearchContract F I)
     {tape : Tape ℝ} {μ : Mem ℝ} {n m D : ℕ} {w ss c r z : ℕ × ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {τ B θ α γ : ℝ} {shifts : List ℂ}
     (hHess : IsUpperHessenberg H) (hlen : shifts.length = 2 ^ m) (hk : 2 ^ m ≤ n)
@@ -64,7 +66,7 @@ theorem finishRitzSearchWith_writes {M : Machine ℝ} {I : Interp O Q ℝ}
     (hz : z.2 + 2 * ((n + 1) * (n + 1)) ≤ μ.store.len z.1)
     (hFreshR : r.1 ≠ w.1 ∧ r.1 ≠ ss.1 ∧ r.1 ≠ c.1 ∧ r.1 ≠ z.1)
     (hFreshZ : z.1 ≠ w.1 ∧ z.1 ≠ ss.1 ∧ z.1 ≠ c.1) :
-    Writes .total I tape (finishRitzSearchWith F).body
+    Writes .total I tape (finishRitzSearchWith F)
       (Env.frame [n + 1, m, 2 ^ m, D] [w, ss, c, r, z, z, r])
       (Store.inBlock z.1 z.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock r.1 r.2 8)
       (fun μ' => μ'.pos = μ.pos ∧

@@ -31,14 +31,14 @@ open Ops
 variable {Op Tst : Type} [Has ScalarOp Op]
 
 /-- Copy a global diagonal block into dense workspace. All dimensions are actual runtime sizes. -/
-def copyToWork : Impl Op Tst := opsImpl% [N, lo, d] (A) → (W) {
-  run (copyStrided (Op := Op) (Tst := Tst)).body [d, d, N, d]
+def copyToWork : Stmt Op Tst := ops% [N, lo, d] (A) → (W) {
+  run (copyStrided (Op := Op) (Tst := Tst)) [d, d, N, d]
     (A[2 * (lo * N + lo)], W)
 }
 
 /-- Copy dense workspace back into the global matrix, retaining its original leading dimension. -/
-def copyToGlobal : Impl Op Tst := opsImpl% [N, lo, d] (W) → (A) {
-  run (copyStrided (Op := Op) (Tst := Tst)).body [d, d, d, N]
+def copyToGlobal : Stmt Op Tst := ops% [N, lo, d] (W) → (A) {
+  run (copyStrided (Op := Op) (Tst := Tst)) [d, d, d, N]
     (W, A[2 * (lo * N + lo)])
 }
 
@@ -83,7 +83,9 @@ private theorem _root_.NLAlib.HoldsMatrix.block_entries {n lo d : ℕ} {b : ℕ 
       min_eq_left hjb, he, Nat.add_assoc] using hg
 
 /-- Copying a bounded diagonal block uses its actual raw matrix words. Workspace capacity
-is persistent, the matrix/work views are separate, and no initialized workspace is required. -/
+is persistent, the matrix/work views are separate, and no initialized workspace is required.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem copyToWork_writes {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {m : Mem ℝ} {n lo d : ℕ} {a w : ℕ × ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
@@ -91,13 +93,13 @@ theorem copyToWork_writes {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsScal
     (hw : w.2 + 2 * (d * d) ≤ m.store.len w.1)
     (hd : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock w.1 w.2 (2 * (d * d)))) :
-    Writes .total I τ (copyToWork (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (copyToWork (Op := Op) (Tst := Tst))
       (Env.frame [n + 1, lo, d] [a, w]) (Store.inBlock w.1 w.2 (2 * (d * d)))
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix w (subBlock H (lo, d)) m'.store) m := by
   let B := subBlock H (lo, d)
   have hdst := (EntryCodec.pair ℝ).regionFp_le_inBlock w.1 w.2 d (d * d)
     (fun i j => j * d + i) (fun _ => d) (fun _ hj _ hi => Idx.add_lt_mul hj hi)
-  have hc := writes_copyStrided (τ := τ) hS (entryPairs B)
+  have hc := copyStrided_writes (τ := τ) hS (entryPairs B)
     (x := (a.1, a.2 + 2 * (lo * (n + 1) + lo))) (y := w)
     (by simpa [Mem.Live] using hl) (hH.block_entries hr) le_rfl
     (fun j hj i hi => by have hb := Idx.add_lt_mul hj hi; omega)
@@ -169,7 +171,9 @@ private theorem _root_.NLAlib.HoldsMatrix.of_block_write {n lo d : ℕ} {a : ℕ
     simpa [entryPairs, i.isLt, j.isLt, Nat.add_assoc] using hget i j 1
 
 /-- Dense workspace is copied back into exactly its bounded global diagonal block. Global
-capacity is the original matrix capacity, with no additional padding after the final column. -/
+capacity is the original matrix capacity, with no additional padding after the final column.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem copyToGlobal_writes {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {m : Mem ℝ} {n lo d : ℕ} {a w : ℕ × ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {B : Matrix (Fin d) (Fin d) ℂ}
@@ -178,7 +182,7 @@ theorem copyToGlobal_writes {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsSc
     (ha : a.2 + 2 * ((n + 1) * (n + 1)) ≤ m.store.len a.1)
     (hd : Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d)))
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))) :
-    Writes .total I τ (copyToGlobal (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (copyToGlobal (Op := Op) (Tst := Tst))
       (Env.frame [n + 1, lo, d] [w, a])
       ((EntryCodec.pair ℝ).regionFp a.1 (a.2 + 2 * (lo * (n + 1) + lo)) d
         (fun i j => j * (n + 1) + i) (fun _ => d))
@@ -193,7 +197,7 @@ theorem copyToGlobal_writes {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsSc
     fin_cases z
     · simpa [entryPairs, hi', hj'] using hB.get_re ⟨i, hi'⟩ ⟨j, hj'⟩
     · simpa [entryPairs, hi', hj', Nat.add_assoc] using hB.get_im ⟨i, hi'⟩ ⟨j, hj'⟩
-  have hc := writes_copyStrided (τ := τ) hS (entryPairs B)
+  have hc := copyStrided_writes (τ := τ) hS (entryPairs B)
     (x := w) (y := (a.1, a.2 + 2 * (lo * (n + 1) + lo)))
     (by simpa [Mem.Live] using hl) hentries (by omega)
     (fun j hj i hi => by

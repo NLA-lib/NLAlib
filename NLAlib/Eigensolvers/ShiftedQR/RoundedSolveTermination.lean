@@ -45,7 +45,7 @@ $n + 1 \ge k + 1$, $n \le n_{\max}$, stored in place, with the log in a buffer o
 every tape, the run is total, writes
 only the matrix, the flag and the log, and leaves a stored matrix, a stored flag and the `ns`
 slots of the log closed with planes below $n$ (so that the log can be replayed). -/
-def TerminatingDecouplerRoutine (nmax k F T : ℕ) (ps : List ℝ) (ns w : ℕ) (D : Impl O Q)
+def TerminatingDecouplerRoutine (nmax k F T : ℕ) (ps : List ℝ) (ns w : ℕ) (D : Stmt O Q)
     (I : Interp O Q ℝ) : Prop :=
   ∀ {n : ℕ} {w₀ q f lg : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ}
     (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
@@ -58,7 +58,7 @@ def TerminatingDecouplerRoutine (nmax k F T : ℕ) (ps : List ℝ) (ns w : ℕ) 
     Fp.Disj (Store.inBlock q.1 q.2 ps.length)
       (Store.inBlock w₀.1 w₀.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w))) →
-    Writes .total I tape D.body (Env.frame [n + 1, k, ps.length, F, T, ns, w] [w₀, q, w₀, f, lg])
+    Writes .total I tape D (Env.frame [n + 1, k, ps.length, F, T, ns, w] [w₀, q, w₀, f, lg])
       (Store.inBlock w₀.1 w₀.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun μ' => (∃ x, μ'.store.get f.1 f.2 = some x) ∧
@@ -72,7 +72,7 @@ the run is total, writes only the block and its accumulator, and leaves both sto
 claimed of the values: no rounding model is needed. The interface is
 `[d, np, T] (Bk, P) → (Bk, Ub)`; the strengthening with an accumulator near a unitary is
 `NLAlib.ShiftedQR.TerminatingLeafRoutine`. -/
-def CompletingLeafRoutine (kmax : ℕ) (ps : List ℝ) (T : ℕ) (L : Impl O Q) (I : Interp O Q ℝ) :
+def CompletingLeafRoutine (kmax : ℕ) (ps : List ℝ) (T : ℕ) (L : Stmt O Q) (I : Interp O Q ℝ) :
     Prop :=
   ∀ {d : ℕ} {w p ub : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ} (B : Matrix (Fin d) (Fin d) ℂ),
     d ≤ kmax → HoldsMatrix w B μ.store → μ.store.readBlock p.1 p.2 ps.length = some ps →
@@ -80,7 +80,7 @@ def CompletingLeafRoutine (kmax : ℕ) (ps : List ℝ) (T : ℕ) (L : Impl O Q) 
     Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d))) (Store.inBlock ub.1 ub.2 (2 * (d * d))) →
     Fp.Disj (Store.inBlock p.1 p.2 ps.length)
       (Store.inBlock w.1 w.2 (2 * (d * d)) ⊔ Store.inBlock ub.1 ub.2 (2 * (d * d))) →
-    Writes .total I tape L.body (Env.frame [d, ps.length, T] [w, p, w, ub])
+    Writes .total I tape L (Env.frame [d, ps.length, T] [w, p, w, ub])
       (Store.inBlock w.1 w.2 (2 * (d * d)) ⊔ Store.inBlock ub.1 ub.2 (2 * (d * d)))
       (fun μ' => ∃ Tb Ub : Matrix (Fin d) (Fin d) ℂ, HoldsMatrix w Tb μ'.store ∧
         HoldsMatrix ub Ub μ'.store) μ
@@ -88,7 +88,7 @@ def CompletingLeafRoutine (kmax : ℕ) (ps : List ℝ) (T : ℕ) (L : Impl O Q) 
 /-- **A terminating Schur leaf routine with parameter words and a cap**: a completing leaf
 routine (`NLAlib.ShiftedQR.CompletingLeafRoutine`) whose stored accumulator is moreover within
 $\varepsilon_L$ of an exact unitary. The interface is `[d, np, T] (Bk, P) → (Bk, Ub)`. -/
-def TerminatingLeafRoutine (εL : ℝ) (kmax : ℕ) (ps : List ℝ) (T : ℕ) (L : Impl O Q)
+def TerminatingLeafRoutine (εL : ℝ) (kmax : ℕ) (ps : List ℝ) (T : ℕ) (L : Stmt O Q)
     (I : Interp O Q ℝ) : Prop :=
   ∀ {d : ℕ} {w p ub : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ} (B : Matrix (Fin d) (Fin d) ℂ),
     d ≤ kmax → HoldsMatrix w B μ.store → μ.store.readBlock p.1 p.2 ps.length = some ps →
@@ -96,14 +96,14 @@ def TerminatingLeafRoutine (εL : ℝ) (kmax : ℕ) (ps : List ℝ) (T : ℕ) (L
     Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d))) (Store.inBlock ub.1 ub.2 (2 * (d * d))) →
     Fp.Disj (Store.inBlock p.1 p.2 ps.length)
       (Store.inBlock w.1 w.2 (2 * (d * d)) ⊔ Store.inBlock ub.1 ub.2 (2 * (d * d))) →
-    Writes .total I tape L.body (Env.frame [d, ps.length, T] [w, p, w, ub])
+    Writes .total I tape L (Env.frame [d, ps.length, T] [w, p, w, ub])
       (Store.inBlock w.1 w.2 (2 * (d * d)) ⊔ Store.inBlock ub.1 ub.2 (2 * (d * d)))
       (fun μ' => ∃ Tb Ub V : Matrix (Fin d) (Fin d) ℂ, HoldsMatrix w Tb μ'.store ∧
         HoldsMatrix ub Ub μ'.store ∧ HasOrthonormalCols V ∧ specNorm (Ub - V) ≤ εL) μ
 
 /-- A terminating leaf routine completes. -/
 theorem TerminatingLeafRoutine.completing {εL : ℝ} {kmax : ℕ} {ps : List ℝ} {T : ℕ}
-    {L : Impl O Q} {I : Interp O Q ℝ} (h : TerminatingLeafRoutine εL kmax ps T L I) :
+    {L : Stmt O Q} {I : Interp O Q ℝ} (h : TerminatingLeafRoutine εL kmax ps T L I) :
     CompletingLeafRoutine kmax ps T L I :=
   fun B hd hB hp hl hroom hwo hpo =>
     (h B hd hB hp hl hroom hwo hpo).mono le_rfl fun _ _ ⟨Tb, Ub, _, hTb, hUb, _⟩ =>
@@ -111,13 +111,13 @@ theorem TerminatingLeafRoutine.completing {εL : ℝ} {kmax : ℕ} {ps : List �
 
 /-- A terminating leaf routine on orders at most $k_{\max}$ terminates on smaller orders. -/
 theorem TerminatingLeafRoutine.mono_kmax {εL : ℝ} {kmax kmax' : ℕ} {ps : List ℝ} {T : ℕ}
-    {L : Impl O Q} {I : Interp O Q ℝ} (h : TerminatingLeafRoutine εL kmax ps T L I)
+    {L : Stmt O Q} {I : Interp O Q ℝ} (h : TerminatingLeafRoutine εL kmax ps T L I)
     (hk : kmax' ≤ kmax) : TerminatingLeafRoutine εL kmax' ps T L I :=
   fun B hd hB hp hl hroom hwo hpo => h B (hd.trans hk) hB hp hl hroom hwo hpo
 
 /-- A completing leaf routine on orders at most $k_{\max}$ completes on smaller orders. -/
 theorem CompletingLeafRoutine.mono_kmax {kmax kmax' : ℕ} {ps : List ℝ} {T : ℕ}
-    {L : Impl O Q} {I : Interp O Q ℝ} (h : CompletingLeafRoutine kmax ps T L I)
+    {L : Stmt O Q} {I : Interp O Q ℝ} (h : CompletingLeafRoutine kmax ps T L I)
     (hk : kmax' ≤ kmax) : CompletingLeafRoutine kmax' ps T L I :=
   fun B hd hB hp hl hroom hwo hpo => h B (hd.trans hk) hB hp hl hroom hwo hpo
 
@@ -126,7 +126,7 @@ routine (`NLAlib.ShiftedQR.CompletingLeafRoutine`) whose stored accumulator is w
 $\varepsilon_L$ of an exact unitary when the proposition `P` holds. At `P` false it is a
 completing leaf routine, at `P` true a terminating one
 (`NLAlib.ShiftedQR.TerminatingLeafRoutine`). -/
-def TerminatingLeafRoutineIf (P : Prop) (εL : ℝ) (kmax : ℕ) (ps : List ℝ) (T : ℕ) (L : Impl O Q)
+def TerminatingLeafRoutineIf (P : Prop) (εL : ℝ) (kmax : ℕ) (ps : List ℝ) (T : ℕ) (L : Stmt O Q)
     (I : Interp O Q ℝ) : Prop :=
   ∀ {d : ℕ} {w p ub : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ} (B : Matrix (Fin d) (Fin d) ℂ),
     d ≤ kmax → HoldsMatrix w B μ.store → μ.store.readBlock p.1 p.2 ps.length = some ps →
@@ -134,7 +134,7 @@ def TerminatingLeafRoutineIf (P : Prop) (εL : ℝ) (kmax : ℕ) (ps : List ℝ)
     Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d))) (Store.inBlock ub.1 ub.2 (2 * (d * d))) →
     Fp.Disj (Store.inBlock p.1 p.2 ps.length)
       (Store.inBlock w.1 w.2 (2 * (d * d)) ⊔ Store.inBlock ub.1 ub.2 (2 * (d * d))) →
-    Writes .total I tape L.body (Env.frame [d, ps.length, T] [w, p, w, ub])
+    Writes .total I tape L (Env.frame [d, ps.length, T] [w, p, w, ub])
       (Store.inBlock w.1 w.2 (2 * (d * d)) ⊔ Store.inBlock ub.1 ub.2 (2 * (d * d)))
       (fun μ' => ∃ Tb Ub : Matrix (Fin d) (Fin d) ℂ, HoldsMatrix w Tb μ'.store ∧
         HoldsMatrix ub Ub μ'.store ∧
@@ -142,7 +142,7 @@ def TerminatingLeafRoutineIf (P : Prop) (εL : ℝ) (kmax : ℕ) (ps : List ℝ)
 
 /-- A terminating leaf routine keeps its accumulator near a unitary under any condition. -/
 theorem TerminatingLeafRoutine.terminatingLeafRoutineIf {εL : ℝ} {kmax : ℕ} {ps : List ℝ}
-    {T : ℕ} {L : Impl O Q} {I : Interp O Q ℝ} (h : TerminatingLeafRoutine εL kmax ps T L I)
+    {T : ℕ} {L : Stmt O Q} {I : Interp O Q ℝ} (h : TerminatingLeafRoutine εL kmax ps T L I)
     (P : Prop) : TerminatingLeafRoutineIf P εL kmax ps T L I :=
   fun B hd hB hp hl hroom hwo hpo =>
     (h B hd hB hp hl hroom hwo hpo).mono le_rfl fun _ _ ⟨Tb, Ub, V, hTb, hUb, hV, hb⟩ =>
@@ -150,7 +150,7 @@ theorem TerminatingLeafRoutine.terminatingLeafRoutineIf {εL : ℝ} {kmax : ℕ}
 
 /-- A completing leaf routine claims nothing of its accumulator under a false condition. -/
 theorem CompletingLeafRoutine.terminatingLeafRoutineIf {kmax : ℕ} {ps : List ℝ} {T : ℕ}
-    {L : Impl O Q} {I : Interp O Q ℝ} (h : CompletingLeafRoutine kmax ps T L I) (εL : ℝ) :
+    {L : Stmt O Q} {I : Interp O Q ℝ} (h : CompletingLeafRoutine kmax ps T L I) (εL : ℝ) :
     TerminatingLeafRoutineIf False εL kmax ps T L I :=
   fun B hd hB hp hl hroom hwo hpo =>
     (h B hd hB hp hl hroom hwo hpo).mono le_rfl fun _ _ ⟨Tb, Ub, hTb, hUb⟩ =>
@@ -158,7 +158,7 @@ theorem CompletingLeafRoutine.terminatingLeafRoutineIf {kmax : ℕ} {ps : List �
 
 /-- A leaf routine with its accumulator near a unitary if `P` completes. -/
 theorem TerminatingLeafRoutineIf.completing {P : Prop} {εL : ℝ} {kmax : ℕ} {ps : List ℝ}
-    {T : ℕ} {L : Impl O Q} {I : Interp O Q ℝ} (h : TerminatingLeafRoutineIf P εL kmax ps T L I) :
+    {T : ℕ} {L : Stmt O Q} {I : Interp O Q ℝ} (h : TerminatingLeafRoutineIf P εL kmax ps T L I) :
     CompletingLeafRoutine kmax ps T L I :=
   fun B hd hB hp hl hroom hwo hpo =>
     (h B hd hB hp hl hroom hwo hpo).mono le_rfl fun _ _ ⟨Tb, Ub, hTb, hUb, _⟩ =>
@@ -167,7 +167,7 @@ theorem TerminatingLeafRoutineIf.completing {P : Prop} {εL : ℝ} {kmax : ℕ} 
 /-- A leaf routine with its accumulator near a unitary if `P`, where `P` holds, terminates
 with that accumulator bound. -/
 theorem TerminatingLeafRoutineIf.terminating {P : Prop} {εL : ℝ} {kmax : ℕ} {ps : List ℝ}
-    {T : ℕ} {L : Impl O Q} {I : Interp O Q ℝ} (h : TerminatingLeafRoutineIf P εL kmax ps T L I)
+    {T : ℕ} {L : Stmt O Q} {I : Interp O Q ℝ} (h : TerminatingLeafRoutineIf P εL kmax ps T L I)
     (hP : P) : TerminatingLeafRoutine εL kmax ps T L I :=
   fun B hd hB hp hl hroom hwo hpo =>
     (h B hd hB hp hl hroom hwo hpo).mono le_rfl fun _ _ ⟨Tb, Ub, hTb, hUb, hV⟩ =>
@@ -176,7 +176,7 @@ theorem TerminatingLeafRoutineIf.terminating {P : Prop} {εL : ℝ} {kmax : ℕ}
 /-- A weaker condition: if `P'` implies `P`, a routine with its accumulator near a unitary if `P`
 has it if `P'`. -/
 theorem TerminatingLeafRoutineIf.mono {P P' : Prop} {εL : ℝ} {kmax : ℕ} {ps : List ℝ} {T : ℕ}
-    {L : Impl O Q} {I : Interp O Q ℝ} (h : TerminatingLeafRoutineIf P εL kmax ps T L I)
+    {L : Stmt O Q} {I : Interp O Q ℝ} (h : TerminatingLeafRoutineIf P εL kmax ps T L I)
     (hP : P' → P) : TerminatingLeafRoutineIf P' εL kmax ps T L I :=
   fun B hd hB hp hl hroom hwo hpo =>
     (h B hd hB hp hl hroom hwo hpo).mono le_rfl fun _ _ ⟨Tb, Ub, hTb, hUb, hV⟩ =>
@@ -185,7 +185,7 @@ theorem TerminatingLeafRoutineIf.mono {P P' : Prop} {εL : ℝ} {kmax : ℕ} {ps
 /-- A leaf routine with its accumulator near a unitary if `P` on orders at most $k_{\max}$ has
 it on smaller orders. -/
 theorem TerminatingLeafRoutineIf.mono_kmax {P : Prop} {εL : ℝ} {kmax kmax' : ℕ} {ps : List ℝ}
-    {T : ℕ} {L : Impl O Q} {I : Interp O Q ℝ} (h : TerminatingLeafRoutineIf P εL kmax ps T L I)
+    {T : ℕ} {L : Stmt O Q} {I : Interp O Q ℝ} (h : TerminatingLeafRoutineIf P εL kmax ps T L I)
     (hk : kmax' ≤ kmax) : TerminatingLeafRoutineIf P εL kmax' ps T L I :=
   fun B hd hB hp hl hroom hwo hpo => h B (hd.trans hk) hB hp hl hroom hwo hpo
 
@@ -218,7 +218,7 @@ theorem bottomScan_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
     (hl : m.Live [a, t, r]) (hroom : r.2 + 5 ≤ m.store.len r.1)
     (hA : Fp.Disj (Store.inBlock r.1 r.2 5) (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))))
     (hT : Fp.Disj (Store.inBlock r.1 r.2 5) (Store.inBlock t.1 t.2 1)) :
-    Writes .total I τ (bottomScan (O := O) (Q := Q)).body (Env.frame [n + 1, k] [a, t, r])
+    Writes .total I τ (bottomScan (O := O) (Q := Q)) (Env.frame [n + 1, k] [a, t, r])
       (Store.inBlock r.1 r.2 5) (fun m' => m'.pos = m.pos ∧ BottomScanStored n r m'.store) m := by
   have hzero : M.lit ((0 : ℕ) : ℚ) = (0 : ℝ) := by simpa using hNat 0 (Nat.zero_le _)
   unfold bottomScan

@@ -74,7 +74,9 @@ mbar = (||S||₂ + 2) * ||S⁻¹||₂ * sqrt(2) * (2*sqrt(n) + t) / x
 Under those inequalities, including `mbar*β ≤ 1/5`, full counted-run failure has probability
 at most `2*exp(-t²/2) + rank²*x²`. Success includes a stored basis within `6*mbar*β` of `U*W`
 in spectral norm for some unitary W, plus every word/resource guarantee of the same run.
-Neither successful execution nor an unknown numerical failure bound is assumed.
+Neither successful execution nor an unknown numerical failure bound is assumed. The law of the
+tape, the hypotheses, the event and the bound are packaged with the certificate as the randomized
+claim `Deflation.deflateClaim`.
 
 ## Models and resources
 

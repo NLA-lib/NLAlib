@@ -86,13 +86,13 @@ theorem level1_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) {es : ℕ → �
     (level1 (Op := Op) (Tst := Tst) wsum).Refines (fun I => IsScalar M I ∧ IsSum dec es ok I)
       (fun J => IsScalar M J ∧ IsBlas1 dec (level1Err u es) ok J) :=
   .of_accounts (fun I ⟨hI, hS⟩ =>
-    ⟨fun a => Interp.link_meets_kept (by simp [level1, level1Table]) (hI a),
-    { sum := Interp.link_meets_kept (by simp [level1, level1Table]) hS
-      dot := Interp.link_meets (by simp [level1, level1Table]) (dotSum_spec hI hM hS hes)
-      axpy := Interp.link_meets (by simp [level1, level1Table]) (axpyLoop_spec hI hM hu ok)
-      nrm2 := Interp.link_meets (by simp [level1, level1Table]) (nrm2Sum_spec hI hM hS hes)
-      scal := Interp.link_meets (by simp [level1, level1Table]) (scalLoop_spec hI hM ok)
-      copy := Interp.link_meets (by simp [level1, level1Table]) (copyLoop_spec hI ok) }⟩)
+    ⟨fun a => Interp.link_satisfies_kept (by simp [level1, level1Table]) (hI a),
+    { sum := Interp.link_satisfies_kept (by simp [level1, level1Table]) hS
+      dot := Interp.link_satisfies (by simp [level1, level1Table]) (dotSum_satisfies hI hM hS hes)
+      axpy := Interp.link_satisfies (by simp [level1, level1Table]) (axpyLoop_satisfies hI hM hu ok)
+      nrm2 := Interp.link_satisfies (by simp [level1, level1Table]) (nrm2Sum_satisfies hI hM hS hes)
+      scal := Interp.link_satisfies (by simp [level1, level1Table]) (scalLoop_satisfies hI hM ok)
+      copy := Interp.link_satisfies (by simp [level1, level1Table]) (copyLoop_satisfies hI ok) }⟩)
     (level1_accounts wsum) fun I _ => Profile.tapeLocal_noDraw rfl rfl I
 
 /-- **The certificate of sequential summation.** -/
@@ -100,8 +100,8 @@ theorem sumSeq_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) (ok : ℕ → Pr
     (sumSeq (Op := Op) (Tst := Tst)).Refines (fun I => IsScalar M I)
       (fun J => IsScalar M J ∧ IsSum dec (seqSumErr u) ok J) :=
   .of_accounts (fun I hI =>
-    ⟨fun a => Interp.link_meets_kept (by simp [sumSeq, sumSeqTable]) (hI a),
-      Interp.link_meets (by simp [sumSeq, sumSeqTable]) (sumSeq_spec hI hM hu ok)⟩)
+    ⟨fun a => Interp.link_satisfies_kept (by simp [sumSeq, sumSeqTable]) (hI a),
+      Interp.link_satisfies (by simp [sumSeq, sumSeqTable]) (sumSeq_satisfies hI hM hu ok)⟩)
     sumSeq_accounts fun I _ => Profile.tapeLocal_noDraw rfl rfl I
 
 /-- **One level of pairwise summation**: from the lengths of depth below `k` to those of depth
@@ -111,9 +111,9 @@ theorem sumPairwise_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) (k : ℕ) :
       (fun I => IsScalar M I ∧ IsSum dec (pairSumErr u) (fun n => Nat.clog 2 n < k) I)
       (fun J => IsScalar M J ∧ IsSum dec (pairSumErr u) (fun n => Nat.clog 2 n < k + 1) J) :=
   .of_accounts (fun I ⟨hI, hS⟩ =>
-    ⟨fun a => Interp.link_meets_kept (by simp [sumPairwise, sumPairwiseTable]) (hI a),
-      Interp.link_meets (by simp [sumPairwise, sumPairwiseTable])
-        (sumPairwise_spec hI hM hu hS)⟩)
+    ⟨fun a => Interp.link_satisfies_kept (by simp [sumPairwise, sumPairwiseTable]) (hI a),
+      Interp.link_satisfies (by simp [sumPairwise, sumPairwiseTable])
+        (sumPairwise_satisfies hI hM hu hS)⟩)
     sumPairwise_accounts fun I _ => Profile.tapeLocal_noDraw rfl rfl I
 
 /-- **Pairwise summation of depth `k`**, by iterating one level: over any scalar arithmetic,
@@ -133,7 +133,7 @@ theorem seq_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) (ok : ℕ → Prop)
       (fun J => IsScalar M J ∧ IsBlas1 dec (seq.err u) ok J) :=
   (level1_certifies hM hu (seqSumErr_nonneg hu) ok 0).over (sumSeq_certifies hM hu ok) rfl rfl
 
-/-- Sequential BLAS1 over exact scalar arithmetic meets the exact decoded contracts. -/
+/-- Sequential BLAS1 over exact scalar arithmetic satisfies the exact decoded contracts. -/
 theorem seq_certifies_exact (hM : ExactModel dec M) (ok : ℕ → Prop) :
     (seq (Op := Op) (Tst := Tst)).Refines (fun I => IsScalar M I)
       (fun J => IsScalar M J ∧ IsExactBlas1 dec ok J) := by
@@ -153,7 +153,7 @@ theorem pairwise_certifies (hM : StdModel u dec M) (hu : 0 ≤ u) (k : ℕ) :
     (sumPairwise_iter_certifies hM hu k) (by simp [level1, sumPairwise])
     (by simp [level1, sumPairwise])
 
-/-- Pairwise BLAS1 over exact scalar arithmetic meets the exact contracts at the lengths covered
+/-- Pairwise BLAS1 over exact scalar arithmetic satisfies the exact contracts at the lengths covered
 by the recursion depth. -/
 theorem pairwise_certifies_exact (hM : ExactModel dec M) (k : ℕ) :
     (pairwise (Op := Op) (Tst := Tst) k).Refines (fun I => IsScalar M I)
@@ -315,9 +315,9 @@ theorem exists_isBlas1 {u : ℝ} (hu : 0 ≤ u) :
   have hI : IsScalar exactMachine (Interp.ofFns F : Interp (ScalarOp ⊕ Blas1Op) Empty ℝ) :=
     isScalar_ofFns _ _ fun _ => rfl
   exact ⟨ℝ, ⟨0⟩, id, exactMachine, _, stdModel_exact hu,
-    (seq_certifies (stdModel_exact hu) hu _).meets _ hI⟩
+    (seq_certifies (stdModel_exact hu) hu _).satisfies _ hI⟩
 
-/-- Exact real scalar arithmetic and sequential BLAS1 meet their contracts jointly at every
+/-- Exact real scalar arithmetic and sequential BLAS1 satisfy their contracts jointly at every
 admitted length. -/
 theorem exists_isExactBlas1 (ok : ℕ → Prop) :
     ∃ (M : Machine ℝ) (J : Interp (ScalarOp ⊕ Blas1Op) Tst ℝ),
@@ -326,12 +326,12 @@ theorem exists_isExactBlas1 (ok : ℕ → Prop) :
   have hI : IsScalar exactMachine (Interp.ofFns F : Interp (ScalarOp ⊕ Blas1Op) Tst ℝ) :=
     isScalar_ofFns _ _ fun _ => rfl
   exact ⟨exactMachine, _, exactModel_exactMachine,
-    (seq_certifies_exact exactModel_exactMachine ok).meets _ hI⟩
+    (seq_certifies_exact exactModel_exactMachine ok).satisfies _ hI⟩
 
 /-- **Witness for the contract of `sum` alone**, jointly with scalar arithmetic: for every
 `u ≥ 0`, every error function that is nonnegative on the admitted lengths and every set of
 admitted lengths, by exact summation. This is the contract set of the implementations over
-`sum` (`dotSum_spec`, `nrm2Sum_spec`, `sumPairwise_spec`). -/
+`sum` (`dotSum_satisfies`, `nrm2Sum_satisfies`, `sumPairwise_satisfies`). -/
 theorem exists_isSum {u : ℝ} (hu : 0 ≤ u) (e : ℕ → ℝ) (ok : ℕ → Prop)
     (he : ∀ n, ok n → 0 ≤ e n) :
     ∃ (K : Type) (_ : Inhabited K) (dec : K → ℝ) (M : Machine K)
@@ -343,7 +343,7 @@ theorem exists_isSum {u : ℝ} (hu : 0 ≤ u) (e : ℕ → ℝ) (ok : ℕ → Pr
   have hI : IsScalar exactMachine (Interp.ofFns F : Interp (ScalarOp ⊕ Blas1Op) Empty ℝ) :=
     isScalar_ofFns _ _ fun _ => rfl
   refine ⟨ℝ, ⟨0⟩, id, exactMachine, _, stdModel_exact hu, hI, ?_⟩
-  refine (Interp.ofFns_isFn F .total (.inr .sum) AnyOperands).meets_rel (fun _ _ _ _ => trivial)
+  refine (Interp.ofFns_isFn F .total (.inr .sum) AnyOperands).satisfies_rel (fun _ _ _ _ => trivial)
     rfl rfl (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) ?_
   intro d w xs m ins outs hnd _ hadm hr _
   obtain ⟨k, rfl⟩ := List.length_eq_one_iff.mp hnd

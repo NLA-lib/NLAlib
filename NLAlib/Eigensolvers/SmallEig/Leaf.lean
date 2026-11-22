@@ -46,7 +46,7 @@ kept and its accumulator `Ub` is the identity of order $d$ (column-major pairs).
 `NLAlib.ShiftedQR.solveRoundedWith`; the block, the words and the cap are not read. At any order
 it writes the identity.
 Algorithm: small-eig -/
-def identityLeaf : Impl O Q := opsImpl% [d, np, T] (Bk, P) → (Bk, Ub) {
+def identityLeaf : Stmt O Q := ops% [d, np, T] (Bk, P) → (Bk, Ub) {
   for j < d {
     for i < d {
       call (Has.inj (ScalarOp.lit 0)) [] () → (Ub[2 * (j * d + i)]);
@@ -64,7 +64,7 @@ those words and stores the identity of order $d$. -/
 theorem identityLeaf_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (h0 : M.lit 0 = 0) {d : ℕ} (h1 : 0 < d → M.lit 1 = 1) {τ : Tape ℝ} {μ : Mem ℝ}
     {w p ub : ℕ × ℕ} {ps : List ℝ} {T : ℕ} (hroom : ub.2 + 2 * (d * d) ≤ μ.store.len ub.1) :
-    Writes .total I τ (identityLeaf (O := O) (Q := Q)).body
+    Writes .total I τ (identityLeaf (O := O) (Q := Q))
         (Env.frame [d, ps.length, T] [w, p, w, ub])
       (Store.inBlock ub.1 ub.2 (2 * (d * d)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix ub (1 : Matrix (Fin d) (Fin d) ℂ) μ'.store) μ := by

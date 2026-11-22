@@ -57,14 +57,14 @@ theorem shqrLoopError_le_shqrDecoupleError {n k : ℕ} {B Γ S δ u : ℝ} (hS :
   gcongr
   norm_num
 
--- The default heartbeat budget does not cover the elaboration of this statement.
-set_option maxHeartbeats 1000000 in
 -- Matching the contract's hypotheses, with their long real constants, against the parameter
 -- choices is heavy.
+set_option maxHeartbeats 1000000 in
+-- (the reason is stated above)
 omit [Has EigenvalueKernelOp O] in
-/-- **The rounded decoupling loop with a small-eigenvalue routine meets the randomized decoupling
-contract at the headline's parameters**, with the routine's words `qs` (none, or $12$) after the
-words of `NLAlib.ShiftedQR.roundedDecoupleParams` and the routine meeting
+/-- **The rounded decoupling loop with a small-eigenvalue routine satisfies the randomized
+decoupling contract at the headline's parameters**, with the routine's words `qs` (none, or $12$)
+after the words of `NLAlib.ShiftedQR.roundedDecoupleParams` and the routine meeting
 `NLAlib.ShiftedQR.RandomSmallEigContractAt` on orders at most $k$ and norms at most $4\Sigma$ (the
 iterate norm): the merged statement is the case of the kernel. The rounded decoupling loop meets the
 randomized decoupling contract at the headline's parameters ([BanksGarzaVargasSrivastava2022, Lemma
@@ -91,7 +91,7 @@ theorem roundedDecoupleWith_randomDecouplingRoutineContract_of_le_uShQR_at {M : 
     (hU : law s₀ = volume.restrict (Set.Icc 0 1)) {k : ℕ} {B Γ S δ φ : ℝ} (hB : 1 ≤ B)
     (hΓ : 0 < Γ) (hδ : 0 < δ) (hδS : δ ≤ S) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
     (hk : k = shqrDegree (4 * B)) (hβ0 : 0 ≤ β) (hβ : β ≤ shqrSmallEigAccuracy n B Γ S δ)
-    (hφse : 0 ≤ φse) (hu : u ≤ uShQR n k B Γ S δ φ) {T : ℕ} {qs : List ℝ} {SE : Impl O Q}
+    (hφse : 0 ≤ φse) (hu : u ≤ uShQR n k B Γ S δ φ) {T : ℕ} {qs : List ℝ} {SE : Stmt O Q}
     (hSE : RandomSmallEigContractAt law β φse k 12 T (4 * S) qs SE I)
     (hq12 : qs = [] ∨ qs.length = 12) {ps : List ℝ}
     (hps : ps = roundedDecoupleParams (shqrLoopThreshold n k B Γ S δ φ) (shqrRadius n B Γ S δ)

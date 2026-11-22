@@ -30,7 +30,10 @@ variable {K Op Tst : Type} [Inhabited K]
 variable [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op] [Has CmpTst Tst]
 
 omit [Has CmpTst Tst] in
-/-- Before the grade, saving a residual and taking the reorthogonalized round succeeds. -/
+/-- Before the grade, saving a residual and taking the reorthogonalized round succeeds.
+
+A fragment of `NLAlib.Krylov.CG.Reorth.solveRoutine`, not a routine: it reads the loop index of
+`rounds` and writes the history buffer and guard cell that the solver allocates. -/
 theorem advance_writes {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hM : ExactModel dec M) (hB : IsExactBlas1 dec (fun _ => True) I)
     {n cap i L : ℕ} {A : Matrix (Fin n) (Fin n) ℝ} (hA : IsExactMatvec dec A I)

@@ -97,7 +97,7 @@ variable {M dec mm qr unif normal}
 /-- The scalar-visible shift program writes exactly the existing mathematical machine's
 packed output on the actual stored finite matrix. Spatially disjoint arena regions are allowed;
 numerical accuracy is a separate property of the same machine functions. -/
-theorem writes_shift_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
+theorem shift_writes_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     {I : Interp Op Tst K} (hI : IsScalar M I) {τ : Tape K} {n : ℕ}
     (A : Matrix (Fin n) (Fin n) (K × K)) (d : K) {x c y : ℕ × ℕ} {μ : Mem K}
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (n * n)))
@@ -106,7 +106,7 @@ theorem writes_shift_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     (hX : μ.store.readBlock x.1 x.2 (2 * (n * n)) = some ((EntryCodec.pair K).packFinMatrix A))
     (hc : μ.store.get c.1 c.2 = some d)
     (hY : y.2 + 2 * (n * n) ≤ μ.store.len y.1) (hl : μ.Live [x, c, y]) :
-    Writes .total I τ (shift (Op := Op) (Tst := Tst)).body (Env.frame [n] [x, c, y])
+    Writes .total I τ (shift (Op := Op) (Tst := Tst)) (Env.frame [n] [x, c, y])
       (Store.inBlock y.1 y.2 (2 * (n * n)))
       (fun μ' => μ'.pos = μ.pos ∧ μ'.store.readBlock y.1 y.2 (2 * (n * n)) =
         some ((EntryCodec.pair K).packFinMatrix
@@ -116,7 +116,7 @@ theorem writes_shift_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
   have hB : μ.store.HoldsEntries C ⟨x.1, x.2, n, n, n⟩ B :=
     Store.holdsEntries_of_readBlock rfl (by simpa only [Nat.mul_comm] using hX)
   have hfinite : (Matrix.of fun (i j : Fin n) => B i j) = A := C.matrix_packFinMatrix A
-  refine (writes_shift hI hxy hcy hB hc hY hl).mono le_rfl ?_
+  refine (shift_writes hI hxy hcy hB hc hY hl).mono le_rfl ?_
   intro μ' _ ⟨houtput, hpos⟩
   have hread := houtput.readBlock_packFinMatrix rfl
   rw [completeUpper_shift_eq_hermShift M dec mm qr unif normal] at hread
@@ -126,7 +126,7 @@ theorem writes_shift_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
 /-- The scalar-visible scale program writes exactly the existing mathematical machine's
 packed output on the actual stored finite matrix. Spatially disjoint arena regions are allowed;
 numerical accuracy is a separate property of the same machine functions. -/
-theorem writes_scale_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
+theorem scale_writes_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     {I : Interp Op Tst K} (hI : IsScalar M I) {τ : Tape K} {n : ℕ}
     (A : Matrix (Fin n) (Fin n) (K × K)) (d : K) {x c y : ℕ × ℕ} {μ : Mem K}
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (n * n)))
@@ -135,7 +135,7 @@ theorem writes_scale_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     (hX : μ.store.readBlock x.1 x.2 (2 * (n * n)) = some ((EntryCodec.pair K).packFinMatrix A))
     (hc : μ.store.get c.1 c.2 = some d)
     (hY : y.2 + 2 * (n * n) ≤ μ.store.len y.1) (hl : μ.Live [x, c, y]) :
-    Writes .total I τ (scale (Op := Op) (Tst := Tst)).body (Env.frame [n] [x, c, y])
+    Writes .total I τ (scale (Op := Op) (Tst := Tst)) (Env.frame [n] [x, c, y])
       (Store.inBlock y.1 y.2 (2 * (n * n)))
       (fun μ' => μ'.pos = μ.pos ∧ μ'.store.readBlock y.1 y.2 (2 * (n * n)) =
         some ((EntryCodec.pair K).packFinMatrix
@@ -145,7 +145,7 @@ theorem writes_scale_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
   have hB : μ.store.HoldsEntries C ⟨x.1, x.2, n, n, n⟩ B :=
     Store.holdsEntries_of_readBlock rfl (by simpa only [Nat.mul_comm] using hX)
   have hfinite : (Matrix.of fun (i j : Fin n) => B i j) = A := C.matrix_packFinMatrix A
-  refine (writes_scale hI hxy hcy hB hc hY hl).mono le_rfl ?_
+  refine (scale_writes hI hxy hcy hB hc hY hl).mono le_rfl ?_
   intro μ' _ ⟨houtput, hpos⟩
   have hread := houtput.readBlock_packFinMatrix rfl
   rw [completeUpper_scale_eq_hermScale M dec mm qr unif normal] at hread
@@ -155,7 +155,7 @@ theorem writes_scale_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
 /-- The scalar-visible average program writes exactly the existing mathematical machine's
 packed output on the actual stored finite matrix. Spatially disjoint arena regions are allowed;
 numerical accuracy is a separate property of the same machine functions. -/
-theorem writes_average_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
+theorem average_writes_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     {I : Interp Op Tst K} (hI : IsScalar M I) {τ : Tape K} {n : ℕ}
     (A : Matrix (Fin n) (Fin n) (K × K)) (d : K) {x c y : ℕ × ℕ} {μ : Mem K}
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (n * n)))
@@ -164,7 +164,7 @@ theorem writes_average_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     (hX : μ.store.readBlock x.1 x.2 (2 * (n * n)) = some ((EntryCodec.pair K).packFinMatrix A))
     (hc : μ.store.get c.1 c.2 = some d)
     (hY : y.2 + 2 * (n * n) ≤ μ.store.len y.1) (hl : μ.Live [x, c, y]) :
-    Writes .total I τ (average (Op := Op) (Tst := Tst)).body (Env.frame [n] [x, c, y])
+    Writes .total I τ (average (Op := Op) (Tst := Tst)) (Env.frame [n] [x, c, y])
       (Store.inBlock y.1 y.2 (2 * (n * n)))
       (fun μ' => μ'.pos = μ.pos ∧ μ'.store.readBlock y.1 y.2 (2 * (n * n)) =
         some ((EntryCodec.pair K).packFinMatrix
@@ -174,7 +174,7 @@ theorem writes_average_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
   have hB : μ.store.HoldsEntries C ⟨x.1, x.2, n, n, n⟩ B :=
     Store.holdsEntries_of_readBlock rfl (by simpa only [Nat.mul_comm] using hX)
   have hfinite : (Matrix.of fun (i j : Fin n) => B i j) = A := C.matrix_packFinMatrix A
-  refine (writes_average hI hxy hcy hB hc hY hl).mono le_rfl ?_
+  refine (average_writes hI hxy hcy hB hc hY hl).mono le_rfl ?_
   intro μ' _ ⟨houtput, hpos⟩
   have hread := houtput.readBlock_packFinMatrix rfl
   rw [completeUpper_average_eq_hermAvg M dec mm qr unif normal] at hread
@@ -185,21 +185,21 @@ theorem writes_average_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
 /-- Scalar negation of a packed matrix returns exactly the existing mathematical negation.
 Input and output may coincide exactly or occupy spatially disjoint blocks of the same buffer.
 The theorem is total under readable input, writable output and the scalar functional contract. -/
-theorem writes_negate_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
+theorem negate_writes_packed {Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     {I : Interp Op Tst K} (hI : IsScalar M I) {τ : Tape K} {r c : ℕ}
     (A : Matrix (Fin r) (Fin c) (K × K)) {x y : ℕ × ℕ} {μ : Mem K}
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (r * c)))
       (Store.inBlock y.1 y.2 (2 * (r * c))) ∨ x = y)
     (hX : μ.store.readBlock x.1 x.2 (2 * (r * c)) = some ((EntryCodec.pair K).packFinMatrix A))
     (hY : y.2 + 2 * (r * c) ≤ μ.store.len y.1) (hl : μ.Live [x, y]) :
-    Writes .total I τ (negate (Op := Op) (Tst := Tst)).body (Env.frame [r, c] [x, y])
+    Writes .total I τ (negate (Op := Op) (Tst := Tst)) (Env.frame [r, c] [x, y])
       (Store.inBlock y.1 y.2 (2 * (r * c)))
       (fun μ' => μ'.pos = μ.pos ∧ μ'.store.readBlock y.1 y.2 (2 * (r * c)) =
         some ((EntryCodec.pair K).packFinMatrix
           ((M.toFloatMachine dec mm qr unif normal).negMat A))) μ := by
-  have hrun : Wp .total I τ negate.body (Env.frame [r, c] [x, y])
+  have hrun : Wp .total I τ negate (Env.frame [r, c] [x, y])
       (fun μ' => μ' = μ.updBlock y (((EntryCodec.pair K).packFinMatrix A).map M.neg)) μ :=
-    wp_frame rfl rfl hl (wp_unaryMap_of_disj_or_eq (hI .neg) hxy hX hY rfl)
+    wp_frame rfl rfl hl (unaryMap_wp_of_disj_or_eq (hI .neg) hxy hX hY rfl)
   refine (Writes.of_wp_eq_updBlock hrun).mono ?_ ?_
   · simp only [List.length_map, EntryCodec.length_packFinMatrix, EntryCodec.pair]
     simp only [Nat.mul_comm]

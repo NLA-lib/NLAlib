@@ -748,7 +748,7 @@ bounded by constants; [BanksGarzaVargasSrivastava2022, Theorem 1.4]'s is $2$ for
 alone, with a run-time count over the deflation tree. -/
 theorem denseSchur_work_le_polylog (sG : ℕ) : ∃ (C : ℝ) (p : ℕ), ∀ {n : ℕ} {δ φ : ℝ}, 0 < δ →
     δ ≤ 1 → 0 < φ → φ ≤ 1 →
-    (Count.size (stmtCost (denseSchur (O := O) (Q := Q) sG).body.instrument
+    (Count.size (stmtCost (denseSchur (O := O) (Q := Q) sG).instrument
       (denseSchurDims n δ φ ++ [0, 0, 0, 0, 0])) : ℝ) ≤
       C * ((n : ℝ) + 1) ^ 3 * Real.logb 2 (4 * (n + 1) / (δ * φ)) ^ p := by
   obtain ⟨K, hK0, hK⟩ := denseSchur_caps_le
@@ -767,7 +767,7 @@ theorem denseSchur_work_le_polylog (sG : ℕ) : ∃ (C : ℝ) (p : ℕ), ∀ {n 
     rfl
   have hw := denseSchur_work_le (O := O) (Q := Q) sG n nr nq k F T
   rw [hd]
-  have hwR : (Count.size (stmtCost (denseSchur (O := O) (Q := Q) sG).body.instrument
+  have hwR : (Count.size (stmtCost (denseSchur (O := O) (Q := Q) sG).instrument
       [n + 1, nr, nq, k, F, T, 0, 0, 0, 0, 0]) : ℝ) ≤
       384547 * ((n : ℝ) + 1) ^ 3 * ((k : ℝ) + 1) ^ 4 * ((nr : ℝ) + nq + 1) * ((F : ℝ) + 1) *
         ((T : ℝ) + 1) ^ 2 := by exact_mod_cast hw

@@ -20,8 +20,8 @@ Straight-line arithmetic uses the shared pure scalar-block evaluator and packed-
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_signParameters`: stored tolerance and doubled radius.
-* `NLAlib.SpectralBisection.writes_nodeScalars`: five actual rounded scalar setup words.
+* `NLAlib.SpectralBisection.signParameters_writes`: stored tolerance and doubled radius.
+* `NLAlib.SpectralBisection.nodeScalars_writes`: five actual rounded scalar setup words.
 -/
 
 @[expose] public section
@@ -31,8 +31,9 @@ namespace NLAlib.SpectralBisection
 open Ops
 
 /-- The sign parameters are the supplied tolerance and the actual product of the stored two
-and radius words. Source and destination regions may lie in one buffer when disjoint. -/
-theorem writes_signParameters {K Op Tst : Type} [Has ScalarOp Op]
+and radius words. Source and destination regions may lie in one buffer when disjoint.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem signParameters_writes {K Op Tst : Type} [Has ScalarOp Op]
     {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
     {τ : Tape K} {μ : Mem K} {d : ℕ} {lv par two sp : ℕ × ℕ} (R β t : K)
     (hR : μ.store.get lv.1 (lv.2 + 2 * d) = some R)
@@ -41,7 +42,7 @@ theorem writes_signParameters {K Op Tst : Type} [Has ScalarOp Op]
     (hroom : sp.2 + 2 ≤ μ.store.len sp.1)
     (hsep : Fp.Disj (Fp.cells [(lv.1, lv.2 + 2 * d), two])
       (Store.inBlock sp.1 sp.2 2)) :
-    Writes .total I τ (signParameters (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (signParameters (Op := Op) (Tst := Tst))
       (Env.frame [d] [lv, par, two, sp]) (Store.inBlock sp.1 sp.2 2)
       (fun μ' => μ'.pos = μ.pos ∧ μ'.store.readBlock sp.1 sp.2 2 =
         some [β, M.mul t R]) μ := by
@@ -68,8 +69,9 @@ theorem writes_signParameters {K Op Tst : Type} [Has ScalarOp Op]
 
 /-- The first five scalar words of a node retain the rounded half-radius, its negation,
 the machine literal of `L+d`, the rounded radius quotient and the sampled shift. All scalar
-operations remain explicit; a division requires no meta-level successful-run assumption. -/
-theorem writes_nodeScalars {K Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op]
+operations remain explicit; a division requires no meta-level successful-run assumption.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem nodeScalars_writes {K Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op]
     {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndexLit M I)
     {τ : Tape K} {μ : Mem K} {L d lo : ℕ} {lv c su t : ℕ × ℕ} (R two U : K)
     (hR : μ.store.get lv.1 (lv.2 + 2 * d) = some R)
@@ -78,7 +80,7 @@ theorem writes_nodeScalars {K Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op]
     (hroom : t.2 + 5 ≤ μ.store.len t.1)
     (hsep : Fp.Disj (Store.inBlock t.1 t.2 5)
       (Fp.cells [(lv.1, lv.2 + 2 * d), (su.1, su.2 + lo)])) :
-    Writes .total I τ (nodeScalars (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (nodeScalars (Op := Op) (Tst := Tst))
       (Env.frame [L, d, lo] [lv, c, su, t])
       (Fp.blocks [t, (t.1, t.2 + 2), (t.1, t.2 + 3)] [2, 1, 2])
       (fun μ' => μ'.pos = μ.pos ∧

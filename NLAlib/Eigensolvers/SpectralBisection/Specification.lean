@@ -47,9 +47,9 @@ noncomputable def wordSpecification {K : Type} [Inhabited K]
     let n := d 0
     let L := d 1
     let fuel := d 2
-    let R0 := vec x.val.1.2 0
-    let eps := vec x.val.1.2 1
-    let beta := vec x.val.1.2 2
+    let R0 := x.val.1.2 0
+    let eps := x.val.1.2 1
+    let beta := x.val.1.2 2
     let A := inputMatrix d x
     let F := tapeMachine M dec mm qr n 0 τ
     let root := EighNode.mk n A R0 eps L

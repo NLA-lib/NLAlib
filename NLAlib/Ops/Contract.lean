@@ -11,8 +11,8 @@ public import NLAlib.Ops.Exec
 # Contracts
 
 A contract is a precondition and a postcondition for a call, on the memory
-(`NLAlib.Ops.OpSpec`, `NLAlib.Ops.Contract`). An interpretation meets it in a mode
-(`NLAlib.Ops.Interp.Meets`): in total mode the call succeeds and the postcondition holds, in
+(`NLAlib.Ops.OpSpec`, `NLAlib.Ops.Contract`). An interpretation satisfies it in a mode
+(`NLAlib.Ops.Interp.Satisfies`): in total mode the call succeeds and the postcondition holds, in
 liberal mode the postcondition holds if the call succeeds. A contract receives the mode, so that
 one statement serves both: what is needed only for success is put under `NLAlib.Ops.Mode.Needs`.
 
@@ -29,10 +29,14 @@ are fixed by the evaluator and the access model (`NLAlib.Ops.evalCounted`,
 The exactness of tests and index conversions is imposed by the access model
 (`NLAlib.Ops.Interp.IsTest`, `NLAlib.Ops.Interp.IsIndex`); a conversion may fail.
 
+The three statements of the layer, `NLAlib.Ops.Routine.Meets`, `NLAlib.Ops.Interp.Satisfies` and
+`NLAlib.Ops.Impl.Satisfies`, and their roles are described once, in `NLAlib/Ops/README.md`
+("Three statements") and the header of `NLAlib/Ops/Routine.lean`.
+
 ## Main results
 
-* `NLAlib.Ops.Interp.Meets`: an operation meets a contract.
-* `NLAlib.Ops.Interp.Meets.mono`: weakening.
+* `NLAlib.Ops.Interp.Satisfies`: an operation satisfies a contract.
+* `NLAlib.Ops.Interp.Satisfies.mono`: weakening.
 -/
 
 @[expose] public section
@@ -138,18 +142,18 @@ def Contract.on (C : Contract K) (md : Mode) (d : List ℕ) (ins outs : List (�
     (m : Mem K) : OpSpec K :=
   C.spec md d ins outs (τ.window C.stream m.pos (C.win d))
 
-/-- **The operation `o` of `I` meets the contract `C`** in the mode `md`. -/
-def Interp.Meets (I : Interp Op Tst K) (md : Mode) (o : Op) (C : Contract K) : Prop :=
+/-- **The operation `o` of `I` satisfies the contract `C`** in the mode `md`. -/
+def Interp.Satisfies (I : Interp Op Tst K) (md : Mode) (o : Op) (C : Contract K) : Prop :=
   ∀ d ins outs τ m, (C.on md d ins outs τ m).pre m →
     md.Holds (I.callS o d ins outs τ m) ((C.on md d ins outs τ m).post m)
 
 /-- Weakening: a contract with a stronger precondition and a weaker postcondition is met. -/
-theorem Interp.Meets.mono {I : Interp Op Tst K} {md : Mode} {o : Op} {C C' : Contract K}
-    (h : I.Meets md o C) (hpre : ∀ d ins outs τ m, (C'.on md d ins outs τ m).pre m →
+theorem Interp.Satisfies.mono {I : Interp Op Tst K} {md : Mode} {o : Op} {C C' : Contract K}
+    (h : I.Satisfies md o C) (hpre : ∀ d ins outs τ m, (C'.on md d ins outs τ m).pre m →
       (C.on md d ins outs τ m).pre m)
     (hpost : ∀ d ins outs τ m m', (C'.on md d ins outs τ m).pre m →
       (C.on md d ins outs τ m).post m m' → (C'.on md d ins outs τ m).post m m') :
-    I.Meets md o C' :=
+    I.Satisfies md o C' :=
   fun d ins outs τ m hp => (h d ins outs τ m (hpre d ins outs τ m hp)).mono
     fun m' => hpost d ins outs τ m m' hp
 
@@ -215,7 +219,7 @@ structure QueryContract (K : Type) where
   index : List (ℕ × ℕ) → Mem K → Option ℕ → Prop
 
 /-- Both forms of a declared query satisfy their exact contract. -/
-def Interp.MeetsQuery (I : Interp Op Tst K) (q : Tst) (C : QueryContract K) : Prop :=
+def Interp.SatisfiesQuery (I : Interp Op Tst K) (q : Tst) (C : QueryContract K) : Prop :=
   (∀ d a m, C.test d a m (I.test q d a m)) ∧
     (∀ a m, C.index a m (I.index q a m))
 
@@ -236,8 +240,8 @@ structure AccessModel (Op Tst : Type) {K : Type} {r b : ℕ} (P : Problem K r b)
   resources : ResourceModel Op Tst
   /-- Exactly the declared primitive contracts have a joint realization, at these parameters. -/
   realize : ∀ d, P.valid d → ∀ x : P.Input d, ∃ I : Interp Op Tst K,
-    (∀ o, I.Meets .total o (operation d x o)) ∧
-      (∀ q, I.MeetsQuery q (query d x q))
+    (∀ o, I.Satisfies .total o (operation d x o)) ∧
+      (∀ q, I.SatisfiesQuery q (query d x q))
 
 /-- Primitive workspace bytes from the fixed resource model. -/
 def AccessModel.workspace {Op Tst K : Type} {r b : ℕ} {P : Problem K r b}
@@ -248,7 +252,7 @@ no user-supplied stronger assumption or whole-program proposition in this defini
 def AccessModel.contracts {Op Tst K : Type} {r b : ℕ} {P : Problem K r b}
     (M : AccessModel Op Tst P) (d : Fin r → ℕ) (x : P.Input d)
     (I : Interp Op Tst K) : Prop :=
-  (∀ o, I.Meets .total o (M.operation d x o)) ∧
-    (∀ q, I.MeetsQuery q (M.query d x q))
+  (∀ o, I.Satisfies .total o (M.operation d x o)) ∧
+    (∀ q, I.SatisfiesQuery q (M.query d x q))
 
 end NLAlib.Ops

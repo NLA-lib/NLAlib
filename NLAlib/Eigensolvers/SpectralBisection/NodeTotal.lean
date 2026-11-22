@@ -19,7 +19,7 @@ represents the complete returned outcome, including the shift needed by upward r
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_nodeBody`: total refinement of the actual nonleaf node body.
+* `NLAlib.SpectralBisection.nodeBody_writes`: total refinement of the actual nonleaf node body.
 -/
 
 @[expose] public section
@@ -76,8 +76,9 @@ private theorem indexCells_disjoint_prepared {n d lo k : ℕ}
 
 /-- A nonleaf node executes totally and stores exactly the existing mathematical step on its
 actual inputs. All bounded split cases have sufficient separated output capacity. No scratch
-initialization, numerical-accuracy or successful-run premise is assumed. -/
-theorem writes_nodeBody {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
+initialization, numerical-accuracy or successful-run premise is assumed.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem nodeBody_writes {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
     [Has MatrixOp Op] [Has CmpTst Tst] [Has IdxTst Tst]
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp dec I)
@@ -126,7 +127,7 @@ theorem writes_nodeBody {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has I
     have ho := hexact 1 (by omega)
     norm_num only [Nat.cast_zero, Nat.cast_one] at hz ho
     simpa only [hz, ho] using (zero_ne_one : (0 : ℝ) ≠ 1)
-  refine (writes_nodePrepare (μ := μ) (τ := τ)
+  refine (nodePrepare_writes (μ := μ) (τ := τ)
     (n := n) (L := L) (fuel := fuel) (d := d) (lo := lo) (k := k)
     (par := par) (lv := lv) (su := su) (sg := sg) (ma := ma) (qa := qa)
     (sz := sz) (kd := kd) (ks := ks) (c := c) (t := t) (sp := sp)
@@ -143,7 +144,7 @@ theorem writes_nodeBody {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has I
   have hIndexProtect := indexCells_disjoint_prepared
     (n := n) (d := d) (lo := lo) (par := par) (lv := lv) (su := su) (sg := sg)
     (ma := ma) (c := c) hsap hsprotect
-  have hIndex := writes_nodeSplitIndex (M := M) dec mm qr M.mul
+  have hIndex := nodeSplitIndex_writes (M := M) dec mm qr M.mul
     (fun z : K × K => M.normalWords z.1 z.2) (μ := μ₁) (τ := τ)
     (k := k) (pp := pp) (c := c) (t := t) hS hL hC Pp (M.div (M.lit 1) (M.lit 2))
     (by room) hPp₁ (by simpa using hhalf₁) (by rw [hfr₁.len_eq]; exact hsroom.1)
@@ -167,7 +168,7 @@ theorem writes_nodeBody {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has I
       Fp.blocks (nodeInputs n d lo par lv su sg ma c) (nodeInputLengths n k) ⊔
         Fp.blocks [t, sp, w, b, tm, pp, pm] (nodeScratchLengths k) := by
     fp_sub [splitInputs, splitInputLengths, nodeInputs, nodeInputLengths, nodeScratchLengths]
-  have hBranch := writes_nodeBranch (M := M) (μ := μ₂) (τ := τ)
+  have hBranch := nodeBranch_writes (M := M) (μ := μ₂) (τ := τ)
     (n := n) (d := d) (lo := lo) (k := k) (kp := kp) (ua := ua) (ea := ea)
     (sg := sg) (pp := pp) (pm := pm) (ma := ma) (qa := qa) (sz := sz)
     (kd := kd) (ks := ks) (c := c) (t := t) dec mm qr hS hL hMM hQR

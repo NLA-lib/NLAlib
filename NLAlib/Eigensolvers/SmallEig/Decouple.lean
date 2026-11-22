@@ -55,16 +55,16 @@ Round $t$'s step records its rotations in slot $j_0 + t$ of the slotted log `Lg`
 $w \ge N - 1$), validated at once (the step is committed). The interface is
 `[N, m2, w, j0] (H, Lam, Q) → (H, Fl, Lg)`; the registers are scoped.
 Algorithm: small-eig -/
-def decoupleLast : Impl O Q := opsImpl% [N, m2, w, j0] (H, Lam, Qw) → (H, Fl, Lg) {
+def decoupleLast : Stmt O Q := ops% [N, m2, w, j0] (H, Lam, Qw) → (H, Fl, Lg) {
   let R ← alloc 5;
   let Ds ← alloc 2;
-  run (bottomScan (O := O) (Q := Q)).body [N, 1] (H, Qw[7], R);
+  run (bottomScan (O := O) (Q := Q)) [N, 1] (H, Qw[7], R);
   while j < m2, (Has.inj CmpTst.isZero) [] (R[3]) {
-    run (multiStepStable (Op := O) (Tst := Q)).body [N, 1, w, j0 + j] (H, Lam, H, Ds, Lg);
-    run (slottedLogValidate (O := O) (Q := Q)).body [w, j0 + j] (Lg);
-    run (bottomScan (O := O) (Q := Q)).body [N, 1] (H, Qw[7], R)
+    run (multiStepStable (Op := O) (Tst := Q)) [N, 1, w, j0 + j] (H, Lam, H, Ds, Lg);
+    run (slottedLogValidate (O := O) (Q := Q)) [w, j0 + j] (Lg);
+    run (bottomScan (O := O) (Q := Q)) [N, 1] (H, Qw[7], R)
   } then {
-    run (roundedDecoupleExit (O := O) (Q := Q)).body [] (R, Fl)
+    run (roundedDecoupleExit (O := O) (Q := Q)) [] (R, Fl)
   }
 }
 
@@ -138,7 +138,9 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTs
 
 omit [Has IdxTst Q] in
 /-- The scan of the last subdiagonal entry (`NLAlib.ShiftedQR.bottomScan` at $k = 1$) of an
-order-$(n + 2)$ matrix stores the scan state `NLAlib.SmallEig.LastScan`. -/
+order-$(n + 2)$ matrix stores the scan state `NLAlib.SmallEig.LastScan`.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem bottomScan_writes_lastScan {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hu1 : u ≤ 1)
     (hL : IsIndexLit M I) (hNat : IsExactNatLit id M (n + 2)) (hC : IsCmp id I)
@@ -147,7 +149,7 @@ theorem bottomScan_writes_lastScan {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
     (hl : μ.Live [a, t, r]) (hroom : r.2 + 5 ≤ μ.store.len r.1)
     (hA : Fp.Disj (Store.inBlock r.1 r.2 5) (Store.inBlock a.1 a.2 (2 * ((n + 2) * (n + 2)))))
     (hT : Fp.Disj (Store.inBlock r.1 r.2 5) (Store.inBlock t.1 t.2 1)) :
-    Writes .total I τ (bottomScan (O := O) (Q := Q)).body (Env.frame [n + 2, 1] [a, t, r])
+    Writes .total I τ (bottomScan (O := O) (Q := Q)) (Env.frame [n + 2, 1] [a, t, r])
       (Store.inBlock r.1 r.2 5) (fun μ' => μ'.pos = μ.pos ∧ LastScan u thr r H μ'.store) μ := by
   refine (bottomScan_writes (n := n + 1) (k := 1) (τ := τ) hS hM hu hu1 hL hNat hC
     (by omega) hH ht hl hroom hA hT).mono le_rfl ?_
@@ -162,12 +164,14 @@ theorem bottomScan_writes_lastScan {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
 omit [Has ScalarOp O] [Has IdxTst Q] in
 /-- The exit of `NLAlib.SmallEig.decoupleLast` (`NLAlib.ShiftedQR.roundedDecoupleExit`) from the
 scan state `NLAlib.SmallEig.LastScan`: the flag $0$ with the scan bound, or the flag $1$ with the
-scan flag $0$ and the failed scan. -/
+scan flag $0$ and the failed scan.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem roundedDecoupleExit_writes_lastScan {M : Machine ℝ} {I : Interp O Q ℝ} {u t : ℝ} {n : ℕ}
     (hL : IsIndexLit M I) (hC : IsCmp id I) (hNat : IsExactNatLit id M 1) {τ : Tape ℝ}
     {μ : Mem ℝ} {r f : ℕ × ℕ} {H : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ}
     (hs : LastScan u t r H μ.store) (hf : f.2 < μ.store.len f.1) :
-    Writes .total I τ (roundedDecoupleExit (O := O) (Q := Q)).body (Env.frame [] [r, f])
+    Writes .total I τ (roundedDecoupleExit (O := O) (Q := Q)) (Env.frame [] [r, f])
       (Store.inBlock f.1 f.2 1)
       (fun μ' => (μ'.store.get f.1 f.2 = some 0 ∧
           (1 - u) ^ 2 * ‖H (Fin.last (n + 1)) (Fin.last n).castSucc‖ ^ 2 ≤ t) ∨
@@ -228,7 +232,7 @@ private theorem multiStepStable_writes_by {M : Machine ℝ} {I : Interp O Q ℝ}
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
     (hlog : HoldsSlottedLog lg ns w LL [] μ.store) (hj : LL.length < ns) (hw : n + 1 ≤ w)
     (hlgl : μ.Live [lg]) (hlgb : ∀ b ∈ [a, s, ds], b.1 ≠ lg.1) :
-    Writes .total I τ (multiStepStable (Op := O) (Tst := Q)).body
+    Writes .total I τ (multiStepStable (Op := O) (Tst := Q))
       (Env.frame [n + 2, 1, w, LL.length] [a, s, a, ds, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 2) * (n + 2))) ⊔ Store.inBlock ds.1 ds.2 2 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
@@ -261,7 +265,9 @@ private theorem multiStepStable_writes_by {M : Machine ℝ} {I : Interp O Q ℝ}
 
 omit [Has IdxTst Q] in
 /-- One more rounded step with the shift $\lambda$ (`NLAlib.ShiftedQR.multiStepStable` at degree
-$1$) extends a stable chain of $i$ steps with that shift to $i + 1$ steps. -/
+$1$) extends a stable chain of $i$ steps with that shift to $i + 1$ steps.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem multiStepStable_writes_replicate_succ {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hC : IsCmp id I)
     (hL : IsIndexLit M I) {n i : ℕ} (hNat : IsExactNatLit id M (n + 1))
@@ -277,7 +283,7 @@ theorem multiStepStable_writes_replicate_succ {M : Machine ℝ} {I : Interp O Q 
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
     (hlog : HoldsSlottedLog lg ns w LL [] μ.store) (hj : LL.length < ns) (hw : n + 1 ≤ w)
     (hlgl : μ.Live [lg]) (hlgb : ∀ b ∈ [a, s, ds], b.1 ≠ lg.1) :
-    Writes .total I τ (multiStepStable (Op := O) (Tst := Q)).body
+    Writes .total I τ (multiStepStable (Op := O) (Tst := Q))
       (Env.frame [n + 2, 1, w, LL.length] [a, s, a, ds, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 2) * (n + 2))) ⊔ Store.inBlock ds.1 ds.2 2 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
@@ -308,14 +314,16 @@ theorem multiStepStable_writes_replicate_succ {M : Machine ℝ} {I : Interp O Q 
 
 omit [Has IdxTst Q] in
 /-- The scan of `NLAlib.SmallEig.decoupleLast` from the operands of its loop
-(`NLAlib.SmallEig.DecoupleLastCtx`) stores the scan state of the matrix at `h`. -/
+(`NLAlib.SmallEig.DecoupleLastCtx`) stores the scan state of the matrix at `h`.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem bottomScan_writes_decoupleLastCtx {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hu : 0 ≤ u) (hu1 : u ≤ 1)
     (hL : IsIndexLit M I) (hNat : IsExactNatLit id M (n + 2)) (hC : IsCmp id I)
     {τ : Tape ℝ} {μ : Mem ℝ} {L : ℕ} {h lam qw f : ℕ × ℕ} {ζ : ℂ} {t : ℝ}
     {H : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ} (hc : DecoupleLastCtx n L h lam qw f ζ t μ.store)
     (hW : HoldsMatrix h H μ.store) :
-    Writes .total I τ (bottomScan (O := O) (Q := Q)).body
+    Writes .total I τ (bottomScan (O := O) (Q := Q))
       (Env.frame [n + 2, 1] [h, (qw.1, qw.2 + 7), (L, 0)]) (Store.inBlock L 0 5)
       (fun μ' => μ'.pos = μ.pos ∧ LastScan u t (L, 0) H μ'.store) μ := by
   obtain ⟨hlen, hh, -, hq, -, -, ht, hL5, -⟩ := hc
@@ -365,7 +373,9 @@ theorem DecoupleScans.succ {u t : ℝ} {n : ℕ} {H : Matrix (Fin (n + 2)) (Fin 
 omit [Has ScalarOp O] [Has IdxTst Q] in
 /-- The exit of `NLAlib.SmallEig.decoupleLast` after $i \le m_2$ rounds, from the history
 `NLAlib.SmallEig.DecoupleScans`, at the cap $m_2$ if the last scan failed: the flag $0$ with the
-last scan bound, or the flag $1$ at $i = m_2$ with every scan failed; the matrix is kept. -/
+last scan bound, or the flag $1$ at $i = m_2$ with every scan failed; the matrix is kept.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`
+and `NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem roundedDecoupleExit_writes_decoupleScans {M : Machine ℝ} {I : Interp O Q ℝ} {u t : ℝ}
     (hL : IsIndexLit M I) (hC : IsCmp id I) {n : ℕ} (hNat : IsExactNatLit id M (n + 2))
     {i m₂ : ℕ} (hi : i ≤ m₂) {H : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ} {ζ : ℂ} {τ : Tape ℝ}
@@ -373,7 +383,7 @@ theorem roundedDecoupleExit_writes_decoupleScans {M : Machine ℝ} {I : Interp O
     (hcap : μ.store.get r.1 (r.2 + 3) = some 0 → i = m₂)
     (hhf : Fp.Disj (Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2)))) (Store.inBlock f.1 f.2 1))
     (hf : f.2 < μ.store.len f.1) :
-    Writes .total I τ (roundedDecoupleExit (O := O) (Q := Q)).body (Env.frame [] [r, f])
+    Writes .total I τ (roundedDecoupleExit (O := O) (Q := Q)) (Env.frame [] [r, f])
       (Store.inBlock f.1 f.2 1) (fun μ' => ∃ (ℓ : ℕ)
         (Hs : ℕ → Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ), ℓ ≤ m₂ ∧
         (∀ k ≤ ℓ, ∃ Rs, IsStableQRChain (300 * (n + 2) ^ 2 * u) H (List.replicate k ζ) (Hs k) Rs) ∧
@@ -397,7 +407,7 @@ theorem bottomScan_terminates_decoupleLastCtx {M : Machine ℝ} {I : Interp O Q 
     (hC : IsCmp id I) {τ : Tape ℝ} {μ : Mem ℝ} {L : ℕ} {h lam qw f : ℕ × ℕ} {ζ : ℂ} {t : ℝ}
     {H : Matrix (Fin (n + 2)) (Fin (n + 2)) ℂ} (hc : DecoupleLastCtx n L h lam qw f ζ t μ.store)
     (hW : HoldsMatrix h H μ.store) :
-    Writes .total I τ (bottomScan (O := O) (Q := Q)).body
+    Writes .total I τ (bottomScan (O := O) (Q := Q))
       (Env.frame [n + 2, 1] [h, (qw.1, qw.2 + 7), (L, 0)]) (Store.inBlock L 0 5)
       (fun μ' => ∃ x, μ'.store.get L 3 = some x) μ := by
   obtain ⟨hlen, hh, -, hq, -, -, ht, hL5, -⟩ := hc
@@ -468,9 +478,9 @@ private theorem decoupleLast_round_by {M : Machine ℝ} {I : Interp O Q ℝ} {u 
     (hlog : DecoupleLogBy (300 * (n + 2) ^ 2 * u) H ζ h lg ns w LL i μ.store)
     (h0 : μ.store.get L 3 = some 0) (hj : LL.length + i < ns) (hw : n + 1 ≤ w) :
     Writes .total I τ
-      (.seq (.frame dsM asM (multiStepStable (Op := O) (Tst := Q)).body)
-        (.seq (.frame dsV asV (slottedLogValidate (O := O) (Q := Q)).body)
-          (.frame dsS asS (bottomScan (O := O) (Q := Q)).body))) ρ
+      (.seq (.frame dsM asM (multiStepStable (Op := O) (Tst := Q)))
+        (.seq (.frame dsV asV (slottedLogValidate (O := O) (Q := Q)))
+          (.frame dsS asS (bottomScan (O := O) (Q := Q))))) ρ
       (Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2))) ⊔ Store.inBlock L 0 5 ⊔
         Store.inBlock (L + 1) 0 2 ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun μ' => DecoupleLastCtx n L h lam qw f ζ t μ'.store ∧
@@ -540,7 +550,7 @@ private theorem decoupleLast_exit_by {M : Machine ℝ} {I : Interp O Q ℝ} {u t
     (hs : DecoupleScans u t H ζ h (L, 0) i μ.store)
     (hlog : DecoupleLogBy (300 * (n + 2) ^ 2 * u) H ζ h lg ns w LL i μ.store)
     (hcap : μ.store.get L 3 = some 0 → i = m₂) (hlgf : f.1 ≠ lg.1) :
-    Writes .total I τ (roundedDecoupleExit (O := O) (Q := Q)).body (Env.frame [] [(L, 0), f])
+    Writes .total I τ (roundedDecoupleExit (O := O) (Q := Q)) (Env.frame [] [(L, 0), f])
       (Store.inBlock f.1 f.2 1)
       (fun μ' => DecoupleLastScansPost u t H ζ h f m₂ μ'.store ∧
         ∃ k ≤ m₂, DecoupleLogBy (300 * (n + 2) ^ 2 * u) H ζ h lg ns w LL k μ'.store) μ := by
@@ -565,7 +575,7 @@ private theorem decoupleLast_writes_scansBy {M : Machine ℝ} {I : Interp O Q �
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
     (hlog : HoldsSlottedLog lg ns w LL [] μ.store) (hj : LL.length + m₂ ≤ ns) (hw : n + 1 ≤ w)
     (hlgl : μ.Live [lg]) (hlgb : ∀ b ∈ [h, lam, qw, f], b.1 ≠ lg.1) :
-    Writes .total I τ (decoupleLast (O := O) (Q := Q)).body
+    Writes .total I τ (decoupleLast (O := O) (Q := Q))
       (Env.frame [n + 2, m₂, w, LL.length] [h, lam, qw, h, f, lg])
       (Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2))) ⊔ Store.inBlock f.1 f.2 1 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
@@ -656,7 +666,10 @@ backward-stable chains (relative error $300(n + 2)^2\boldsymbol{u}$) of $k$ step
 $\lambda$ whose scans failed for $k < \ell$, $t_L < (1 + \boldsymbol{u})^2\lvert h_k\rvert^2$
 ($t_L$ = `qs[7]`, $h_k$ the last subdiagonal entry); and the flag $0$ with
 $(1 - \boldsymbol{u})^2\lvert h_\ell\rvert^2 \le t_L$, or the flag $1$ at $\ell = m_2$ with
-$t_L < (1 + \boldsymbol{u})^2\lvert h_\ell\rvert^2$. -/
+$t_L < (1 + \boldsymbol{u})^2\lvert h_\ell\rvert^2$.
+
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem decoupleLast_writes_scans {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hu : 0 ≤ u) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {n m₂ : ℕ} (hNat : IsExactNatLit id M (n + 2))
@@ -666,7 +679,7 @@ theorem decoupleLast_writes_scans {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
     (hlog : HoldsSlottedLog lg ns w LL [] μ.store) (hj : LL.length + m₂ ≤ ns) (hw : n + 1 ≤ w)
     (hlgl : μ.Live [lg]) (hlgb : ∀ b ∈ [h, lam, qw, f], b.1 ≠ lg.1) :
-    Writes .total I τ (decoupleLast (O := O) (Q := Q)).body
+    Writes .total I τ (decoupleLast (O := O) (Q := Q))
       (Env.frame [n + 2, m₂, w, LL.length] [h, lam, qw, h, f, lg])
       (Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2))) ⊔ Store.inBlock f.1 f.2 1 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
@@ -695,7 +708,9 @@ every tape, it writes only the matrix and the flag and stores the end $\widehat{
 backward-stable chain (relative error $300(n + 2)^2\boldsymbol{u}$) of at most $m_2$ steps with the
 shift $\lambda$, upper Hessenberg, and a flag $0$ or $1$; with the flag $0$ the last subdiagonal
 entry $h$ of $\widehat{\mathbf{H}}'$ passed the scan,
-$(1 - \boldsymbol{u})^2\lvert h\rvert^2 \le t_L$ for the word $t_L$ = `qs[7]`. -/
+$(1 - \boldsymbol{u})^2\lvert h\rvert^2 \le t_L$ for the word $t_L$ = `qs[7]`.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem decoupleLast_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hu : 0 ≤ u) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {n m₂ : ℕ} (hNat : IsExactNatLit id M (n + 2))
@@ -705,7 +720,7 @@ theorem decoupleLast_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
     (hlog : HoldsSlottedLog lg ns w LL [] μ.store) (hj : LL.length + m₂ ≤ ns) (hw : n + 1 ≤ w)
     (hlgl : μ.Live [lg]) (hlgb : ∀ b ∈ [h, lam, qw, f], b.1 ≠ lg.1) :
-    Writes .total I τ (decoupleLast (O := O) (Q := Q)).body
+    Writes .total I τ (decoupleLast (O := O) (Q := Q))
       (Env.frame [n + 2, m₂, w, LL.length] [h, lam, qw, h, f, lg])
       (Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2))) ⊔ Store.inBlock f.1 f.2 1 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
@@ -760,7 +775,7 @@ theorem decoupleLast_spec {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS :
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
     (hlog : HoldsSlottedLog lg ns w LL [] μ.store) (hj : LL.length + m₂ ≤ ns) (hw : n + 1 ≤ w)
     (hlgl : μ.Live [lg]) (hlgb : ∀ b ∈ [h, lam, qw, f], b.1 ≠ lg.1) :
-    Writes .total I τ (decoupleLast (O := O) (Q := Q)).body
+    Writes .total I τ (decoupleLast (O := O) (Q := Q))
       (Env.frame [n + 2, m₂, w, LL.length] [h, lam, qw, h, f, lg])
       (Store.inBlock h.1 h.2 (2 * ((n + 2) * (n + 2))) ⊔ Store.inBlock f.1 f.2 1 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))

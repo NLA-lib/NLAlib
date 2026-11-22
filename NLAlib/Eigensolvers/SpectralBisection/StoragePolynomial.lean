@@ -38,7 +38,7 @@ The root dimension is at least two; no numerical or execution-success premise is
 theorem staticPeak_zeroWorkspace_le (matrixWork : MatrixOp → List ℕ → ℕ)
     (d : Fin 3 → ℕ) (hn : 2 ≤ d 0) :
     staticPeak (Dense.resources matrixWork (fun _ _ => 0))
-      (program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) d ≤
+      (bisectionProgram (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) d ≤
       6 * (d 0 * d 0) * d 1 + 32 * (d 0 * d 0) + 4 * d 0 * d 1 +
         7 * d 0 + 2 * d 1 + 24 := by
   rw [staticPeak_eq, ResourceModel.queryReserve_of_zero _ (fun _ _ => rfl), Nat.add_zero]
@@ -48,7 +48,7 @@ theorem staticPeak_zeroWorkspace_le (matrixWork : MatrixOp → List ℕ → ℕ)
   rw [hw]
   have hd : List.ofFn d = [d 0, d 1, d 2] := by
     simp [List.ofFn_succ, Fin.succ]
-  simpa only [program, Program.environment, hd] using
+  simpa only [bisectionProgram, Program.environment, hd] using
     stmtPeak_solve_zero_le (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)
       (d 0) (d 1) (d 2) (List.replicate 4 0) hn
 
@@ -58,7 +58,7 @@ root-size envelope requires proving that every called matrix shape stays within 
 theorem staticPeak_workspace_le (matrixWork matrixWorkspace : MatrixOp → List ℕ → ℕ)
     (w : ℕ) (hW : ∀ o ds, matrixWorkspace o ds ≤ w) (d : Fin 3 → ℕ) (hn : 2 ≤ d 0) :
     staticPeak (Dense.resources matrixWork matrixWorkspace)
-      (program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) d ≤
+      (bisectionProgram (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) d ≤
       6 * (d 0 * d 0) * d 1 + 32 * (d 0 * d 0) + 4 * d 0 * d 1 +
         7 * d 0 + 2 * d 1 + 24 + w := by
   rw [staticPeak_eq, ResourceModel.queryReserve_of_zero _ (fun _ _ => rfl), Nat.add_zero]
@@ -73,7 +73,7 @@ theorem staticPeak_workspace_le (matrixWork matrixWorkspace : MatrixOp → List 
   apply Nat.add_le_add_right
   have hd : List.ofFn d = [d 0, d 1, d 2] := by
     simp [List.ofFn_succ, Fin.succ]
-  simpa only [program, Program.environment, hd] using
+  simpa only [bisectionProgram, Program.environment, hd] using
     stmtPeak_solve_zero_le (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)
       (d 0) (d 1) (d 2) (List.replicate 4 0) hn
 
@@ -82,24 +82,24 @@ root-bounded multiplication and QR shapes. No global or monotone workspace bound
 theorem staticPeak_workspaceEnvelope_le (matrixWork matrixWorkspace : MatrixOp → List ℕ → ℕ)
     (d : Fin 3 → ℕ) (hn : 2 ≤ d 0) :
     staticPeak (Dense.resources matrixWork matrixWorkspace)
-      (program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) d ≤
+      (bisectionProgram (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) d ≤
       6 * (d 0 * d 0) * d 1 + 32 * (d 0 * d 0) + 4 * d 0 * d 1 +
         7 * d 0 + 2 * d 1 + 24 + MatrixOp.workspaceEnvelope matrixWorkspace (d 0) := by
   rw [staticPeak_eq, ResourceModel.queryReserve_of_zero _ (fun _ _ => rfl), Nat.add_zero]
   have hSupport :
-      (stmtCost (program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body
+      (stmtCost (bisectionProgram (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body
         (Program.environment (b := 4) d).idx).BoundsWorkspace
           (Dense.resources matrixWork matrixWorkspace).workspace
           (MatrixOp.workspaceEnvelope matrixWorkspace (d 0)) := by
     intro o ds ho
     have h := workspace_le_envelope_of_matrixShape matrixWorkspace
-      (program_matrixShapes d o ds ho)
+      (bisectionProgram_matrixShapes d o ds ho)
     cases o <;> exact h
   apply (stmtPeak_le_zero_add_on_support _ _ _ _ hSupport).trans
   apply Nat.add_le_add_right
   have hd : List.ofFn d = [d 0, d 1, d 2] := by
     simp [List.ofFn_succ, Fin.succ]
-  simpa only [program, Program.environment, hd] using
+  simpa only [bisectionProgram, Program.environment, hd] using
     stmtPeak_solve_zero_le (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)
       (d 0) (d 1) (d 2) (List.replicate 4 0) hn
 
@@ -112,7 +112,7 @@ theorem initialBytes_add_staticPeak_zeroWorkspace_le {K : Type} [Inhabited K]
     (x : (problem (K := K) domain admitted).Input d) (hn : 2 ≤ d 0) :
     (problem (K := K) domain admitted).initialBytes d x +
       staticPeak (Dense.resources matrixWork (fun _ _ => 0))
-        (program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) d ≤
+        (bisectionProgram (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) d ≤
       6 * (d 0 * d 0) * d 1 + 36 * (d 0 * d 0) + 4 * d 0 * d 1 +
         8 * d 0 + 2 * d 1 + 27 := by
   rw [initialBytes_problem]
@@ -127,7 +127,7 @@ theorem initialBytes_add_staticPeak_workspaceEnvelope_le {K : Type} [Inhabited K
     (x : (problem (K := K) domain admitted).Input d) (hn : 2 ≤ d 0) :
     (problem (K := K) domain admitted).initialBytes d x +
       staticPeak (Dense.resources matrixWork matrixWorkspace)
-        (program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) d ≤
+        (bisectionProgram (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) d ≤
       6 * (d 0 * d 0) * d 1 + 36 * (d 0 * d 0) + 4 * d 0 * d 1 +
         8 * d 0 + 2 * d 1 + 27 + MatrixOp.workspaceEnvelope matrixWorkspace (d 0) := by
   rw [initialBytes_problem]

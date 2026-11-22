@@ -19,14 +19,14 @@ NLAlib.Krylov.CG.HSPCG.Rounded.Stored.Certification.countedAlgorithm hyps=10 uni
 NLAlib.Krylov.CG.HSPCG.Stored.Certification.algorithm hyps=2 uniform=yes confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=none claim=none
 NLAlib.Krylov.CG.Reorth.Certification.algorithm hyps=4 uniform=no confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=yes oracles=declared claim=none
 NLAlib.Krylov.CG.Reorth.Stored.Certification.algorithm hyps=2 uniform=yes confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=none claim=none
-NLAlib.Krylov.GolubKahan.Band.Certification.algorithm hyps=0 uniform=no confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=yes oracles=declared claim=none
-NLAlib.Krylov.Lanczos.Certification.algorithm hyps=6 uniform=no confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=declared claim=none
+NLAlib.Krylov.GolubKahan.Band.Certification.algorithm hyps=0 uniform=no confined=yes charged=no budget=manifest work=manifest scratch=closed problem=derived derived=0 unstored=yes oracles=declared claim=none
+NLAlib.Krylov.Lanczos.Certification.algorithm hyps=6 uniform=no confined=yes charged=no budget=manifest work=manifest scratch=closed problem=derived derived=0 unstored=no oracles=declared claim=none
 NLAlib.Krylov.Lanczos.Certification.exactReferenceAlgorithm hyps=1 uniform=no confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=declared claim=none
-NLAlib.Krylov.Lanczos.Certification.ritzAlgorithm hyps=2 uniform=no confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=declared claim=none
+NLAlib.Krylov.Lanczos.Certification.ritzAlgorithm hyps=2 uniform=no confined=yes charged=no budget=manifest work=manifest scratch=closed problem=derived derived=0 unstored=no oracles=declared claim=none
 NLAlib.Krylov.Lanczos.Linked.Certification.algorithm hyps=5 uniform=no confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=declared claim=none
 NLAlib.Krylov.Lanczos.Linked.Certification.exactReferenceAlgorithm hyps=1 uniform=no confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=declared claim=none
 NLAlib.Krylov.Lanczos.Linked.Certification.ritzAlgorithm hyps=2 uniform=no confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=declared claim=none
-NLAlib.Krylov.Lanczos.Reorth.Certification.algorithm hyps=5 uniform=no confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=declared claim=none
+NLAlib.Krylov.Lanczos.Reorth.Certification.algorithm hyps=5 uniform=no confined=yes charged=no budget=manifest work=manifest scratch=closed problem=derived derived=0 unstored=no oracles=declared claim=none
 NLAlib.Krylov.Lanczos.Reorth.Certification.exactReferenceAlgorithm hyps=1 uniform=no confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=declared claim=none
 NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification.algorithm hyps=4 uniform=yes confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=none claim=none
 NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification.scalarAlgorithm hyps=4 uniform=yes confined=yes charged=yes budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=none claim=none
@@ -51,7 +51,7 @@ NLAlib.Ops.Examples.Resources.mixedAlgorithm hyps=0 uniform=yes confined=yes cha
 NLAlib.Ops.Examples.Routines.sum2Algorithm hyps=2 uniform=yes confined=yes charged=yes budget=manifest work=closed scratch=manifest problem=derived derived=0 unstored=no oracles=none claim=none
 NLAlib.Schur.denseSchurAlgorithm hyps=1 uniform=yes confined=yes charged=yes budget=manifest work=closed scratch=manifest problem=derived derived=1 unstored=yes oracles=none claim=NLAlib.Schur.denseSchurClaim
 NLAlib.Schur.schurPipelineAlgorithm hyps=8 uniform=yes confined=yes charged=yes budget=manifest work=closed scratch=manifest problem=derived derived=1 unstored=yes oracles=none claim=exempt
-NLAlib.ShiftedQR.countedDeflationAlgorithm hyps=0 uniform=yes confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=none claim=none
+NLAlib.ShiftedQR.countedDeflationAlgorithm hyps=0 uniform=yes confined=yes charged=no budget=manifest work=closed scratch=manifest problem=derived derived=0 unstored=no oracles=none claim=none
 NLAlib.ShiftedQR.deflationAlgorithm hyps=2 uniform=yes confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=none claim=none
 NLAlib.ShiftedQR.exactDeflationAlgorithm hyps=0 uniform=yes confined=yes charged=no budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=none claim=none
 NLAlib.ShiftedQR.exactStepAlgorithm hyps=0 uniform=yes confined=yes charged=yes budget=manifest work=manifest scratch=manifest problem=derived derived=0 unstored=no oracles=none claim=none

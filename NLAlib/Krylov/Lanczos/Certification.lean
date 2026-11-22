@@ -116,12 +116,11 @@ noncomputable def specification
     (E : (Fin 2 → ℕ) → ℝ) :
     Specification Standard.Operation CmpTst (problem (K := K) domain admitted) where
   budget := staticBudget
-  scratch d := solvePeak model.access.workspace (d 0) +
-    model.resources.queryReserve (staticBudget d)
+  scratch d := solvePeak model.access.workspace (d 0)
   work d := model.resources.work (staticBudget d)
   span d := model.resources.span (staticBudget d)
   memory d := d 0 + (d 1 + 1) * d 0 + (2 * d 1 + 2) +
-    (solvePeak model.access.workspace (d 0) + model.resources.queryReserve (staticBudget d))
+    solvePeak model.access.workspace (d 0)
   good d x _ _ m := m.pos = 0 ∧ ∃ vs cs,
     m.store.readBlock 1 0 ((d 1 + 1) * d 0) = some vs ∧
     m.store.readBlock 2 0 (2 * d 1 + 2) = some cs ∧
@@ -166,7 +165,11 @@ noncomputable def algorithm
           fun i => model.decode (x.val.1 i) := decv_ofFn_apply _ _
       exact ⟨hpos, vs, cs, hvs, hcs, hb ▸ hrel⟩)
     (fun _ _ => le_rfl)
-    (fun d _ => staticPeak_program_le model.resources d)
+    (fun d _ => by
+      have h0 : model.resources.queryReserve (staticBudget d) = 0 := by
+        rw [hresources]
+        exact ResourceModel.queryReserve_of_zero _ (fun _ _ => rfl) _
+      exact (staticPeak_program_le model.resources d).trans (le_of_eq (by rw [h0]; rfl)))
     (fun _ _ => le_rfl)
     (fun _ _ => le_rfl)
     (fun d _ x => by

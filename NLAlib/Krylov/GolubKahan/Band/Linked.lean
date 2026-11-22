@@ -439,22 +439,39 @@ noncomputable def linkedSolveAlgorithm (L : AccessModel Lo CmpTst problem) (E : 
     (hE : ∀ d (x : problem.Input d) (I : Interp Lo CmpTst ℝ), L.contracts d x I →
       (extendRoutine E).Meets I (exactExtendSpec (𝕜 := ℝ) id)) :
     Algorithm L (linkedSolveSpecification L.resources E stream) := by
-  refine Routine.algorithm (r := 4) (b := 5) (linkedSolveRoutine E stream)
-    (fun _ x => solveSpec stream id x.val.1) (fun _ _ => []) (ht := ht) ?_ ?_ ?_
-    (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) (fun _ _ => le_rfl) ?_
+  refine (inputs.castOps (linkedSolveRoutine E stream) rfl rfl).algorithm
+    (fun _ A => solveSpec stream id A) (ht := ht) ?_ ?_ ?_ (hmemory := ?_)
   · intro d _ x I hI
     exact Routine.Meets.of_link (solveRoutine_meets
       (isExactMatvecPair_link (hA d x I hI)) (satisfies_extend_link (hE d x I hI))
       (isSample_link (hSample d x I hI)) stream)
-  · intro d _ x
-    exact ⟨rfl, fun _ => ⟨rfl, rfl, trivial, fun _ _ => ⟨trivial, trivial⟩⟩, initial_room d x⟩
+  · intro d _ x _ τ
+    exact ⟨rfl, rfl, trivial, fun _ _ => ⟨trivial, trivial⟩⟩
   · intro d _ x τ μ' hfr hpos ys hys hpost c _
     read_outputs hys as (us, vs, gs, rs, ss)
     exact ⟨hpos.eq_of_start rfl, by simpa [Problem.initial] using hfr.length_eq,
       us, vs, gs, rs, ss, hys, hpost⟩
   · intro d _ x
-    rw [initialBytes_problem]
-    exact le_rfl
+    exact Nat.add_le_add_right (initialBytes_problem d x).le _
+
+/-- What the linked certificate states: at every size, for every real matrix, every
+interpretation satisfying the contracts of the lower model and every tape, the run of the linked
+program from five uninitialized blocks succeeds within the scratch, the budget, the work and the
+span of the specification, and the five blocks decode to an exact run for the matrix from the
+start block of the tape (`NLAlib.Ops.Routine.Domain.Checked`). The matrix is in no buffer: it is
+reached through the two products of the lower model. -/
+theorem linkedSolve_checked (L : AccessModel Lo CmpTst problem) (E : Stmt Lo CmpTst)
+    (stream : ℕ)
+    (ht : (linkedSolveProgram E stream).wellTyped L.resources problem.formats = true)
+    (hA : ∀ d (x : problem.Input d) (I : Interp Lo CmpTst ℝ), L.contracts d x I →
+      IsExactMatvecPair id x.val.1 I)
+    (hSample : ∀ d (x : problem.Input d) (I : Interp Lo CmpTst ℝ), L.contracts d x I →
+      IsSample I)
+    (hE : ∀ d (x : problem.Input d) (I : Interp Lo CmpTst ℝ), L.contracts d x I →
+      (extendRoutine E).Meets I (exactExtendSpec (𝕜 := ℝ) id)) :
+    (inputs.castOps (linkedSolveRoutine E stream) rfl rfl).Checked
+      (linkedSolveAlgorithm L E stream ht hA hSample hE) :=
+  (inputs.castOps (linkedSolveRoutine E stream) rfl rfl).checked_all _
 
 /-- The linked program is certified in total mode over every lower model whose interpretations
 have the exact products with the supplied matrix, draws from the tape, and certify the scheme

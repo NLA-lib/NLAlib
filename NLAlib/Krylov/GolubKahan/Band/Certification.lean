@@ -576,21 +576,19 @@ theorem staticPeak_solveProgram_le_solvePeak (R : ResourceModel Operation CmpTst
     (stmtPeak_solve_le_solvePeak R.workspace stream (d 0) (d 1) (d 2) (d 3) 0 0 0 0 0) _
 
 /-- The specification of the exact certificate: the full static count as budget; as scratch the
-closed form `NLAlib.Krylov.GolubKahan.Band.solvePeak` (the block of $\max(m, n)\,b$ words of the
-products plus the largest workspace of a primitive call of the run) plus the reservation of the
-queries; work and span of the budget; resident memory of the five output blocks plus the scratch;
-and the postcondition `NLAlib.Krylov.GolubKahan.Band.Certification.Good` at the supplied
-matrix. -/
+closed form `NLAlib.Krylov.GolubKahan.Band.solvePeak` (the block of $\max(m, n)\,b$ words of
+the products plus the largest workspace of a primitive call of the run; the comparisons of this
+model need no workspace, so nothing is reserved for them); work and span of the budget;
+resident memory of the five output blocks plus the scratch; and the postcondition
+`NLAlib.Krylov.GolubKahan.Band.Certification.Good` at the supplied matrix. -/
 noncomputable def specification (work workspace : Operation → List ℕ → ℕ) (stream : ℕ) :
     Specification Operation CmpTst problem where
   budget := staticBudget stream
-  scratch d := solvePeak (resources work workspace).workspace stream (d 0) (d 1) (d 2) (d 3) +
-    (resources work workspace).queryReserve (staticBudget stream d)
+  scratch d := solvePeak (resources work workspace).workspace stream (d 0) (d 1) (d 2) (d 3)
   work d := (resources work workspace).work (staticBudget stream d)
   span d := (resources work workspace).span (staticBudget stream d)
   memory d := (outLens (d 0) (d 1) (d 2) (d 3)).sum +
-    (solvePeak (resources work workspace).workspace stream (d 0) (d 1) (d 2) (d 3) +
-      (resources work workspace).queryReserve (staticBudget stream d))
+    solvePeak (resources work workspace).workspace stream (d 0) (d 1) (d 2) (d 3)
   good d x τ _ μ := Good stream d x.val.1 τ μ
 
 /-! ### The certificate -/
@@ -635,7 +633,8 @@ noncomputable def algorithm (work workspace : Operation → List ℕ → ℕ) (s
   refine (inputs.cast (solveRoutine stream) rfl rfl).algorithm
     (fun _ A => solveSpec stream id A)
     (ht := wellTyped_solveProgram work workspace stream) ?_ ?_ ?_
-    (hspace := fun d _ => staticPeak_solveProgram_le_solvePeak _ stream d) (hmemory := ?_)
+    (hspace := fun d _ => (staticPeak_solveProgram_le_solvePeak _ stream d).trans (le_of_eq (by
+      rw [ResourceModel.queryReserve_of_zero _ (fun _ _ => rfl)]; rfl))) (hmemory := ?_)
   · intro d _ x I hI
     obtain ⟨hA, hO, hSample⟩ := laws hI
     exact solveRoutine_meets hA hO hSample stream

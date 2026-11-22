@@ -500,12 +500,50 @@ theorem room_initial {d : Fin r → ℕ} (X : D.problem.Input d) :
     Problem.initial_len d X ⟨j, hj⟩, D.buffers_eq X]
   exact (Nat.zero_add _).trans_le (D.length_buffers d X.val.1 ⟨j, hj⟩).ge
 
-/-- **The certificate of a routine on its problem.** The routine meets `Sp` at the admitted
-inputs under every interpretation of the model, the blocks read satisfy the precondition
-(`hpre`), and the output of `S` follows from the postcondition (`hgood`). That the supplied
-buffers hold the blocks read and have room for the blocks written is not a hypothesis: it holds
-by the construction of the problem. The resource hypotheses are those of
-`NLAlib.Ops.Routine.algorithm`. -/
+/-- **The certificate of a routine on its problem**, in its general form: the specification
+of the routine may depend on the input of the problem and not only on its data. Two kinds of
+certificate need that: one whose model supplies further data at an input (Lanczos with an
+operator oracle, whose matrix the model fixes), and one whose specification names a witness of
+the acceptance predicate (exact shifted QR, whose gap is an existential of `accepts`). The
+routine meets `Sp` at the admitted inputs under every interpretation of the model, the blocks
+read satisfy the precondition (`hpre`), and the output of `S` follows from the postcondition
+(`hgood`). That the supplied buffers hold the blocks read and have room for the blocks written
+is not a hypothesis: it holds by the construction of the problem. -/
+def algorithmAt {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.problem}
+    (Sp : (d : Fin r → ℕ) → D.problem.Input d → Routine.Spec K)
+    (hmeets : ∀ d, D.valid d → ∀ (X : D.problem.Input d) (I : Interp Op Tst K),
+      M.contracts d X I → R.Meets I (Sp d X))
+    (hpre : ∀ d, D.valid d → ∀ (X : D.problem.Input d) (τ : Tape K),
+      (Sp d X).pre (List.ofFn d) τ (D.blocks d X.val.1))
+    (hgood : ∀ d, D.valid d → ∀ (X : D.problem.Input d) (τ : Tape K) (m' : Mem K),
+      (D.problem.initial d X).store.EqOff
+        (Fp.blocks (R.writeArgs (slots b)) (R.writeLens (List.ofFn d))) m'.store →
+      R.Advances (List.ofFn d) 0 m'.pos → ∀ ys,
+      m'.readBlocks (R.outArgs (slots b)) (R.outLens (List.ofFn d)) = some ys →
+      (Sp d X).post (List.ofFn d) τ (D.blocks d X.val.1) ys →
+      ∀ c, c ≤ S.budget d → S.good d X τ c m')
+    (hcost : ∀ d, D.valid d → staticCost (R.close r b) d ≤ S.budget d := by
+      intro _ _; exact le_rfl)
+    (hspace : ∀ d, D.valid d → staticPeak M.resources (R.close r b) d ≤ S.scratch d := by
+      intro _ _; exact le_rfl)
+    (hwork : ∀ d, D.valid d → M.resources.work (S.budget d) ≤ S.work d := by
+      intro _ _; exact le_rfl)
+    (hspan : ∀ d, D.valid d → M.resources.span (S.budget d) ≤ S.span d := by
+      intro _ _; exact le_rfl)
+    (hmemory : ∀ d, D.valid d → ∀ X : D.problem.Input d,
+      D.problem.initialBytes d X + S.scratch d ≤ S.memory d)
+    (ht : (R.close r b).wellTyped M.resources D.problem.formats = true := by rfl)
+    (hfit : R.bindsFit b = true := by rfl) (hflat : R.flat = true := by rfl)
+    (hcontig : R.contiguous = true := by rfl) : Algorithm M S :=
+  R.algorithm (P := D.problem) Sp (fun d X => D.blocks d X.val.1) hmeets
+    (fun d hd X => ⟨D.readBlocks_initial X, fun τ => hpre d hd X τ, D.room_initial X⟩)
+    hgood hcost hspace hwork hspan hmemory D.shape ht hfit hflat hcontig
+
+/-- The certificate of a routine on its problem when the specification depends only on the
+data of the input, the usual case: `NLAlib.Ops.Routine.Domain.algorithmAt` at such a
+specification. It is stated as its own application of `NLAlib.Ops.Routine.algorithm`, not
+through `algorithmAt`, so that elaborating a certificate with a large tree does not unfold one
+more definition. -/
 def algorithm {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.problem}
     (Sp : (d : Fin r → ℕ) → D.In d → Routine.Spec K)
     (hmeets : ∀ d, D.valid d → ∀ (X : D.problem.Input d) (I : Interp Op Tst K),
@@ -535,40 +573,6 @@ def algorithm {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.pro
   R.algorithm (P := D.problem) (fun d X => Sp d X.val.1) (fun d X => D.blocks d X.val.1) hmeets
     (fun d hd X => ⟨D.readBlocks_initial X, fun τ => hpre d hd _ (D.accepts_data X) τ,
       D.room_initial X⟩)
-    hgood hcost hspace hwork hspan hmemory D.shape ht hfit hflat hcontig
-
-/-- The certificate of a routine on its problem, when the specification depends on the input
-of the problem and not only on its data: a model may supply further data at an input (the
-matrix of a matrix-free solver). The same construction as
-`NLAlib.Ops.Routine.Domain.algorithm`. -/
-def algorithmAt {M : AccessModel Op Tst D.problem} {S : Specification Op Tst D.problem}
-    (Sp : (d : Fin r → ℕ) → D.problem.Input d → Routine.Spec K)
-    (hmeets : ∀ d, D.valid d → ∀ (X : D.problem.Input d) (I : Interp Op Tst K),
-      M.contracts d X I → R.Meets I (Sp d X))
-    (hpre : ∀ d, D.valid d → ∀ (X : D.problem.Input d) (τ : Tape K),
-      (Sp d X).pre (List.ofFn d) τ (D.blocks d X.val.1))
-    (hgood : ∀ d, D.valid d → ∀ (X : D.problem.Input d) (τ : Tape K) (m' : Mem K),
-      (D.problem.initial d X).store.EqOff
-        (Fp.blocks (R.writeArgs (slots b)) (R.writeLens (List.ofFn d))) m'.store →
-      R.Advances (List.ofFn d) 0 m'.pos → ∀ ys,
-      m'.readBlocks (R.outArgs (slots b)) (R.outLens (List.ofFn d)) = some ys →
-      (Sp d X).post (List.ofFn d) τ (D.blocks d X.val.1) ys →
-      ∀ c, c ≤ S.budget d → S.good d X τ c m')
-    (hcost : ∀ d, D.valid d → staticCost (R.close r b) d ≤ S.budget d := by
-      intro _ _; exact le_rfl)
-    (hspace : ∀ d, D.valid d → staticPeak M.resources (R.close r b) d ≤ S.scratch d := by
-      intro _ _; exact le_rfl)
-    (hwork : ∀ d, D.valid d → M.resources.work (S.budget d) ≤ S.work d := by
-      intro _ _; exact le_rfl)
-    (hspan : ∀ d, D.valid d → M.resources.span (S.budget d) ≤ S.span d := by
-      intro _ _; exact le_rfl)
-    (hmemory : ∀ d, D.valid d → ∀ X : D.problem.Input d,
-      D.problem.initialBytes d X + S.scratch d ≤ S.memory d)
-    (ht : (R.close r b).wellTyped M.resources D.problem.formats = true := by rfl)
-    (hfit : R.bindsFit b = true := by rfl) (hflat : R.flat = true := by rfl)
-    (hcontig : R.contiguous = true := by rfl) : Algorithm M S :=
-  R.algorithm (P := D.problem) Sp (fun d X => D.blocks d X.val.1) hmeets
-    (fun d hd X => ⟨D.readBlocks_initial X, fun τ => hpre d hd X τ, D.room_initial X⟩)
     hgood hcost hspace hwork hspan hmemory D.shape ht hfit hflat hcontig
 
 /-- The resident payload of the problem: the cells of the slots, in their storage. -/
@@ -679,6 +683,29 @@ def cast (R' : Routine Op Tst) (hnd : R'.nd = R.nd) (hports : R'.ports = R.ports
 /-- The problem of a domain read at another routine with the same interface is the same. -/
 @[simp] theorem problem_cast (R' : Routine Op Tst) (hnd : R'.nd = R.nd)
     (hports : R'.ports = R.ports) : (D.cast R' hnd hports).problem = D.problem := rfl
+
+/-- A domain read at a routine over other operations with the same dimensions and operands, as
+a linked routine is. It is `NLAlib.Ops.Routine.Domain.cast` across the types of operations and
+tests; the two are separate so that a cast between routines over the same operations does not
+have those types to infer. -/
+def castOps {Op' Tst' : Type} (R' : Routine Op' Tst') (hnd : R'.nd = R.nd)
+    (hports : R'.ports = R.ports) : R'.Domain K r b where
+  formats := D.formats
+  valid := D.valid
+  In := D.In
+  accepts := D.accepts
+  slot := D.slot
+  shape := ⟨hnd.trans D.shape.1, (congrArg List.length hports).trans D.shape.2⟩
+  fits d i p hp := D.fits d i p (hports ▸ hp)
+  Unstored := D.Unstored
+  unstored := D.unstored
+  faithful := D.faithful
+  admitted := D.admitted
+  inhabited := D.inhabited
+
+/-- The problem of a domain read at a routine over other operations is the same. -/
+@[simp] theorem problem_castOps {Op' Tst' : Type} (R' : Routine Op' Tst') (hnd : R'.nd = R.nd)
+    (hports : R'.ports = R.ports) : (D.castOps R' hnd hports).problem = D.problem := rfl
 
 end Routine.Domain
 

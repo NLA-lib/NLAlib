@@ -149,6 +149,11 @@ public import NLAlib.Ops.Examples.RoutineLink
 public import NLAlib.Ops.Examples.RoutineProblem
 public import NLAlib.Ops.Examples.Strided
 public import NLAlib.Ops.Examples.VectorSum
+public import NLAlib.Ops.Examples.WorkedInstances.EarlyExit
+public import NLAlib.Ops.Examples.WorkedInstances.Integrator
+public import NLAlib.Ops.Examples.WorkedInstances.Matvec
+public import NLAlib.Ops.Examples.WorkedInstances.Strided
+public import NLAlib.Ops.Examples.WorkedInstances.VectorSum
 public import NLAlib.Ops.Examples.Reference
 public import NLAlib.Ops.Reference.Probability
 public import NLAlib.Ops.Profiles.ContextLinearGuarded

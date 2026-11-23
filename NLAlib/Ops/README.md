@@ -7,7 +7,9 @@ For semantic review, start with the [reviewer's declaration map](../../docs/desi
 It lists the declarations a reader must believe, the execution rules (`Reference/`: the
 definition of a run and of its charges, with which every certificate is stated; the evaluator
 `exec` is proved to compute the same outcome and is used by the proofs), the evaluator forms of
-the deterministic and probabilistic statements, and worked resource examples. The computed
+the deterministic and probabilistic statements, and worked resource examples
+(`Examples/Reference.lean`, and `Examples/WorkedInstances/` for runs of library routines whose
+expected outputs and operation counts are computed outside the library). The computed
 list of those declarations is `scripts/ops_trusted_base.txt` (see `docs/contributing/checks.md`).
 
 ## Execution and operation models

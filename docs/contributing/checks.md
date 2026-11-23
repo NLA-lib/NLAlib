@@ -163,6 +163,20 @@ does not change the file. The explanation of each declaration, for a reader, is 
 [reviewer's declaration map](../design/Ops-ReferenceReview.md). The aim is a smaller list: a
 definition that can be replaced by a theorem about the others should be.
 
+**Worked instances.** `NLAlib/Ops/Examples/WorkedInstances/` states, for a few trees of the
+library, the exact outcome of one small run under the execution rules. They test the
+definitions of the core against values obtained outside the library:
+`scripts/worked_instances.py` computes the outputs and the numbers of arithmetic operations
+from the textbook formula of each operation, with exact rational arithmetic, and
+`scripts/test_worked_instances.py` (one of the unit tests below) fails if a literal of a Lean
+theorem is not the value the script computes. A change of the core that alters an output or
+an operation count of an instance fails the build of its module; if the theorem is then edited
+to the new value, the unit test fails. The totals that include structural instructions are
+regression values with no outside source: a deliberate change of a charge changes them, and
+the pull request says so. To add an instance, write the computation in the script from the
+mathematics (not from the tree), state the theorem with the literals, and add its assertion to
+the test.
+
 It rejects imports of the retired execution core. Structural rejection
 and accounting regressions are kernel-checked modules in `NLAlib/Ops/Examples/Certification.lean`
 and `NLAlib/Ops/Tools/ProgramFixtures.lean`; the whole-library audit and replay cover them.

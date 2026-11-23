@@ -1260,6 +1260,12 @@ public import NLAlib.Ops.Examples.Split
 public import NLAlib.Ops.Examples.StochRound
 public import NLAlib.Ops.Examples.Strided
 public import NLAlib.Ops.Examples.VectorSum
+public import NLAlib.Ops.Examples.WorkedInstances.Basic
+public import NLAlib.Ops.Examples.WorkedInstances.EarlyExit
+public import NLAlib.Ops.Examples.WorkedInstances.Integrator
+public import NLAlib.Ops.Examples.WorkedInstances.Matvec
+public import NLAlib.Ops.Examples.WorkedInstances.Strided
+public import NLAlib.Ops.Examples.WorkedInstances.VectorSum
 public import NLAlib.Ops.Exec
 public import NLAlib.Ops.Frame
 public import NLAlib.Ops.IndexDegrees
@@ -1371,6 +1377,7 @@ public import NLAlib.Ops.Specification
 public import NLAlib.Ops.Static
 public import NLAlib.Ops.Store
 public import NLAlib.Ops.StoreSimp
+public import NLAlib.Ops.StraightCount
 public import NLAlib.Ops.Stream
 public import NLAlib.Ops.Syntax
 public import NLAlib.Ops.Tactic

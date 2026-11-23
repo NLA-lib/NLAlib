@@ -171,6 +171,30 @@ Weights are deliberately unequal: work is `9 + 11 + 2 = 22` and span is
 `9 + 3 + 1 = 13`. The theorem also states that final memory is the original memory
 and live scratch returns to zero.
 
+### Worked instances of library routines
+
+The directory [`Examples/WorkedInstances/`](../../NLAlib/Ops/Examples/WorkedInstances/) fixes,
+for five trees of the library, the exact outcome of one small run under the execution rules:
+the words written, the calls of each operation, the total number of instructions and the peak
+scratch. The outputs and the numbers of arithmetic operations are computed outside the library,
+from the textbook formula of each operation, by `scripts/worked_instances.py`; the unit test
+`scripts/test_worked_instances.py` checks that the literals of the theorems are those values.
+The totals that include structural instructions have no source outside the library and are
+regression values.
+
+| Theorem (prefix `Examples.WorkedInstances.`) | Run | What it pins |
+|---|---|---|
+| `VectorSum.instance_run` | $(1, 2, 3) + (10, 20, 30)$ | A loop over the cells of three blocks: `[11, 22, 33]`, `3` additions, `44` instructions. |
+| `Strided.instance_run` | Scale every second cell of `[1, 100, 2, 200, 3]` by `5` | The address of an operand with an increment: `[5, 100, 10, 200, 15]`, `3` multiplications. |
+| `Matvec.memory_instance`, `Matvec.instance_run` | A $2 \times 3$ matrix times a vector | Column-by-column storage (`[1, 4, 2, 5, 3, 6]`), a routine run in a loop, one scratch cell: `[9, 21]`, `2` literal zeros, `6` multiplications, `6` additions. |
+| `Integrator.instance_run` | Two steps of $x \leftarrow x + h A x$ | A routine run by another and an allocation inside a loop: `[11, 2]`, `2` products and `2` updates, peak scratch `2` cells. |
+| `EarlyExit.stop_run`, `EarlyExit.cap_run` | A countdown of at most five rounds, from `2` and from `7` | The charges of a loop with early exit, instruction by instruction, and the exit convention: `3` tests when the test ends the loop, `5` tests and a sixth operand resolution when the cap does. |
+
+For a tree with no test the count and the scratch of a run are exactly those of the tree
+([`StraightCount.lean`](../../NLAlib/Ops/StraightCount.lean),
+`Reference.Execution.eq_static_of_straight`), which is how the first four instances state exact
+counts; the early-exit runs are evaluated.
+
 ## 8. What the definitions imply
 
 These theorems are consequences of the definitions above, not part of what a reader must

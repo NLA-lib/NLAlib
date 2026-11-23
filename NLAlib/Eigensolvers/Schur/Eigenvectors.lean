@@ -37,12 +37,11 @@ $4\rho\|\widehat{\mathbf{T}}\|_{\mathsf F}$.
 ## Main results
 
 * `NLAlib.Schur.triEigColumn_writes_word`: the words of one column on any scalar machine.
-* `NLAlib.Schur.triEigColumn_writes_of_pos`,
-  `NLAlib.Schur.triEigenvectors_isTriangularEigenbasisApprox_of_pos`: the columns at a positive
+* `NLAlib.Schur.triEigColumn_writes`,
+  `NLAlib.Schur.triEigenvectors_isTriangularEigenbasisApprox`: the columns at a positive
   floor.
-* `NLAlib.Schur.triEigColumn_writes`, `NLAlib.Schur.triEigenvectors_writes`,
-  `NLAlib.Schur.triEigenvectors_isTriangularEigenbasisApprox`, `NLAlib.Schur.triEigenvectors_flag`:
-  the columns.
+* `NLAlib.Schur.triEigenvectors_writes`, `NLAlib.Schur.triEigenvectors_flag`: completion and the
+  flag of the columns.
 * `NLAlib.Schur.triEigvecStage_eigenvectorStageContract`: the stage meets the contract.
 * `NLAlib.Schur.triEigvecStage_completes`: the stage completes on any scalar machine.
 * `NLAlib.Schur.size_stmtCost_triEigvecStage_le`: its static count is $O(N^3)$.
@@ -709,7 +708,7 @@ private theorem triEigenvectors_loop {M : Machine ℝ} {I : Interp O Q ℝ} {N :
 /-- **One eigenvector column under the standard model**: on a scalar machine with the standard
 model at $\boldsymbol{u}$, $64(N + 1)\boldsymbol{u} \le 1$, index literals and exact comparisons,
 from a memory holding an upper triangular $\mathbf{T}$ of order $N$ at `t`, the floor
-$s_{\min} \ge 0$ at `sm`, room for `Y` and a flag word at `g`, the four blocks live and apart, the
+$s_{\min} > 0$ at `sm`, room for `Y` and a flag word at `g`, the four blocks live and apart, the
 run for $j < N$ writes only column $j$ of `Y` and the flag: column $j$ holds a vector
 $\mathbf{y}$ with $\lvert\|\mathbf{y}\| - 1\rvert \le 4(N + 2)\boldsymbol{u}$ that is a
 componentwise
@@ -718,30 +717,6 @@ $16(N + 1)\boldsymbol{u}$ and the floor $\tfrac72 s_{\min}$ if a pivot was floor
 literal $1$), $0$ otherwise (the flag unchanged); no pivot is floored when
 $\lvert t_{ii} - t_{jj}\rvert > 2s_{\min}$ for $i < j$. -/
 theorem triEigColumn_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
-    (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I) {N : ℕ}
-    (hu : 64 * ((N : ℝ) + 1) * u ≤ 1) {t sm y g : ℕ × ℕ} {T : Matrix (Fin N) (Fin N) ℂ}
-    (hTu : T.IsUpperTriangular) {smin : ℝ} (hsmin : 0 ≤ smin) (j : Fin N) {τ : Tape ℝ}
-    {μ : Mem ℝ} (hT : HoldsMatrix t T μ.store) (hsm : μ.store.get sm.1 sm.2 = some smin)
-    (hl : μ.Live [t, sm, y, g]) (hroom : μ.Room [y, g] [2 * (N * N), 1])
-    (hap : Fp.Apart [t, sm, y, g] [2 * (N * N), 1, 2 * (N * N), 1]) :
-    Writes .total I τ (triEigColumn (O := O) (Q := Q))
-      (Env.frame [N, j] [t, sm, y, g, y, g])
-      (Store.inBlock y.1 (y.2 + 2 * (j * N)) (2 * N) ⊔ Store.inBlock g.1 g.2 1)
-      (fun μ' => ∃ (yv : Fin N → ℂ) (fl : Bool),
-        (∀ i : Fin N, μ'.store.get y.1 (y.2 + 2 * (j * N + i)) = some (yv i).re ∧
-          μ'.store.get y.1 (y.2 + 2 * (j * N + i) + 1) = some (yv i).im) ∧
-        |‖WithLp.toLp 2 yv‖ - 1| ≤ 4 * ((N : ℝ) + 2) * u ∧
-        IsComponentwiseBackwardSolution (16 * ((N : ℝ) + 1) * u)
-          (if fl then 7 / 2 * smin else 0) (T - T j j • 1) 0 yv ∧
-        (fl = true → μ'.store.get g.1 g.2 = some (M.lit 1)) ∧
-        (fl = false → μ'.store.get g.1 g.2 = μ.store.get g.1 g.2) ∧
-        ((∀ i : Fin N, i < j → 2 * smin < ‖T i i - T j j‖) → fl = false)) μ := by
-  sorry
-
-/-- **One eigenvector column under the standard model, with a positive floor**: the conclusion
-of `NLAlib.Schur.triEigColumn_writes` for $s_{\min} > 0$. A zero floor can divide by a zero
-pivot. -/
-theorem triEigColumn_writes_of_pos {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I) {N : ℕ}
     (hu : 64 * ((N : ℝ) + 1) * u ≤ 1) {t sm y g : ℕ × ℕ} {T : Matrix (Fin N) (Fin N) ℂ}
     (hTu : T.IsUpperTriangular) {smin : ℝ} (hsmin : 0 < smin) (j : Fin N) {τ : Tape ℝ}
@@ -832,34 +807,11 @@ theorem triEigenvectors_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSc
 /-- **The eigenvector columns are an approximate triangular eigenbasis**: on a scalar machine with
 the standard model at $\boldsymbol{u}$, $64(N + 1)\boldsymbol{u} \le 1$, index literals and exact
 comparisons, from a memory holding an upper triangular $\mathbf{T}$ of order $N$ at `t`, the floor
-$s_{\min} \ge 0$ at `sm`, room for `Y` and the flag $0$ at `g`, the four blocks live and apart,
+$s_{\min} > 0$ at `sm`, room for `Y` and the flag $0$ at `g`, the four blocks live and apart,
 the run stores a $\mathbf{Y}$ with `NLAlib.IsTriangularEigenbasisApprox` at
 $(16(N + 1)\boldsymbol{u}, \tfrac72 s_{\min}, 4(N + 2)\boldsymbol{u})$, and the flag $0$ or the
 literal $1$; with the flag $0$, the same with no floor. -/
-theorem triEigenvectors_isTriangularEigenbasisApprox {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
-    (hS : IsScalar M I) (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I) {N : ℕ}
-    (hu : 64 * ((N : ℝ) + 1) * u ≤ 1) {t sm y g : ℕ × ℕ} {T : Matrix (Fin N) (Fin N) ℂ}
-    (hTu : T.IsUpperTriangular) {smin : ℝ} (hsmin : 0 ≤ smin) {τ : Tape ℝ} {μ : Mem ℝ}
-    (hT : HoldsMatrix t T μ.store) (hsm : μ.store.get sm.1 sm.2 = some smin)
-    (hg : μ.store.get g.1 g.2 = some 0)
-    (hl : μ.Live [t, sm, y, g]) (hroom : μ.Room [y, g] [2 * (N * N), 1])
-    (hap : Fp.Apart [t, sm, y, g] [2 * (N * N), 1, 2 * (N * N), 1]) :
-    Writes .total I τ (triEigenvectors (O := O) (Q := Q))
-      (Env.frame [N] [t, sm, y, g, y, g])
-      (Store.inBlock y.1 y.2 (2 * (N * N)) ⊔ Store.inBlock g.1 g.2 1)
-      (fun μ' => ∃ Y : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix y Y μ'.store ∧
-        (μ'.store.get g.1 g.2 = some 0 ∨ μ'.store.get g.1 g.2 = some (M.lit 1)) ∧
-        IsTriangularEigenbasisApprox (16 * ((N : ℝ) + 1) * u) (7 / 2 * smin)
-          (4 * ((N : ℝ) + 2) * u) T Y ∧
-        (μ'.store.get g.1 g.2 = some 0 →
-          IsTriangularEigenbasisApprox (16 * ((N : ℝ) + 1) * u) 0 (4 * ((N : ℝ) + 2) * u) T Y))
-      μ := by
-  sorry
-
-/-- **The eigenvector columns are an approximate triangular eigenbasis, with a positive floor**:
-the conclusion of `NLAlib.Schur.triEigenvectors_isTriangularEigenbasisApprox` for
-$s_{\min} > 0$, with the flag $0$ when $\lvert t_{ii} - t_{jj}\rvert > 2s_{\min}$ for $i \ne j$. -/
-theorem triEigenvectors_isTriangularEigenbasisApprox_of_pos {M : Machine ℝ} {I : Interp O Q ℝ}
+theorem triEigenvectors_isTriangularEigenbasisApprox {M : Machine ℝ} {I : Interp O Q ℝ}
     {u : ℝ} (hS : IsScalar M I) (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {N : ℕ} (hu : 64 * ((N : ℝ) + 1) * u ≤ 1) {t sm y g : ℕ × ℕ} {T : Matrix (Fin N) (Fin N) ℂ}
     (hTu : T.IsUpperTriangular) {smin : ℝ} (hsmin : 0 < smin) {τ : Tape ℝ} {μ : Mem ℝ}
@@ -887,7 +839,7 @@ theorem triEigenvectors_isTriangularEigenbasisApprox_of_pos {M : Machine ℝ} {I
         (if fl then 7 / 2 * smin else 0) (T - T j j • 1) 0 yv ∧
         ((∀ i : Fin N, i < j → 2 * smin < ‖T i i - T j j‖) → fl = false))
     hT hsm hl hroom hap fun j μ' hT' hsm' hl' hrm' =>
-      (triEigColumn_writes_of_pos hS hM hL hC hu hTu hsmin j hT' hsm' hl' hrm' hap).mono le_rfl
+      (triEigColumn_writes hS hM hL hC hu hTu hsmin j hT' hsm' hl' hrm' hap).mono le_rfl
         fun μ'' _ ⟨yv, fl, hc, hn, hb, h1, h0, hgp⟩ =>
           ⟨yv, fl, hc, ⟨hn, hb, hgp⟩, h1, h0⟩).mono le_rfl ?_
   rintro μ' - ⟨Y, f, hY, hΦ, h1, h0⟩
@@ -1181,7 +1133,7 @@ private theorem triEigenvectors_stageColumns {M : Machine ℝ} {I : Interp O Q �
       (fun μ' => ∃ Y : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix y Y μ'.store ∧
         StageColumns M u T smin Y (μ'.store.get g.1 g.2)) μ := by
   by_cases hTu : T.IsUpperTriangular
-  · refine (triEigenvectors_isTriangularEigenbasisApprox_of_pos hS hM hL hC hu hTu hsmin hT hsm
+  · refine (triEigenvectors_isTriangularEigenbasisApprox hS hM hL hC hu hTu hsmin hT hsm
       hg hl hroom hap).mono le_rfl ?_
     rintro μ' - ⟨Y, hY, hf, ha, ha0, hgp⟩
     exact ⟨Y, hY, hf, fun _ => ⟨ha, ha0, hgp⟩⟩

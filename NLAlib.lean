@@ -770,6 +770,14 @@ public import NLAlib.Krylov.Processes.LanczosProgramRoundedRun
 public import NLAlib.Krylov.Processes.LanczosRecurrence
 public import NLAlib.Krylov.Processes.LanczosReorthRecurrence
 public import NLAlib.Krylov.Processes.PreconditionedLanczos
+public import NLAlib.LinearSystems.Refinement.Certification
+public import NLAlib.LinearSystems.Refinement.Kernels
+public import NLAlib.LinearSystems.Refinement.Model
+public import NLAlib.LinearSystems.Refinement.Rounded.Bounds
+public import NLAlib.LinearSystems.Refinement.Rounded.Certification
+public import NLAlib.LinearSystems.Refinement.Rounded.Signature
+public import NLAlib.LinearSystems.Refinement.Rounded.Solve
+public import NLAlib.LinearSystems.Refinement.Solve
 public import NLAlib.LowRank.BlockKrylov.Factored
 public import NLAlib.LowRank.BlockKrylov.Probability
 public import NLAlib.LowRank.BlockKrylov.Samples
@@ -849,6 +857,7 @@ public import NLAlib.Matrix.Factorizations.BasisExtensionContract
 public import NLAlib.Matrix.Factorizations.CGS2.BasisExtension
 public import NLAlib.Matrix.Factorizations.CGS2.BasisExtensionErr
 public import NLAlib.Matrix.Factorizations.Cholesky
+public import NLAlib.Matrix.Factorizations.Cholesky.Routine
 public import NLAlib.Matrix.Factorizations.ColumnVolume
 public import NLAlib.Matrix.Factorizations.Elimination
 public import NLAlib.Matrix.Factorizations.GaussState
@@ -881,10 +890,14 @@ public import NLAlib.Matrix.Factorizations.QR
 public import NLAlib.Matrix.Factorizations.RankRevealing
 public import NLAlib.Matrix.Factorizations.SketchedLowRank
 public import NLAlib.Matrix.Factorizations.Triangular
+public import NLAlib.Matrix.Factorizations.TriangularSolve.Routine
+public import NLAlib.Matrix.Factorizations.TriangularSolve.Substitution
 public import NLAlib.Matrix.FinitePrecision.ArithmeticOperation
 public import NLAlib.Matrix.FinitePrecision.BinaryFloat
 public import NLAlib.Matrix.FinitePrecision.BinaryFloatCarrier
 public import NLAlib.Matrix.FinitePrecision.BinaryFloatMachine
+public import NLAlib.Matrix.FinitePrecision.CholeskyRoundingError
+public import NLAlib.Matrix.FinitePrecision.CholeskyTraceBounds
 public import NLAlib.Matrix.FinitePrecision.ClassicalGramSchmidt
 public import NLAlib.Matrix.FinitePrecision.ClassicalGramSchmidtRoundingError
 public import NLAlib.Matrix.FinitePrecision.ComplexCodec
@@ -924,6 +937,7 @@ public import NLAlib.Matrix.FinitePrecision.OpsSampling
 public import NLAlib.Matrix.FinitePrecision.OpsSamplingMeasurable
 public import NLAlib.Matrix.FinitePrecision.OpsUnitarySimilarity
 public import NLAlib.Matrix.FinitePrecision.ProductRounded
+public import NLAlib.Matrix.FinitePrecision.RefinementRun
 public import NLAlib.Matrix.FinitePrecision.ResidualGap
 public import NLAlib.Matrix.FinitePrecision.RootsRounded
 public import NLAlib.Matrix.FinitePrecision.Rounding
@@ -1203,6 +1217,7 @@ public import NLAlib.Ops.Catalog.OrthRoutine
 public import NLAlib.Ops.Catalog.RCLikeBlas
 public import NLAlib.Ops.Catalog.RCLikeStar
 public import NLAlib.Ops.Catalog.Random
+public import NLAlib.Ops.Catalog.Refinement
 public import NLAlib.Ops.Catalog.Sampling
 public import NLAlib.Ops.Catalog.Scalar
 public import NLAlib.Ops.Catalog.ScalarMeasurable

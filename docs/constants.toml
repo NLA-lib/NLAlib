@@ -801,3 +801,21 @@ args = []
 latex = '(128e, 3, 2, 2)'
 lean_body = 'ginibreConditionTail : PolyLogTail := ⟨128 * Real.exp 1, 3, 2, 2⟩'
 body_hash = "e090d8b2a3c6f7df"
+
+[[constant]]
+name = "NLAlib.refinementContractionFactor"
+kind = "factor"
+file = "NLAlib/Matrix/FinitePrecision/RefinementRun.lean"
+args = ["κ", "θ", "η", "ζ", "ε"]
+latex = '(1+#5)(#2+(1+#2)#1(#4+#3))'
+lean_body = 'refinementContractionFactor (κ θ η ζ ε : ℝ) : ℝ := (1 + ε) * (θ + (1 + θ) * (κ * (ζ + η)))'
+body_hash = "e2367c19ef284dae"
+
+[[constant]]
+name = "NLAlib.refinementAccuracyBound"
+kind = "bound"
+file = "NLAlib/Matrix/FinitePrecision/RefinementRun.lean"
+args = ["κ", "θ", "η", "ε"]
+latex = '(1+#4)(1+#2)2#1#3+#4'
+lean_body = 'refinementAccuracyBound (κ θ η ε : ℝ) : ℝ := (1 + ε) * ((1 + θ) * (2 * κ * η)) + ε'
+body_hash = "d7f3260ca9ec0025"

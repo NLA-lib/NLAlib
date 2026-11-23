@@ -115,7 +115,7 @@ interpretation satisfying the contracts of the model and every tape, the run of 
 from the supplied buffers succeeds within the scratch, the budget, the work, the span and the
 memory of the
 specification, and its final memory satisfies the output condition
-(`NLAlib.Ops.Routine.Domain.Checked`). The matrix is stored: its products are executed and
+(`NLAlib.Ops.Inputs.Checked`). The matrix is stored: its products are executed and
 counted. -/
 theorem algorithm_checked (cost : Standard.Costing) :
     (inputs domain admitted).Checked (algorithm (domain := domain) (admitted := admitted) cost) :=

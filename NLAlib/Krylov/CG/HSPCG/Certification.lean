@@ -180,7 +180,7 @@ interpretation satisfying the contracts of the model and every tape, the run of 
 from the supplied buffers succeeds within the scratch, the budget, the work, the span and the
 memory of the
 specification, and its final memory satisfies the output condition
-(`NLAlib.Ops.Routine.Domain.Checked`). The matrix and the preconditioner are in no buffer:
+(`NLAlib.Ops.Inputs.Checked`). The matrix and the preconditioner are in no buffer:
 they are reached only through the two product operations, and the work is counted in calls of
 them (`NLAlib.Krylov.CG.HSPCG.Certification.oracles`). -/
 theorem algorithm_checked (cost : Standard.Costing) (aw ap sw sp : List ℕ → ℕ) :

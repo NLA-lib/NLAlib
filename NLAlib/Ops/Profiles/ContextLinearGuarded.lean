@@ -146,16 +146,16 @@ theorem satisfies_guarded {I : Interp RCLikeBlas.Operation CmpTst ℝ}
   cases o with
   | scalar o =>
     rw [Interp.linkContext_callS_inr I (by rfl)]
-    exact hS o d ins outs τ mem hp
+    exact Interp.Satisfies.callS (hS o) d ins outs τ mem hp
   | blas o =>
     rw [Interp.linkContext_callS_inr I (by rfl)]
     cases o with
-    | sum => exact hB.sum d ins outs τ mem hp
-    | dot => exact hB.dot d ins outs τ mem hp
-    | axpy => exact hB.axpy d ins outs τ mem hp
-    | nrm2 => exact hB.nrm2 d ins outs τ mem hp
-    | scal => exact hB.scal d ins outs τ mem hp
-    | copy => exact hB.copy d ins outs τ mem hp
+    | sum => exact Interp.Satisfies.callS (hB.sum) d ins outs τ mem hp
+    | dot => exact Interp.Satisfies.callS (hB.dot) d ins outs τ mem hp
+    | axpy => exact Interp.Satisfies.callS (hB.axpy) d ins outs τ mem hp
+    | nrm2 => exact Interp.Satisfies.callS (hB.nrm2) d ins outs τ mem hp
+    | scal => exact Interp.Satisfies.callS (hB.scal) d ins outs τ mem hp
+    | copy => exact Interp.Satisfies.callS (hB.copy) d ins outs τ mem hp
   | matvec => exact matvec_active hS context index raw hc hData hs ho hp
 
 /-- The guarded source interpreter, a proof device determined by the actual context and

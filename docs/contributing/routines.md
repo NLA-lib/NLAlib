@@ -18,14 +18,34 @@ one layer uses only the statement of the layer below, never its proof.
 | fragment | a piece of one routine's tree, a plain `Stmt` written with `ops%` | one lemma `X_writes` in operand form (`Writes`): what the run writes and where | nobody outside the proof of its routine |
 | routine | a tree with an interface, written with `routine%` | one judgment `XRoutine_meets : XRoutine.Meets I XSpec` | authors of callers |
 | certificate | the routine on a problem, under a model | `Algorithm M S`, built by `Routine.Domain.certify` or `Routine.Domain.algorithm` | the certificate check |
-| readable statement | the certificate, in terms of the evaluator | `X_checked` | reviewer |
+| readable statement | the certificate, on the mathematical inputs and the execution rules | `X_checked` | reviewer |
 
 A randomized guarantee adds one object beside the certificate: a `RandomizedClaim` of it
 ([programs](programs.md), "Resources and probability").
 
 What a reviewer reads is short: the specification of the routine (`Routine.Spec`), the problem
-(`Routine.Domain`), the model (operations, contracts, costs) and the `_checked` theorem. The
+(the `Inputs` of its `Routine.Domain`: sizes, inputs, acceptance and slots, with nothing
+about the routine), the model (operations, contracts, costs) and the `_checked` theorem. The
 tree, the judgment and the count are checked by Lean.
+
+What "run" and "counted" mean is defined by the execution rules of
+`NLAlib/Ops/Reference/Semantics.lean`, with the charge of each construct written in its rule:
+a certificate says that `Reference.Execution` derives an accepted outcome
+(`NLAlib/Ops/Specification.lean`). The evaluator `exec` computes the same outcome
+(`Reference.execution_iff_exec`); it is what proofs compute with, and no statement a reviewer
+reads mentions it. A proof that needs the evaluator form of a certificate `A` uses
+`A.correct_exec` in place of `A.correct`, and one that builds a certificate from an evaluator
+statement uses `Program.certifies_iff_exec`. The
+[reviewer's declaration map](../design/Ops-ReferenceReview.md) lists every definition a reading
+of a certificate depends on.
+
+What a run can depend on is proved once, for every tree, in `NLAlib/Ops/Dependence.lean`: a run
+is given by the tree, the sizes, the supplied buffers, the tape and the interpretation, so data
+that is in no buffer reaches it only through the contracts of the model. In a uniform model one
+run from given buffers meets the output condition of every input with those buffers
+(`Algorithm.good_of_buffers_eq`); with declared oracles, two inputs with the same buffers are
+told apart only by an oracle (`Inputs.Oracles.good_of_satisfies`,
+`Inputs.Oracles.good_of_allOps`). Nothing needs to be proved about this for a new routine.
 
 **Routine or fragment.** A tree is a routine when it has operands of its own and something
 calls it through its interface: a `run` in another tree, a linking table, or a certificate. A
@@ -285,7 +305,7 @@ admitted size and one admitted input at each size, so that the certificate is no
 
 A restriction on the inputs goes in `accepts`, where the `_checked` theorem shows it as a
 hypothesis. An input that no buffer holds (the matrix of a matrix-free solver) is declared
-`Unstored`, and the certificate then states `Routine.Domain.Oracles`
+`Unstored`, and the certificate then states `Inputs.Oracles`
 (`NLAlib/Krylov/CG/HSCG/Certification.lean`; [programs](programs.md), item 7).
 
 ### 2.5 The certificate
@@ -362,8 +382,8 @@ theorem sum2_checked (M : Machine ℝ) (u : ℝ) (hM : StdModel u id M) (hu : 0 
 ```
 
 (`Examples/RoutineCertification.lean`; the rest of the proof rewrites sums over positions as
-sums over `Fin`.) The statement mentions the evaluator `exec`, the inputs as mathematical
-values and the output as a value held by a buffer (`Mem.Holds codec i v`), and nothing of
+sums over `Fin`.) The statement mentions the execution rules (`Reference.Execution … st`:
+the rules derive the outcome `st`), the inputs as mathematical values and the output as a value held by a buffer (`Mem.Holds codec i v`), and nothing of
 routines, judgments or the program logic. `checked_post` gives it from a certificate built by
 `certify`; **read_outputs** names the reported blocks.
 
@@ -385,7 +405,9 @@ not a formula for it, `Mem.holds_decode c hzs` gives `st.mem.Holds c i (c.decode
 read.
 
 The shortest form, for any certificate, is
-the proposition `Routine.Domain.Checked`, proved by `Routine.Domain.checked_all`
+the proposition `Inputs.Checked` (every run from the buffers of the slots is accepted,
+`Specification.Accepts`: success, the five resource bounds and the output condition), proved by
+`Inputs.checked_all`
 (`NLAlib/Krylov/CG/HSPCG/Certification.lean`, `algorithm_checked`, two lines). The docstring says in words
 what the statement says, and what a reader must check beyond it (declared oracles; the
 probability theorem, when the deterministic claim is termination).

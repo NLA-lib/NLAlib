@@ -50,7 +50,7 @@ def inputs : (factorRoutine (Op := RCLikeBlas.Operation) (Tst := CmpTst)).Domain
   inhabited _ _ := ⟨0, trivial⟩
 
 /-- The supplied buffer holds the matrix, and nothing else is supplied. Every matrix is
-admitted (`NLAlib.Ops.Routine.Domain.covers`). -/
+admitted (`NLAlib.Ops.Inputs.covers`). -/
 abbrev problem : Problem 𝕜 2 1 := (inputs (𝕜 := 𝕜)).problem
 
 /-- The supplied matrix occupies exactly its declared column-major payload. -/
@@ -161,7 +161,7 @@ interpretation satisfying the contracts of the model and every tape, the run of 
 from the supplied buffers succeeds within the scratch, the budget, the work, the span and the
 memory of the
 specification, and its final memory satisfies the output condition
-(`NLAlib.Ops.Routine.Domain.Checked`). Every matrix is admitted. -/
+(`NLAlib.Ops.Inputs.Checked`). Every matrix is admitted. -/
 theorem algorithm_checked (cost : Standard.Costing) :
     (inputs (𝕜 := 𝕜)).Checked (algorithm (𝕜 := 𝕜) cost) :=
   (inputs (𝕜 := 𝕜)).checked_all _

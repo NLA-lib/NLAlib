@@ -128,9 +128,10 @@ theorem Interp.Satisfies.and_rel {I : Interp Op Tst K} {o : Op} {R : BlockRel K}
       adm d ins outs → m.Room outs (R.outLens d) → Fp.Apart outs (R.outLens d)) :
     I.Satisfies .total o
       ({ R with rel := fun d xs w ys => R.rel d xs w ys ∧ Q d xs w ys }.spec adm) := by
+  refine Interp.Satisfies.of_callS ?_
   intro d ins outs τ m hp
-  obtain ⟨m', hc, xs, hr, hz, ys, hlen, hrel, hm⟩ := hR d ins outs τ m hp
-  obtain ⟨m'', hc', xs', hr', _, ys', hlen', hrel', hm'⟩ := hQ d ins outs τ m hp
+  obtain ⟨m', hc, xs, hr, hz, ys, hlen, hrel, hm⟩ := hR.callS d ins outs τ m hp
+  obtain ⟨m'', hc', xs', hr', _, ys', hlen', hrel', hm'⟩ := hQ.callS d ins outs τ m hp
   have hxs : xs' = xs := Option.some.inj (hr'.symm.trans hr)
   subst xs'
   have hmem : m'' = m' := Option.some.inj (hc'.symm.trans hc)

@@ -52,8 +52,9 @@ noncomputable def matrixWorkBisectionAlgorithm
       (workSpecification M dec mm qr domain admitted matrixWorkspace T) := by
   refine ⟨bisectionProgram (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst), ?_⟩
   let original := bisectionAlgorithm M dec mm qr domain admitted matrixWork matrixWorkspace hLit
+  refine (Ops.Program.certifies_iff_exec _ _ _).mpr ?_
   intro d hd x I hI τ
-  obtain ⟨st, hr, _, hc, _, _, _, hgood⟩ := original.correct d hd x I hI τ
+  obtain ⟨st, hr, _, hc, _, _, _, hgood⟩ := original.correct_exec d hd x I hI τ
   rcases Dense.laws_functionalModel M dec (EntryCodec.pair K) mm qr
     (Dense.resources matrixWork matrixWorkspace) d x I hI with
     ⟨hS, hL, hMM, hQR, hSample, hC, hQ⟩

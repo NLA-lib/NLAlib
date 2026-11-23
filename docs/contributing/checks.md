@@ -77,9 +77,9 @@ confined model, closed-form work and a derived problem, or a reviewed line):
   `closed` when every library definition under it was opened and none does; `unknown` when the
   search met something it cannot inspect (an axiom, an opaque constant, a non-constructive
   choice). `unknown` counts as `manifest` wherever `closed` is required;
-* `problem`, `derived`, `unstored`: whether the problem is derived from a `Routine.Domain`, how
+* `problem`, `derived`, `unstored`: whether the problem is derived from `Ops.Inputs` (the inputs of a `Routine.Domain`), how
   many operands hold words computed from the inputs, and whether inputs are held by no buffer;
-* `oracles`: for a model that is not uniform, `declared` when a `Routine.Domain.Oracles`
+* `oracles`: for a model that is not uniform, `declared` when a `Inputs.Oracles`
   declaration unifies with the domain and the model of this certificate, `related` when one
   exists for the same domain constant (below `cast` and `castOps`) but does not;
 * `claim`: the `RandomizedClaim`s whose certificate, with the claim's binders instantiated, is
@@ -124,6 +124,44 @@ row to `expectations`, writing only the fields that differ from a certificate in
 fixture certificate without a row is an error. Write the row from what the case should give,
 then run the script; to check that the case tests something, change the code it exercises in
 a copy of the script and see the row fail.
+
+**The trusted base.** The same script computes the declarations a reader must believe in order
+to read a certificate, and compares them with `scripts/ops_trusted_base.txt`. Lean's kernel
+checks every proof, so no proof is in the list; what is in it is what the statements are made
+of.
+
+- *Roots.* The forms a claim takes: `Ops.Algorithm` (with `Ops.Program.Certifies`, `Ops.Runs`,
+  `Ops.Specification`, `Ops.Specification.Accepts`, `Ops.Problem`, `Ops.AccessModel` and the
+  execution rules `Ops.Reference.Execution`, by which a run is defined); `Ops.RandomizedClaim`
+  (with
+  `Ops.Algorithm.FailsAtMost`, `Ops.TapeModel.Realizable`); `Ops.Inputs`, its `problem`,
+  `Ops.Inputs.Oracles` and `Ops.Inputs.Checked`; and the three model properties
+  the report prints. What one certificate adds (codecs, a tape law, a machine, the contracts of
+  its operations) is read with that certificate and is not in the list. Routines, their
+  judgment, linking, static bounds and tactics are not in it: they produce certificates.
+- *Closure.* From a declaration, the constants of its type and of its body (for an inductive
+  type or structure, of its constructors). Theorems are not followed. Declarations Lean
+  generates are followed and not listed. Only library declarations are listed.
+- *File.* One line for each declaration: `Name kind=… module=… root=… route=… type=… body=…`.
+  `route` says whether the declaration is reached from the execution rules only
+  (`reference`), from the rules and the evaluator (`execution`: the store, the syntax, the
+  counts), from neither (`claim`), or is used by the evaluator and not by the rules
+  (`evaluator`: it would be in the list for another reason; no declaration has this route, and
+  the check fails if the evaluator or its guarded call `Interp.callS` is reached from a root). `type` and `body` are hashes of
+  the statement and of the content.
+- *Output.* The run prints `ops trusted base: N declarations in M modules, L source lines, …`
+  with the size of what the execution rules reach, and `ops trusted base fixtures: 6 checks` (the closure rule
+  and the comparison, tested on constants of the script).
+
+The check fails when a declaration enters or leaves the list, or when a statement or a
+definition in it changes, and names each. Such a change alters what every certificate means,
+or what must be read to know it, so it needs the sign-off of a reviewer who has read the
+changed declarations; the pull request says what changed and why the base is not larger than
+it needs to be. Then `OPS_TRUSTED_BASE_WRITE=1 lake env lean scripts/OpsPrograms.lean`
+rewrites the file. A change that only moves a declaration, edits a docstring or changes a proof
+does not change the file. The explanation of each declaration, for a reader, is the
+[reviewer's declaration map](../design/Ops-ReferenceReview.md). The aim is a smaller list: a
+definition that can be replaced by a theorem about the others should be.
 
 It rejects imports of the retired execution core. Structural rejection
 and accounting regressions are kernel-checked modules in `NLAlib/Ops/Examples/Certification.lean`

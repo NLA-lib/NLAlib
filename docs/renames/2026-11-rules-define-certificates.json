@@ -1,0 +1,36 @@
+{
+ "date": "2026-11-22",
+ "note": "A certificate is stated with the execution rules: NLAlib.Ops.Specification.Accepts, NLAlib.Ops.Runs and NLAlib.Ops.Program.Certifies (now in Ops/Specification.lean) say that NLAlib.Ops.Reference.Execution derives an accepted outcome. The evaluator NLAlib.Ops.exec computes the same outcome; the theorems named _exec restate a statement with it, and proofs use them. Specification.Accepts takes the program, the interpretation and the tape (S.Accepts p I resources τ d x Q), where it took an optional outcome. NLAlib.Ops.Reference.Accepts is NLAlib.Ops.Specification.Accepts. NLAlib.Ops.Inputs.checked and NLAlib.Ops.Routine.Domain.checked_post state the rules form; a proof that needs the evaluator form of a certificate uses NLAlib.Ops.Algorithm.correct_exec in place of the field correct.",
+ "renames": [
+  {
+   "old": "NLAlib.Ops.Reference.Accepts",
+   "new": "NLAlib.Ops.Specification.Accepts",
+   "rule": "rules-define-certificates"
+  },
+  {
+   "old": "NLAlib.Ops.Reference.accepts_iff",
+   "new": "NLAlib.Ops.Specification.accepts_iff_exec",
+   "rule": "rules-define-certificates"
+  },
+  {
+   "old": "NLAlib.Ops.Program.certifies_iff_reference",
+   "new": "NLAlib.Ops.Program.certifies_iff_exec",
+   "rule": "rules-define-certificates"
+  },
+  {
+   "old": "NLAlib.Ops.Algorithm.reference_correct",
+   "new": "NLAlib.Ops.Algorithm.correct_exec",
+   "rule": "rules-define-certificates"
+  },
+  {
+   "old": "NLAlib.Ops.Algorithm.failsAtMost_iff_reference",
+   "new": "NLAlib.Ops.Algorithm.failsAtMost_iff_exec",
+   "rule": "rules-define-certificates"
+  },
+  {
+   "old": "NLAlib.Ops.RandomizedClaim.reference_holds",
+   "new": "NLAlib.Ops.RandomizedClaim.holds_exec",
+   "rule": "rules-define-certificates"
+  }
+ ]
+}

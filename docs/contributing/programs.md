@@ -30,7 +30,7 @@ it. Work defined as the weight of `staticCost` of the program is a manifest and 
 such. `scripts/OpsPrograms.lean` computes one line of properties for every certificate and
 compares it with `scripts/ops_certificates.txt`: the model (`uniform`, `confined`, `charged`),
 each resource field (`closed`, `manifest`, or `unknown` when the check cannot inspect it), the
-problem (`derived` from a `Routine.Domain`, or `handwritten`), its derived slots and unstored
+problem (`derived` from the inputs of a `Routine.Domain`, or `handwritten`), its derived slots and unstored
 inputs, the `Oracles` declaration of a model that is not uniform, and the randomized claim. A
 new certificate has a confined model, closed-form work and a derived problem. Read what a
 certificate states with `OPS_CERTIFICATES_REPORT=Name lake env lean scripts/OpsPrograms.lean`
@@ -134,11 +134,15 @@ states the rules.
    holds an input (with its `Ops.Codec`), words computed from the inputs, or blank cells. Do
    not write a `Problem` by hand: its admissibility relation is then the author's, and a reader
    cannot see what is covered. Name it `inputs` and the problem `problem` (an `abbrev` of
-   `(inputs …).problem`, so that the two are interchangeable in proofs). Every input satisfying
-   the acceptance predicate is covered (`Ops.Routine.Domain.covers`); a restriction on the
+   `(inputs …).problem`, so that the two are interchangeable in proofs). A domain is a record
+   of mathematics (`Ops.Inputs`: sizes, inputs, acceptance, slots) with two proofs that it
+   follows the interface of the routine (`shape`, `fits`); the problem, its oracles and the
+   `_checked` statement are those of the inputs, so a reader of the problem reads nothing
+   about the routine. Every input satisfying
+   the acceptance predicate is covered (`Ops.Inputs.covers`); a restriction on the
    inputs belongs in that predicate, where the `_checked` theorem shows it as a hypothesis.
    An input that is in no buffer (the matrix of a matrix-free solver) is declared as the
-   unstored part of the inputs, and the certificate states `Ops.Routine.Domain.Oracles` for
+   unstored part of the inputs, and the certificate states `Ops.Inputs.Oracles` for
    its model: the operations that may depend on that data, with proofs that every other
    operation has one contract at all sizes and inputs and that a declared operation sees the
    input only through its unstored part. Data outside memory can hide work behind one call,
@@ -146,7 +150,7 @@ states the rules.
    of such a certificate is a count of calls of them.
    Derive the public certificate with `Ops.Routine.Domain.algorithm` against a
    stated `Specification`, and state what it says in a `_checked` theorem: the proposition
-   `Ops.Routine.Domain.Checked` of the certificate (proved by `Ops.Routine.Domain.checked_all`;
+   `Ops.Inputs.Checked` of the certificate (proved by `Ops.Inputs.checked_all`;
    it includes every resource bound, the resident memory among them),
    or a form with the output on values (`Ops.Mem.Holds`: a buffer holds a value). Its docstring
    says what a reader checks beyond it: the declared oracles, or the probability theorem that

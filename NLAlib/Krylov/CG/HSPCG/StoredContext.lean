@@ -138,16 +138,16 @@ theorem guarded_satisfies {I : Interp RCLikeBlas.Operation CmpTst ℝ}
   cases o with
   | scalar a =>
     rw [Interp.linkContext_callS_inr I (by rfl)]
-    exact hS a d ins outs τ mem hp
+    exact Interp.Satisfies.callS (hS a) d ins outs τ mem hp
   | blas b =>
     rw [Interp.linkContext_callS_inr I (by rfl)]
     cases b <;> first
-      | exact hB.toExactBlas1.sum d ins outs τ mem hp
-      | exact hB.toExactBlas1.dot d ins outs τ mem hp
-      | exact hB.toExactBlas1.axpy d ins outs τ mem hp
-      | exact hB.toExactBlas1.nrm2 d ins outs τ mem hp
-      | exact hB.toExactBlas1.scal d ins outs τ mem hp
-      | exact hB.toExactBlas1.copy d ins outs τ mem hp
+      | exact Interp.Satisfies.callS (hB.toExactBlas1.sum) d ins outs τ mem hp
+      | exact Interp.Satisfies.callS (hB.toExactBlas1.dot) d ins outs τ mem hp
+      | exact Interp.Satisfies.callS (hB.toExactBlas1.axpy) d ins outs τ mem hp
+      | exact Interp.Satisfies.callS (hB.toExactBlas1.nrm2) d ins outs τ mem hp
+      | exact Interp.Satisfies.callS (hB.toExactBlas1.scal) d ins outs τ mem hp
+      | exact Interp.Satisfies.callS (hB.toExactBlas1.copy) d ins outs τ mem hp
   | operator =>
     have hi := hc context[systemIndex] (List.getElem_mem ..)
     have hd := (hs.2.readBlock hi context[systemIndex].2 (n * n)).trans hA

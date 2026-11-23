@@ -78,9 +78,7 @@ theorem measureReal_not_accepts_le (alg : Algorithm L S) (stream : ℕ)
     [IsFiniteMeasure P] (X : Ω' → Matrix (Fin (d 1)) (Fin (d 2)) ℝ)
     (Φ : Matrix (Fin (d 0)) (Fin (d 1)) ℝ → Prop) {δ : ℝ}
     (hΦ : P.real {ω | ¬ Φ (rbki (matrix input) (X ω) (d 3))} ≤ δ) :
-    P.real {ω | ¬ S.Accepts L.resources d input
-      (exec alg.program I L.resources problem.formats (packedSampleTape stream (X ω)) d
-        (problem.initial d input))
+    P.real {ω | ¬ S.Accepts alg.program I L.resources (packedSampleTape stream (X ω)) d input
       (fun c μ => S.good d input (packedSampleTape stream (X ω)) c μ ∧
         Φ (storedProduct (d 0) (d 1) (d 2) (d 3) μ))} ≤ δ := by
   refine alg.measureReal_failure_le (P := problem) trivial input I hI
@@ -117,9 +115,7 @@ theorem measureReal_not_accepts_le_of_hasLaw_gaussianMatrix (alg : Algorithm L S
     (hrt : r ≤ t) (hq : t ≤ d 3) {Δ δ : ℝ} (hΔ : 0 < Δ) (hδ : 0 < δ)
     (hgap : ∀ i, i + 1 < t →
       singularValues (matrix input) (i + 1) ^ 2 ≤ (1 - Δ) * singularValues (matrix input) i ^ 2) :
-    P.real {ω | ¬ S.Accepts L.resources d input
-      (exec alg.program I L.resources problem.formats (packedSampleTape stream (X ω)) d
-        (problem.initial d input))
+    P.real {ω | ¬ S.Accepts alg.program I L.resources (packedSampleTape stream (X ω)) d input
       (fun c μ => S.good d input (packedSampleTape stream (X ω)) c μ ∧
         specNorm ((matrix input) - storedProduct (d 0) (d 1) (d 2) (d 3) μ) ^ 2 ≤
           singularValues (matrix input) r ^ 2 +
@@ -165,7 +161,7 @@ theorem storedOutput_eq_rbki (alg : Algorithm L S) (stream : ℕ)
     (hI : L.contracts d input I) (X : Matrix (Fin (d 1)) (Fin (d 2)) ℝ) :
     storedOutput alg stream input I X = rbki (matrix input) X (d 3) := by
   obtain ⟨st, hrun, -, -, -, -, -, hg⟩ :=
-    alg.correct d trivial input I hI (packedSampleTape stream X)
+    alg.correct_exec d trivial input I hI (packedSampleTape stream X)
   simp only [storedOutput, hrun]
   exact storedProduct_eq_rbki_of_packedSampleTape (hgood d input _ _ _ hg)
 

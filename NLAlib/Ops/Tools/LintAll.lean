@@ -65,6 +65,7 @@ public import NLAlib.Ops.Catalog.Tagged
 public import NLAlib.Ops.Cert
 public import NLAlib.Ops.Contract
 public import NLAlib.Ops.Counted
+public import NLAlib.Ops.Dependence
 public import NLAlib.Ops.Examples.Bilinear
 public import NLAlib.Ops.Examples.Certification
 public import NLAlib.Ops.Examples.Resources
@@ -148,6 +149,8 @@ public import NLAlib.Ops.Examples.RoutineLink
 public import NLAlib.Ops.Examples.RoutineProblem
 public import NLAlib.Ops.Examples.Strided
 public import NLAlib.Ops.Examples.VectorSum
+public import NLAlib.Ops.Examples.Reference
+public import NLAlib.Ops.Reference.Probability
 public import NLAlib.Ops.Profiles.ContextLinearGuarded
 public import NLAlib.Ops.Profiles.ContextLinearRoundedGuarded
 public import NLAlib.Ops.Profiles.StandardOracles

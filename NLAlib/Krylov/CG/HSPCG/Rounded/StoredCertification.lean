@@ -195,7 +195,7 @@ interpretation satisfying the contracts of the model and every tape, the run of 
 from the supplied buffers succeeds within the scratch, the budget, the work, the span and the
 memory of the
 specification, and its final memory satisfies the output condition
-(`NLAlib.Ops.Routine.Domain.Checked`). -/
+(`NLAlib.Ops.Inputs.Checked`). -/
 theorem algorithm_checked (M : Machine ℝ) (u : ℝ)
     (hM : StdModel u id M) (hu : 0 ≤ u) (E : (Fin 2 → ℕ) → ℝ)
     (hAccuracy : ∀ d, domain d →

@@ -68,10 +68,7 @@ theorem accepts_signProgram_of_isArithAccurate
     (hcap : newtonSchulzSteps (a / (2 * dec (scale d x)))
       (dec (tolerance d x) / (16 * d 0)) ≤ d 1) :
     (wordSpecification M dec mm qr unif normal domain admitted matrixWork matrixWorkspace).Accepts
-      (Dense.resources matrixWork matrixWorkspace) d x
-      (exec signProgram I (Dense.resources matrixWork matrixWorkspace)
-        (problem (K := K) domain admitted).formats tape d
-        ((problem (K := K) domain admitted).initial d x))
+        signProgram I (Dense.resources matrixWork matrixWorkspace) tape d x
       (fun _ m => StoresApproximation dec (inputMatrix d x) (dec (tolerance d x)) m) := by
   obtain ⟨st, hr, hp, hc, hw, hs, hm, hg⟩ :=
     (signAlgorithm M dec mm qr unif normal domain admitted matrixWork matrixWorkspace

@@ -80,6 +80,25 @@ theorem Interp.shape_of_callS {I : Interp Op Tst K} {o : Op} {d : List ℕ}
   cases h
   exact hs
 
+/-- The call of the evaluator succeeds with `m'` exactly when the operands are buffers of the
+store, the call of the interpretation gives `m'`, and the shape of the store is unchanged. -/
+theorem Interp.callS_eq_some_iff {I : Interp Op Tst K} {o : Op} {d : List ℕ}
+    {ins outs : List (ℕ × ℕ)} {τ : Tape K} {m m' : Mem K} :
+    I.callS o d ins outs τ m = some m' ↔
+      m.Live (ins ++ outs) ∧ I.call o d ins outs τ m = some m' ∧
+        m'.store.shape = m.store.shape := by
+  constructor
+  · intro h
+    have hl := Interp.live_of_callS h
+    have hs := Interp.shape_of_callS h
+    rw [Interp.callS_of_live hl] at h
+    obtain ⟨m₁, hc, h⟩ := Option.bind_eq_some_iff.mp h
+    split_ifs at h
+    cases h
+    exact ⟨hl, hc, hs⟩
+  · rintro ⟨hl, hc, hs⟩
+    rw [Interp.callS_of_live hl, hc, Option.bind_some, if_pos hs]
+
 /-- Bounded iteration. -/
 def iter {σ : Type} (f : ℕ → σ → Option σ) : ℕ → σ → Option σ
   | 0, s => some s

@@ -129,12 +129,9 @@ theorem measureReal_not_accepts_countedSpecification_le
     (hTape : IsTapeLaw law P ideal)
     (hStream : ∀ dist : Computation.Dist, law (distributionStream dist) = dist.law) :
     P.real {omega | ¬ (countedSpecification M dec mm qr domain admitted matrixWorkspace T).Accepts
-      (Dense.resources matrixWork matrixWorkspace) d x
-        (exec (bisectionProgram (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) I
-          (Dense.resources matrixWork matrixWorkspace)
-          (problem (K := K) domain admitted).formats
-          (roundTape roundUnif roundGaussian (ideal omega)) d
-          ((problem (K := K) domain admitted).initial d x))
+        (bisectionProgram (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) I
+        (Dense.resources matrixWork matrixWorkspace)
+        (roundTape roundUnif roundGaussian (ideal omega)) d x
         (fun _ m => StoresApproxDiagonalization dec (inputMatrix d x)
           (2 * inputTolerance dec x * inputRadius dec x) (inputTolerance dec x / 3)
           (2, 0) (3, 0) m)} ≤ theta := by

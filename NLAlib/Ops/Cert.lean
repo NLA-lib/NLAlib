@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Rules
+public import NLAlib.Ops.Reference.Equivalence
 
 /-!
 # Total certification and conditional proof rules
@@ -82,6 +83,7 @@ when its implementation satisfies it. -/
 theorem Interp.link_satisfies {I : Interp Op₂ Tst K} {T : Table Op₁ Op₂ Tst} {o : Op₁}
     {E : Impl Op₂ Tst} (hT : T o = .inl E) {md : Mode} {C : Contract K} (h : E.Satisfies I md C) :
     (I.link T).Satisfies md o C := by
+  refine Interp.Satisfies.of_callS ?_
   intro d ins outs τ m hpre
   obtain ⟨hl, hw⟩ := h d ins outs τ m hpre
   rw [Interp.link_callS_inl I hT]
@@ -98,9 +100,10 @@ theorem Interp.link_satisfies_kept {I : Interp Op₂ Tst K} {T : Table Op₁ Op�
     {o' : Op₂}
     (hT : T o = .inr o') {md : Mode} {C : Contract K} (h : I.Satisfies md o' C) :
     (I.link T).Satisfies md o C := by
+  refine Interp.Satisfies.of_callS ?_
   intro d ins outs τ m hpre
   rw [Interp.link_callS_inr I hT]
-  exact h d ins outs τ m hpre
+  exact h.callS d ins outs τ m hpre
 
 /-- In liberal mode an implementation that fails satisfies every contract. -/
 theorem Impl.satisfies_liberal_abort (nd nin nout : ℕ) (I : Interp Op Tst K) (C : Contract K)
@@ -115,6 +118,7 @@ of linking is never a result without a statement of success. -/
 theorem Interp.link_satisfies_liberal_of_abort {I : Interp Op₂ Tst K} {T : Table Op₁ Op₂ Tst}
     {o : Op₁} {E : Impl Op₂ Tst} (hT : T o = .inl E) (hE : E.body = .abort) (C : Contract K) :
     (I.link T).Satisfies .liberal o C := by
+  refine Interp.Satisfies.of_callS ?_
   intro d ins outs τ m _ m' hm'
   rw [Interp.link_callS_inl I hT, hE] at hm'
   split_ifs at hm'
@@ -221,6 +225,7 @@ theorem Interp.IsFn.satisfies_rel {I : Interp Op Tst K} {o : Op} {f : BlockFn K}
       m.readBlocks ins (B.inLens d) = some xs → B.dom d xs w →
       ∃ ys, f.fn d w xs = some ys ∧ ys.map List.length = B.outLens d ∧ B.rel d xs w ys) :
     I.Satisfies .total o (B.spec adm) := by
+  refine Interp.Satisfies.of_callS ?_
   rintro d ins outs τ m ⟨hnd', hadm', hn⟩
   obtain ⟨hl, ⟨xs, hxs, hdom⟩, hz⟩ := hn rfl
   obtain ⟨ys, hys, hlen, hrel⟩ := hf d _ xs m ins outs hnd'
@@ -245,6 +250,7 @@ theorem Interp.IsFn.satisfies_rel_of_pre {I : Interp Op Tst K} {o : Op} {f : Blo
       adm d ins outs → m.readBlocks ins (B.inLens d) = some xs → B.dom d xs w →
       ∃ ys, f.fn d w xs = some ys ∧ ys.map List.length = B.outLens d ∧ B.rel d xs w ys) :
     I.Satisfies .total o (B.spec adm) := by
+  refine Interp.Satisfies.of_callS ?_
   rintro d ins outs τ m ⟨hnd', ha, hn⟩
   obtain ⟨hl, ⟨xs, hxs, hdom⟩, hz⟩ := hn rfl
   obtain ⟨ys, hys, hlen, hrel⟩ := hf d _ xs m ins outs hnd'
@@ -283,6 +289,18 @@ namespace Algorithm
 variable {Op Lo Tst K : Type} {r b : ℕ} {P : Problem K r b}
   {M : AccessModel Op Tst P} {S : Specification Op Tst P}
 
+/-- A certificate read with the evaluator: on every admitted input, under every interpretation
+satisfying the model and every tape, canonical execution succeeds within all five resource
+bounds, and its count and memory satisfy the output condition. Proofs use this form; the
+statement of the certificate itself is in terms of the execution rules. -/
+theorem correct_exec (A : Algorithm M S) (d : Fin r → ℕ) (hd : P.valid d) (x : P.Input d)
+    (I : Interp Op Tst K) (hI : M.contracts d x I) (τ : Tape K) :
+    ∃ st, exec A.program I M.resources P.formats τ d (P.initial d x) = some st ∧
+      st.peak ≤ S.scratch d ∧ st.cost ≤ S.budget d ∧
+      M.resources.work st.cost ≤ S.work d ∧ M.resources.span st.cost ≤ S.span d ∧
+      P.initialBytes d x + st.peak ≤ S.memory d ∧ S.good d x τ st.cost st.mem :=
+  (A.program.certifies_iff_exec M S).mp A.correct d hd x I hI τ
+
 /-- Add a pure mathematical output consequence without redoing program or resource proofs. -/
 def mapPost (A : Algorithm M S)
     (Q : (d : Fin r → ℕ) → P.Input d → Tape K → Count (Op ⊕ Bookkeeping) Tst → Mem K → Prop)
@@ -296,7 +314,7 @@ theorem wellTyped (A : Algorithm M S) : A.program.wellTyped M.resources P.format
   obtain ⟨d, hd⟩ := P.admitted
   obtain ⟨x⟩ := P.inputs_exist d hd
   obtain ⟨I, hI⟩ := M.realize d hd x
-  obtain ⟨st, hr, -⟩ := A.correct d hd x I hI (fun _ _ => M.word)
+  obtain ⟨st, hr, -⟩ := A.correct_exec d hd x I hI (fun _ _ => M.word)
   unfold exec at hr
   split_ifs at hr with h
   exact h.1
@@ -306,7 +324,7 @@ theorem run (A : Algorithm M S) {d : Fin r → ℕ} (hd : P.valid d) (x : P.Inpu
     (I : Interp Op Tst K) (hI : M.contracts d x I) (τ : Tape K) :
     ∃ c m', A.program.run I M.resources P.formats τ d (P.initial d x) = some m' ∧
       c ≤ S.budget d ∧ S.good d x τ c m' := by
-  obtain ⟨st, hr, -, hc, -, -, -, hg⟩ := A.correct d hd x I hI τ
+  obtain ⟨st, hr, -, hc, -, -, -, hg⟩ := A.correct_exec d hd x I hI τ
   have hm := congrArg (Option.map St.mem) hr
   rw [exec_mem, Option.map_some] at hm
   exact ⟨st.cost, st.mem, hm, hc, hg⟩
@@ -334,7 +352,7 @@ def ofWp (p : Program Op Tst r b)
     (hmemory : ∀ d, P.valid d → ∀ x : P.Input d,
       P.initialBytes d x + S.scratch d ≤ S.memory d) : Algorithm M S where
   program := p
-  correct d hd x I hI τ := by
+  correct := (p.certifies_iff_exec M S).mpr fun d hd x I hI τ => by
     obtain ⟨m', hr, hg⟩ := hwp d hd x I hI τ
     have hm : eval I.instrument τ p.body.instrument (Program.environment (b := b) d)
         (P.initial d x) = some m' := by rw [run_instrument]; exact hr

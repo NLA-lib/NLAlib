@@ -178,18 +178,18 @@ def FailsAtMost (A : Algorithm model S)
     model.contracts d x I → interprets d x I →
     ∀ (Ω : Type) [MeasurableSpace Ω] (μ : Measure Ω) [IsFiniteMeasure μ] (tape : Ω → Tape K),
       law d x Ω μ tape →
-      μ.real {ω | ¬ S.Accepts model.resources d x
-        (exec A.program I model.resources P.formats (tape ω) d (P.initial d x))
+      μ.real {ω | ¬ S.Accepts A.program I model.resources (tape ω) d x
         (event d x (tape ω))} ≤ bound d x
 
 end Algorithm
 
 /-- A stronger postcondition is accepted when a weaker one follows from it. -/
-theorem Specification.Accepts.mono {S : Specification Op Tst P} {resources : ResourceModel Op Tst}
-    {d : Fin r → ℕ} {x : P.Input d} {outcome : Option (St (Op ⊕ Bookkeeping) Tst K)}
+theorem Specification.Accepts.mono {S : Specification Op Tst P} {p : Program Op Tst r b}
+    {I : Interp Op Tst K} {resources : ResourceModel Op Tst} {τ : Tape K}
+    {d : Fin r → ℕ} {x : P.Input d}
     {Q Q' : Count (Op ⊕ Bookkeeping) Tst → Mem K → Prop}
-    (h : S.Accepts resources d x outcome Q) (hQ : ∀ c m, Q c m → Q' c m) :
-    S.Accepts resources d x outcome Q' := by
+    (h : S.Accepts p I resources τ d x Q) (hQ : ∀ c m, Q c m → Q' c m) :
+    S.Accepts p I resources τ d x Q' := by
   obtain ⟨st, hrun, hpeak, hcount, hwork, hspan, hmemory, hq⟩ := h
   exact ⟨st, hrun, hpeak, hcount, hwork, hspan, hmemory, hQ _ _ hq⟩
 

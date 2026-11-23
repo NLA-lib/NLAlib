@@ -344,7 +344,7 @@ def myDomain : myIntegrate.Domain ℝ 2 2 where
   inhabited _ _ := ⟨(0, fun _ => 0), trivial⟩
 
 /-- The problem of the integrator: the step and the initial vector, and nothing else. Every
-step and every vector is admitted (`NLAlib.Ops.Routine.Domain.covers`). -/
+step and every vector is admitted (`NLAlib.Ops.Inputs.covers`). -/
 def myProblem : Problem ℝ 2 2 := myDomain.problem
 
 /-- The weight of a call: $2 n^2$ for a product, $2 n$ for an update. -/
@@ -592,7 +592,7 @@ interpretation satisfying the contracts of the model and every tape, the run of 
 from the supplied buffers succeeds within the scratch, the budget, the work, the span and the
 memory of the
 specification, and its final memory satisfies the output condition
-(`NLAlib.Ops.Routine.Domain.Checked`). Every step size and vector is admitted. -/
+(`NLAlib.Ops.Inputs.Checked`). Every step size and vector is admitted. -/
 theorem myIntegrate_checked (A : (n : ℕ) → Matrix (Fin n) (Fin n) ℝ) (δ e : ℝ)
     (hδ : 0 ≤ δ) (he : 0 ≤ e) : myDomain.Checked (myAlgorithm A δ e hδ he) :=
   myDomain.checked_all _

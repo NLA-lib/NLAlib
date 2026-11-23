@@ -21,6 +21,13 @@ its fuel, a `bindIdx` its worst value.
 by evaluating a function on the tree, never by a proof about loops, and
 `NLAlib.Ops.ConditionalRuns.of_run` turns a statement about the memory (program logic) into the full
 statement with counts and workspace.
+
+## Main definitions
+
+* `NLAlib.Ops.stmtCost`, `NLAlib.Ops.stmtPeak`: the static count and workspace of a tree.
+* `NLAlib.Ops.staticCost`, `NLAlib.Ops.staticPeak`: those of a program, with its structural
+  instructions.
+
 ## Main results
 
 * `NLAlib.Ops.exec_within`: soundness of the static count and workspace.
@@ -327,41 +334,6 @@ theorem ConditionalRuns.mono {I : Interp Op Tst K} {W : Op → List ℕ → ℕ}
       := by
   obtain ⟨st', h1, h2, h3, h4⟩ := h
   exact ⟨st', h1, h2.trans hB, h3.trans hM, hQ _ h4⟩
-
-/-- An independently specified algorithmic claim. All resource budgets depend on sizes alone.
-The actual counted postcondition may also depend on the input and tape. Structural instructions
-are separate operation names in the same count, so omitting them is a false budget claim. -/
-structure Specification (Op Tst : Type) {K : Type} {r b : ℕ} (P : Problem K r b) where
-  /-- Budget for original operations, queries, index evaluation and control. -/
-  budget : (Fin r → ℕ) → Count (Op ⊕ Bookkeeping) Tst
-  /-- Peak additional scratch payload bytes above the declared buffers. -/
-  scratch : (Fin r → ℕ) → ℕ
-  /-- Total modeled work, including explicit structural work. -/
-  work : (Fin r → ℕ) → ℕ
-  /-- Sequential composition of modeled primitive critical paths. -/
-  span : (Fin r → ℕ) → ℕ
-  /-- Initial buffer payload plus peak scratch payload bytes. -/
-  memory : (Fin r → ℕ) → ℕ
-  /-- The postcondition of this same successful, counted execution. -/
-  good : (d : Fin r → ℕ) → P.Input d → Tape K →
-    Count (Op ⊕ Bookkeeping) Tst → Mem K → Prop
-
-/-- Total certification of this fixed program against an independently specified model and
-claim. A target can require this proposition directly, fixing the program before every runtime
-size and input. Realizability is already required by the type of the model. -/
-def Runs {Op Tst K : Type} {r b : ℕ} {P : Problem K r b}
-    (p : Program Op Tst r b) (M : AccessModel Op Tst P) (S : Specification Op Tst P) : Prop :=
-  ∀ d, P.valid d → ∀ (x : P.Input d) (I : Interp Op Tst K), M.contracts d x I → ∀ τ,
-    ∃ st, exec p I M.resources P.formats τ d (P.initial d x) = some st ∧
-      st.peak ≤ S.scratch d ∧ st.cost ≤ S.budget d ∧
-        M.resources.work st.cost ≤ S.work d ∧ M.resources.span st.cost ≤ S.span d ∧
-          P.initialBytes d x + st.peak ≤ S.memory d ∧ S.good d x τ st.cost st.mem
-
-
-/-- Certification is the canonical total run proposition for one fixed tree and model. -/
-abbrev Program.Certifies {Op Tst K : Type} {r b : ℕ} {P : Problem K r b}
-    (p : Program Op Tst r b) (M : AccessModel Op Tst P) (S : Specification Op Tst P) : Prop :=
-  Runs p M S
 
 /-- Full canonical static count, including index expressions and control. -/
 noncomputable def staticCost {r b : ℕ} (p : Program Op Tst r b) (d : Fin r → ℕ) :

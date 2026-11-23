@@ -1,0 +1,106 @@
+{
+ "date": "2026-11-22",
+ "note": "The admitted inputs of a problem are a record of their own, NLAlib.Ops.Inputs, which mentions no routine; NLAlib.Ops.Routine.Domain extends it with the proofs shape and fits. The problem, its coverage, its oracles and the Checked statement are defined on Inputs, so reading a problem needs nothing about routines. The fields (valid, In, accepts, slot, Unstored, unstored, faithful, admitted, inhabited, formats) are fields of Inputs and are still written D.valid etc. for a domain D. NLAlib.Ops.Specification.Accepts moves from Ops/Probability.lean to Ops/Static.lean with its name unchanged.",
+ "renames": [
+  {
+   "old": "NLAlib.Ops.Routine.Domain.derived",
+   "new": "NLAlib.Ops.Inputs.derived",
+   "rule": "routine-free-problem"
+  },
+  {
+   "old": "NLAlib.Ops.Routine.Domain.buffers",
+   "new": "NLAlib.Ops.Inputs.buffers",
+   "rule": "routine-free-problem"
+  },
+  {
+   "old": "NLAlib.Ops.Routine.Domain.length_buffers",
+   "new": "NLAlib.Ops.Inputs.length_buffers",
+   "rule": "routine-free-problem"
+  },
+  {
+   "old": "NLAlib.Ops.Routine.Domain.problem",
+   "new": "NLAlib.Ops.Inputs.problem",
+   "rule": "routine-free-problem"
+  },
+  {
+   "old": "NLAlib.Ops.Routine.Domain.input",
+   "new": "NLAlib.Ops.Inputs.input",
+   "rule": "routine-free-problem"
+  },
+  {
+   "old": "NLAlib.Ops.Routine.Domain.inputEquiv",
+   "new": "NLAlib.Ops.Inputs.inputEquiv",
+   "rule": "routine-free-problem"
+  },
+  {
+   "old": "NLAlib.Ops.Routine.Domain.covers",
+   "new": "NLAlib.Ops.Inputs.covers",
+   "rule": "routine-free-problem"
+  },
+  {
+   "old": "NLAlib.Ops.Routine.Domain.accepts_data",
+   "new": "NLAlib.Ops.Inputs.accepts_data",
+   "rule": "routine-free-problem"
+  },
+  {
+   "old": "NLAlib.Ops.Routine.Domain.buffers_eq",
+   "new": "NLAlib.Ops.Inputs.buffers_eq",
+   "rule": "routine-free-problem"
+  },
+  {
+   "old": "NLAlib.Ops.Routine.Domain.memory",
+   "new": "NLAlib.Ops.Inputs.memory",
+   "rule": "routine-free-problem"
+  },
+  {
+   "old": "NLAlib.Ops.Routine.Domain.initial_eq",
+   "new": "NLAlib.Ops.Inputs.initial_eq",
+   "rule": "routine-free-problem"
+  },
+  {
+   "old": "NLAlib.Ops.Routine.Domain.initialBytes_eq",
+   "new": "NLAlib.Ops.Inputs.initialBytes_eq",
+   "rule": "routine-free-problem"
+  },
+  {
+   "old": "NLAlib.Ops.Routine.Domain.bytes",
+   "new": "NLAlib.Ops.Inputs.bytes",
+   "rule": "routine-free-problem"
+  },
+  {
+   "old": "NLAlib.Ops.Routine.Domain.initialBytes_eq_bytes",
+   "new": "NLAlib.Ops.Inputs.initialBytes_eq_bytes",
+   "rule": "routine-free-problem"
+  },
+  {
+   "old": "NLAlib.Ops.Routine.Domain.checked",
+   "new": "NLAlib.Ops.Inputs.checked",
+   "rule": "routine-free-problem"
+  },
+  {
+   "old": "NLAlib.Ops.Routine.Domain.Checked",
+   "new": "NLAlib.Ops.Inputs.Checked",
+   "rule": "routine-free-problem"
+  },
+  {
+   "old": "NLAlib.Ops.Routine.Domain.checked_all",
+   "new": "NLAlib.Ops.Inputs.checked_all",
+   "rule": "routine-free-problem"
+  },
+  {
+   "old": "NLAlib.Ops.Routine.Domain.Oracles",
+   "new": "NLAlib.Ops.Inputs.Oracles",
+   "rule": "routine-free-problem"
+  },
+  {
+   "old": "NLAlib.Ops.Routine.Domain.Oracles.uniform",
+   "new": "NLAlib.Ops.Inputs.Oracles.uniform",
+   "rule": "routine-free-problem"
+  },
+  {
+   "old": "NLAlib.Ops.Routine.Domain.Oracles.ofUniform",
+   "new": "NLAlib.Ops.Inputs.Oracles.ofUniform",
+   "rule": "routine-free-problem"
+  }
+ ]
+}

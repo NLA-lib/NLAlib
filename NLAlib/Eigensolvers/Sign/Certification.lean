@@ -113,7 +113,7 @@ interpretation satisfying the contracts of the model and every tape, the run of 
 from the supplied buffers succeeds within the scratch, the budget, the work, the span and the
 memory of the
 specification, and its final memory satisfies the output condition
-(`NLAlib.Ops.Routine.Domain.Checked`). Every matrix and pair of parameters is admitted. -/
+(`NLAlib.Ops.Inputs.Checked`). Every matrix and pair of parameters is admitted. -/
 theorem sign_checked (M : Machine K) (dec : K → ℝ)
     (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     (unif : K → Su → K) (normal : Sg → K × K)

@@ -331,7 +331,7 @@ interpretation satisfying the contracts of the model and every tape, the run of 
 from the supplied buffers succeeds within the scratch, the budget, the work, the span and the
 memory of the
 specification, and its final memory satisfies the output condition
-(`NLAlib.Ops.Routine.Domain.Checked`). The deterministic claim is termination within the
+(`NLAlib.Ops.Inputs.Checked`). The deterministic claim is termination within the
 footprint only. The accuracy is a statement about the stages, with probability over the draws:
 for the dense instance it is `NLAlib.Schur.denseSchurClaim`. -/
 theorem schurPipeline_checked (sU : ℕ) (Nm Reg Red Core : Stmt SmallEigOp Tst)
@@ -544,10 +544,8 @@ theorem denseSchur_algorithm_measureReal_not_accepts_le {Mch : Machine ℝ}
     (hδ : 0 < x.val.1.δ) (hδ1 : x.val.1.δ ≤ 1) (hφ : 0 < x.val.1.φ) (hφ1 : x.val.1.φ ≤ 1)
     (hu : u ≤ uDenseSchur (d 0) x.val.1.δ x.val.1.φ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ (denseSchurSpecification Mch admitted sG).Accepts smallEigResources d x
-      (exec (denseSchurAlgorithm Mch admitted sU sG).program I smallEigResources
-        (denseSchurProblem Mch admitted).formats (ξ ω) d
-        ((denseSchurProblem Mch admitted).initial d x))
+    P.real {ω | ¬ (denseSchurSpecification Mch admitted sG).Accepts
+        (denseSchurAlgorithm Mch admitted sU sG).program I smallEigResources (ξ ω) d x
       fun _ m => ((denseSchurProblem Mch admitted).initial d x).store.EqOff
           (schurFp (d 0) (0, 0) (2, 0) (3, 0)) m.store ∧
         SchurOutput (0, 0) (2, 0) (3, 0) x.val.1.matrix x.val.1.δ
@@ -579,7 +577,7 @@ interpretation satisfying the contracts of the model and every tape, the run of 
 from the supplied buffers succeeds within the scratch, the budget, the work, the span and the
 memory of the
 specification, and its final memory satisfies the output condition
-(`NLAlib.Ops.Routine.Domain.Checked`). The deterministic claim is termination within the
+(`NLAlib.Ops.Inputs.Checked`). The deterministic claim is termination within the
 footprint only; the accuracy of the stored Schur form holds with probability over the draws:
 `NLAlib.Schur.denseSchurClaim`. -/
 theorem denseSchur_checked (Mch : Machine ℝ)

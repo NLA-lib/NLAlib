@@ -94,9 +94,9 @@ theorem exec_scalarProgram_work_le_and_quadForm_le (M : Machine ℝ) (u : ℝ)
     (I : Interp ScalarOp CmpTst ℝ)
     (hI : (RoundedScalarBlas.model (problem lower upper domain admitted supply) M).contracts
       d x I) (τ : Tape ℝ) :
-    ∃ st, exec scalarProgram I RoundedScalarBlas.resources
+    ∃ st, Reference.Execution scalarProgram I RoundedScalarBlas.resources
         (problem lower upper domain admitted supply).formats τ d
-        ((problem lower upper domain admitted supply).initial d x) = some st ∧
+        ((problem lower upper domain admitted supply).initial d x) st ∧
       RoundedScalarBlas.resources.work st.cost ≤
         33 * d 0 ^ 2 * d 1 + 157 * d 0 * d 1 + 242 * d 1 + 50 * d 0 + 127 ∧
       ∃ m ≤ d 1, ∃ (s : CGState ℝ (Fin (d 0))) (rho : ℝ),

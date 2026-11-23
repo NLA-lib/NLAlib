@@ -410,7 +410,7 @@ def ofWpActual {M : AccessModel Op Tst P} {S : Specification Op Tst P}
     (hmemory : ∀ d, P.valid d → ∀ x : P.Input d,
       P.initialBytes d x + S.scratch d ≤ S.memory d) : Algorithm M S where
   program := p
-  correct d hd x I hI τ := by
+  correct := (p.certifies_iff_exec M S).mpr fun d hd x I hI τ => by
     obtain ⟨m', hr, hg⟩ := hwp d hd x I hI τ
     have hm : eval I.instrument τ p.body.instrument (Program.environment (b := b) d)
         (P.initial d x) = some m' := by rw [run_instrument]; exact hr

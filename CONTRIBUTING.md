@@ -130,7 +130,9 @@ It runs, in order:
 4. fixed-program checks `scripts/OpsPrograms.lean` (E2), the line of every Ops certificate
    against `scripts/ops_certificates.txt` (model, resource fields, problem, oracles, randomized
    claim; [checks](docs/contributing/checks.md)), the script's own fixtures for that
-   classification, and kernel-checked structural/accounting
+   classification, the declarations a certificate's meaning depends on against
+   `scripts/ops_trusted_base.txt` (a change to that list needs a reviewer's sign-off), and
+   kernel-checked structural/accounting
    fixtures ([programs](docs/contributing/programs.md));
 5. `scripts/check_refs.py` (citations, result ids, `Asymptotic:` and `Algorithm:` tags),
    `scripts/gen_rules_md.py --check` (the generated rule files are current), the unit tests of

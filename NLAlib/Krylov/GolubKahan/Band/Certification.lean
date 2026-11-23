@@ -416,7 +416,7 @@ theorem initialBytes_problem (d : Fin 4 → ℕ) (x : problem.Input d) :
   rw [Problem.initialBytes_of_lengths d x
     (fun i => (outLens (d 0) (d 1) (d 2) (d 3)).getD i.val 0)
     (fun i => by rw [h, slots, List.length_replicate])]
-  simp [problem, inputs, Routine.Domain.problem, outLens, List.ofFn_succ]
+  simp [problem, inputs, Inputs.problem, outLens, List.ofFn_succ]
 
 /-! ### The model -/
 
@@ -683,7 +683,7 @@ interpretation satisfying the contracts of the model and every tape, the run of 
 from the supplied buffers succeeds within the scratch, the budget, the work, the span and the
 memory of the
 specification, and its final memory satisfies the output condition
-(`NLAlib.Ops.Routine.Domain.Checked`). The matrix is not in memory: it is reached only
+(`NLAlib.Ops.Inputs.Checked`). The matrix is not in memory: it is reached only
 through the two products of the model (`NLAlib.Krylov.GolubKahan.Band.Certification.oracles`),
 and the work is counted in those products and the vector operations. The accuracy of the stored
 product for a Gaussian start block is `NLAlib.BlockKrylov.gaussianClaim`. -/

@@ -87,8 +87,9 @@ theorem exec_scalarProgram_work_le_and_spectral (M : Machine ℝ) (u : ℝ)
     {d : Fin 2 → ℕ} (hd : domain d) (x : (problem domain admitted).Input d)
     (I : Interp ScalarOp CmpTst ℝ)
     (hI : (RoundedScalarBlas.model (problem domain admitted) M).contracts d x I) (τ : Tape ℝ) :
-    ∃ st, exec scalarProgram I RoundedScalarBlas.resources (problem domain admitted).formats τ d
-        ((problem domain admitted).initial d x) = some st ∧
+    ∃ st, Reference.Execution
+        scalarProgram I RoundedScalarBlas.resources (problem domain admitted).formats τ d
+        ((problem domain admitted).initial d x) st ∧
       RoundedScalarBlas.resources.work st.cost ≤
         33 * d 0 ^ 2 * d 1 + 92 * d 0 * d 1 ^ 2 + 152 * d 1 ^ 2 + 269 * d 0 * d 1 + 581 * d 1 +
           58 * d 0 + 179 ∧

@@ -18,7 +18,9 @@ ones specific to agents.
 2. **Preserve certificate scope.** Do not weaken a declared problem, operation contract or
    specification to prove a program certificate. Explain any required interface change and
    obtain maintainer review (docs/contributing/programs.md). The retired target registry is
-   not used by Ops certificates.
+   not used by Ops certificates. The declarations listed in `scripts/ops_trusted_base.txt` are
+   what every certificate means: do not change one, add one, or rewrite that file, without
+   saying so and obtaining maintainer review (docs/contributing/checks.md, "The trusted base").
 3. **Do not commit or push unless asked to.** Keep pushes on the authorized branch.
 4. **Run the checks before you report.** `lake lean <file>` (or `lake build <Module.Name>`
    when another file must import it) and

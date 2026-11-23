@@ -67,10 +67,8 @@ theorem measureReal_not_accepts_le_of_hasLaw_gaussianMatrix
     (hSize : subgaussianEmbeddingDim 1 rank (1 / 2) (delta / 2) ≤ d 1)
     (hTolerance : 0 ≤ tolerance) :
     P.real {omega | ¬ (specification dataLength matrix work workspace w stream).Accepts
-      (ExactLinear.resources work workspace) d input
-        (exec algorithm.program I (ExactLinear.resources work workspace)
-          (problem (𝕜 := ℝ) dataLength).formats (packedSampleTape stream (S omega) (G omega))
-          d ((problem (𝕜 := ℝ) dataLength).initial d input))
+        algorithm.program I (ExactLinear.resources work workspace)
+        (packedSampleTape stream (S omega) (G omega)) d input
         (fun c m => (specification dataLength matrix work workspace w stream).good
             d input (packedSampleTape stream (S omega) (G omega)) c m ∧
           StoresApproxTrace (matrix (d 0) (d 0) input.val.1.val) tolerance (1, 0) m)} ≤
@@ -123,11 +121,8 @@ theorem Certification.measureReal_not_accepts_le_of_hasLaw_gaussianMatrix
     (hSize : subgaussianEmbeddingDim 1 rank (1 / 2) (delta / 2) ≤ d 1)
     (hTolerance : 0 ≤ tolerance) :
     P.real {omega | ¬ (specification dataLength matrix work workspace w stream).Accepts
-      (ExactLinear.resources work workspace) d input
-        (exec (Certification.algorithm dataLength matrix work workspace w hWorkspace stream).program
-          I (ExactLinear.resources work workspace)
-          (problem (𝕜 := ℝ) dataLength).formats (packedSampleTape stream (S omega) (G omega))
-          d ((problem (𝕜 := ℝ) dataLength).initial d input))
+        (Certification.algorithm dataLength matrix work workspace w hWorkspace stream).program I
+        (ExactLinear.resources work workspace) (packedSampleTape stream (S omega) (G omega)) d input
         (fun c m => (specification dataLength matrix work workspace w stream).good
             d input (packedSampleTape stream (S omega) (G omega)) c m ∧
           StoresApproxTrace (matrix (d 0) (d 0) input.val.1.val) tolerance (1, 0) m)} ≤

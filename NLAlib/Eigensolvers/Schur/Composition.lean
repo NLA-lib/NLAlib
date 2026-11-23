@@ -148,7 +148,7 @@ theorem schurPipelineWith_measureReal_not_schur_le [Has ScalarOp O] [Has IndexOp
 $c_1 > 0$, $\boldsymbol{u} \le 1/3$ and $\|x\mathbf{A}_1 - \mathbf{A}\|_2 \le
 3\boldsymbol{u}\|\mathbf{A}\|_{\mathsf F}$, then $\|\mathbf{A}_1\|_2 \le 2/c_1$. -/
 theorem specNorm_le_two_div_of_scaled {N : ℕ} {A A₁ : Matrix (Fin N) (Fin N) ℂ} {x u c₁ : ℝ}
-    (hc₁ : 0 < c₁) (hx0 : 0 < x) (hxl : c₁ * frobNorm A ≤ x) (hu0 : 0 ≤ u) (hu : u ≤ 1 / 3)
+    (hc₁ : 0 < c₁) (hx0 : 0 < x) (hxl : c₁ * frobNorm A ≤ x) (hu : u ≤ 1 / 3)
     (hA₁ : specNorm ((x : ℂ) • A₁ - A) ≤ 3 * u * frobNorm A) : specNorm A₁ ≤ 2 / c₁ := by
   have hF0 := frobNorm_nonneg A
   have h := specNorm_add_le A ((x : ℂ) • A₁ - A)
@@ -316,7 +316,7 @@ theorem schurPipeline_pos_pwrites_regularizedSchur [Has ScalarOp O] {Mch : Machi
     rintro ⟨m, hm, x, hx, hx0, hxl, hxu, A₁, hA₁, hn⟩
     obtain ⟨-, -, -, -, -, -, -, -, hap, hq⟩ := id hm
     obtain ⟨h1', -, -, -, -, -⟩ := apart_four hap
-    have hA₁b := specNorm_le_two_div_of_scaled hc₁ hx0 hxl hu0 hu3 hn
+    have hA₁b := specNorm_le_two_div_of_scaled hc₁ hx0 hxl hu3 hn
     refine ((hReg A₁ le_rfl hA₁b (a := a) (q := p)).in_frame
       (ρ := schurPipelineEnv n qR.length qC.length k F T a p uo f L) (ds := [.var 0, .var 1])
       (args := [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩]) rfl rfl
@@ -337,7 +337,8 @@ theorem schurPipeline_pos_pwrites_regularizedSchur [Has ScalarOp O] {Mch : Machi
         C (g y.2) ∧ specNorm (g y.2 - g y.1) ≤ δR)} :=
     (Mem.measurableSet_eqOff _).inter ((measurable_snd
       (ShiftedQR.measurableSet_forall_isSome a _)).inter (((hgm.comp measurable_snd) hCm).inter
-      (measurableSet_le ((continuous_specNorm.comp (continuous_fst.sub continuous_snd)).measurable.comp
+      (measurableSet_le
+        ((continuous_specNorm.comp (continuous_fst.sub continuous_snd)).measurable.comp
         ((hgm.comp measurable_snd).prodMk (hgm.comp measurable_fst))) measurable_const)))
   have hreg : PWrites law I
       (Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg)
@@ -364,7 +365,7 @@ theorem schurPipeline_pos_pwrites_regularizedSchur [Has ScalarOp O] {Mch : Machi
     (fun m hm => by
       obtain ⟨hm, x, hx, hx0, hxl, hxu, A₁, A₂, hn, hA₂, hA₂n, hC⟩ := hm
       exact ⟨hm, x, A₁, A₂, hx, hx0, hA₂,
-        specNorm_le_two_div_of_scaled hc₁ hx0 hxl hu0 hu3 hn, hA₂n, hC⟩)
+        specNorm_le_two_div_of_scaled hc₁ hx0 hxl hu3 hn, hA₂n, hC⟩)
     (fun m₂ m'' x' A₂' hm₂ hx' hA₂' _ hT => by
       obtain ⟨_, x, hx, hx0, hxl, hxu, A₁, A₂, hn, hA₂, hA₂n, hC⟩ := hm₂
       obtain rfl : x' = x := Option.some.inj (hx'.symm.trans hx)

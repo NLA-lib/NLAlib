@@ -381,8 +381,9 @@ theorem denseSchur_writes_orth {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
   rw [hN, show (1 : ℝ) + ((1 + 24 * u) ^ Rc - 1) = (1 + 24 * u) ^ Rc by ring] at hw
   exact hw
 
-/-- **The dense Schur solver at two tolerances terminates on every tape**, at any $\delta_R$, $\delta_C$ and $\varphi$, on a
-scalar machine with the standard model at $\boldsymbol{u}$, $400(n + 1)^2\boldsymbol{u} \le 1$,
+/-- **The dense Schur solver at two tolerances terminates on every tape**, at any $\delta_R$,
+$\delta_C$ and $\varphi$, on a scalar machine with the standard model at $\boldsymbol{u}$,
+$400(n + 1)^2\boldsymbol{u} \le 1$,
 index literals, exact natural literals up to $n + 1$, exact `toNat` and comparisons, draws that
 store the tape entry and an exact polar disk sampler: the run of `denseSchur` from a memory
 holding $\mathbf{A}$ and the words of `denseSchurParamsAt` writes only $\mathbf{A}$,
@@ -402,16 +403,19 @@ theorem denseSchurAt_writes_orth {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
       (Env.frame (denseSchurDimsAt n δR δC φ) [a, p, a, uo, f]) (schurFp n a uo f)
       (SchurOrth (n := n) a uo
         (2 * ((1 + 27 * ((n : ℝ) + 1) ^ 2 * u) * (1 + 24 * u) ^ shqrSchurRotations n
-          (denseSchurDegree n δR φ) (denseSchurShQRParamsAt n δR δC φ ++ denseSchurLeafParamsAt n δR δC φ).length
+          (denseSchurDegree n δR φ)
+          (denseSchurShQRParamsAt n δR δC φ ++ denseSchurLeafParamsAt n δR δC φ).length
           (denseSchurCapAt n δR δC φ) (smallEigLeafRotations (denseSchurDegree n δR φ)
             (denseSchurLeafCapAt n δR δC φ)) - 1) +
          ((1 + 27 * ((n : ℝ) + 1) ^ 2 * u) * (1 + 24 * u) ^ shqrSchurRotations n
-          (denseSchurDegree n δR φ) (denseSchurShQRParamsAt n δR δC φ ++ denseSchurLeafParamsAt n δR δC φ).length
+          (denseSchurDegree n δR φ)
+          (denseSchurShQRParamsAt n δR δC φ ++ denseSchurLeafParamsAt n δR δC φ).length
           (denseSchurCapAt n δR δC φ) (smallEigLeafRotations (denseSchurDegree n δR φ)
             (denseSchurLeafCapAt n δR δC φ)) - 1) ^ 2)) μ := by
   have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
   set Rc := shqrSchurRotations n (denseSchurDegree n δR φ)
-    (denseSchurShQRParamsAt n δR δC φ ++ denseSchurLeafParamsAt n δR δC φ).length (denseSchurCapAt n δR δC φ)
+    (denseSchurShQRParamsAt n δR δC φ ++ denseSchurLeafParamsAt n δR δC φ).length
+    (denseSchurCapAt n δR δC φ)
     (smallEigLeafRotations (denseSchurDegree n δR φ) (denseSchurLeafCapAt n δR δC φ))
   have hN : (((n + 1 : ℕ)) : ℝ) = (n : ℝ) + 1 := by push_cast; ring
   have hN2 : ((n : ℝ) + 1) ^ 2 * u ≤ 1 / 400 := by linarith
@@ -425,7 +429,8 @@ theorem denseSchurAt_writes_orth {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
       (by rw [hN]; nlinarith)
   have hCore : TerminatingSchurCore ((1 + 24 * u) ^ Rc - 1) (denseSchurDegree n δR φ)
       (denseSchurCapAt n δR δC φ) (denseSchurLeafCapAt n δR δC φ) (n + 1)
-      (denseSchurThresholdAt n δR δC φ :: (denseSchurShQRParamsAt n δR δC φ ++ denseSchurLeafParamsAt n δR δC φ))
+      (denseSchurThresholdAt n δR δC φ ::
+        (denseSchurShQRParamsAt n δR δC φ ++ denseSchurLeafParamsAt n δR δC φ))
       (roundedShQRSchur (O := O) (Q := Q) sG) I := by
     rw [← shqrSchurParamsAt_eq, show Rc = _ from (shqrSmallEigRotationsAt_eq n δR δC φ).symm]
     exact roundedShQRSchur_terminatingSchurCore hS hM (by nlinarith) hL hNat hQ hC hSmp hDisk rfl
@@ -494,6 +499,78 @@ theorem isSigmaCompact_setOf_isConditionedDiagonalizable {N : ℕ} (B Γ : ℝ) 
   have : SigmaCompactSpace M := inferInstanceAs (SigmaCompactSpace (Fin N → Fin N → ℂ))
   exact (isSigmaCompact_univ.of_isClosed_subset hZ (Set.subset_univ _)).image continuous_fst
 
+/-- The small-block leaf of the dense Schur solver at two tolerances meets its contract, for the
+accuracy $\beta \le 32$ of the core and the leaf failure at most $1$. -/
+private theorem denseSchurAt_leafContract {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hG : law sG = gaussianReal 0 1) {δR δC φ : ℝ}
+    (hβ : 0 < shqrSmallEigAccuracy n (2 * denseSchurB n δR φ) (denseSchurΓ n δR φ / 2) 8
+      (denseSchurDelta n δC))
+    (hβS : shqrSmallEigAccuracy n (2 * denseSchurB n δR φ) (denseSchurΓ n δR φ / 2) 8
+      (denseSchurDelta n δC) ≤ 32)
+    (hφL : 0 < denseSchurLeafFailureAt n δR δC φ) (hφL1 : denseSchurLeafFailureAt n δR δC φ ≤ 1)
+    (hu : u ≤ uDenseSchurAt n δR δC φ) :
+    RandomSchurLeafContract law
+      ((1 + 24 * u) ^ smallEigLeafRotations (denseSchurDegree n δR φ)
+        (denseSchurLeafCapAt n δR δC φ) - 1)
+      (forwardBackwardError (denseSchurDegree n δR φ) 32
+        (shqrSmallEigAccuracy n (2 * denseSchurB n δR φ) (denseSchurΓ n δR φ / 2) 8
+          (denseSchurDelta n δC)))
+      (denseSchurLeafFailureAt n δR δC φ) (min (denseSchurDegree n δR φ) (n + 1)) (4 * 8)
+      (denseSchurLeafParamsAt n δR δC φ) (denseSchurLeafCapAt n δR δC φ)
+      (smallEigProg (O := O) (Q := Q) sG) I := by
+  have h : RandomSchurLeafContract law ((1 + 24 * u) ^ smallEigLeafRotations
+        (denseSchurDegree n δR φ)
+        (smallEigForwardCap (denseSchurDegree n δR φ) 32
+          (shqrSmallEigAccuracy n (2 * denseSchurB n δR φ) (denseSchurΓ n δR φ / 2) 8
+            (denseSchurDelta n δC))
+          (denseSchurLeafFailureAt n δR δC φ) ginibreGapTail ginibreConditionTail) - 1)
+      (forwardBackwardError (denseSchurDegree n δR φ) 32
+        (shqrSmallEigAccuracy n (2 * denseSchurB n δR φ) (denseSchurΓ n δR φ / 2) 8
+          (denseSchurDelta n δC)))
+      (denseSchurLeafFailureAt n δR δC φ) (min (denseSchurDegree n δR φ) (n + 1)) 32
+      (denseSchurLeafParamsAt n δR δC φ)
+      (smallEigForwardCap (denseSchurDegree n δR φ) 32
+        (shqrSmallEigAccuracy n (2 * denseSchurB n δR φ) (denseSchurΓ n δR φ / 2) 8
+          (denseSchurDelta n δC))
+        (denseSchurLeafFailureAt n δR δC φ) ginibreGapTail ginibreConditionTail)
+      (smallEigProg (O := O) (Q := Q) sG) I :=
+    SmallEig.smallEigProg_randomSchurLeafContract (O := O) (Q := Q) hS hM hL
+      (dmax := min (denseSchurDegree n δR φ) (n + 1)) (min_le_left _ _)
+      (hNat.mono (min_le_right _ _)) hQ hC hI hloc hSmp hDisk hU hG
+      boundsGinibreGap_ginibreGapTail boundsGinibreCondition_ginibreConditionTail
+      ginibreGapTail_b_pos ginibreConditionTail_b_pos hβ hβS hφL hφL1
+      (hu.trans (min_le_right _ _))
+  rw [← denseSchurLeafCapAt_eq] at h
+  rw [show (4 : ℝ) * 8 = 32 by norm_num]
+  exact @h
+
+/-- The reducer's error at the regularized matrix is within the separation budget of the class
+$(B, \Gamma)$, at the precision bound on the gap and condition constants. -/
+private theorem denseSchurAt_reducer_le {n : ℕ} {δR φ u : ℝ} (hδR : 0 < δR) (hδR1 : δR ≤ 1)
+    (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hu0 : 0 ≤ u)
+    (hu3 : u ≤ smallEigGap (n + 1) 4 (denseSchurDelta n δR) (φ / 2) ginibreGapTail *
+      smallEigCond (n + 1) 4 (denseSchurDelta n δR) (φ / 2) ginibreConditionTail /
+        (28800 * ((n : ℝ) + 1) ^ 3)) :
+    50 * ((n : ℝ) + 1) ^ 2 * u * (2 / (1 / 2) + denseSchurDelta n δR / 2) ≤
+      denseSchurΓ n δR φ / (16 * ((n : ℝ) + 1) * denseSchurB n δR φ) := by
+  obtain ⟨hdR0, hdR1, hg, hc, -, hB, -⟩ := denseSchur_params_basic (n := n) hδR hδR1 hφ hφ1
+  set g := smallEigGap (n + 1) 4 (denseSchurDelta n δR) (φ / 2) ginibreGapTail
+  set c := smallEigCond (n + 1) 4 (denseSchurDelta n δR) (φ / 2) ginibreConditionTail
+  set N : ℝ := (n : ℝ) + 1 with hNdef
+  have hN1 : 1 ≤ N := by have := (Nat.cast_nonneg n : (0 : ℝ) ≤ n); linarith
+  have hu3' : u * (28800 * N ^ 3) ≤ g * c := (le_div_iff₀ (by positivity)).mp hu3
+  have e : denseSchurΓ n δR φ / (16 * N * denseSchurB n δR φ) = g * c / (64 * N) := by
+    unfold denseSchurΓ denseSchurB; field_simp; ring
+  rw [e, le_div_iff₀ (by positivity)]
+  have hN3 : N ^ 3 * u * (4 + denseSchurDelta n δR / 2) ≤ N ^ 3 * u * (4 + 1 / 32) :=
+    mul_le_mul_of_nonneg_left (by linarith) (by positivity)
+  nlinarith
+
 -- The four stage contracts at their long parameters make the elaboration heavy.
 set_option maxHeartbeats 1000000 in
 -- (heavy elaboration, see above)
@@ -516,18 +593,22 @@ theorem denseSchurAt_pwrites_regularizedSchur {Mch : Machine ℝ} {I : Interp O 
           (denseSchurΓ n δR φ)) a uo f A (1 / 2) 2
         (2 * √((n : ℝ) + 1) * (denseSchurDelta n δR / 2) + 3 * √((n : ℝ) + 1) * u)
         (schurPipelineEX n (1 / 2) 2 u (50 * ((n : ℝ) + 1) ^ 2 * u) (denseSchurDelta n δC)
-          ((1 + 27 * ((n : ℝ) + 1) ^ 2 * u) * (1 + 24 * u) ^ shqrSchurRotations n (denseSchurDegree n δR φ)
+          ((1 + 27 * ((n : ℝ) + 1) ^ 2 * u) * (1 + 24 * u) ^
+            shqrSchurRotations n (denseSchurDegree n δR φ)
             (denseSchurShQRParamsAt n δR δC φ ++ denseSchurLeafParamsAt n δR δC φ).length
             (denseSchurCapAt n δR δC φ)
             (smallEigLeafRotations (denseSchurDegree n δR φ) (denseSchurLeafCapAt n δR δC φ)) - 1))
-        (2 * ((1 + 27 * ((n : ℝ) + 1) ^ 2 * u) * (1 + 24 * u) ^ shqrSchurRotations n (denseSchurDegree n δR φ)
+        (2 * ((1 + 27 * ((n : ℝ) + 1) ^ 2 * u) * (1 + 24 * u) ^
+            shqrSchurRotations n (denseSchurDegree n δR φ)
             (denseSchurShQRParamsAt n δR δC φ ++ denseSchurLeafParamsAt n δR δC φ).length
             (denseSchurCapAt n δR δC φ)
             (smallEigLeafRotations (denseSchurDegree n δR φ) (denseSchurLeafCapAt n δR δC φ)) - 1) +
-          ((1 + 27 * ((n : ℝ) + 1) ^ 2 * u) * (1 + 24 * u) ^ shqrSchurRotations n (denseSchurDegree n δR φ)
+          ((1 + 27 * ((n : ℝ) + 1) ^ 2 * u) * (1 + 24 * u) ^
+            shqrSchurRotations n (denseSchurDegree n δR φ)
             (denseSchurShQRParamsAt n δR δC φ ++ denseSchurLeafParamsAt n δR δC φ).length
             (denseSchurCapAt n δR δC φ)
-            (smallEigLeafRotations (denseSchurDegree n δR φ) (denseSchurLeafCapAt n δR δC φ)) - 1) ^ 2)) φ := by
+            (smallEigLeafRotations (denseSchurDegree n δR φ)
+              (denseSchurLeafCapAt n δR δC φ)) - 1) ^ 2)) φ := by
   obtain ⟨hdR0, hdR1, hg, hc, hc1, hB, hΓ⟩ := denseSchur_params_basic (n := n) hδR hδR1 hφ hφ1
   obtain ⟨hdC0, hdC1, -⟩ := denseSchur_params_basic (n := n) hδC hδC1 hφ hφ1
   have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
@@ -554,24 +635,9 @@ theorem denseSchurAt_pwrites_regularizedSchur {Mch : Machine ℝ} {I : Interp O 
   have hLeaf : RandomSchurLeafContract law ((1 + 24 * u) ^ RL - 1)
       (forwardBackwardError k 32 (shqrSmallEigAccuracy n B2 Γ2 8 δ'C))
       (denseSchurLeafFailureAt n δR δC φ) (min k (n + 1)) (4 * 8) qs T
-      (smallEigProg (O := O) (Q := Q) sG) I := by
-    have h : RandomSchurLeafContract law ((1 + 24 * u) ^ smallEigLeafRotations k
-          (smallEigForwardCap k 32 (shqrSmallEigAccuracy n B2 Γ2 8 δ'C)
-            (denseSchurLeafFailureAt n δR δC φ) ginibreGapTail ginibreConditionTail) - 1)
-        (forwardBackwardError k 32 (shqrSmallEigAccuracy n B2 Γ2 8 δ'C))
-        (denseSchurLeafFailureAt n δR δC φ) (min k (n + 1)) 32 qs
-        (smallEigForwardCap k 32 (shqrSmallEigAccuracy n B2 Γ2 8 δ'C)
-          (denseSchurLeafFailureAt n δR δC φ) ginibreGapTail ginibreConditionTail)
-        (smallEigProg (O := O) (Q := Q) sG) I :=
-      SmallEig.smallEigProg_randomSchurLeafContract (O := O) (Q := Q) hS hM hL
-      (dmax := min k (n + 1)) (min_le_left _ _)
-      (hNat.mono (min_le_right _ _)) hQ hC hI hloc hSmp hDisk hU hG
-      boundsGinibreGap_ginibreGapTail boundsGinibreCondition_ginibreConditionTail
-      ginibreGapTail_b_pos ginibreConditionTail_b_pos hβ (by linarith : _ ≤ (32 : ℝ)) hφL
-      (by linarith) (hu.trans (min_le_right _ _))
-    rw [← denseSchurLeafCapAt_eq] at h
-    rw [show (4 : ℝ) * 8 = 32 by norm_num]
-    exact @h
+      (smallEigProg (O := O) (Q := Q) sG) I :=
+    denseSchurAt_leafContract hS hM hL hNat hQ hC hI hloc hSmp hDisk hU hG hβ
+      (by linarith) hφL (le_trans hφL1 (by linarith)) hu
   have hR0 : 0 ≤ (1 + 24 * u) ^ RL - 1 := by
     have := one_le_pow₀ (M₀ := ℝ) (n := RL) (by linarith : (1 : ℝ) ≤ 1 + 24 * u)
     linarith
@@ -616,17 +682,7 @@ theorem denseSchurAt_pwrites_regularizedSchur {Mch : Machine ℝ} {I : Interp O 
       IsConditionedDiagonalizable B2 Γ2 H :=
     fun A H V hA hV => hA.of_isPerturbedUnitarySimilarBy hΓ hV (by
       rw [hN]
-      set g := smallEigGap (n + 1) 4 (denseSchurDelta n δR) (φ / 2) ginibreGapTail
-      set c := smallEigCond (n + 1) 4 (denseSchurDelta n δR) (φ / 2) ginibreConditionTail
-      set N : ℝ := (n : ℝ) + 1 with hNdef
-      have hN1 : 1 ≤ N := by have := (Nat.cast_nonneg n : (0 : ℝ) ≤ n); linarith
-      have hu3' : u * (28800 * N ^ 3) ≤ g * c := (le_div_iff₀ (by positivity)).mp hu3
-      have e : denseSchurΓ n δR φ / (16 * N * denseSchurB n δR φ) = g * c / (64 * N) := by
-        unfold denseSchurΓ denseSchurB; field_simp; ring
-      rw [e, le_div_iff₀ (by positivity)]
-      have hN3 : N ^ 3 * u * (4 + denseSchurDelta n δR / 2) ≤ N ^ 3 * u * (4 + 1 / 32) :=
-        mul_le_mul_of_nonneg_left (by linarith) (by positivity)
-      nlinarith)
+      exact denseSchurAt_reducer_le hδR hδR1 hφ hφ1 hu0 hu3)
   have hCm : MeasurableSet {X : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ |
       IsConditionedDiagonalizable (denseSchurB n δR φ) (denseSchurΓ n δR φ) X} :=
     measurableSet_of_isSigmaCompact (isSigmaCompact_setOf_isConditionedDiagonalizable _ _)

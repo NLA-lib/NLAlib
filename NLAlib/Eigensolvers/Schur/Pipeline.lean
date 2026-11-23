@@ -248,15 +248,21 @@ theorem measurableSet_regularizedSchurOutput {n : ℕ}
     (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (c₁ c₂ eR eX eU : ℝ) (hc₁ : 0 < c₁)
     (hC : IsSigmaCompact {X : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ | C X}) :
     MeasurableSet {μ' : Mem ℝ | RegularizedSchurOutput C a uo f A c₁ c₂ eR eX eU μ'} := by
-  have : SigmaCompactSpace (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) := inferInstanceAs (SigmaCompactSpace (Fin (n + 1) → Fin (n + 1) → ℂ))
+  have : SigmaCompactSpace (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) :=
+    inferInstanceAs (SigmaCompactSpace (Fin (n + 1) → Fin (n + 1) → ℂ))
   set T := fun μ' : Mem ℝ => storedMatrix a (n + 1) (n + 1) μ'.store
   set U := fun μ' : Mem ℝ => storedMatrix uo (n + 1) (n + 1) μ'.store
-  set S : Set ((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) × (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) := {p | ∃ X : (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), specNorm (A - X) ≤ eR * specNorm A ∧
+  set S : Set ((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) ×
+      (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) :=
+    {p | ∃ X : (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), specNorm (A - X) ≤ eR * specNorm A ∧
     specNorm (X - p.1 * p.2 * p.1ᴴ) ≤ eX * specNorm A ∧
     (A = 0 ∨ ∃ s : ℝ, c₁ * frobNorm A ≤ s ∧ s ≤ c₂ * frobNorm A ∧ C (s⁻¹ • X))}
   have hS : MeasurableSet S := by
     by_cases hA : A = 0
-    · set Z₀ : Set (((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) × (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) × (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) := {q | specNorm (A - q.2) ≤ eR * specNorm A ∧
+    · set Z₀ : Set (((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) ×
+          (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) ×
+          (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) :=
+        {q | specNorm (A - q.2) ≤ eR * specNorm A ∧
         specNorm (q.2 - q.1.1 * q.1.2 * q.1.1ᴴ) ≤ eX * specNorm A}
       have hZ₀ : IsClosed Z₀ :=
         (isClosed_le (continuous_specNorm.comp (continuous_const.sub continuous_snd))
@@ -275,15 +281,27 @@ theorem measurableSet_regularizedSchurOutput {n : ℕ}
     · have hF : 0 < frobNorm A :=
         lt_of_le_of_ne (frobNorm_nonneg A) (fun h => hA (frobNorm_eq_zero_iff.mp h.symm))
       obtain ⟨K, hK, hKC⟩ := hC
-      set Z : ℕ → Set (((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) × (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) × (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) × ℝ × (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) := fun k => {q |
+      set Z : ℕ → Set (((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) ×
+          (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) ×
+          (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) × ℝ ×
+          (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) := fun k => {q |
         specNorm (A - q.2.1) ≤ eR * specNorm A ∧
         specNorm (q.2.1 - q.1.1 * q.1.2 * q.1.1ᴴ) ≤ eX * specNorm A ∧
         c₁ * frobNorm A ≤ q.2.2.1 ∧ q.2.2.1 ≤ c₂ * frobNorm A ∧ q.2.1 = q.2.2.1 • q.2.2.2 ∧
         q.2.2.2 ∈ K k}
       have hZ : ∀ k, IsClosed (Z k) := fun k => by
-        have hX : Continuous fun q : ((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) × (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) × (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) × ℝ × (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) => q.2.1 := by fun_prop
-        have hs : Continuous fun q : ((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) × (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) × (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) × ℝ × (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) => q.2.2.1 := by fun_prop
-        have hY : Continuous fun q : ((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) × (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) × (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) × ℝ × (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) => q.2.2.2 := by fun_prop
+        have hX : Continuous fun q : ((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) ×
+            (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) ×
+            (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) × ℝ ×
+            (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) => q.2.1 := by fun_prop
+        have hs : Continuous fun q : ((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) ×
+            (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) ×
+            (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) × ℝ ×
+            (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) => q.2.2.1 := by fun_prop
+        have hY : Continuous fun q : ((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) ×
+            (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) ×
+            (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) × ℝ ×
+            (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) => q.2.2.2 := by fun_prop
         exact (isClosed_le (continuous_specNorm.comp (continuous_const.sub hX))
           continuous_const).inter ((isClosed_le (continuous_specNorm.comp (hX.sub
             ((continuous_fst.fst.matrix_mul continuous_fst.snd).matrix_mul
@@ -1285,7 +1303,8 @@ theorem schurPipeline_tail_pwrites_eq {Mch : Machine ℝ} {I : Interp O Q ℝ} {
     {x : ℝ} (hx : m.store.get L 0 = some x) (hx0 : 0 < x)
     {A₁ A₂ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hA₂ : HoldsMatrix a A₂ m.store)
     (hA₁n : specNorm A₁ ≤ 2 / c₁) (hA₂n : specNorm (A₂ - A₁) ≤ δR) (hC : C A₂) :
-    PWrites law I ((Stmt.frame [.var 0] [⟨3, .var 9⟩] (PairMatrix.identity (Op := O) (Tst := Q))).seq
+    PWrites law I ((Stmt.frame [.var 0] [⟨3, .var 9⟩]
+        (PairMatrix.identity (Op := O) (Tst := Q))).seq
         ((Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩] Red).seq
           ((Stmt.frame [.var 0, .var 2, .var 3, .var 4, .var 5]
             [⟨0, .var 6⟩, ⟨1, .var 7 + .var 1⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩,
@@ -1381,7 +1400,8 @@ theorem schurPipeline_tail_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
       m.store.get L 0 = some x → HoldsMatrix a A₂ m.store →
       m.store.EqOff (schurFp n a uo f) m'.store →
       SchurTailOutput a uo f ((1 + εHU) * (1 + εCU) - 1) εHT εCT u x A₂ m' → Post m') :
-    PWrites law I ((Stmt.frame [.var 0] [⟨3, .var 9⟩] (PairMatrix.identity (Op := O) (Tst := Q))).seq
+    PWrites law I ((Stmt.frame [.var 0] [⟨3, .var 9⟩]
+        (PairMatrix.identity (Op := O) (Tst := Q))).seq
         ((Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩] Red).seq
           ((Stmt.frame [.var 0, .var 2, .var 3, .var 4, .var 5]
             [⟨0, .var 6⟩, ⟨1, .var 7 + .var 1⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩,
@@ -1396,7 +1416,8 @@ theorem schurPipeline_tail_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
   have hT := measurableSet_eqOff_schurTailOutput (schurFp n a uo f) a uo f
     ((1 + εHU) * (1 + εCU) - 1) εHT εCT u (ShiftedQR.measurable_storedMatrix a (n + 1) (n + 1))
     (measurable_snd.comp (Mem.measurable_cell (L, 0)))
-  have hfam : ∀ y : {m // Mid₂ m}, PWrites law I ((Stmt.frame [.var 0] [⟨3, .var 9⟩] (PairMatrix.identity (Op := O) (Tst := Q))).seq
+  have hfam : ∀ y : {m // Mid₂ m}, PWrites law I ((Stmt.frame [.var 0] [⟨3, .var 9⟩]
+        (PairMatrix.identity (Op := O) (Tst := Q))).seq
         ((Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩] Red).seq
           ((Stmt.frame [.var 0, .var 2, .var 3, .var 4, .var 5]
             [⟨0, .var 6⟩, ⟨1, .var 7 + .var 1⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩,
@@ -1450,8 +1471,8 @@ theorem schurPipeline_pos_run {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hCC' : ∀ (A H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), C A →
       IsPerturbedUnitarySimilarBy V A H (εHT * (2 / c₁ + δR)) → C' H)
     (hc₁ : 0 < c₁) (hu0 : 0 ≤ u) (hu : 8 * ((n : ℝ) + 1) * u ≤ 1 / 4) (hδR : δR ≤ 1 / c₁)
-    (hεHT0 : 0 ≤ εHT) (hεHT : εHT ≤ 1 / 8) (hεHU : 0 ≤ εHU) (hεCU : 0 ≤ εCU)
-    (hεU : (1 + εHU) * (1 + εCU) - 1 ≤ 1 / 16) (hφR : 0 ≤ φR) (hφC : 0 ≤ φC)
+    (hεHT0 : 0 ≤ εHT) (hεHT : εHT ≤ 1 / 8) (hεCU : 0 ≤ εCU)
+    (hφR : 0 ≤ φR) (hφC : 0 ≤ φC)
     {a p uo f : ℕ × ℕ} {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {m : Mem ℝ}
     (hm : SchurPipelineMem n (qR ++ qC) a p uo f L m) (hA : HoldsMatrix a A m.store) {x : ℝ}
     (hx : m.store.get L 0 = some x) (hx0 : 0 < x) (hxl : c₁ * frobNorm A ≤ x)

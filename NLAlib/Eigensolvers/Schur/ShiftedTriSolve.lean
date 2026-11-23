@@ -265,7 +265,7 @@ private theorem norm_le_two_mul_of_floored {M : Machine ℝ} {u : ℝ} (hM : Std
   have hu4 : (1 + u) / 4 ≤ (1 - u) ^ 4 := by
     rw [show 1 - u = 1 + -u by ring]; push_cast at hb; linarith
   by_contra hc
-  push_neg at hc
+  push Not at hc
   have h4 := mul_lt_mul_of_pos_left hc (show 0 < (1 - u) ^ 4 by apply pow_pos; linarith)
   have h5 := mul_le_mul_of_nonneg_right hu4 (show 0 ≤ 4 * (smin * smin) by positivity)
   have e : (1 - u) ^ 4 * (2 * smin) ^ 2 = (1 - u) ^ 4 * (4 * (smin * smin)) := by ring
@@ -292,7 +292,7 @@ pivot within $\delta$ of $d$, then $\lvert d(-q) + R\rvert \le (8\boldsymbol{u}(
 \gamma)A + \delta\lvert q\rvert$. -/
 private theorem norm_row_residual_le {u γ A δ : ℝ} {d m' s R q : ℂ} (hm : m' ≠ 0)
     (hs : ‖s - R‖ ≤ γ * A) (hR : ‖R‖ ≤ A) (hq : ‖q - s / m'‖ ≤ 8 * u * (‖s‖ / ‖m'‖))
-    (hd : ‖d - m'‖ ≤ δ) (hγ : 0 ≤ γ) (hu : 0 ≤ u) :
+    (hd : ‖d - m'‖ ≤ δ) (hu : 0 ≤ u) :
     ‖d * -q + R‖ ≤ (8 * u * (1 + γ) + γ) * A + δ * ‖-q‖ := by
   have e : d * -q + R = -(m' * (q - s / m')) + (d - m') * -q + (R - s) := by
     field_simp; ring
@@ -362,7 +362,7 @@ private theorem one_add_seven_pow_sub_one_le {u : ℝ} (hu : 0 ≤ u) {r : ℕ}
 $\boldsymbol{u}\lvert d\rvert$ of $d$, or it is the floor $s_{\min} > 0$ with
 $\lvert d\rvert \le 2s_{\min} \le \tfrac23\sigma$. -/
 private theorem row_le_of_pivot {u γ A ε σ smin : ℝ} {d m m' s R q : ℂ}
-    (hs : ‖s - R‖ ≤ γ * A) (hR : ‖R‖ ≤ A) (hγ : 0 ≤ γ) (hu : 0 ≤ u)
+    (hs : ‖s - R‖ ≤ γ * A) (hR : ‖R‖ ≤ A) (hu : 0 ≤ u)
     (hcoef : 8 * u * (1 + γ) + γ ≤ ε) (hcoefu : u ≤ ε) (hσ : 0 ≤ σ)
     (hq : ‖q - s / m'‖ ≤ 8 * u * (‖s‖ / ‖m'‖)) (hdm : ‖d - m‖ ≤ u * ‖d‖)
     (hpiv : (m' = m ∧ m ≠ 0) ∨ (m' = (smin : ℂ) ∧ 0 < smin ∧ ‖d‖ ≤ 2 * smin ∧ σ = 3 * smin)) :
@@ -373,7 +373,7 @@ private theorem row_le_of_pivot {u γ A ε σ smin : ℝ} {d m m' s R q : ℂ}
   have hε : 0 ≤ ε := hu.trans hcoefu
   have e : ε * (‖d‖ * ‖-q‖ + A) = ε * (‖d‖ * ‖-q‖) + ε * A := by ring
   rcases hpiv with ⟨rfl, hm0⟩ | ⟨rfl, hsmin, hd2, rfl⟩
-  · have hrow := norm_row_residual_le hm0 hs hR hq hdm hγ hu
+  · have hrow := norm_row_residual_le hm0 hs hR hq hdm hu
     have h3 : u * ‖d‖ * ‖-q‖ ≤ ε * (‖d‖ * ‖-q‖) := by
       rw [mul_assoc]; exact mul_le_mul_of_nonneg_right hcoefu hdq
     have := mul_nonneg hσ (norm_nonneg (-q))
@@ -382,7 +382,7 @@ private theorem row_le_of_pivot {u γ A ε σ smin : ℝ} {d m m' s R q : ℂ}
     have hdm' : ‖d - (smin : ℂ)‖ ≤ 3 * smin := by
       refine (norm_sub_le _ _).trans ?_
       rw [Complex.norm_real, Real.norm_eq_abs, abs_of_pos hsmin]; linarith
-    have hrow := norm_row_residual_le hm0 hs hR hq hdm' hγ hu
+    have hrow := norm_row_residual_le hm0 hs hR hq hdm' hu
     have := mul_nonneg hε hdq
     linarith
 
@@ -451,7 +451,8 @@ private theorem shiftedTriSolveWord_row_le {u ε : ℝ} (hM : StdModel u id M)
       (fun l => entryAt T i (i + 1 + l)) (fun l => st.1 (i + 1 + l)) (List.range r)
       (entryAt T i j)
     rw [list_sum_map_range, list_sum_map_range, List.length_range] at h
-    have e1 : R = entryAt T i j + ∑ l ∈ Finset.range r, entryAt T i (i + 1 + l) * st.1 (i + 1 + l) := by
+    have e1 : R = entryAt T i j +
+        ∑ l ∈ Finset.range r, entryAt T i (i + 1 + l) * st.1 (i + 1 + l) := by
       simp only [R]; congr 1; exact Finset.sum_congr rfl fun l hl => by rw [hwk l hl]
     have e2 : A = ‖entryAt T i j‖ +
         ∑ l ∈ Finset.range r, ‖entryAt T i (i + 1 + l)‖ * ‖st.1 (i + 1 + l)‖ := by
@@ -481,9 +482,10 @@ private theorem shiftedTriSolveWord_row_le {u ε : ℝ} (hM : StdModel u id M)
   | false =>
     have hmm : m' = m := by simp only [m', hfl]; rfl
     have hm0 : m ≠ 0 := ne_zero_of_not_floored hM hu0 (by linarith) (smin := smin) (by
-      intro h; have h' : fl0 = true := decide_eq_true h; rw [hfl] at h'; exact absurd h' (by decide))
+      intro h; have h' : fl0 = true := decide_eq_true h; rw [hfl] at h'
+      exact absurd h' (by decide))
     have hq := NLAlib.Ops.StdModel.norm_complexDivide_sub_le hM hu32 (x := s) (hmm ▸ hm0)
-    exact row_le_of_pivot (smin := smin) hchain hRA hγ0 hu0 hcoef hcoefu hσ hq hdm
+    exact row_le_of_pivot (smin := smin) hchain hRA hu0 hcoef hcoefu hσ hq hdm
       (Or.inl ⟨hmm, hm0⟩)
   | true =>
     have hmm : m' = (smin : ℂ) := by
@@ -497,7 +499,7 @@ private theorem shiftedTriSolveWord_row_le {u ε : ℝ} (hM : StdModel u id M)
       norm_le_two_mul_of_floored hM hu0 (by nlinarith) hsmin.le hdm hle
     have hσ3 : (if (shiftedTriSolveWord M T smin j j).2 then 3 * smin else 0) = 3 * smin :=
       if_pos (hflag hfl)
-    exact row_le_of_pivot hchain hRA hγ0 hu0 hcoef hcoefu hσ hq hdm
+    exact row_le_of_pivot hchain hRA hu0 hcoef hcoefu hσ hq hdm
       (Or.inr ⟨hmm, hsmin, hd2, hσ3⟩)
 
 end Rows

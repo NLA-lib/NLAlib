@@ -247,6 +247,36 @@ theorem denseSchurAt_completes_pair [Has IndexOp O] [Has SampleOp O] [Has DiskSa
   exact schurPipelineWith_completes_pair hS hL hNat hC (frobNormStage_completing hS (n + 1)) hReg
     (hessenbergReduceQ_completing hS hC hQ hL hNat (by omega)) hCore hin τ
 
+/-- The fifteen disjointness facts of the operands of the eigensolver. -/
+private theorem eigSolverInput_disj {n : ℕ} {a p uo f pe v : ℕ × ℕ} {qs qe : List ℝ}
+    (hap : Fp.Apart [a, p, uo, f, pe, v] [2 * ((n + 1) * (n + 1)), qs.length,
+      2 * ((n + 1) * (n + 1)), 1, qe.length, 2 * ((n + 1) * (n + 1))]) :
+    Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock p.1 p.2 qs.length) ∧
+    Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) ∧
+    Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock f.1 f.2 1) ∧
+    Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock pe.1 pe.2 qe.length) ∧
+    Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1)))) ∧
+    Fp.Disj (Store.inBlock p.1 p.2 qs.length)
+      (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) ∧
+    Fp.Disj (Store.inBlock p.1 p.2 qs.length) (Store.inBlock f.1 f.2 1) ∧
+    Fp.Disj (Store.inBlock p.1 p.2 qs.length) (Store.inBlock pe.1 pe.2 qe.length) ∧
+    Fp.Disj (Store.inBlock p.1 p.2 qs.length) (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1)))) ∧
+    Fp.Disj (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock f.1 f.2 1) ∧
+    Fp.Disj (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock pe.1 pe.2 qe.length) ∧
+    Fp.Disj (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1)))) ∧
+    Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock pe.1 pe.2 qe.length) ∧
+    Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1)))) ∧
+    Fp.Disj (Store.inBlock pe.1 pe.2 qe.length)
+      (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1)))) := by
+  simpa only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
+    and_true, and_assoc] using hap
+
+omit [Has ScalarOp O] in
 /-- **The eigensolver runs to completion** on any scalar machine with index literals and exact
 comparisons, given a Schur solver that completes storing a pair and an eigenvector stage that
 completes: it writes only $\mathbf{A}$, $\widehat{\mathbf{U}}$, $\widehat{\mathbf{V}}$ and the
@@ -290,30 +320,8 @@ theorem eigSolverWith_completes_of_pair [Has IndexOp O] [Has CmpTst Q] {Mch : Ma
       hBelow.keep (Store.readsOnly_readBlock _ _ _ _) (fun _ _ h => h.1 ▸ hlt p (by simp)) hP⟩
     · have := hl4 z hz; simp only at this ⊢; omega
     · rw [hroomeq (by intro z hz; exact hl4 z hz)]; exact hroom4
-  obtain ⟨h12, h13, h14, h15, h16, h23, h24, h25, h26, h34, h35, h36, h45, h46, h56⟩ :
-      Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock p.1 p.2 qs.length) ∧
-      Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
-        (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) ∧
-      Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock f.1 f.2 1) ∧
-      Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock pe.1 pe.2 qe.length) ∧
-      Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
-        (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1)))) ∧
-      Fp.Disj (Store.inBlock p.1 p.2 qs.length)
-        (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) ∧
-      Fp.Disj (Store.inBlock p.1 p.2 qs.length) (Store.inBlock f.1 f.2 1) ∧
-      Fp.Disj (Store.inBlock p.1 p.2 qs.length) (Store.inBlock pe.1 pe.2 qe.length) ∧
-      Fp.Disj (Store.inBlock p.1 p.2 qs.length) (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1)))) ∧
-      Fp.Disj (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock f.1 f.2 1) ∧
-      Fp.Disj (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))))
-        (Store.inBlock pe.1 pe.2 qe.length) ∧
-      Fp.Disj (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))))
-        (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1)))) ∧
-      Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock pe.1 pe.2 qe.length) ∧
-      Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1)))) ∧
-      Fp.Disj (Store.inBlock pe.1 pe.2 qe.length)
-        (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1)))) := by
-    simpa only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
-      and_true, and_assoc] using hap
+  obtain ⟨h12, h13, h14, h15, h16, h23, h24, h25, h26, h34, h35, h36, h45, h46, h56⟩ :=
+    eigSolverInput_disj hap
   have hlive7 : (⟨s₁, μ.pos⟩ : Mem ℝ).Live [a, p, a, uo, f] := fun z hz => hpin'.1 z (by
     simp only [List.mem_cons, List.mem_nil_iff, or_false] at hz ⊢; tauto)
   have hFS : schurFp n a uo f ≤ eigFp n a uo v f ⊔ Fp.above L := fun _ _ h => Or.inl (Or.inl h)
@@ -337,13 +345,15 @@ theorem eigSolverWith_completes_of_pair [Has IndexOp O] [Has CmpTst Q] {Mch : Ma
     · simp
   have hroom₁ : m₁.Room [v, (L, 0)] [2 * ((n + 1) * (n + 1)), 1] := by
     have hv : (⟨s₁, μ.pos⟩ : Mem ℝ).Room [v] [2 * ((n + 1) * (n + 1))] := by
-      rw [hroomeq (fun z hz => by simp at hz; rw [hz]; exact hlt v (by simp))]
+      rw [hroomeq (fun z hz => by
+        rw [List.mem_singleton.mp hz]; exact hlt v (by simp))]
       exact ⟨hroom.2.1, trivial⟩
     refine ⟨?_, ?_, trivial⟩
     · rw [hfr₁.len_eq]; exact hv.1
     · rw [hfr₁.len_eq]; simp [hL1]
   have hap₁ : Fp.Apart [a, uo, pe, v, (L, 0)]
-      [2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), qe.length, 2 * ((n + 1) * (n + 1)), 1] := by
+      [2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), qe.length,
+        2 * ((n + 1) * (n + 1)), 1] := by
     have hLa : ∀ z ∈ [a, uo, pe, v], ∀ l, Fp.Disj (Store.inBlock z.1 z.2 l) (Store.inBlock L 0 1) :=
       fun z hz l => Fp.disj_inBlock_of_ne (by have := hlt z (by simp at hz ⊢; tauto); omega)
     simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
@@ -719,8 +729,8 @@ theorem length_denseEigStageParams (n : ℕ) (δ φ : ℝ) :
     (denseEigStageParams n δ φ).length = denseEigSizes n δ φ 6 := by
   simp [denseEigStageParams, denseEigSizes]
 
--- Six operands and the long parameter words make the side conditions heavy.
 set_option maxHeartbeats 1000000 in
+-- Six operands and the long parameter words make the side conditions heavy.
 /-- **The routine of the dense eigensolver meets its every-tape specification**: on the words of
 a matrix of order $n + 1$, the words `NLAlib.Schur.denseEigSchurParams` and the floor, at the
 sizes `NLAlib.Schur.denseEigSizes`, it terminates on every tape and writes only the matrix, the

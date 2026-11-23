@@ -139,7 +139,7 @@ private theorem denseEig_monomials_le {N R u D : ℝ} (hN1 : 1 ≤ N) (hR1 : 1 �
 the core tolerance $D$, the class $(B, \Gamma)$ and the errors $e_U$, $e_X$, $\eta$. -/
 private theorem denseEig_final_le {N s u D B Γ δ eU eX η : ℝ} (hN1 : 1 ≤ N) (hsN : s ≤ N)
     (hu0 : 0 ≤ u) (hD0 : 0 < D) (hD1 : D ≤ 1) (hB : 2 ≤ B) (hΓ : 0 < Γ)
-    (hNu : N * u ≤ D / 4096) (hN2u : N ^ 2 * u ≤ D / 4096) (heU0 : 0 ≤ eU)
+    (hNu : N * u ≤ D / 4096) (hN2u : N ^ 2 * u ≤ D / 4096)
     (heUD : eU ≤ 58 * D / 4096) (heX : eX ≤ D) (hη0 : 0 ≤ η) (hη : η ≤ 3 * D)
     (hDδ : D * (2 ^ 10 * N ^ 2 * B) ≤ δ) (hDΓ : D * (2 ^ 10 * N ^ 2 * B) ≤ Γ) :
     δ / 16 + 3 * (s * u) + eX ≤ δ / 2 ∧ eU ≤ 1 / 8 ∧
@@ -270,7 +270,6 @@ theorem denseEig_errors_le {n Rc : ℕ} {δ φ u eR eX eU cR₀ cV cN : ℝ} (h�
   set ε := (1 + 27 * N ^ 2 * u) * (1 + 24 * u) ^ Rc - 1 with hεdef
   set eU := 2 * ε + ε ^ 2 with heUdef
   have hε29 : ε ≤ 29 * R * u := by have := sq_nonneg ε; linarith
-  have heU0 : 0 ≤ eU := add_nonneg (by linarith) (sq_nonneg ε)
   have heUD : eU ≤ 58 * D / 4096 := by linarith
   -- the error against the regularized matrix
   have hsδ : s * denseSchurDelta n D = D / 16 := by
@@ -295,7 +294,7 @@ theorem denseEig_errors_le {n Rc : ℕ} {δ φ u eR eX eU cR₀ cV cN : ℝ} (h�
   have hη0 : 0 ≤ η := by
     rw [hηdef]; unfold eigEta; rw [← hNdef, ← hs]; positivity
   obtain ⟨c1, c3, c4, c5, c6, c7, c8, c9, c10⟩ :=
-    denseEig_final_le hN1 hsN hu0 hD0 hD1 hB hΓ hNu hN2u heU0 heUD heX hη0 hη hDδ hDΓ
+    denseEig_final_le hN1 hsN hu0 hD0 hD1 hB hΓ hNu hN2u heUD heX hη0 hη hDδ hDΓ
   rw [heR]
   refine ⟨c1, hεU, c3, ?_, ?_, c6, c7, c8, c9, c10⟩
   · have e3 : (n : ℝ) + 3 = N + 2 := by rw [hNdef]; ring
@@ -344,8 +343,8 @@ section Theorems
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O]
   [Has CmpTst Q] [Has IdxTst Q]
 
--- The stage contracts at their long parameters make the elaboration heavy.
 set_option maxHeartbeats 1000000 in
+-- The stage contracts at their long parameters make the elaboration heavy.
 /-- **The dense eigendecomposition theorem.** Let the machine have the standard model at
 $\boldsymbol{u} \le \boldsymbol{u}_E$, index literals, exact natural literals up to $n + 1$, exact
 `toNat` and comparisons, a measurable interpretation reading the tape only in its windows whose

@@ -509,7 +509,7 @@ private theorem NLAlib.Ops.abs_roundQuot_sub_le {u e n d N D P q : ℝ} (hu : 0 
   have he0 : 0 ≤ e := by
     have := abs_nonneg (d - D)
     by_contra h
-    push_neg at h
+    push Not at h
     nlinarith
   have hP : 0 ≤ P := (abs_nonneg N).trans hN
   have hdlo : 959 / 1024 * D ≤ d := by

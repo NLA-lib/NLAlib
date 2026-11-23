@@ -819,7 +819,7 @@ $C(n + 1)^3L^{15}$, $L = \log_2(4(n + 1)/(\delta\varphi))$:
 `NLAlib.Schur.denseSchur_work_le_polylog` with $\log_2 L + 1 \le 3L$. -/
 theorem denseSchur_work_le_pow (sG : ℕ) : ∃ C : ℝ, ∀ {n : ℕ} {δ φ : ℝ}, 0 < δ →
     δ ≤ 1 → 0 < φ → φ ≤ 1 →
-    (Count.size (stmtCost (denseSchur (O := O) (Q := Q) sG).body.instrument
+    (Count.size (stmtCost (denseSchur (O := O) (Q := Q) sG).instrument
       (denseSchurDims n δ φ ++ [0, 0, 0, 0, 0])) : ℝ) ≤
       C * ((n : ℝ) + 1) ^ 3 * Real.logb 2 (4 * (n + 1) / (δ * φ)) ^ 15 := by
   obtain ⟨C, hC⟩ := denseSchur_work_le_polylog (O := O) (Q := Q) sG

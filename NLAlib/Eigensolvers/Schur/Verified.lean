@@ -47,11 +47,11 @@ the words `qs`: from every input of the pipeline (`NLAlib.Schur.SchurPipelineInp
 tape, the run writes only the matrix, the accumulator and the flag, and stores a matrix and an
 accumulator $\widehat{\mathbf{U}}$ with $\|\widehat{\mathbf{U}}^{\mathsf H}\widehat{\mathbf{U}} -
 \mathbf{I}\|_2 \le e_U$ (`NLAlib.Schur.SchurOrth`). -/
-def TerminatingSchurSolver (eU : ℝ) (n : ℕ) (d : List ℕ) (qs : List ℝ) (Solve : Impl O Q)
+def TerminatingSchurSolver (eU : ℝ) (n : ℕ) (d : List ℕ) (qs : List ℝ) (Solve : Stmt O Q)
     (I : Interp O Q ℝ) : Prop :=
   ∀ {τ : Tape ℝ} {μ : Mem ℝ} {a p uo f : ℕ × ℕ} (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
     SchurPipelineInput qs a p uo f A μ →
-    Writes .total I τ Solve.body (Env.frame d [a, p, a, uo, f]) (schurFp n a uo f)
+    Writes .total I τ Solve (Env.frame d [a, p, a, uo, f]) (schurFp n a uo f)
       (SchurOrth (n := n) a uo eU) μ
 
 /-- **The output of a verified Schur solver** on every tape: the stored matrix and accumulator
@@ -169,12 +169,12 @@ run `Solve` on its $n_r + n_q$ words `P[0]`, …, then the residual check
 $\theta$, $\kappa$ after the solver's; the check writes the flag. The interface is
 `[N, nr, nq, k, F, T] (A, P) → (A, U, Fl)`.
 Algorithm: verified-schur -/
-def verifiedSchurWith (Solve : Impl O Q) : Impl O Q :=
-  opsImpl% [N, nr, nq, k, F, T] (A, P) → (A, U, Fl) {
+def verifiedSchurWith (Solve : Stmt O Q) : Stmt O Q :=
+  ops% [N, nr, nq, k, F, T] (A, P) → (A, U, Fl) {
     let A0 ← alloc (2 * (N * N));
-    run (PairMatrix.copy (Op := O) (Tst := Q)).body [N, N] (A, A0);
-    run Solve.body [N, nr, nq, k, F, T] (A, P, A, U, Fl);
-    run (schurResidualCheck (O := O) (Q := Q)).body [N] (A0, U, A, P[nr + nq], A, Fl)
+    run (PairMatrix.copyRoutine (Op := O) (Tst := Q)) [N, N] (A, A0);
+    run Solve [N, nr, nq, k, F, T] (A, P, A, U, Fl);
+    run (schurResidualCheck (O := O) (Q := Q)) [N] (A0, U, A, P[nr + nq], Fl)
   }
 
 end Program
@@ -231,14 +231,14 @@ $\|\mathbf{A} - \widehat{\mathbf{U}}\widehat{\mathbf{T}}\widehat{\mathbf{U}}^{\m
 \mathbf{I}\|_2 \le e_U$. No probability and no hypothesis on $\mathbf{A}$. No printed source. -/
 theorem verifiedSchurWith_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
-    {n nr nq k F T : ℕ} {qs : List ℝ} {Solve : Impl O Q} {eU δ θ κ : ℝ}
+    {n nr nq k F T : ℕ} {qs : List ℝ} {Solve : Stmt O Q} {eU δ θ κ : ℝ}
     (hSolve : TerminatingSchurSolver eU n [n + 1, nr, nq, k, F, T] qs Solve I)
     (hu : 64 * ((n : ℝ) + 2) ^ 3 * u ≤ 1) (hκ : 32 * ((n : ℝ) + 2) ^ 2 * u ≤ κ) (hθ0 : 0 ≤ θ)
     (hθ : 2 * θ * √((n : ℝ) + 1) ≤ δ) {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {a p uo f : ℕ × ℕ} {μ : Mem ℝ} (hq : qs.length = nr + nq)
     (hin : SchurPipelineInput (qs ++ [θ, κ]) a p uo f A μ)
     (τ : Tape ℝ) :
-    Writes .total I τ (verifiedSchurWith Solve).body
+    Writes .total I τ (verifiedSchurWith Solve)
       (Env.frame [n + 1, nr, nq, k, F, T] [a, p, a, uo, f]) (schurFp n a uo f)
       (VerifiedSchurOutput M a uo f A δ eU) μ := by
   have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
@@ -276,9 +276,9 @@ theorem verifiedSchurWith_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
   have hne : ∀ {b o n b' o' n' : ℕ}, b ≠ b' →
       Fp.Disj (Store.inBlock b o n) (Store.inBlock b' o' n') := fun h => Fp.disj_inBlock_of_ne h
   -- the copy
-  refine (PairMatrix.writes_copy (K := ℝ) (Op := O) (Tst := Q) hS (md := .total) (τ := τ)
+  refine (PairMatrix.copy_writes (K := ℝ) (Op := O) (Tst := Q) hS (τ := τ)
     (m := ⟨s₁, μ.pos⟩) (rows := n + 1) (cols := n + 1) (x := a) (y := (L, 0))
-    (hlv _ rfl _ (by simp)) (Or.inl (hne (by simp; omega))) hin₁.2.2.2.1
+    (hlv _ rfl _ (by simp)) (hne (by simp; omega)) hin₁.2.2.2.1
     (by simp only [hL0]; omega)).frame_seq_le rfl rfl (hlv _ rfl _ (by simp))
     (fun _ _ h => Or.inr (h.1 ▸ le_rfl)) fun m₁ hfr₁ ⟨_, hA0⟩ => ?_
   have hB₁ : Store.Below L s₁ m₁.store := hfr₁.below_of_above fun b i h => h.1 ▸ le_rfl
@@ -301,8 +301,8 @@ theorem verifiedSchurWith_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
   have hap' := apart_verifiedCheck hap hq hlt
   -- the check
   refine ((schurResidualCheck_writes hS hM hL hC hNm (a0 := (L, 0)) (uo := uo) (t := a)
-    (p := (p.1, p.2 + nr + nq)) (f := f) hA0₂ hU hT hp₂ (hl₂ _ (by simp)) hroom₂
-    hap').in_frame rfl rfl
+    (p := (p.1, p.2 + nr + nq)) (f := f) hA0₂ hU hT hp₂ (hl₂ _ (by simp))
+    (Store.le_len_of_readBlock hT (by positivity)) hroom₂ hap').in_frame rfl rfl
     (hl₂ _ (by simp))).mono (sup_le (fun _ _ h => Or.inl (Or.inl (Or.inl h)))
       (fun _ _ h => Or.inl (Or.inr h))) fun m₃ hfr₃ hout => ?_
   have hU₃ : HoldsMatrix uo U m₃.store := hU.of_eqOff hfr₃ (by
@@ -365,7 +365,7 @@ theorem schurResidualCheck_writes_of_schurOutput {M : Machine ℝ} {I : Interp O
     (hap : Fp.Apart [a0, uo, a, p, f]
       [2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), 2, 1]) :
     Writes .total I τ (schurResidualCheck (O := O) (Q := Q)).body
-      (Env.frame [n + 1] [a0, uo, a, p, a, f])
+      (Env.frame [n + 1] [a0, uo, a, p, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧ μ.store.EqOff (Store.inBlock f.1 f.2 1) μ'.store)
       μ := by
@@ -373,7 +373,8 @@ theorem schurResidualCheck_writes_of_schurOutput {M : Machine ℝ} {I : Interp O
   have hcast : (((n + 1 : ℕ)) : ℝ) + 1 = (n : ℝ) + 2 := by push_cast; ring
   obtain ⟨-, U, T, hT, hU, hTu, hr, ho⟩ := hout
   refine (schurResidualCheck_writes hS hM hL hC
-    (frobNormStage_frobNormEstimateContract_check hS hM hu0 hu) hA hU hT hp hl hf hap).mono
+    (frobNormStage_frobNormEstimateContract_check hS hM hu0 hu) hA hU hT hp hl
+    (Store.le_len_of_readBlock hT (by positivity)) hf hap).mono
     le_rfl fun μ' hfr hc => ⟨?_, ?_⟩
   · refine hc.flag_eq_zero hM (by rw [hcast]; exact hu) hκ0 (by rw [hcast]; exact hκ) hθ1
       (by rw [hcast]; exact huθ) (ho.trans heU) ?_
@@ -405,12 +406,12 @@ No printed source. -/
 theorem verifiedSchurWith_measureReal_not_flag_le {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
-    {law : ℕ → Measure ℝ} {n nr nq k F T : ℕ} {qs : List ℝ} {Solve : Impl O Q}
+    {law : ℕ → Measure ℝ} {n nr nq k F T : ℕ} {qs : List ℝ} {Solve : Stmt O Q}
     {δ' eU θ κ φ : ℝ} {Post : Mem ℝ → Prop} {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {a p uo f : ℕ × ℕ} {μ : Mem ℝ}
     (hSolve : ∀ μ', SchurPipelineInput qs a p uo f A μ' →
       ∀ {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ}, IsTapeLaw law P ξ →
-        P.real {ω | ¬ Writes .total I (ξ ω) Solve.body
+        P.real {ω | ¬ Writes .total I (ξ ω) Solve
           (Env.frame [n + 1, nr, nq, k, F, T] [a, p, a, uo, f]) (schurFp n a uo f)
           Post μ'} ≤ φ)
     (hPm : MeasurableSet {x : Mem ℝ × Mem ℝ | x.1.store.EqOff (schurFp n a uo f) x.2.store ∧
@@ -425,7 +426,7 @@ theorem verifiedSchurWith_measureReal_not_flag_le {M : Machine ℝ} {I : Interp 
     (hδ' : √((n : ℝ) + 1) * δ' ≤ θ / 8)
     (hq : qs.length = nr + nq) (hin : SchurPipelineInput (qs ++ [θ, κ]) a p uo f A μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (verifiedSchurWith Solve).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (verifiedSchurWith Solve)
       (Env.frame [n + 1, nr, nq, k, F, T] [a, p, a, uo, f]) (schurFp n a uo f)
       (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧ Post μ') μ} ≤ φ := by
   have := hξ.isProbabilityMeasure
@@ -473,9 +474,9 @@ theorem verifiedSchurWith_measureReal_not_flag_le {M : Machine ℝ} {I : Interp 
   -- the copy
   · refine PWrites.of_writes le_rfl fun m τ ⟨hL, hlen, hlenL, hin'⟩ => ?_
     have hl' := hliv m [a, (L, 0)] hL hlen (by simp)
-    refine ((PairMatrix.writes_copy (K := ℝ) (Op := O) (Tst := Q) hS (md := .total) (τ := τ)
+    refine ((PairMatrix.copy_writes (K := ℝ) (Op := O) (Tst := Q) hS (τ := τ)
       (m := m) (rows := n + 1) (cols := n + 1) (x := a) (y := (L, 0)) hl'
-      (Or.inl (hne (by simp; omega))) hin'.2.2.2.1 (by simp only [hlenL]; omega)).in_frame
+      (hne (by simp; omega)) hin'.2.2.2.1 (by simp only [hlenL]; omega)).in_frame
       rfl rfl hl').mono le_rfl fun m₁ hfr₁ ⟨_, hA0⟩ => ⟨hL, by rw [hfr₁.length_eq, hlen],
         hin'.of_below (L := L) (hfr₁.below_of_above fun b i h => h.1 ▸ le_rfl)
           (fun z hz => by have := hlt z hz; omega) (by rw [hfr₁.length_eq]; omega), hA0⟩
@@ -513,50 +514,54 @@ omit [Has IndexOp O] [Has CmpTst Q] in
 /-- The instructions of the copy of a square matrix: the instrumented static count of
 `NLAlib.Ops.PairMatrix.copy` at the order $n + 1$ and zero offsets is at most $32(n + 1)^2$. -/
 theorem size_stmtCost_copy_le (n : ℕ) :
-    Count.size (stmtCost (PairMatrix.copy (Op := O) (Tst := Q)).body.instrument
+    Count.size (stmtCost (PairMatrix.copy (Op := O) (Tst := Q)).instrument
       [n + 1, n + 1, 0, 0]) ≤ 32 * (n + 1) ^ 2 := by
-  have hw : stmtWorkMono (PairMatrix.copy (Op := O) (Tst := Q)).body.instrument
+  have hw : stmtWorkMono (PairMatrix.copy (Op := O) (Tst := Q)).instrument
       [⟨1, [1]⟩, ⟨1, [1]⟩, WorkMono.const 0, WorkMono.const 0] = ⟨32, [2]⟩ := by
     rw [stmtWorkMono_instrument]; kernel_rfl
   have hσ : SlotsLe [n + 1] [n + 1, n + 1, 0, 0]
       [⟨1, [1]⟩, ⟨1, [1]⟩, WorkMono.const 0, WorkMono.const 0] := by
     simp [SlotsLe, WorkMono.eval, WorkMono.const]
   have h := size_stmtCost_le_stmtWorkMono (by simp)
-    (PairMatrix.copy (Op := O) (Tst := Q)).body.instrument hσ
+    (PairMatrix.copy (Op := O) (Tst := Q)).instrument hσ
   rw [hw] at h
   simpa [WorkMono.eval] using h
 
 /-- **The instructions of the residual check**: the instrumented static count of
 `NLAlib.Schur.schurResidualCheck` at the order $n + 1$, the words at the offset $q$ and the other
-offsets zero is at most $1619(n + 1)^3$ (the monomial bound, by `kernel_rfl`); the two products
-dominate. -/
+offsets zero is at most $1619(n + 1)^3$ (the monomial bound is $1616(n + 1)^3$, by `kernel_rfl`);
+the two products dominate. -/
 theorem size_stmtCost_schurResidualCheck_le (n q : ℕ) :
     Count.size (stmtCost (schurResidualCheck (O := O) (Q := Q)).body.instrument
-      [n + 1, 0, 0, 0, q, 0, 0]) ≤ 1619 * (n + 1) ^ 3 := by
+      [n + 1, 0, 0, 0, q, 0]) ≤ 1619 * (n + 1) ^ 3 := by
   have hw : stmtWorkMono (schurResidualCheck (O := O) (Q := Q)).body.instrument
       [⟨1, [1]⟩, WorkMono.const 0, WorkMono.const 0, WorkMono.const 0, ⟨1, [0, 1]⟩,
-        WorkMono.const 0, WorkMono.const 0] = ⟨1619, [3]⟩ := by
+        WorkMono.const 0] = ⟨1616, [3]⟩ := by
     rw [stmtWorkMono_instrument]; kernel_rfl
-  have hσ : SlotsLe [n + 1, q + 1] [n + 1, 0, 0, 0, q, 0, 0]
+  have hσ : SlotsLe [n + 1, q + 1] [n + 1, 0, 0, 0, q, 0]
       [⟨1, [1]⟩, WorkMono.const 0, WorkMono.const 0, WorkMono.const 0, ⟨1, [0, 1]⟩,
-        WorkMono.const 0, WorkMono.const 0] := by
+        WorkMono.const 0] := by
     simp [SlotsLe, WorkMono.eval, WorkMono.const]
   have h := size_stmtCost_le_stmtWorkMono (by simp)
     (schurResidualCheck (O := O) (Q := Q)).body.instrument hσ
   rw [hw] at h
-  simpa [WorkMono.eval] using h
+  have h' : Count.size (stmtCost (schurResidualCheck (O := O) (Q := Q)).body.instrument
+      [n + 1, 0, 0, 0, q, 0]) ≤ 1616 * (n + 1) ^ 3 := by
+    simpa [WorkMono.eval] using h
+  exact h'.trans (Nat.mul_le_mul_right _ (by norm_num))
 
 /-- **The instructions of the verified solver** (on every tape): the instrumented static count of
 `NLAlib.Schur.verifiedSchurWith Solve` at the order $n + 1$, the dimensions
 $(n_r, n_q, k, F, T)$ and zero offsets is at most the solver's count at the same arguments, plus
 $1619(n + 1)^3$ for the check, $32(n + 1)^2$ for the copy and $64$ for the frames: the
 verification costs $O(n^3)$ on top of the solver. -/
-theorem size_stmtCost_verifiedSchurWith_le (Solve : Impl O Q) (n nr nq k F T : ℕ) :
-    Count.size (stmtCost (verifiedSchurWith Solve).body.instrument
+theorem size_stmtCost_verifiedSchurWith_le (Solve : Stmt O Q) (n nr nq k F T : ℕ) :
+    Count.size (stmtCost (verifiedSchurWith Solve).instrument
         [n + 1, nr, nq, k, F, T, 0, 0, 0, 0, 0]) ≤
-      Count.size (stmtCost Solve.body.instrument [n + 1, nr, nq, k, F, T, 0, 0, 0, 0, 0]) +
+      Count.size (stmtCost Solve.instrument [n + 1, nr, nq, k, F, T, 0, 0, 0, 0, 0]) +
         1619 * (n + 1) ^ 3 + 32 * (n + 1) ^ 2 + 64 := by
-  have h1 := size_stmtCost_copy_le (O := O) (Q := Q) n
+  have h1 : Count.size (stmtCost (PairMatrix.copyRoutine (Op := O) (Tst := Q)).body.instrument
+      [n + 1, n + 1, 0, 0]) ≤ 32 * (n + 1) ^ 2 := size_stmtCost_copy_le (O := O) (Q := Q) n
   have h2 := size_stmtCost_schurResidualCheck_le (O := O) (Q := Q) n (nr + nq)
   simp only [verifiedSchurWith, Stmt.alloc, Stmt.instrument, tally,
     indexBookkeeping, operandBookkeeping, IExp.bookkeeping, List.flatMap_cons, List.flatMap_nil,

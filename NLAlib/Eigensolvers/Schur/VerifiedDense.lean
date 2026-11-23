@@ -63,7 +63,7 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has Dis
 `NLAlib.Schur.denseSchur` on the Gaussian stream `sG`. The interface is
 `[N, nr, nq, k, F, T] (A, P) → (A, U, Fl)`.
 Algorithm: verified-schur -/
-def verifiedSchur (sG : ℕ) : Impl O Q :=
+def verifiedSchur (sG : ℕ) : Stmt O Q :=
   verifiedSchurWith (denseSchur (O := O) (Q := Q) sG)
 
 end Program
@@ -128,7 +128,7 @@ theorem verifiedSchur_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} 
     {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {δ φ : ℝ} (hδ : 0 < δ) (hδ1 : δ ≤ 1)
     (hu : u ≤ uVerifiedSchur n δ φ) {a p uo f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : SchurPipelineInput (verifiedSchurParams u n δ φ) a p uo f A μ) (τ : Tape ℝ) :
-    Writes .total I τ (verifiedSchur (O := O) (Q := Q) sG).body
+    Writes .total I τ (verifiedSchur (O := O) (Q := Q) sG)
       (Env.frame (denseSchurDims n (verifiedSchurDelta n δ) φ) [a, p, a, uo, f])
       (schurFp n a uo f)
       (VerifiedSchurOutput Mch a uo f A δ
@@ -173,7 +173,7 @@ theorem verifiedSchur_measureReal_not_schur_le {Mch : Machine ℝ} {I : Interp O
     {a p uo f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : SchurPipelineInput (verifiedSchurParams u n δ φ) a p uo f A μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (verifiedSchur (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (verifiedSchur (O := O) (Q := Q) sG)
       (Env.frame (denseSchurDims n (verifiedSchurDelta n δ) φ) [a, p, a, uo, f])
       (schurFp n a uo f)
       (SchurOutput a uo f A (verifiedSchurDelta n δ)

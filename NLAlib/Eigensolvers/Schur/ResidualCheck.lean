@@ -7,6 +7,7 @@ module
 
 public import NLAlib.Eigensolvers.Schur.NormEstimate
 public import NLAlib.Matrix.FinitePrecision.StoredProducts
+public import NLAlib.Ops.Blas.Fill
 public import NLAlib.Ops.Blas.MatrixCorrect
 public import NLAlib.Ops.Catalog.Index
 public import NLAlib.Ops.Catalog.Compare
@@ -20,11 +21,14 @@ $\widehat{\mathbf{T}}$ and two words $\theta, \kappa$.
 
 ## Main definitions
 
-* `NLAlib.Schur.zeroStrictLower`, `NLAlib.Schur.schurResidualCheck`.
+* `NLAlib.Schur.zeroStrictLower`, `NLAlib.Schur.schurResidualCheck`,
+  `NLAlib.Schur.schurResidualCheckSpec`.
 
 ## Main results
 
-* `NLAlib.Schur.zeroStrictLower_writes`.
+* `NLAlib.Schur.schurResidualCheck_meets`: the routine meets its specification on every tape.
+* `NLAlib.Schur.ResidualCheckOutcome.frobNorm_sub_le`: a passed check is sound.
+* `NLAlib.Schur.ResidualCheckOutcome.flag_eq_zero`: an accurate Schur form passes.
 -/
 
 @[expose] public section
@@ -42,11 +46,11 @@ variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 
 /-- **Zero the strict lower triangle** of a stored square matrix: the literal $0$ in both words
 of every entry $(i, j)$ with $i > j$. The interface is `[N] (T) → (T)`. -/
-def zeroStrictLower : Impl O Q := opsImpl% [N] (T) → (T) {
+def zeroStrictLower : Stmt O Q := ops% [N] (T) → (T) {
   for j < N {
     for i < N - (j + 1) {
-      call (Has.inj (ScalarOp.lit 0)) [] () → (T[2 * (j * N + (j + 1 + i))]);
-      call (Has.inj (ScalarOp.lit 0)) [] () → (T[2 * (j * N + (j + 1 + i)) + 1])
+      run (fillRoutine (Op := O) (Tst := Q) (Has.inj (ScalarOp.lit 0))) [2]
+        (T[2 * (j * N + (j + 1 + i))])
     }
   }
 }
@@ -55,23 +59,23 @@ def zeroStrictLower : Impl O Q := opsImpl% [N] (T) → (T) {
 \mathrm{fl}(\mathrm{fl}(\mathbf{U}\mathbf{T})\mathbf{U}^{\mathsf H}))$ of square matrices of
 order $N$: two products (`NLAlib.matMulOn`), the conjugate transpose of $\mathbf{U}$ into scratch,
 and an entrywise rounded subtraction. The interface is `[N] (A0, U, T) → (D)`. -/
-def residualWords : Impl O Q := opsImpl% [N] (A0, U, T) → (D) {
+def residualWords : Stmt O Q := ops% [N] (A0, U, T) → (D) {
   let W ← alloc (2 * (N * N));
   let V ← alloc (2 * (N * N));
-  run (matMulOn (O := O) (Q := Q)).body [N, N, N, N, N, N, 0] (U, T, W);
-  run (PairMatrix.conjTranspose (Op := O) (Tst := Q)).body [N, N] (U, V);
-  run (matMulOn (O := O) (Q := Q)).body [N, N, N, N, N, N, 0] (W, V, D);
+  run (matMulOn (O := O) (Q := Q)) [N, N, N, N, N, N, 0] (U, T, W);
+  run (PairMatrix.conjTranspose (Op := O) (Tst := Q)) [N, N] (U, V);
+  run (matMulOn (O := O) (Q := Q)) [N, N, N, N, N, N, 0] (W, V, D);
   for t < 2 * (N * N) { call (Has.inj ScalarOp.sub) [] (A0[t], D[t]) → (D[t]) }
 }
 
 /-- **The four norms of the check**: the rounded Frobenius norms (`NLAlib.Schur.frobNormStage`)
 of $\mathbf{D}$, $\mathbf{A}_0$, $\mathbf{U}$ and $\mathbf{T}$ into `S[0]`, …, `S[3]`. The
 interface is `[N] (A0, U, T, D) → (S)`. -/
-def checkNorms : Impl O Q := opsImpl% [N] (A0, U, T, D) → (S) {
-  run (frobNormStage (O := O) (Q := Q)).body [N] (D, S);
-  run (frobNormStage (O := O) (Q := Q)).body [N] (A0, S[1]);
-  run (frobNormStage (O := O) (Q := Q)).body [N] (U, S[2]);
-  run (frobNormStage (O := O) (Q := Q)).body [N] (T, S[3])
+def checkNorms : Stmt O Q := ops% [N] (A0, U, T, D) → (S) {
+  run (frobNormStage (O := O) (Q := Q)) [N] (D, S);
+  run (frobNormStage (O := O) (Q := Q)) [N] (A0, S[1]);
+  run (frobNormStage (O := O) (Q := Q)) [N] (U, S[2]);
+  run (frobNormStage (O := O) (Q := Q)) [N] (T, S[3])
 }
 
 /-- **The decision of the check**: from the norms $\hat r, \hat a, \hat w, \hat t$ in `S` and the
@@ -81,7 +85,7 @@ $\mathrm{fl}(\hat a\theta)$ into `S[1]`, and the flag: the literal $0$ if the fi
 the second (an exact
 comparison of the two cells), the literal $1$ otherwise. The interface is
 `[] (S, P) → (S, Fl)`. -/
-def checkDecide : Impl O Q := opsImpl% [] (S, P) → (S, Fl) {
+def checkDecide : Stmt O Q := ops% [] (S, P) → (S, Fl) {
   call (Has.inj ScalarOp.mul) [] (S[2], S[2]) → (S[2]);
   call (Has.inj ScalarOp.mul) [] (S[2], S[3]) → (S[2]);
   call (Has.inj ScalarOp.mul) [] (S[2], P[1]) → (S[2]);
@@ -103,14 +107,16 @@ $\mathrm{fl}(\hat r + \hat g) \le \mathrm{fl}(\theta\hat a)$ for the guard $\hat
 \mathrm{fl}(\mathrm{fl}(\hat w^2)\hat t\kappa)$ of the rounding of the products, and $1$ otherwise
 (`NLAlib.Schur.checkDecide`). The words are `P[0]` $= \theta$ and `P[1]` $= \kappa$. The
 interface is `[N] (A0, U, T, P) → (T, Fl)`. -/
-def schurResidualCheck : Impl O Q := opsImpl% [N] (A0, U, T, P) → (T, Fl) {
-  let D ← alloc (2 * (N * N));
-  let S ← alloc 4;
-  run (zeroStrictLower (O := O) (Q := Q)).body [N] (T, T);
-  run (residualWords (O := O) (Q := Q)).body [N] (A0, U, T, D);
-  run (checkNorms (O := O) (Q := Q)).body [N] (A0, U, T, D, S);
-  run (checkDecide (O := O) (Q := Q)).body [] (S, P, S, Fl)
-}
+def schurResidualCheck : Routine O Q :=
+  routine% [N] (A0 : 2 * (N * N), U : 2 * (N * N), T : 2 * (N * N), P : 2) → (T, Fl : 1)
+    draws unspecified by blocks one variable {
+    let D ← alloc (2 * (N * N));
+    let S ← alloc 4;
+    run (zeroStrictLower (O := O) (Q := Q)) [N] (T, T);
+    run (residualWords (O := O) (Q := Q)) [N] (A0, U, T, D);
+    run (checkNorms (O := O) (Q := Q)) [N] (A0, U, T, D, S);
+    run (checkDecide (O := O) (Q := Q)) [] (S, P, S, Fl)
+  }
 
 end Program
 
@@ -147,7 +153,7 @@ writes only the block and stores the upper part of $\mathbf{T}$. -/
 theorem zeroStrictLower_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (h0 : M.lit 0 = 0) {τ : Tape ℝ} {μ : Mem ℝ} {N : ℕ} {t : ℕ × ℕ}
     {T : Matrix (Fin N) (Fin N) ℂ} (hT : HoldsMatrix t T μ.store) :
-    Writes .total I τ (zeroStrictLower (O := O) (Q := Q)).body (Env.frame [N] [t, t])
+    Writes .total I τ (zeroStrictLower (O := O) (Q := Q)) (Env.frame [N] [t, t])
       (Store.inBlock t.1 t.2 (2 * (N * N)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix t (upperPart T) μ'.store) μ := by
   let C := EntryCodec.pair ℝ
@@ -171,29 +177,28 @@ theorem zeroStrictLower_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSc
     have hk : j + 1 + i < N := by omega
     have hr := Store.lt_len_of_get (hT.get_im ⟨j + 1 + i, hk⟩ ⟨j, hj⟩)
     simp only at hr
-    have hz0 : t.2 + 2 * (j * N + (j + 1 + i)) < m'.store.len t.1 := by
+    have hroom : t.2 + 2 * (j * N + (j + 1 + i)) + 2 ≤ m'.store.len t.1 := by
       rw [hfr.len_eq]; omega
-    have hz1 : t.2 + 2 * (j * N + (j + 1 + i)) + 1 < m'.store.len t.1 := by
-      rw [hfr.len_eq]; omega
-    refine (writes_call_const (hS (.lit 0)) (z := (t.1, t.2 + 2 * (j * N + (j + 1 + i)))) rfl
-      trivial hz0).seq_le (fun b x hx => ?_) fun m₁ hfr₁ h₁ => ?_
-    · obtain ⟨h1, h2, h3⟩ := hx
-      exact ⟨h1, by change _ ≤ _ at h2 ⊢; simp only at h2 ⊢; change t.2 + 2 * _ ≤ x; omega,
-        by change x < t.2 + 2 * _ + 2; simp only at h3; omega⟩
-    refine (writes_call_const (hS (.lit 0))
-      (z := (t.1, t.2 + 2 * (j * N + (j + 1 + i)) + 1)) rfl trivial
-      (by rw [hfr₁.len_eq]; exact hz1)).mono (fun b x hx => ?_) fun m₂ hfr₂ h₂ => ?_
-    · obtain ⟨h1, h2, h3⟩ := hx
-      exact ⟨h1, by change t.2 + 2 * _ ≤ x; simp only at h2; omega,
-        by change x < t.2 + 2 * _ + 2; simp only at h3; omega⟩
-    refine ⟨fun z => ?_, h₂.1.trans (h₁.1.trans hpos)⟩
+    have hlive : m'.Live [(t.1, t.2 + 2 * (j * N + (j + 1 + i)))] := by
+      intro z hz
+      obtain rfl : z = _ := by simpa using hz
+      exact Store.lt_length_of_lt_len
+        (by omega : t.2 + 2 * (j * N + (j + 1 + i)) < m'.store.len t.1)
+    have hroom' : m'.Room [(t.1, t.2 + 2 * (j * N + (j + 1 + i)))] [2] := by
+      simpa only [Mem.room_cons, Mem.room_nil, and_true] using hroom
+    have h := (fillRoutine_meets (Tst := Q) (hS (.lit 0))) [2]
+      [(t.1, t.2 + 2 * (j * N + (j + 1 + i)))] τ m' [] rfl rfl hlive (by routine_sep) rfl trivial
+      hroom'
+    refine (h.in_frame rfl rfl hlive).mono (by fp_sub) fun m₂ _ ⟨hp₂, ys, hys, hpost⟩ => ?_
+    routine_nf at hys hp₂
+    split_reads hys as (zs)
+    obtain rfl : zs = List.replicate 2 (M.lit 0) := hpost
+    refine ⟨fun z => ?_, hp₂.trans hpos⟩
+    have hz := Store.get_of_readBlock hzs z.isLt 0
     change m₂.store.get t.1 (t.2 + 2 * (j * N + (j + 1 + i)) + z) =
       some (C.words (M.lit 0, M.lit 0) z)
-    fin_cases z
-    · simp only [Fin.zero_eta, Fin.isValue, add_zero]
-      rw [hfr₂.get_eq (Store.not_inBlock_of (Or.inr (Or.inl (by simp))))]
-      exact h₁.2
-    · exact h₂.2
+    rw [hz]
+    fin_cases z <;> rfl
   · exact C.regionFp_le_inBlock t.1 t.2 N (N * N) _ _ fun j hj i hi =>
       Idx.add_lt_mul hj (show j + 1 + i < N by omega)
   · rintro μ' hfr ⟨hreg, hpos⟩
@@ -238,7 +243,7 @@ theorem conjTranspose_writes_holdsMatrix {M : Machine ℝ} {I : Interp O Q ℝ} 
     {x y : ℕ × ℕ} {U : Matrix (Fin N) (Fin N) ℂ} (hU : HoldsMatrix x U μ.store)
     (hl : μ.Live [x, y]) (hy : y.2 + 2 * (N * N) ≤ μ.store.len y.1)
     (hxy : Fp.Disj (Store.inBlock x.1 x.2 (2 * (N * N))) (Store.inBlock y.1 y.2 (2 * (N * N)))) :
-    Writes .total I τ (PairMatrix.conjTranspose (Op := O) (Tst := Q)).body
+    Writes .total I τ (PairMatrix.conjTranspose (Op := O) (Tst := Q))
       (Env.frame [N, N] [x, y]) (Store.inBlock y.1 y.2 (2 * (N * N)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix y Uᴴ μ'.store) μ := by
   let E : ℕ → ℕ → ℝ × ℝ := fun i j =>
@@ -249,7 +254,7 @@ theorem conjTranspose_writes_holdsMatrix {M : Machine ℝ} {I : Interp O Q ℝ} 
     fin_cases z
     · simpa [E, hi, hj] using hU.get_re ⟨i, hi⟩ ⟨j, hj⟩
     · simpa [E, hi, hj, Nat.add_assoc] using hU.get_im ⟨i, hi⟩ ⟨j, hj⟩
-  refine (PairMatrix.writes_conjTranspose hS E hl hE hy hxy).mono le_rfl ?_
+  refine (PairMatrix.conjTranspose_writes hS E hl hE hy hxy).mono le_rfl ?_
   rintro μ' - ⟨hout, hpos⟩
   refine ⟨hpos, HoldsMatrix.of_get (fun i j => ?_) (fun i j => ?_)⟩
   · simpa [E, Matrix.conjTranspose_apply] using hout i i.isLt j j.isLt 0
@@ -324,7 +329,7 @@ theorem checkNorms_writes {I : Interp O Q ℝ} {c₁ c₂ : ℝ} {N : ℕ}
     (hT : HoldsMatrix t T μ.store) (hD : HoldsMatrix d D μ.store)
     (hl : μ.Live [a0, uo, t, d, s]) (hs : s.2 + 4 ≤ μ.store.len s.1) (ha : a0.1 ≠ s.1)
     (hu : uo.1 ≠ s.1) (ht : t.1 ≠ s.1) (hd : d.1 ≠ s.1) :
-    Writes .total I τ (checkNorms (O := O) (Q := Q)).body (Env.frame [N] [a0, uo, t, d, s])
+    Writes .total I τ (checkNorms (O := O) (Q := Q)) (Env.frame [N] [a0, uo, t, d, s])
       (Store.inBlock s.1 s.2 4)
       (fun μ' => ∃ r a w x : ℝ, μ'.store.get s.1 s.2 = some r ∧
         μ'.store.get s.1 (s.2 + 1) = some a ∧ μ'.store.get s.1 (s.2 + 2) = some w ∧
@@ -391,7 +396,7 @@ theorem checkDecide_writes [Has IndexOp O] {M : Machine ℝ} {I : Interp O Q ℝ
     (hκ : μ.store.get p.1 (p.2 + 1) = some κ) (hs : s.2 + 4 ≤ μ.store.len s.1)
     (hf : f.2 < μ.store.len f.1) (hsp : s.1 ≠ p.1) (hsf : s.1 ≠ f.1)
     (hl : μ.Live [s, p, f]) :
-    Writes .total I τ (checkDecide (O := O) (Q := Q)).body (Env.frame [] [s, p, s, f])
+    Writes .total I τ (checkDecide (O := O) (Q := Q)) (Env.frame [] [s, p, s, f])
       (Store.inBlock s.1 s.2 4 ⊔ Store.inBlock f.1 f.2 1)
       (fun μ' => μ'.store.get f.1 f.2 =
         some (if M.add r (checkGuard M w x κ) ≤ M.mul a θ then M.lit 0 else M.lit 1)) μ := by
@@ -522,7 +527,7 @@ theorem residualWords_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (h
     (hda : Fp.Disj (Store.inBlock d.1 d.2 (2 * (N * N))) (Store.inBlock a0.1 a0.2 (2 * (N * N))))
     (hdu : Fp.Disj (Store.inBlock uo.1 uo.2 (2 * (N * N))) (Store.inBlock d.1 d.2 (2 * (N * N))))
     (hdt : Fp.Disj (Store.inBlock t.1 t.2 (2 * (N * N))) (Store.inBlock d.1 d.2 (2 * (N * N)))) :
-    Writes .total I τ (residualWords (O := O) (Q := Q)).body (Env.frame [N] [a0, uo, t, d])
+    Writes .total I τ (residualWords (O := O) (Q := Q)) (Env.frame [N] [a0, uo, t, d])
       (Store.inBlock d.1 d.2 (2 * (N * N)))
       (fun μ' => μ'.pos = μ.pos ∧
         HoldsMatrix d (subWord M A₀ (matMulWord M (matMulWord M U T) Uᴴ)) μ'.store) μ := by
@@ -619,27 +624,23 @@ section Check
 
 variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 
-/-- **The residual check on every tape**: on a scalar machine with the standard model, index
-literals and exact comparisons, with a two-sided norm estimate for the order $N$ (the contract of
-`NLAlib.Schur.frobNormStage` with the factors $c_1, c_2$), from stored $\mathbf{A}_0$,
-$\mathbf{U}$, $\mathbf{T}$, the words $\theta, \kappa$ and room for the flag, pairwise apart,
-`NLAlib.Schur.schurResidualCheck` writes only $\mathbf{T}$ and the flag and ends in
-`NLAlib.Schur.ResidualCheckOutcome`. No hypothesis on the matrices. -/
-theorem schurResidualCheck_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+/-- The run of `NLAlib.Schur.schurResidualCheck` from stored matrices, on every tape, in the form
+of the memory it ends in. A step in the proof of `NLAlib.Schur.schurResidualCheck_meets`. -/
+private theorem schurResidualCheck_writes_outcome {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {c₁ c₂ : ℝ} {N : ℕ} (hNm : FrobNormEstimateContract c₁ c₂ N (frobNormStage (O := O) (Q := Q)) I)
     {τ : Tape ℝ} {μ : Mem ℝ} {a0 uo t p f : ℕ × ℕ} {A₀ U T : Matrix (Fin N) (Fin N) ℂ}
     {θ κ : ℝ} (hA : HoldsMatrix a0 A₀ μ.store) (hU : HoldsMatrix uo U μ.store)
     (hT : HoldsMatrix t T μ.store) (hp : μ.store.readBlock p.1 p.2 2 = some [θ, κ])
     (hl : μ.Live [a0, uo, t, p, f]) (hf : f.2 < μ.store.len f.1)
-    (hap : Fp.Apart [a0, uo, t, p, f] [2 * (N * N), 2 * (N * N), 2 * (N * N), 2, 1]) :
+    (hat : Fp.Disj (Store.inBlock a0.1 a0.2 (2 * (N * N))) (Store.inBlock t.1 t.2 (2 * (N * N))))
+    (hut : Fp.Disj (Store.inBlock uo.1 uo.2 (2 * (N * N))) (Store.inBlock t.1 t.2 (2 * (N * N))))
+    (htp : Fp.Disj (Store.inBlock t.1 t.2 (2 * (N * N))) (Store.inBlock p.1 p.2 2))
+    (htf : Fp.Disj (Store.inBlock t.1 t.2 (2 * (N * N))) (Store.inBlock f.1 f.2 1)) :
     Writes .total I τ (schurResidualCheck (O := O) (Q := Q)).body
-      (Env.frame [N] [a0, uo, t, p, t, f])
+      (Env.frame [N] [a0, uo, t, p, f])
       (Store.inBlock t.1 t.2 (2 * (N * N)) ⊔ Store.inBlock f.1 f.2 1)
       (ResidualCheckOutcome M c₁ c₂ θ κ A₀ U T t f) μ := by
-  simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
-    and_true] at hap
-  obtain ⟨⟨hau, hat, hapw, haf⟩, ⟨hut, hup, huf⟩, ⟨htp, htf⟩, hpf⟩ := hap
   have hlt : ∀ z ∈ [a0, uo, t, p, f], z.1 < μ.store.length := hl
   obtain ⟨ha0, huo, ht, hp1, hf1⟩ : a0.1 < μ.store.length ∧ uo.1 < μ.store.length ∧
       t.1 < μ.store.length ∧ p.1 < μ.store.length ∧ f.1 < μ.store.length :=
@@ -716,6 +717,97 @@ theorem schurResidualCheck_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
     ((hkL ht hT₂ hfr₂).of_eqOff hfr₃ (hne (by simp; omega))).of_eqOff hfr₄
       (Fp.disj_sup_left.mpr ⟨hne (by simp; omega), htf.symm⟩)
   exact ⟨hT₄, r, a, w, x, h1, h2, h3, h4, h5, h6, h7, h8, hflag⟩
+
+/-- What the check stores, on blocks: `ts` holds the upper part $\mathbf{T}'$ of $\mathbf{T}$, and
+there are estimates $\hat r, \hat a, \hat w, \hat t$ of the Frobenius norms of the stored residual
+of $(\mathbf{A}_0, \mathbf{U}, \mathbf{T}')$, of $\mathbf{A}_0$, $\mathbf{U}$ and $\mathbf{T}'$
+within the factors $c_1, c_2$, with the flag `fl` the literal $0$ if
+$\mathrm{fl}(\hat r + \hat g) \le \mathrm{fl}(\hat a\theta)$ and the literal $1$ otherwise. -/
+def ResidualCheckPost (M : Machine ℝ) (c₁ c₂ θ κ : ℝ) {N : ℕ}
+    (A₀ U T : Matrix (Fin N) (Fin N) ℂ) (ts : List ℝ) (fl : ℝ) : Prop :=
+  ts = matrixWords (upperPart T) ∧ ∃ r a w x : ℝ,
+    c₁ * frobNorm (subWord M A₀ (matMulWord M (matMulWord M U (upperPart T)) Uᴴ)) ≤ r ∧
+    r ≤ c₂ * frobNorm (subWord M A₀ (matMulWord M (matMulWord M U (upperPart T)) Uᴴ)) ∧
+    c₁ * frobNorm A₀ ≤ a ∧ a ≤ c₂ * frobNorm A₀ ∧ c₁ * frobNorm U ≤ w ∧ w ≤ c₂ * frobNorm U ∧
+    c₁ * frobNorm (upperPart T) ≤ x ∧ x ≤ c₂ * frobNorm (upperPart T) ∧
+    fl = if M.add r (checkGuard M w x κ) ≤ M.mul a θ then M.lit 0 else M.lit 1
+
+/-- **The specification of the residual check** at stored square $\mathbf{A}_0$, $\mathbf{U}$,
+$\mathbf{T}$ of order $n$ and the words $\theta, \kappa$: the written blocks satisfy
+`NLAlib.Schur.ResidualCheckPost`. No hypothesis on the matrices. -/
+def schurResidualCheckSpec (M : Machine ℝ) (c₁ c₂ θ κ : ℝ) {n : ℕ}
+    (A₀ U T : Matrix (Fin n) (Fin n) ℂ) : Routine.Spec ℝ :=
+  spec% [N] (a0s, us, ts, ps) → (ts', [fl])
+    requires N = n ∧ a0s = matrixWords A₀ ∧ us = matrixWords U ∧ ts = matrixWords T ∧
+      ps = [θ, κ]
+    ensures ResidualCheckPost M c₁ c₂ θ κ A₀ U T ts' fl
+
+/-- **The residual check meets its specification**, on every tape: on a scalar machine with the
+standard model, index literals and exact comparisons, with a two-sided norm estimate for the
+order $n$ (the contract of `NLAlib.Schur.frobNormStage` with the factors $c_1, c_2$), the check
+stores what `NLAlib.Schur.ResidualCheckPost` says. No hypothesis on the matrices. -/
+theorem schurResidualCheck_meets {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar M I) (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
+    {c₁ c₂ θ κ : ℝ} {n : ℕ}
+    (hNm : FrobNormEstimateContract c₁ c₂ n (frobNormStage (O := O) (Q := Q)) I)
+    (A₀ U T : Matrix (Fin n) (Fin n) ℂ) :
+    (schurResidualCheck (O := O) (Q := Q)).Meets I (schurResidualCheckSpec M c₁ c₂ θ κ A₀ U T) := by
+  routine_intro [N] (a0, uo, t, p, f) reads (a0s, us, ts, ps)
+  obtain ⟨rfl, rfl, rfl, rfl, rfl⟩ := hpre
+  have htf : Fp.Disj (Store.inBlock t.1 t.2 (2 * (N * N))) (Store.inBlock f.1 f.2 1) := by
+    simpa [Fp.Apart] using hblocks.1
+  have hta : Fp.Disj (Store.inBlock a0.1 a0.2 (2 * (N * N)))
+      (Store.inBlock t.1 t.2 (2 * (N * N))) :=
+    (hblocks.2.1.mono (by fp_sub) (by fp_sub)).symm
+  have htu : Fp.Disj (Store.inBlock uo.1 uo.2 (2 * (N * N)))
+      (Store.inBlock t.1 t.2 (2 * (N * N))) :=
+    (hblocks.2.1.mono (by fp_sub) (by fp_sub)).symm
+  have htp : Fp.Disj (Store.inBlock t.1 t.2 (2 * (N * N))) (Store.inBlock p.1 p.2 2) :=
+    hblocks.2.1.mono (by fp_sub) (by fp_sub)
+  refine (schurResidualCheck_writes_outcome hS hM hL hC hNm ha0s hus hts hps hlive
+    (by have := hroom.2; omega) hta htu htp htf).mono (by fp_sub) ?_
+  rintro m' - ⟨hT', r, a, w, x, h1, h2, h3, h4, h5, h6, h7, h8, hfl⟩
+  exact ⟨trivial, [matrixWords (upperPart T), [_]],
+    Mem.readBlocks_of_cons hT' (Mem.readBlocks_of_cons (by rw [BlockFn.readBlock_one, hfl]; rfl)
+      rfl), rfl, r, a, w, x, h1, h2, h3, h4, h5, h6, h7, h8, rfl⟩
+
+/-- The judgment of `NLAlib.Schur.schurResidualCheck` read at its operands, on the final memory
+(`NLAlib.Schur.ResidualCheckOutcome`). A corollary of `NLAlib.Schur.schurResidualCheck_meets`, kept
+because the proofs of the verified solver carry the outcome as a statement on the memory
+through the frames of its stages. -/
+theorem schurResidualCheck_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar M I) (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
+    {c₁ c₂ : ℝ} {N : ℕ} (hNm : FrobNormEstimateContract c₁ c₂ N (frobNormStage (O := O) (Q := Q)) I)
+    {τ : Tape ℝ} {μ : Mem ℝ} {a0 uo t p f : ℕ × ℕ} {A₀ U T : Matrix (Fin N) (Fin N) ℂ}
+    {θ κ : ℝ} (hA : HoldsMatrix a0 A₀ μ.store) (hU : HoldsMatrix uo U μ.store)
+    (hT : HoldsMatrix t T μ.store) (hp : μ.store.readBlock p.1 p.2 2 = some [θ, κ])
+    (hl : μ.Live [a0, uo, t, p, f]) (hroomT : t.2 + 2 * (N * N) ≤ μ.store.len t.1)
+    (hf : f.2 < μ.store.len f.1)
+    (hap : Fp.Apart [a0, uo, t, p, f] [2 * (N * N), 2 * (N * N), 2 * (N * N), 2, 1]) :
+    Writes .total I τ (schurResidualCheck (O := O) (Q := Q)).body
+      (Env.frame [N] [a0, uo, t, p, f])
+      (Store.inBlock t.1 t.2 (2 * (N * N)) ⊔ Store.inBlock f.1 f.2 1)
+      (ResidualCheckOutcome M c₁ c₂ θ κ A₀ U T t f) μ := by
+  have hroom : μ.Room [t, f] [2 * (N * N), 1] := by
+    simp only [Mem.room_cons, Mem.room_nil, and_true]
+    exact ⟨hroomT, hf⟩
+  simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
+    and_true] at hap
+  obtain ⟨⟨-, hat, hap', haf⟩, ⟨hut, hup, huf⟩, ⟨htp, htf⟩, hpf⟩ := hap
+  have h := schurResidualCheck_meets (θ := θ) (κ := κ) hS hM hL hC hNm A₀ U T [N]
+    [a0, uo, t, p, f] τ μ [matrixWords A₀, matrixWords U, matrixWords T, [θ, κ]] rfl rfl hl
+    (by routine_sep)
+    (Mem.readBlocks_of_cons hA (Mem.readBlocks_of_cons hU (Mem.readBlocks_of_cons hT
+      (Mem.readBlocks_of_cons hp rfl))))
+    ⟨rfl, rfl, rfl, rfl, rfl⟩ hroom
+  refine h.mono (by fp_sub) ?_
+  rintro m' - ⟨-, ys, hys, hpost⟩
+  routine_nf at hys
+  split_reads hys as (zs, ws)
+  obtain ⟨v, hv, rfl⟩ := Store.readBlock_one_eq_some.mp hws
+  obtain ⟨rfl, r, a, w, x, h1, h2, h3, h4, h5, h6, h7, h8, rfl⟩ :
+    ResidualCheckPost M c₁ c₂ θ κ A₀ U T zs v := hpost
+  exact ⟨hzs, r, a, w, x, h1, h2, h3, h4, h5, h6, h7, h8, hv⟩
 
 end Check
 

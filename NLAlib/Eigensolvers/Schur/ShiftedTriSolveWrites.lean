@@ -398,7 +398,7 @@ private theorem rowSumBody_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
   exact ⟨p₃.trans (p₂.trans p₁), c₁.keep hfr hD,
     h₃.keep (Store.readsOnly_get _ _ _) (by disjoint) g₂, g₃⟩
 
-
+omit [Has IndexOp O] [Has CmpTst Q] in
 /-- The sum of a row. -/
 private theorem rowSum_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I) {N j r : ℕ}
     (hj : j < N) (hr : r < j) {t sm y g : ℕ × ℕ} {L : ℕ}

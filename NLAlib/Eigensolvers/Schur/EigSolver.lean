@@ -308,15 +308,393 @@ private theorem gap_lt_of_schur {n : ℕ} {A X U T : Matrix (Fin (n + 1)) (Fin (
       nlinarith
     linarith
 
+/-- The fifteen disjointness facts of the operands of the eigensolver. -/
+theorem eigSolverInput_disj {n : ℕ} {a p uo f pe v : ℕ × ℕ} {qs qe : List ℝ}
+    (hap : Fp.Apart [a, p, uo, f, pe, v] [2 * ((n + 1) * (n + 1)), qs.length,
+      2 * ((n + 1) * (n + 1)), 1, qe.length, 2 * ((n + 1) * (n + 1))]) :
+    Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock p.1 p.2 qs.length) ∧
+    Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) ∧
+    Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock f.1 f.2 1) ∧
+    Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock pe.1 pe.2 qe.length) ∧
+    Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1)))) ∧
+    Fp.Disj (Store.inBlock p.1 p.2 qs.length)
+      (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) ∧
+    Fp.Disj (Store.inBlock p.1 p.2 qs.length) (Store.inBlock f.1 f.2 1) ∧
+    Fp.Disj (Store.inBlock p.1 p.2 qs.length) (Store.inBlock pe.1 pe.2 qe.length) ∧
+    Fp.Disj (Store.inBlock p.1 p.2 qs.length) (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1)))) ∧
+    Fp.Disj (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock f.1 f.2 1) ∧
+    Fp.Disj (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock pe.1 pe.2 qe.length) ∧
+    Fp.Disj (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))))
+      (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1)))) ∧
+    Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock pe.1 pe.2 qe.length) ∧
+    Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1)))) ∧
+    Fp.Disj (Store.inBlock pe.1 pe.2 qe.length)
+      (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1)))) := by
+  simpa only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
+    and_true, and_assoc] using hap
+
+/-- The constants of an eigenvector stage are nonnegative: at the order $1$, with
+$\mathbf{U} = \mathbf{I}$ and $\mathbf{T} = \mathbf{0}$, the stage stores $\mathbf{V} = \mathbf{U}$
+and a matrix $\mathbf{Y}$ with $\|\mathbf{V} - \mathbf{U}\mathbf{Y}\|_2 \le
+c_V\|\mathbf{U}\|_{\mathsf F}\|\mathbf{Y}\|_{\mathsf F}$ and column norms within $c_N$ of $1$. -/
+private theorem nonneg_of_eigenvectorStageContract {I : Interp O Q ℝ} {cR₀ cR cV cN g₀ : ℝ}
+    {nmax : ℕ} {ps : List ℝ} {Ev : Stmt O Q}
+    (h : EigenvectorStageContract cR₀ cR cV cN g₀ nmax ps Ev I) (hn : 1 ≤ nmax) :
+    0 ≤ cV ∧ 0 ≤ cN := by
+  let U : Matrix (Fin 1) (Fin 1) ℂ := 1
+  let T : Matrix (Fin 1) (Fin 1) ℂ := 0
+  let μ : Mem ℝ := ⟨[(matrixWords T).map some, (matrixWords U).map some, ps.map some,
+    [none, none], [none]], 0⟩
+  have hread : ∀ (b : ℕ) (xs : List ℝ), μ.store[b]? = some (xs.map some) →
+      μ.store.readBlock b 0 xs.length = some xs := fun b xs hb =>
+    Store.readBlock_eq_some_iff.mpr ⟨rfl, fun j hj => by
+      simp only [Store.get, hb, Nat.zero_add, Option.bind_some, List.getElem?_map]
+      cases xs[j]? <;> rfl⟩
+  have hT : HoldsMatrix (0, 0) T μ.store := by
+    simpa [HoldsMatrix] using hread 0 (matrixWords T) rfl
+  have hU : HoldsMatrix (1, 0) U μ.store := by
+    simpa [HoldsMatrix] using hread 1 (matrixWords U) rfl
+  have hps : μ.store.readBlock 2 0 ps.length = some ps := hread 2 ps rfl
+  have hw := h (N := 1) (a := (0, 0)) (uo := (1, 0)) (pe := (2, 0)) (v := (3, 0)) (g := (4, 0))
+    (tape := fun _ _ => 0) (μ := μ) U T hn ⟨hT, hU⟩ hps
+    (by simp [Mem.Live, μ]) (by simp [Mem.Room, Store.len, μ])
+    (by
+      simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
+        and_true]
+      refine ⟨⟨?_, ?_, ?_, ?_⟩, ⟨?_, ?_, ?_⟩, ⟨?_, ?_⟩, ?_⟩ <;>
+        exact Fp.disj_inBlock_of_ne (by omega))
+  obtain ⟨m', -, -, V, -, -, h0, htri⟩ := hw
+  obtain ⟨⟨Y, hY, hV⟩, -⟩ := htri (fun i j hij => rfl)
+  have hVU : V = U := (h0 rfl).1
+  have hcN : 0 ≤ cN := (abs_nonneg _).trans (hY 0).1
+  refine ⟨?_, hcN⟩
+  by_contra hneg
+  have hcV : cV < 0 := not_le.mp hneg
+  have hUF : 0 < frobNorm U :=
+    lt_of_le_of_ne (frobNorm_nonneg U) fun e => one_ne_zero (frobNorm_eq_zero_iff.mp e.symm)
+  rcases (frobNorm_nonneg Y).lt_or_eq with hY0 | hY0
+  · have h1 : cV * frobNorm U * frobNorm Y < 0 :=
+      mul_neg_of_neg_of_pos (mul_neg_of_neg_of_pos hcV hUF) hY0
+    linarith [specNorm_nonneg (V - U * Y)]
+  · have hY00 : Y = 0 := frobNorm_eq_zero_iff.mp hY0.symm
+    subst hY00
+    rw [hVU, Matrix.mul_zero, sub_zero] at hV
+    simp only [frobNorm_zero, mul_zero] at hV
+    exact one_ne_zero (specNorm_eq_zero_iff.mp (le_antisymm hV (specNorm_nonneg _)))
+
+/-! ### The tail of the run -/
+
+section Tail
+
+variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
+
+/-- The part of the eigensolver after the Schur solver: the stage and the branch on its flag. -/
+private def eigTail (Ev : Stmt O Q) : Stmt O Q :=
+  (Stmt.frame [.var 0, .var 6] [⟨0, .var 7⟩, ⟨4, .var 11⟩, ⟨2, .var 9⟩, ⟨5, .var 12⟩,
+    ⟨7, .const 0⟩] Ev).seq
+    (Stmt.ite (Has.inj CmpTst.isPos) [] [⟨7, .const 0⟩]
+      (Stmt.call (Has.inj IndexOp.lit) [.const 1] [] [⟨6, .var 13⟩]) .skip)
+
+omit [Has ScalarOp O] in
+/-- The eigensolver is the allocation of the stage's flag, the Schur solver and the tail. -/
+private theorem eigSolverWith_eq (Solve Ev : Stmt O Q) :
+    eigSolverWith Solve Ev = Stmt.allocs [.const 1]
+      ((Stmt.frame [.var 0, .var 1, .var 2, .var 3, .var 4, .var 5]
+        [⟨0, .var 7⟩, ⟨1, .var 8⟩, ⟨0, .var 7⟩, ⟨4, .var 11⟩, ⟨6, .var 13⟩] Solve).seq
+        (eigTail Ev)) := rfl
+
+/-- The memory after the Schur solver, as the tail needs it. -/
+private structure EigTailMem (n : ℕ) (qe : List ℝ) (a uo pe v f : ℕ × ℕ) (L : ℕ) (m : Mem ℝ) :
+    Prop where
+  words : m.store.readBlock pe.1 pe.2 qe.length = some qe
+  live : m.Live [a, uo, pe, v, (L, 0)]
+  room : m.Room [v, (L, 0)] [2 * ((n + 1) * (n + 1)), 1]
+  apart : Fp.Apart [a, uo, pe, v, (L, 0)]
+    [2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), qe.length, 2 * ((n + 1) * (n + 1)), 1]
+  flag : f.2 < m.store.len f.1
+  fa : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock f.1 f.2 1)
+  fu : Fp.Disj (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock f.1 f.2 1)
+  fv : Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1))))
+  fL : f.1 ≠ L
+
+omit [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] in
+/-- The input of the eigensolver, after the allocation of the flag word and a run writing only
+the blocks of the Schur solver, is a memory for the tail. -/
+private theorem EigSolverInput.tailMem {n : ℕ} {qs qe : List ℝ} {a p pe uo v f : ℕ × ℕ}
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {μ : Mem ℝ} {s₁ : Store ℝ} {m₁ : Mem ℝ}
+    (hin : EigSolverInput qs qe a p pe uo v f A μ) (hLs : s₁.length = μ.store.length + 1)
+    (hL1 : s₁.len μ.store.length = 1) (hBelow : Store.Below μ.store.length μ.store s₁)
+    (hfr₁ : s₁.EqOff (schurFp n a uo f) m₁.store) :
+    EigTailMem n qe a uo pe v f μ.store.length m₁ := by
+  obtain ⟨⟨hl4, hroom4, -, -, -⟩, hlv, hroom, hap, hqe⟩ := hin
+  set L := μ.store.length with hLdef
+  have hlt : ∀ z ∈ [a, p, uo, f, pe, v], z.1 < L := fun z hz => by
+    simp only [List.mem_cons, List.mem_nil_iff, or_false] at hz
+    rcases hz with rfl | rfl | rfl | rfl | rfl | rfl
+    · exact hl4 _ (by simp)
+    · exact hl4 _ (by simp)
+    · exact hl4 _ (by simp)
+    · exact hl4 _ (by simp)
+    · exact hlv _ (by simp)
+    · exact hlv _ (by simp)
+  obtain ⟨h12, h13, h14, h15, h16, h23, h24, h25, h26, h34, h35, h36, h45, h46, h56⟩ :=
+    eigSolverInput_disj hap
+  have hdS : ∀ {G : Fp}, Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) G →
+      Fp.Disj (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) G →
+      Fp.Disj (Store.inBlock f.1 f.2 1) G → Fp.Disj (schurFp n a uo f) G := fun h1 h2 h3 => by
+    simp only [schurFp, Fp.disj_sup_left]; exact ⟨⟨h1, h2⟩, h3⟩
+  have hlen₁ : m₁.store.length = L + 1 := hfr₁.length_eq.trans hLs
+  have hlen : ∀ b < L, m₁.store.len b = μ.store.len b := fun b hb => by
+    rw [hfr₁.len_eq]; exact (hBelow b hb).1
+  have hLa : ∀ z ∈ [a, uo, pe, v], ∀ l,
+      Fp.Disj (Store.inBlock z.1 z.2 l) (Store.inBlock L 0 1) :=
+    fun z hz l => Fp.disj_inBlock_of_ne (by
+      have := hlt z (by simp only [List.mem_cons, List.mem_nil_iff, or_false] at hz ⊢; tauto)
+      omega)
+  refine ⟨hfr₁.keep (Store.readsOnly_readBlock _ _ _ _) (hdS h15 h35 h45)
+      (hBelow.keep (Store.readsOnly_readBlock _ _ _ _) (fun _ _ h => h.1 ▸ hlt pe (by simp)) hqe),
+    fun z hz => ?_, ⟨?_, ?_, trivial⟩, ?_, ?_, h14, h34, h46, ?_⟩
+  · simp only [List.mem_cons, List.mem_nil_iff, or_false] at hz
+    rw [hlen₁]
+    rcases hz with h | h | h | h | h <;> rw [h]
+    · have := hlt a (by simp); omega
+    · have := hlt uo (by simp); omega
+    · have := hlt pe (by simp); omega
+    · have := hlt v (by simp); omega
+    · simp
+  · rw [hlen _ (hlt v (by simp))]; exact hroom.2.1
+  · rw [hfr₁.len_eq]; simp [hL1]
+  · simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
+      and_true]
+    exact ⟨⟨h13, h15, h16, hLa a (by simp) _⟩, ⟨h35, h36, hLa uo (by simp) _⟩,
+      ⟨h56, hLa pe (by simp) _⟩, hLa v (by simp) _⟩
+  · rw [hlen _ (hlt f (by simp))]
+    have := hroom4.2.2.2.1
+    omega
+  · have := hlt f (by simp); omega
+
+omit [Has ScalarOp O] in
+/-- **The tail of the run**: from a memory for the tail, if the stage writes only $\mathbf{V}$ and
+its flag and stores a word, the tail writes only the blocks of the eigensolver and scratch, and
+ends in `Post` given `Post` after the stage with a flag that is not positive (`hN`), and after the
+stage and the literal $1$ in the flag with a positive flag (`hP`). -/
+private theorem eigTail_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} (hL : IsIndexLit Mch I)
+    (hC : IsCmp id I) {Ev : Stmt O Q} {n L : ℕ} {qe : List ℝ} {a uo pe v f : ℕ × ℕ}
+    {ρ : Env} {τ : Tape ℝ} {m₁ : Mem ℝ} {R Post : Mem ℝ → Prop}
+    (hd : IExp.evalList ρ.idx [.var 0, .var 6] = some [n + 1, qe.length])
+    (ha : Operand.evalList ρ [⟨0, .var 7⟩, ⟨4, .var 11⟩, ⟨2, .var 9⟩, ⟨5, .var 12⟩,
+      ⟨7, .const 0⟩] = some [a, uo, pe, v, (L, 0)])
+    (hg : Operand.evalList ρ [⟨7, .const 0⟩] = some [(L, 0)])
+    (ho : (⟨6, .var 13⟩ : Operand).eval ρ = some f)
+    (hm : EigTailMem n qe a uo pe v f L m₁)
+    (hEv : Writes .total I τ Ev (Env.frame [n + 1, qe.length] [a, uo, pe, v, (L, 0)])
+      (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock L 0 1) R m₁)
+    (hx : ∀ m₂, R m₂ → ∃ x, m₂.store.get L 0 = some x)
+    (hN : ∀ m₂ x, m₁.store.EqOff
+        (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock L 0 1) m₂.store →
+      R m₂ → m₂.store.get L 0 = some x → ¬ 0 < x → Post m₂)
+    (hP : ∀ m₂ m₃ x, m₁.store.EqOff
+        (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock L 0 1) m₂.store →
+      R m₂ → m₂.store.get L 0 = some x → 0 < x →
+      m₂.store.EqOff (Store.inBlock f.1 f.2 1) m₃.store →
+      m₃.store.get f.1 f.2 = some (Mch.lit ((1 : ℕ) : ℚ)) → Post m₃) :
+    Writes .total I τ (eigTail Ev) ρ (eigFp n a uo v f ⊔ Fp.above L) Post m₁ := by
+  have hFE : Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock L 0 1 ≤
+      eigFp n a uo v f ⊔ Fp.above L :=
+    sup_le (fun _ _ h => Or.inl (Or.inr h)) (fun _ _ h => Or.inr (h.1 ▸ le_rfl))
+  refine hEv.frame_seq_le hd ha hm.live hFE fun m₂ hfr₂ hR => ?_
+  obtain ⟨x, hx₂⟩ := hx m₂ hR
+  refine writes_ite rfl hg (hC.test_isPos (x := (L, 0)) (d := []) hx₂) ?_
+  by_cases hx0 : 0 < x
+  · have hf₂ : f.2 < m₂.store.len f.1 := by rw [hfr₂.len_eq]; exact hm.flag
+    simp only [id, hx0, decide_true, if_true]
+    exact (writes_indexLit hL (n := 1) rfl ho hf₂).mono
+      (fun _ _ h => Or.inl (Or.inl (Or.inr h)))
+      fun m₃ hf₃ h => hP m₂ m₃ x hfr₂ hR hx₂ hx0 hf₃ h.2
+  · simp only [id, hx0, decide_false, Bool.false_eq_true, if_false]
+    exact (Writes.skip (P := Post) (hN m₂ x hfr₂ hR hx₂ hx0)).mono bot_le fun _ _ h => h
+
+end Tail
+
 /-! ### The compositions -/
 
 section Theorems
 
 variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 
-/-- **The Monte Carlo composition of the eigensolver.** On a scalar machine with the standard
-model, index literals, exact natural literals up to $n + 1$ and exact comparisons, a measurable
-interpretation reading the tape only in its windows, let `Solve` store, except with probability
+omit [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] in
+/-- What the stage's footprint leaves alone: the blocks of $\mathbf{T}$ and $\widehat{\mathbf{U}}$
+and the flag. -/
+private theorem EigTailMem.stage_disj {n L : ℕ} {qe : List ℝ} {a uo pe v f : ℕ × ℕ} {m : Mem ℝ}
+    (hm : EigTailMem n qe a uo pe v f L m) :
+    Fp.Disj (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock L 0 1)
+        (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) ∧
+      Fp.Disj (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock L 0 1)
+        (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) ∧
+      ¬ (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock L 0 1) f.1 f.2 := by
+  have hap := hm.apart
+  simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
+    and_true] at hap
+  obtain ⟨⟨-, -, hav, haL⟩, ⟨-, huv, huL⟩, -, -⟩ := hap
+  refine ⟨Fp.disj_sup_left.mpr ⟨hav.symm, haL.symm⟩, Fp.disj_sup_left.mpr ⟨huv.symm, huL.symm⟩, ?_⟩
+  rintro (h | h)
+  · exact hm.fv _ _ ⟨rfl, le_rfl, Nat.lt_succ_self _⟩ h
+  · exact hm.fL h.1
+
+omit [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] in
+/-- A Schur output survives a run writing off its blocks. -/
+private theorem SchurOutput.of_eqOff {n : ℕ} {a uo f : ℕ × ℕ}
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {eA eU : ℝ} {m m' : Mem ℝ} {G : Fp}
+    (h : SchurOutput a uo f A eA eU m) (hfr : m.store.EqOff G m'.store)
+    (ha : Fp.Disj G (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))))
+    (hu : Fp.Disj G (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))))) (hf : ¬ G f.1 f.2) :
+    SchurOutput a uo f A eA eU m' := by
+  obtain ⟨h0, U, T, hT, hU, hTu, hr, ho⟩ := h
+  exact ⟨by rw [hfr.get_eq hf]; exact h0, U, T, hT.of_eqOff hfr ha, hU.of_eqOff hfr hu, hTu, hr, ho⟩
+
+omit [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] in
+/-- A Schur output is kept by the release of scratch above its blocks. -/
+private theorem SchurOutput.of_below {n L : ℕ} {a uo f : ℕ × ℕ}
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {eA eU : ℝ} {s s' : Store ℝ} {q : ℕ}
+    (h : SchurOutput a uo f A eA eU ⟨s, q⟩) (hB : Store.Below L s s') (ha : a.1 < L)
+    (hu : uo.1 < L) (hf : f.1 < L) : SchurOutput a uo f A eA eU ⟨s', q⟩ := by
+  obtain ⟨h0, U, T, hT, hU, hTu, hr, ho⟩ := h
+  exact ⟨by rw [show s'.get f.1 f.2 = s.get f.1 f.2 from (hB f.1 hf).2 f.2]; exact h0, U, T,
+    hT.of_below hB ha, hU.of_below hB hu, hTu, hr, ho⟩
+
+omit [Has ScalarOp O] in
+/-- **The run on one tape, from its parts**: if the Schur solver writes its blocks and ends in `S`
+from the input of the pipeline, and the tail ends in `Post` from a memory for the tail in `S`,
+then the eigensolver writes only its blocks and ends in `Post`, for a `Post` kept by the release
+of the flag word. -/
+private theorem eigSolverWith_writes_of {I : Interp O Q ℝ} {Solve Ev : Stmt O Q} {n nr nq k F T : ℕ}
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {a p pe uo v f : ℕ × ℕ} {qs qe : List ℝ}
+    {τ : Tape ℝ} {μ : Mem ℝ} {S Post : Mem ℝ → Prop}
+    (hin : EigSolverInput qs qe a p pe uo v f A μ)
+    (hSolve : ∀ m', SchurPipelineInput qs a p uo f A m' →
+      Writes .total I τ Solve (Env.frame [n + 1, nr, nq, k, F, T] [a, p, a, uo, f])
+        (schurFp n a uo f) S m')
+    (hkeep : ∀ {s s' : Store ℝ} {q : ℕ}, Store.Below μ.store.length s s' → Post ⟨s, q⟩ →
+      Post ⟨s', q⟩)
+    (hTail : ∀ m₁, EigTailMem n qe a uo pe v f μ.store.length m₁ → S m₁ →
+      Writes .total I τ (eigTail Ev)
+        ⟨(Env.frame [n + 1, nr, nq, k, F, T, qe.length] [a, p, pe, a, uo, v, f]).idx,
+          (Env.frame [n + 1, nr, nq, k, F, T, qe.length] [a, p, pe, a, uo, v, f]).buf ++
+            [μ.store.length]⟩
+        (eigFp n a uo v f ⊔ Fp.above μ.store.length) Post m₁) :
+    Writes .total I τ (eigSolverWith Solve Ev)
+      (Env.frame [n + 1, nr, nq, k, F, T, qe.length] [a, p, pe, a, uo, v, f]) (eigFp n a uo v f)
+      Post μ := by
+  rw [eigSolverWith_eq]
+  refine writes_allocs_preserving_post (ns := [1]) rfl hkeep fun s₁ hlen hlens hBelow => ?_
+  have hLs : s₁.length = μ.store.length + 1 := by simpa using hlen
+  have hL1 : s₁.len μ.store.length = 1 := by simpa using hlens 0 (by simp)
+  have hpin := hin.1.of_below (μ' := ⟨s₁, μ.pos⟩) hBelow hin.1.1 (by simp only; omega)
+  have hlive : (⟨s₁, μ.pos⟩ : Mem ℝ).Live [a, p, a, uo, f] := fun z hz => hpin.1 z (by
+    simp only [List.mem_cons, List.mem_nil_iff, or_false] at hz ⊢; tauto)
+  exact (hSolve _ hpin).frame_seq_le rfl rfl hlive (fun _ _ h => Or.inl (Or.inl h))
+    fun m₁ hfr₁ hS => hTail m₁ (hin.tailMem hLs hL1 hBelow hfr₁) hS
+
+omit [Has ScalarOp O] in
+/-- The tail of the Monte Carlo composition, from a stored Schur output of a regularized matrix:
+the stage's flag is $0$ and the run stores the Schur output and the eigendecomposition. -/
+private theorem eigTail_writes_eigOutput {Mch : Machine ℝ} {I : Interp O Q ℝ} {n L : ℕ}
+    (hL : IsIndexLit Mch I) (hC : IsCmp id I) {Ev : Stmt O Q}
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {a pe uo v f : ℕ × ℕ} {qe : List ℝ} {ρ : Env}
+    {τ : Tape ℝ} {m₁ : Mem ℝ} {B Γ c₁ c₂ eR eX eU cR₀ cR cV cN g₀ : ℝ}
+    (hd : IExp.evalList ρ.idx [.var 0, .var 6] = some [n + 1, qe.length])
+    (ha : Operand.evalList ρ [⟨0, .var 7⟩, ⟨4, .var 11⟩, ⟨2, .var 9⟩, ⟨5, .var 12⟩,
+      ⟨7, .const 0⟩] = some [a, uo, pe, v, (L, 0)])
+    (hg : Operand.evalList ρ [⟨7, .const 0⟩] = some [(L, 0)])
+    (ho : (⟨6, .var 13⟩ : Operand).eval ρ = some f)
+    (hm : EigTailMem n qe a uo pe v f L m₁)
+    (hreg : RegularizedSchurOutput (IsConditionedDiagonalizable B Γ) a uo f A c₁ c₂ eR eX eU m₁)
+    (hEv : EigenvectorStageContract cR₀ cR cV cN g₀ (n + 1) qe Ev I)
+    (hΓ : 0 < Γ) (hB : 1 ≤ B) (hc₁ : 0 < c₁) (he : eR + eX ≤ 1 / 2) (heU : eU ≤ 1 / 8)
+    (hc : eigColTol n eU cV cN ≤ 1 / 8)
+    (hfloor : 16 * g₀ * √((n : ℝ) + 1) < 7 * c₁ * Γ)
+    (hsep : eX + 6 * eU ≤ c₁ * Γ / (16 * (n + 1) * B))
+    (hκ : 8 * √((n : ℝ) + 1) * B * eigEta n eX eU cR₀ cV ≤ c₁ * Γ) :
+    Writes .total I τ (eigTail Ev) ρ (eigFp n a uo v f ⊔ Fp.above L)
+      (fun μ' => SchurOutput a uo f A (eR + eX) eU μ' ∧
+        EigOutput a v f A (eR + eigEta n eX eU cR₀ cV)
+          (eR + √((n : ℝ) + 1) * eigEta n eX eU cR₀ cV) (eigColTol n eU cV cN)
+          (eR + 2 * ((n : ℝ) + 1) * B * eigEta n eX eU cR₀ cV)
+          (2 * √((n : ℝ) + 1) * B) (7 / 8 * c₁ * Γ) μ') m₁ := by
+  obtain ⟨hcV, hcN⟩ := nonneg_of_eigenvectorStageContract hEv (by omega)
+  have hso := hreg.schurOutput
+  obtain ⟨hf, U, T', X, hT, hUs, hTu, hoU, hr, hx, hclass⟩ := hreg
+  obtain ⟨hda, hdu, hdf⟩ := hm.stage_disj
+  have heU0 : 0 ≤ eU := (specNorm_nonneg _).trans hoU
+  have hn0 : (0 : ℝ) ≤ n := n.cast_nonneg
+  have hT0 : A = 0 → T' = 0 := by
+    rintro rfl
+    have hX : X = 0 := by
+      have h := hr
+      simp only [specNorm_zero, mul_zero, zero_sub, specNorm_neg] at h
+      exact specNorm_eq_zero_iff.mp (le_antisymm h (specNorm_nonneg _))
+    subst hX
+    have h := hx
+    simp only [specNorm_zero, mul_zero, zero_sub, specNorm_neg] at h
+    have h1 := one_sub_mul_specNorm_le_specNorm_mul_mul_conjTranspose hoU (by linarith) T'
+    exact specNorm_eq_zero_iff.mp
+      (le_antisymm (by nlinarith [specNorm_nonneg T']) (specNorm_nonneg _))
+  have hgaps : A ≠ 0 → ∀ i j, i ≠ j → 7 / 8 * c₁ * Γ * specNorm A ≤ ‖T' i i - T' j j‖ := by
+    intro hA i j hij
+    obtain ⟨s, hsl, -, hCs⟩ := hclass.resolve_left hA
+    exact mul_specNorm_le_norm_sub_diag_of_schur hTu hoU hr hx hsl hc₁ hA hCs hΓ he heU hsep i j
+      hij
+  have hzero : ∀ m₂ : Mem ℝ, (∃ V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+      HoldsMatrix v V m₂.store ∧
+      (m₂.store.get L 0 = some 0 ∨ m₂.store.get L 0 = some 1) ∧
+      (T' = 0 → V = U ∧ m₂.store.get L 0 = some 0) ∧
+      (T'.IsUpperTriangular → (∃ Y : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+          (∀ j, |‖WithLp.toLp 2 (Y.col j)‖ - 1| ≤ cN ∧
+            ‖WithLp.toLp 2 ((T' - T' j j • 1) *ᵥ Y.col j)‖ ≤
+              (if m₂.store.get L 0 = some 0 then cR₀ else cR) * frobNorm T' *
+                ‖WithLp.toLp 2 (Y.col j)‖) ∧
+          specNorm (V - U * Y) ≤ cV * frobNorm U * frobNorm Y) ∧
+        ((∀ i j, i ≠ j → g₀ * frobNorm T' < ‖T' i i - T' j j‖) →
+          m₂.store.get L 0 = some 0))) → m₂.store.get L 0 = some 0 := by
+    rintro m₂ ⟨V, -, -, h0, htri⟩
+    by_cases hA : A = 0
+    · exact (h0 (hT0 hA)).2
+    · exact (htri hTu).2 (gap_lt_of_schur hoU hr hx he heU hA hc₁ hΓ hfloor (hgaps hA))
+  refine eigTail_writes hL hC hd ha hg ho hm
+    (hEv U T' le_rfl ⟨hT, hUs⟩ hm.words hm.live hm.room hm.apart) ?_ ?_ ?_
+  · rintro m₂ ⟨V, -, hg', -⟩
+    rcases hg' with h | h <;> exact ⟨_, h⟩
+  · intro m₂ x hfr hR hx₂ hx0
+    have hg0 := hzero m₂ hR
+    obtain ⟨V, hV, -, h0, htri⟩ := hR
+    have hT₂ := hT.of_eqOff hfr hda
+    have hf₂ : m₂.store.get f.1 f.2 = some 0 := by rw [hfr.get_eq hdf]; exact hf
+    refine ⟨hso.of_eqOff hfr hda hdu hdf, hf₂, T', V, hT₂, hV, ?_⟩
+    by_cases hA : A = 0
+    · obtain rfl := hA
+      obtain rfl := hT0 rfl
+      obtain ⟨rfl, -⟩ := h0 rfl
+      refine eigDecompOf_zero hoU ?_ hc hB
+      unfold eigColTol
+      nlinarith [mul_nonneg (by linarith : (0 : ℝ) ≤ (n : ℝ) + 1) hcV]
+    · obtain ⟨⟨Y, hY, hVY⟩, -⟩ := htri hTu
+      rw [if_pos hg0] at hY
+      obtain ⟨s, hsl, -, hCs⟩ := hclass.resolve_left hA
+      exact eigDecompOf_of_schur hTu hoU hr hx hsl hc₁ hA hCs hΓ hY hVY hcV he heU hc hsep hκ
+  · rintro m₂ m₃ x - hR hx₂ hx0 - -
+    have hg0 := hzero m₂ hR
+    rw [hg0] at hx₂
+    obtain rfl : (0 : ℝ) = x := Option.some.inj hx₂
+    exact absurd hx0 (lt_irrefl _)
+
+omit [Has ScalarOp O] in
+/-- **The Monte Carlo composition of the eigensolver.** On a machine with index literals and
+exact comparisons, a measurable interpretation reading the tape only in its windows, let `Solve`
+store, except with probability
 $\varphi$, a Schur output with its regularized matrix $\mathbf{X}$, $s^{-1}\mathbf{X}$ of the class
 $(B, \Gamma)$ (`NLAlib.Schur.RegularizedSchurOutput` with the errors $e_R$, $e_X$, $e_U$), and let
 `Ev` meet `NLAlib.Schur.EigenvectorStageContract` with $(c_{R,0}, c_R, c_V, c_N, g_0)$ at the
@@ -330,9 +708,8 @@ errors $(e_R + e_X, e_U)$ and an eigendecomposition output (`NLAlib.Schur.EigOut
 residuals $e_R + \eta$, matrix residual $e_R + \sqrt{n + 1}\,\eta$, column tolerance $c$,
 backward form $e_R + 2(n + 1)B\eta$, $\kappa \le 2\sqrt{n + 1}\,B$ and gaps
 $\tfrac78c_1\Gamma\|\mathbf{A}\|_2$. No printed source. -/
-theorem eigSolverWith_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
-    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
-    (hNat : IsExactNatLit id Mch (n + 1)) (hC : IsCmp id I) (hI : I.IsMeasurable)
+theorem eigSolverWith_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
+    (hL : IsIndexLit Mch I) (hC : IsCmp id I) (hI : I.IsMeasurable)
     {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
     {Solve Ev : Stmt O Q} {nr nq k F T : ℕ} {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {a p pe uo v f : ℕ × ℕ} {qs qe : List ℝ} {B Γ c₁ c₂ eR eX eU φ cR₀ cR cV cN g₀ : ℝ}
@@ -353,10 +730,77 @@ theorem eigSolverWith_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
           (eR + √((n : ℝ) + 1) * eigEta n eX eU cR₀ cV) (eigColTol n eU cV cN)
           (eR + 2 * ((n : ℝ) + 1) * B * eigEta n eX eU cR₀ cV)
           (2 * √((n : ℝ) + 1) * B) (7 / 8 * c₁ * Γ) μ') φ := by
-  sorry
+  have hkeep : ∀ m, EigSolverInput qs qe a p pe uo v f A m → ∀ {s s' : Store ℝ} {q : ℕ},
+      Store.Below m.store.length s s' →
+      (SchurOutput a uo f A (eR + eX) eU ⟨s, q⟩ ∧
+        EigOutput a v f A (eR + eigEta n eX eU cR₀ cV)
+          (eR + √((n : ℝ) + 1) * eigEta n eX eU cR₀ cV) (eigColTol n eU cV cN)
+          (eR + 2 * ((n : ℝ) + 1) * B * eigEta n eX eU cR₀ cV)
+          (2 * √((n : ℝ) + 1) * B) (7 / 8 * c₁ * Γ) ⟨s, q⟩) →
+      SchurOutput a uo f A (eR + eX) eU ⟨s', q⟩ ∧
+        EigOutput a v f A (eR + eigEta n eX eU cR₀ cV)
+          (eR + √((n : ℝ) + 1) * eigEta n eX eU cR₀ cV) (eigColTol n eU cV cN)
+          (eR + 2 * ((n : ℝ) + 1) * B * eigEta n eX eU cR₀ cV)
+          (2 * √((n : ℝ) + 1) * B) (7 / 8 * c₁ * Γ) ⟨s', q⟩ := by
+    rintro m ⟨⟨hl, -⟩, hlv, -⟩ s s' q hB ⟨hso, h0, T₀, V₀, hT₀, hV₀, hE⟩
+    have ha : a.1 < m.store.length := hl a (by simp)
+    have hu : uo.1 < m.store.length := hl uo (by simp)
+    have hf : f.1 < m.store.length := hl f (by simp)
+    have hv : v.1 < m.store.length := hlv v (by simp)
+    exact ⟨hso.of_below hB ha hu hf,
+      by rw [show s'.get f.1 f.2 = s.get f.1 f.2 from (hB f.1 hf).2 f.2]; exact h0, T₀, V₀,
+      hT₀.of_below hB ha, hV₀.of_below hB hv, hE⟩
+  rw [eigSolverWith_eq]
+  refine PWrites.allocs (ns := [1]) rfl
+    (Pre₁ := fun L m => ∃ μ : Mem ℝ, EigSolverInput qs qe a p pe uo v f A μ ∧
+      μ.store.length = L ∧ m.store.length = L + 1 ∧ m.store.len L = 1 ∧
+      Store.Below L μ.store m.store ∧ m.pos = μ.pos)
+    (fun m s₁ hm h1 h2 h3 =>
+      ⟨m, hm, rfl, by simpa using h1, by simpa using h2 0 (by simp), h3, rfl⟩)
+    hkeep fun L => ?_
+  refine PWrites.of_forall_eq hI hloc (fun m₀ hm₀ => ?_)
+    ((Mem.measurableSet_eqOff _).inter
+      ((measurable_snd (measurableSet_schurOutput a uo f A _ _)).inter
+        (measurable_snd (measurableSet_eigOutput a v f A _ _ _ _ _ _))))
+  obtain ⟨μ, hin, rfl, hLs, hL1, hBelow, hpos⟩ := hm₀
+  obtain ⟨s₀, q₀⟩ := m₀
+  obtain rfl : q₀ = μ.pos := hpos
+  have hLs' : s₀.length = μ.store.length + 1 := hLs
+  have hpin := hin.1.of_below (μ' := ⟨s₀, μ.pos⟩) hBelow hin.1.1 (by simp only; omega)
+  have hlive : ∀ m, SchurPipelineInput qs a p uo f A m → m.Live [a, p, a, uo, f] :=
+    fun m hm z hz => hm.1 z (by
+      simp only [List.mem_cons, List.mem_nil_iff, or_false] at hz ⊢; tauto)
+  have h₁ : PWrites law I (Stmt.frame [.var 0, .var 1, .var 2, .var 3, .var 4, .var 5]
+      [⟨0, .var 7⟩, ⟨1, .var 8⟩, ⟨0, .var 7⟩, ⟨4, .var 11⟩, ⟨6, .var 13⟩] Solve)
+      ⟨(Env.frame [n + 1, nr, nq, k, F, T, qe.length] [a, p, pe, a, uo, v, f]).idx,
+        (Env.frame [n + 1, nr, nq, k, F, T, qe.length] [a, p, pe, a, uo, v, f]).buf ++
+          (List.range [1].length).map (μ.store.length + ·)⟩ (schurFp n a uo f)
+      (· = ⟨s₀, μ.pos⟩)
+      (fun m' => s₀.EqOff (schurFp n a uo f) m'.store ∧
+        RegularizedSchurOutput (IsConditionedDiagonalizable B Γ) a uo f A c₁ c₂ eR eX eU m') φ :=
+    (hSolve.in_frame rfl rfl hlive).mono_eqOff (fun m hm => hm ▸ hpin)
+      fun m m' hm hfr hp => by subst hm; exact ⟨hfr, hp⟩
+  have h₂ : PWrites law I (eigTail Ev)
+      ⟨(Env.frame [n + 1, nr, nq, k, F, T, qe.length] [a, p, pe, a, uo, v, f]).idx,
+        (Env.frame [n + 1, nr, nq, k, F, T, qe.length] [a, p, pe, a, uo, v, f]).buf ++
+          (List.range [1].length).map (μ.store.length + ·)⟩
+      (eigFp n a uo v f ⊔ Fp.above μ.store.length)
+      (fun m' => s₀.EqOff (schurFp n a uo f) m'.store ∧
+        RegularizedSchurOutput (IsConditionedDiagonalizable B Γ) a uo f A c₁ c₂ eR eX eU m')
+      (fun μ' => SchurOutput a uo f A (eR + eX) eU μ' ∧
+        EigOutput a v f A (eR + eigEta n eX eU cR₀ cV)
+          (eR + √((n : ℝ) + 1) * eigEta n eX eU cR₀ cV) (eigColTol n eU cV cN)
+          (eR + 2 * ((n : ℝ) + 1) * B * eigEta n eX eU cR₀ cV)
+          (2 * √((n : ℝ) + 1) * B) (7 / 8 * c₁ * Γ) μ') 0 :=
+    PWrites.of_writes le_rfl fun m' τ ⟨hfr, hreg⟩ =>
+      eigTail_writes_eigOutput hL hC rfl rfl rfl rfl
+        (hin.tailMem hLs hL1 hBelow hfr) hreg hEv hΓ hB hc₁ he heU hc hfloor hsep hκ
+  exact (PWrites.seq hI hloc le_rfl h₁ h₂).mono (fun _ h => h)
+    (sup_le (fun _ _ h => Or.inl (Or.inl h)) le_rfl) (fun _ h => h) (by simp)
 
-/-- **The verified composition of the eigensolver, on every tape.** On a scalar machine with the
-standard model, index literals, exact natural literals up to $n + 1$ and exact comparisons, let
+omit [Has ScalarOp O] in
+/-- **The verified composition of the eigensolver, on every tape.** On a machine with index
+literals, exact natural literals up to $n + 1$ and exact comparisons, let
 `Solve` store on every tape a pair at `a`, `uo` and, if its flag is $0$, a Schur output with the
 errors $(e_A, e_U)$ (as `NLAlib.Schur.verifiedSchurWith` does), and let `Ev` meet
 `NLAlib.Schur.EigenvectorStageContract` with $(c_{R,0}, c_R, c_V, c_N, g_0)$ at the order $n + 1$
@@ -367,9 +811,9 @@ flag, and if the flag is $0$ it stores a Schur output and the residual part of a
 eigendecomposition (`NLAlib.Schur.EigResidual`): column residuals $\eta$, matrix residual
 $\sqrt{n + 1}\,\eta$ and column tolerance $c$. No probability and no hypothesis on $\mathbf{A}$.
 No printed source. -/
-theorem eigSolverWith_writes_residual {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
-    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
-    (hNat : IsExactNatLit id Mch (n + 1)) (hC : IsCmp id I) {Solve Ev : Stmt O Q}
+theorem eigSolverWith_writes_residual {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
+    (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1)) (hC : IsCmp id I)
+    {Solve Ev : Stmt O Q}
     {nr nq k F T : ℕ} {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {a p pe uo v f : ℕ × ℕ}
     {qs qe : List ℝ} {τ : Tape ℝ} {μ : Mem ℝ} {eA eU cR₀ cR cV cN g₀ : ℝ}
     (hSolve : ∀ τ μ, SchurPipelineInput qs a p uo f A μ →
@@ -386,9 +830,45 @@ theorem eigSolverWith_writes_residual {Mch : Machine ℝ} {I : Interp O Q ℝ} {
         SchurOutput a uo f A eA eU μ' ∧
         EigResidual a v A (eigEta n eA eU cR₀ cV) (√((n : ℝ) + 1) * eigEta n eA eU cR₀ cV)
           (eigColTol n eU cV cN) μ') μ := by
-  sorry
+  obtain ⟨hcV, -⟩ := nonneg_of_eigenvectorStageContract hEv (by omega)
+  have hlit : Mch.lit ((1 : ℕ) : ℚ) = 1 := by simpa using hNat 1 (by omega)
+  obtain ⟨⟨hl, -⟩, hlv, -⟩ := id hin
+  have hal : a.1 < μ.store.length := hl a (by simp)
+  have hul : uo.1 < μ.store.length := hl uo (by simp)
+  have hfl : f.1 < μ.store.length := hl f (by simp)
+  have hvl : v.1 < μ.store.length := hlv v (by simp)
+  refine eigSolverWith_writes_of hin (hSolve τ) (fun {s s' q} hB h h0 => ?_)
+    fun m₁ hm ⟨⟨U, T', hpair⟩, hsch⟩ => ?_
+  · have hg : s'.get f.1 f.2 = s.get f.1 f.2 := (hB f.1 hfl).2 f.2
+    obtain ⟨hso, T₀, V₀, hT₀, hV₀, hE⟩ := h (by rw [← hg]; exact h0)
+    exact ⟨hso.of_below hB hal hul hfl, T₀, V₀, hT₀.of_below hB hal, hV₀.of_below hB hvl, hE⟩
+  obtain ⟨hda, hdu, hdf⟩ := hm.stage_disj
+  refine eigTail_writes hL hC rfl rfl rfl rfl hm
+    (hEv U T' le_rfl hpair hm.words hm.live hm.room hm.apart) ?_ ?_ ?_
+  · rintro m₂ ⟨V, -, hg', -⟩
+    rcases hg' with h | h <;> exact ⟨_, h⟩
+  · rintro m₂ x hfr ⟨V, hV, hg', -, htri⟩ hx₂ hx0 h0
+    have hf₁ : m₁.store.get f.1 f.2 = some 0 := by rw [← hfr.get_eq hdf]; exact h0
+    have hso := hsch hf₁
+    obtain ⟨-, U₀, T₀, hT₀, hU₀, hTu, hr, ho⟩ := id hso
+    obtain rfl : T₀ = T' := hT₀.eq_storedMatrix.trans hpair.1.eq_storedMatrix.symm
+    obtain rfl : U₀ = U := hU₀.eq_storedMatrix.trans hpair.2.eq_storedMatrix.symm
+    have hg0 : m₂.store.get μ.store.length 0 = some 0 := by
+      rcases hg' with h | h
+      · exact h
+      · rw [h] at hx₂
+        obtain rfl : (1 : ℝ) = x := Option.some.inj hx₂
+        exact absurd one_pos hx0
+    obtain ⟨⟨Y, hY, hVY⟩, -⟩ := htri hTu
+    rw [if_pos hg0] at hY
+    exact ⟨hso.of_eqOff hfr hda hdu hdf, T₀, V, hT₀.of_eqOff hfr hda, hV,
+      eigResidualOf_of_schur ho hr hY hVY hcV he heU hc⟩
+  · rintro m₂ m₃ x - - - - - h₃ h0
+    rw [h0, hlit] at h₃
+    exact absurd (Option.some.inj h₃) zero_ne_one
 
-/-- **The eigensolver terminates on every tape**: on a scalar machine with index literals and exact
+omit [Has ScalarOp O] in
+/-- **The eigensolver terminates on every tape**: on a machine with index literals and exact
 comparisons, if `Solve` terminates on every tape with the accumulator within $e_U$ of orthonormal
 (`NLAlib.Schur.TerminatingSchurSolver`) and `Ev` completes
 (`NLAlib.Schur.CompletingEigenvectorStage`), then from every input of the eigensolver the run
@@ -396,7 +876,7 @@ succeeds on every tape, writes only $\mathbf{A}$, $\widehat{\mathbf{U}}$, $\wide
 and the flag, and stores a matrix at `a`, $\widehat{\mathbf{U}}$ within $e_U$ of orthonormal and a
 matrix at `v`. -/
 theorem eigSolverWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
-    (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hC : IsCmp id I) {Solve Ev : Stmt O Q}
+    (hL : IsIndexLit Mch I) (hC : IsCmp id I) {Solve Ev : Stmt O Q}
     {nr nq k F T : ℕ} {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {a p pe uo v f : ℕ × ℕ}
     {qs qe : List ℝ} {eU : ℝ} {μ : Mem ℝ}
     (hSolve : TerminatingSchurSolver eU n [n + 1, nr, nq, k, F, T] qs Solve I)
@@ -406,8 +886,25 @@ theorem eigSolverWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : �
       (Env.frame [n + 1, nr, nq, k, F, T, qe.length] [a, p, pe, a, uo, v, f]) (eigFp n a uo v f)
       (fun μ' => SchurOrth (n := n) a uo eU μ' ∧
         ∃ V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix v V μ'.store) μ := by
-  sorry
+  obtain ⟨⟨hl, -⟩, hlv, -⟩ := id hin
+  have hal : a.1 < μ.store.length := hl a (by simp)
+  have hul : uo.1 < μ.store.length := hl uo (by simp)
+  have hvl : v.1 < μ.store.length := hlv v (by simp)
+  refine eigSolverWith_writes_of hin (fun m' hm' => hSolve A hm')
+    (fun {s s' q} hB ⟨⟨⟨T₀, hT₀⟩, U₀, hU₀, ho⟩, V₀, hV₀⟩ =>
+      ⟨⟨⟨T₀, hT₀.of_below hB hal⟩, U₀, hU₀.of_below hB hul, ho⟩, V₀, hV₀.of_below hB hvl⟩)
+    fun m₁ hm hS => ?_
+  obtain ⟨⟨T₀, hT₀⟩, U₀, hU₀, ho⟩ := id hS
+  obtain ⟨hda, hdu, -⟩ := hm.stage_disj
+  refine eigTail_writes hL hC rfl rfl rfl rfl hm
+    (hEv U₀ T₀ le_rfl ⟨hT₀, hU₀⟩ hm.words hm.live hm.room hm.apart) (fun _ h => h.2) ?_ ?_
+  · rintro m₂ x hfr ⟨⟨V, hV⟩, -⟩ - -
+    exact ⟨⟨⟨T₀, hT₀.of_eqOff hfr hda⟩, U₀, hU₀.of_eqOff hfr hdu, ho⟩, V, hV⟩
+  · rintro m₂ m₃ x hfr ⟨⟨V, hV⟩, -⟩ - - hf₃ -
+    exact ⟨⟨⟨T₀, (hT₀.of_eqOff hfr hda).of_eqOff hf₃ hm.fa.symm⟩, U₀,
+      (hU₀.of_eqOff hfr hdu).of_eqOff hf₃ hm.fu.symm, ho⟩, V, hV.of_eqOff hf₃ hm.fv⟩
 
+omit [Has ScalarOp O] in
 /-- **The static count of the eigensolver** with its structural instructions, at zero offsets, is
 at most the instrumented counts of the solver and the stage at the offsets the eigensolver passes
 to them, plus $128$ for the glue (the flag word, the branch and the frames). -/
@@ -416,7 +913,15 @@ theorem size_stmtCost_eigSolverWith_le (Solve Ev : Stmt O Q) (N nr nq k F T ne :
         [N, nr, nq, k, F, T, ne, 0, 0, 0, 0, 0, 0, 0]) ≤
       Count.size (stmtCost Solve.instrument [N, nr, nq, k, F, T, 0, 0, 0, 0, 0]) +
         Count.size (stmtCost Ev.instrument [N, ne, 0, 0, 0, 0, 0]) + 128 := by
-  sorry
+  have hsup : ∀ x y : Count (O ⊕ Bookkeeping) Q,
+      Count.size (x ⊔ y) = Count.size x + Count.size y - Count.size (x ⊓ y) := fun x y => by
+    rw [← size_sup_add_size_inf]; omega
+  simp only [eigSolverWith, Stmt.alloc, Stmt.instrument, stmtCost, tally, indexBookkeeping,
+    operandBookkeeping, IExp.bookkeeping, List.flatMap_cons, List.flatMap_nil, List.cons_append,
+    List.nil_append, List.append_nil, useCost, testCost, IExp.evalList, IExp.eval, List.map_cons,
+    List.map_nil, List.getElem?_cons_succ, List.getElem?_cons_zero, Option.map_some,
+    Option.getD_some, map_add, map_zero, hsup, Count.one, Count.test, size_single]
+  omega
 
 end Theorems
 

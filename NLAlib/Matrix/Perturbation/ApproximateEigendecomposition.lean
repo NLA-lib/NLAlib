@@ -42,6 +42,9 @@ $\mathbf{T}$ is separated. All of this is program-free.
 * `NLAlib.specNorm_mul_sub_mul_diagonal_le_of_forall_col`: the matrix residual from the column
   residuals.
 * `NLAlib.eigDecompOf_of_schur`: an eigendecomposition from a Schur form of a regularized matrix.
+* `NLAlib.mul_specNorm_le_norm_sub_diag_of_schur`: the diagonal of a Schur form of a regularized
+  matrix is separated.
+* `NLAlib.eigDecompOf_zero`: the eigendecomposition of the zero matrix.
 * `NLAlib.eigResidualOf_of_schur`: the residual part from a Schur form of the matrix itself.
 -/
 
@@ -715,6 +718,87 @@ theorem eigDecompOf_of_schur {n : ℕ} {A X U T Y V : Matrix (Fin (n + 1)) (Fin 
     have h2 : 7 / 8 * Γ * s ≤ ‖T i i - T j j‖ := by
       have h3 : s * (s⁻¹ * ‖T i i - T j j‖) = ‖T i i - T j j‖ := by field_simp
       nlinarith [mul_le_mul_of_nonneg_left h hs0.le]
+    nlinarith
+
+/-- **The diagonal of a Schur form of a regularized matrix is separated.** Let $\mathbf{A} \ne 0$
+be of order $n + 1$, $\|\mathbf{A} - \mathbf{X}\|_2 \le e_R\|\mathbf{A}\|_2$,
+$\|\mathbf{X} - \mathbf{U}\mathbf{T}\mathbf{U}^{\mathsf H}\|_2 \le e_X\|\mathbf{A}\|_2$ with
+$\mathbf{T}$ upper triangular and $\|\mathbf{U}^{\mathsf H}\mathbf{U} - \mathbf{I}\|_2 \le e_U$,
+and $s^{-1}\mathbf{X}$ of the class $(B, \Gamma)$, $\Gamma > 0$, for some
+$s \ge c_1\|\mathbf{A}\|_{\mathsf F}$, $c_1 > 0$. If $e_R + e_X \le 1/2$, $e_U \le 1/8$ and
+$e_X + 6e_U \le c_1\Gamma/(16(n + 1)B)$, then
+$\lvert t_{ii} - t_{jj}\rvert \ge \tfrac78c_1\Gamma\|\mathbf{A}\|_2$ for $i \ne j$.
+No printed source. -/
+theorem mul_specNorm_le_norm_sub_diag_of_schur {n : ℕ}
+    {A X U T : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {s c₁ B Γ eR eX eU : ℝ}
+    (hT : T.IsUpperTriangular) (hU : specNorm (Uᴴ * U - 1) ≤ eU)
+    (hAX : specNorm (A - X) ≤ eR * specNorm A) (hXT : specNorm (X - U * T * Uᴴ) ≤ eX * specNorm A)
+    (hs : c₁ * frobNorm A ≤ s) (hc₁ : 0 < c₁) (hA : A ≠ 0)
+    (hC : IsConditionedDiagonalizable B Γ (s⁻¹ • X)) (hΓ : 0 < Γ)
+    (he : eR + eX ≤ 1 / 2) (heU : eU ≤ 1 / 8)
+    (hsep : eX + 6 * eU ≤ c₁ * Γ / (16 * (n + 1) * B)) (i j : Fin (n + 1)) (hij : i ≠ j) :
+    7 / 8 * c₁ * Γ * specNorm A ≤ ‖T i i - T j j‖ := by
+  set a := specNorm A
+  have ha : 0 < a := lt_of_le_of_ne (specNorm_nonneg A) (Ne.symm (mt specNorm_eq_zero_iff.mp hA))
+  have heR0 : 0 ≤ eR := le_of_mul_le_mul_right (by simpa using (specNorm_nonneg _).trans hAX) ha
+  have heX0 : 0 ≤ eX := le_of_mul_le_mul_right (by simpa using (specNorm_nonneg _).trans hXT) ha
+  have heU0 : 0 ≤ eU := (specNorm_nonneg _).trans hU
+  have hX : specNorm X ≤ (1 + eR) * a := by
+    have := specNorm_add_le A (X - A)
+    rw [add_sub_cancel, specNorm_sub_comm] at this
+    linarith
+  have hZe : specNorm X + eX * a ≤ 3 / 2 * a := by nlinarith
+  have hsA : c₁ * a ≤ s := (mul_le_mul_of_nonneg_left (specNorm_le_frobNorm A) hc₁.le).trans hs
+  have hs0 : 0 < s := lt_of_lt_of_le (mul_pos hc₁ ha) hsA
+  have hB1 : 1 ≤ B := by
+    obtain ⟨W, -, hW, -, hB, -⟩ := hC
+    exact (one_le_pseudoConditionNumber hW.ne_zero).trans hB
+  have hK0 : 0 ≤ Γ / (16 * (n + 1) * B) := by positivity
+  have hgap := le_inv_mul_norm_sub_diag hC hΓ hs0 hT hXT hU heU (by
+    rw [mul_div_assoc] at hsep
+    have h1 : eX * a + 4 * eU * (specNorm X + eX * a) ≤ s * (Γ / (16 * (n + 1) * B)) := by
+      nlinarith [mul_le_mul_of_nonneg_right hsep ha.le,
+        mul_le_mul_of_nonneg_right hsA hK0]
+    calc s⁻¹ * (eX * a + 4 * eU * (specNorm X + eX * a))
+        ≤ s⁻¹ * (s * (Γ / (16 * (n + 1) * B))) :=
+          mul_le_mul_of_nonneg_left h1 (inv_nonneg.mpr hs0.le)
+      _ = _ := by field_simp) i j hij
+  have hsa : 7 / 8 * Γ * (c₁ * a) ≤ 7 / 8 * Γ * s := by gcongr
+  have h2 : 7 / 8 * Γ * s ≤ ‖T i i - T j j‖ := by
+    have h3 : s * (s⁻¹ * ‖T i i - T j j‖) = ‖T i i - T j j‖ := by field_simp
+    nlinarith [mul_le_mul_of_nonneg_left hgap hs0.le]
+  nlinarith
+
+/-- **The eigendecomposition of the zero matrix by a near-orthonormal factor**: if
+$\|\mathbf{U}^{\mathsf H}\mathbf{U} - \mathbf{I}\|_2 \le e_U$ at the order $n + 1$,
+$2e_U \le c \le 1/8$ and $B \ge 1$, then $\mathbf{U}$ with the diagonal $\mathbf{0}$ is an
+approximate eigendecomposition of $\mathbf{0}$ with column tolerance $c$,
+$\kappa(\mathbf{U}) \le 2\sqrt{n + 1}\,B$, and any residual, backward and gap constants.
+No printed source. -/
+theorem eigDecompOf_zero {n : ℕ} {U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {eU c eC eM eE B g : ℝ} (hU : specNorm (Uᴴ * U - 1) ≤ eU) (h2 : 2 * eU ≤ c) (hc : c ≤ 1 / 8)
+    (hB : 1 ≤ B) : EigDecompOf 0 0 U eC eM c eE (2 * √((n : ℝ) + 1) * B) g := by
+  have heU0 : 0 ≤ eU := (specNorm_nonneg _).trans hU
+  have hY : ∀ j : Fin (n + 1),
+      |‖WithLp.toLp 2 ((1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ).col j)‖ - 1| ≤ 0 := fun j => by
+    have e : WithLp.toLp 2 ((1 : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ).col j) =
+        EuclideanSpace.single j (1 : ℂ) := by
+      ext i
+      simp [Matrix.one_apply, eq_comm]
+    simp [e]
+  obtain ⟨hUn, -, hcol⟩ := eig_col_facts (V := U) (cV := 0) hU hY (by simp) le_rfl
+    (by linarith) (by unfold eigColTol; linarith)
+  obtain ⟨hu, hinv⟩ := isUnit_and_sqrt_one_sub_mul_specNorm_inv_le hU (by linarith)
+  have hs : 7 / 8 ≤ √(1 - eU) := Real.le_sqrt_of_sq_le (by nlinarith)
+  have hi : specNorm U⁻¹ ≤ 8 / 7 := by nlinarith [specNorm_nonneg U⁻¹]
+  have hsq : 1 ≤ √((n : ℝ) + 1) := Real.one_le_sqrt.mpr (by
+    have := (Nat.cast_nonneg n : (0 : ℝ) ≤ n); linarith)
+  refine ⟨⟨fun j => (hcol j).1.trans ?_, fun j => by simp, by simp⟩, hu, ?_, by simp,
+    fun i j _ => by simp⟩
+  · unfold eigColTol; linarith
+  · rw [pseudoConditionNumber_of_isUnit hu]
+    have h1 : specNorm U * specNorm U⁻¹ ≤ 17 / 16 * (8 / 7) :=
+      mul_le_mul hUn hi (specNorm_nonneg _) (by norm_num)
     nlinarith
 
 /-- **The residual of an eigendecomposition from a Schur form of the matrix itself**: let

@@ -431,7 +431,7 @@ theorem denseEig_measureReal_not_eig_le {Mch : Machine ℝ} {I : Interp O Q ℝ}
   have e3 : ((n + 1 : ℕ) : ℝ) + 2 = (n : ℝ) + 3 := by push_cast; ring
   have e1 : ((n + 1 : ℕ) : ℝ) = (n : ℝ) + 1 := by push_cast; ring
   rw [e2, e3, e1] at hEv
-  have hw := eigSolverWith_pwrites (pe := pe) (v := v) hS hM hL hNat hC hI hloc hSolve hEv hΓ
+  have hw := eigSolverWith_pwrites (pe := pe) (v := v) hL hC hI hloc hSolve hEv hΓ
     (by linarith)
     (by norm_num : (0 : ℝ) < 1 / 2) (by linarith) heU hc hfloor hsep hκ
   have := hξ.isProbabilityMeasure
@@ -483,7 +483,7 @@ theorem denseEig_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {
       I := fun {τ} {μ} {a p uo f} A hin =>
     (denseSchurAt_writes_orth hS hM hL hNat hQ hC hSmp hDisk h400 hin τ).mono le_rfl
       fun μ' _ ⟨hT, U, hU, ho⟩ => ⟨hT, U, hU, ho.trans heU58⟩
-  exact eigSolverWith_terminates hS hL hC hSolve (triEigvecStage_completes hS hL hC (n + 1) _)
+  exact eigSolverWith_terminates hL hC hSolve (triEigvecStage_completes hS hL hC (n + 1) _)
     hin τ
 
 /-- **The bits of precision of the dense eigensolver**: there are constants $c_1, c_2$ such that

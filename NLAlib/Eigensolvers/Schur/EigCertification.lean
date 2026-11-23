@@ -247,35 +247,6 @@ theorem denseSchurAt_completes_pair [Has IndexOp O] [Has SampleOp O] [Has DiskSa
   exact schurPipelineWith_completes_pair hS hL hNat hC (frobNormStage_completing hS (n + 1)) hReg
     (hessenbergReduceQ_completing hS hC hQ hL hNat (by omega)) hCore hin τ
 
-/-- The fifteen disjointness facts of the operands of the eigensolver. -/
-private theorem eigSolverInput_disj {n : ℕ} {a p uo f pe v : ℕ × ℕ} {qs qe : List ℝ}
-    (hap : Fp.Apart [a, p, uo, f, pe, v] [2 * ((n + 1) * (n + 1)), qs.length,
-      2 * ((n + 1) * (n + 1)), 1, qe.length, 2 * ((n + 1) * (n + 1))]) :
-    Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock p.1 p.2 qs.length) ∧
-    Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
-      (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) ∧
-    Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock f.1 f.2 1) ∧
-    Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
-      (Store.inBlock pe.1 pe.2 qe.length) ∧
-    Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
-      (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1)))) ∧
-    Fp.Disj (Store.inBlock p.1 p.2 qs.length)
-      (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) ∧
-    Fp.Disj (Store.inBlock p.1 p.2 qs.length) (Store.inBlock f.1 f.2 1) ∧
-    Fp.Disj (Store.inBlock p.1 p.2 qs.length) (Store.inBlock pe.1 pe.2 qe.length) ∧
-    Fp.Disj (Store.inBlock p.1 p.2 qs.length) (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1)))) ∧
-    Fp.Disj (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock f.1 f.2 1) ∧
-    Fp.Disj (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))))
-      (Store.inBlock pe.1 pe.2 qe.length) ∧
-    Fp.Disj (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))))
-      (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1)))) ∧
-    Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock pe.1 pe.2 qe.length) ∧
-    Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1)))) ∧
-    Fp.Disj (Store.inBlock pe.1 pe.2 qe.length)
-      (Store.inBlock v.1 v.2 (2 * ((n + 1) * (n + 1)))) := by
-  simpa only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
-    and_true, and_assoc] using hap
-
 omit [Has ScalarOp O] in
 /-- **The eigensolver runs to completion** on any scalar machine with index literals and exact
 comparisons, given a Schur solver that completes storing a pair and an eigenvector stage that

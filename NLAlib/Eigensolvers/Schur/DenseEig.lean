@@ -343,8 +343,9 @@ section Theorems
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O]
   [Has CmpTst Q] [Has IdxTst Q]
 
-set_option maxHeartbeats 1000000 in
 -- The stage contracts at their long parameters make the elaboration heavy.
+set_option maxHeartbeats 1000000 in
+-- (heavy elaboration, see above)
 /-- **The dense eigendecomposition theorem.** Let the machine have the standard model at
 $\boldsymbol{u} \le \boldsymbol{u}_E$, index literals, exact natural literals up to $n + 1$, exact
 `toNat` and comparisons, a measurable interpretation reading the tape only in its windows whose

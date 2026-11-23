@@ -729,8 +729,9 @@ theorem length_denseEigStageParams (n : ℕ) (δ φ : ℝ) :
     (denseEigStageParams n δ φ).length = denseEigSizes n δ φ 6 := by
   simp [denseEigStageParams, denseEigSizes]
 
-set_option maxHeartbeats 1000000 in
 -- Six operands and the long parameter words make the side conditions heavy.
+set_option maxHeartbeats 1000000 in
+-- (heavy elaboration, see above)
 /-- **The routine of the dense eigensolver meets its every-tape specification**: on the words of
 a matrix of order $n + 1$, the words `NLAlib.Schur.denseEigSchurParams` and the floor, at the
 sizes `NLAlib.Schur.denseEigSizes`, it terminates on every tape and writes only the matrix, the

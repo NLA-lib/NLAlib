@@ -549,6 +549,8 @@ private theorem denseSchurAt_leafContract {Mch : Machine ℝ} {I : Interp O Q �
   rw [show (4 : ℝ) * 8 = 32 by norm_num]
   exact @h
 
+omit [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O] [Has CmpTst Q]
+  [Has IdxTst Q] in
 /-- The reducer's error at the regularized matrix is within the separation budget of the class
 $(B, \Gamma)$, at the precision bound on the gap and condition constants. -/
 private theorem denseSchurAt_reducer_le {n : ℕ} {δR φ u : ℝ} (hδR : 0 < δR) (hδR1 : δR ≤ 1)
@@ -570,6 +572,46 @@ private theorem denseSchurAt_reducer_le {n : ℕ} {δR φ u : ℝ} (hδR : 0 < �
   have hN3 : N ^ 3 * u * (4 + denseSchurDelta n δR / 2) ≤ N ^ 3 * u * (4 + 1 / 32) :=
     mul_le_mul_of_nonneg_left (by linarith) (by positivity)
   nlinarith
+
+omit [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] in
+/-- The Ginibre regularizer at the tolerance $\delta_R$ meets its contract on the matrices of norm
+at most $4$, with the class $(B, \Gamma)$ of `NLAlib.Schur.denseSchurB` and
+`NLAlib.Schur.denseSchurΓ`. -/
+private theorem denseSchurAt_regularizerContract {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sG : ℕ} (hG : law sG = gaussianReal 0 1)
+    {δR φ : ℝ} (hδR : 0 < δR) (hδR1 : δR ≤ 1) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
+    (hu1 : u ≤ uSmallEigReduce (n + 1) 4 (denseSchurDelta n δR) (φ / 2) ginibreGapTail
+      ginibreConditionTail) :
+    RandomRegularizerContract law (denseSchurDelta n δR / 2) (3 * (φ / 2) / 4)
+      (fun A => IsConditionedDiagonalizable (denseSchurB n δR φ) (denseSchurΓ n δR φ) A) (n + 1)
+      (2 / (1 / 2)) (denseSchurRegParams n δR φ) (ginibrePerturb (O := O) (Q := Q) sG) I := by
+  obtain ⟨hdR0, hdR1, -⟩ := denseSchur_params_basic (n := n) hδR hδR1 hφ hφ1
+  rw [show (2 : ℝ) / (1 / 2) = 4 by norm_num]
+  exact ginibrePerturb_randomRegularizerContract hS hM hL hSmp hG
+    boundsGinibreGap_ginibreGapTail boundsGinibreCondition_ginibreConditionTail
+    ginibreGapTail_b_pos ginibreConditionTail_b_pos hdR0 (by linarith) (half_pos hφ)
+    (by linarith) hu1
+
+omit [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O] [Has CmpTst Q]
+  [Has IdxTst Q] in
+/-- A matrix of the class $(B, \Gamma)$ stays in the class $(2B, \Gamma/2)$ under the reducer's
+perturbation, at the precision bound on the gap and condition constants. -/
+private theorem denseSchurAt_class_of_perturbed {n : ℕ} {δR φ u : ℝ} (hδR : 0 < δR)
+    (hδR1 : δR ≤ 1) (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hu0 : 0 ≤ u)
+    (hu3 : u ≤ smallEigGap (n + 1) 4 (denseSchurDelta n δR) (φ / 2) ginibreGapTail *
+      smallEigCond (n + 1) 4 (denseSchurDelta n δR) (φ / 2) ginibreConditionTail /
+        (28800 * ((n : ℝ) + 1) ^ 3))
+    (A H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+    (hA : IsConditionedDiagonalizable (denseSchurB n δR φ) (denseSchurΓ n δR φ) A)
+    (hV : IsPerturbedUnitarySimilarBy V A H
+      (50 * (((n + 1 : ℕ) : ℝ)) ^ 2 * u * (2 / (1 / 2) + denseSchurDelta n δR / 2))) :
+    IsConditionedDiagonalizable (2 * denseSchurB n δR φ) (denseSchurΓ n δR φ / 2) H := by
+  obtain ⟨-, -, -, -, -, -, hΓ⟩ := denseSchur_params_basic (n := n) hδR hδR1 hφ hφ1
+  have hN : (((n + 1 : ℕ) : ℝ)) = (n : ℝ) + 1 := by push_cast; ring
+  exact hA.of_isPerturbedUnitarySimilarBy hΓ hV (by
+    rw [hN]
+    exact denseSchurAt_reducer_le hδR hδR1 hφ hφ1 hu0 hu3)
 
 -- The four stage contracts at their long parameters make the elaboration heavy.
 set_option maxHeartbeats 1000000 in
@@ -656,12 +698,8 @@ theorem denseSchurAt_pwrites_regularizedSchur {Mch : Machine ℝ} {I : Interp O 
     frobNormStage_frobNormEstimateContract_half hS hM (by rw [hN]; nlinarith)
   have hReg : RandomRegularizerContract law (denseSchurDelta n δR / 2) (3 * (φ / 2) / 4)
       (fun A => IsConditionedDiagonalizable (denseSchurB n δR φ) (denseSchurΓ n δR φ) A) (n + 1)
-      (2 / (1 / 2)) (denseSchurRegParams n δR φ) (ginibrePerturb (O := O) (Q := Q) sG) I := by
-    rw [show (2 : ℝ) / (1 / 2) = 4 by norm_num]
-    exact ginibrePerturb_randomRegularizerContract hS hM hL hSmp hG
-      boundsGinibreGap_ginibreGapTail boundsGinibreCondition_ginibreConditionTail
-      ginibreGapTail_b_pos ginibreConditionTail_b_pos hdR0 (by linarith) (half_pos hφ)
-      (by linarith) hu1
+      (2 / (1 / 2)) (denseSchurRegParams n δR φ) (ginibrePerturb (O := O) (Q := Q) sG) I :=
+    denseSchurAt_regularizerContract hS hM hL hSmp hG hδR hδR1 hφ hφ1 hu1
   have hRed : HessenbergReducerContract (27 * (((n + 1 : ℕ)) : ℝ) ^ 2 * u)
       (50 * (((n + 1 : ℕ)) : ℝ) ^ 2 * u) (n + 1) (hessenbergReduceQ (O := O) (Q := Q)) I :=
     hessenbergReduceQ_hessenbergReducerContract hS hM hC hQ hL hNat (by omega)
@@ -675,14 +713,7 @@ theorem denseSchurAt_pwrites_regularizedSchur {Mch : Machine ℝ} {I : Interp O 
       hB1 (half_pos hΓ) hdC0 (by linarith) (half_pos hφ) (by linarith) rfl hLeaf
       (SmallEig.length_smallEigParams _ _ _ _ _ _) hR0 le_rfl hb0.le
       (by rw [show (4 : ℝ) * 8 = 32 by norm_num]; exact le_rfl) hφL.le le_rfl hu4 hu6
-  have hCC' : ∀ (A H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
-      IsConditionedDiagonalizable (denseSchurB n δR φ) (denseSchurΓ n δR φ) A →
-      IsPerturbedUnitarySimilarBy V A H
-        (50 * (((n + 1 : ℕ) : ℝ)) ^ 2 * u * (2 / (1 / 2) + denseSchurDelta n δR / 2)) →
-      IsConditionedDiagonalizable B2 Γ2 H :=
-    fun A H V hA hV => hA.of_isPerturbedUnitarySimilarBy hΓ hV (by
-      rw [hN]
-      exact denseSchurAt_reducer_le hδR hδR1 hφ hφ1 hu0 hu3)
+  have hCC' := denseSchurAt_class_of_perturbed (n := n) hδR hδR1 hφ hφ1 hu0 hu3
   have hCm : MeasurableSet {X : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ |
       IsConditionedDiagonalizable (denseSchurB n δR φ) (denseSchurΓ n δR φ) X} :=
     measurableSet_of_isSigmaCompact (isSigmaCompact_setOf_isConditionedDiagonalizable _ _)

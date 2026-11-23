@@ -90,12 +90,12 @@ def shiftedTriSolve : Impl O Q := opsImpl% [N, j] (T, Sm, Y, G) → (Y, G) {
     call (Has.inj ScalarOp.copy) [] (T[2 * (j * N + (j - 1 - r))]) → (S);
     call (Has.inj ScalarOp.copy) [] (T[2 * (j * N + (j - 1 - r)) + 1]) → (S[1]);
     for l < r {
-      run Pair.linearCombination.body []
+      run Pair.linearCombination []
         (T[2 * ((j - r + l) * N + (j - 1 - r))], One, Y[2 * (j * N + (j - r + l))], S, W, R);
       call (Has.inj ScalarOp.copy) [] (R) → (S);
       call (Has.inj ScalarOp.copy) [] (R[1]) → (S[1])
     };
-    run Pair.complexDivideWithScratch.body [] (S, M, D, R);
+    run ShiftedQR.complexDivideWithScratch [] (S, M, D, R);
     call (Has.inj ScalarOp.neg) [] (R) → (Y[2 * (j * N + (j - 1 - r))]);
     call (Has.inj ScalarOp.neg) [] (R[1]) → (Y[2 * (j * N + (j - 1 - r)) + 1])
   }

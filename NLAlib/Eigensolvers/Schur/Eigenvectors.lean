@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Eigensolvers.Schur.Completion
-public import NLAlib.Matrix.FinitePrecision.TriangularSolve
+public import NLAlib.Eigensolvers.Schur.ShiftedTriSolve
 public import NLAlib.Matrix.Spectral.TriangularEigenvectors
 public import NLAlib.Ops.Profiles.RoundedScalarBlas
 

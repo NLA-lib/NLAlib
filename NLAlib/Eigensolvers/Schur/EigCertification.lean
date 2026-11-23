@@ -29,7 +29,8 @@ public import NLAlib.Eigensolvers.Schur.DenseEig
 
 namespace NLAlib.Schur
 
-open NLAlib.Ops NLAlib.ShiftedQR NLAlib.SmallEig
+open Ops SmallEig ShiftedQR MeasureTheory ProbabilityTheory
+open scoped Matrix
 
 /-! ### Completion with the stored pair
 
@@ -38,7 +39,8 @@ pair, so that the eigenvector stage runs after it (`NLAlib.Schur.denseEigProgram
 
 section CompletesPair
 
-open NLAlib.Ops NLAlib.ShiftedQR NLAlib.SmallEig
+open Ops SmallEig ShiftedQR MeasureTheory ProbabilityTheory
+open scoped Matrix
 
 variable {O Q : Type} [Has ScalarOp O]
 

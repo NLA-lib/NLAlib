@@ -178,7 +178,7 @@ theorem complexDivideWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Ts
     (hy0 : m.store.get y.1 y.2 = some yv.1)
     (hy1 : m.store.get y.1 (y.2 + 1) = some yv.2)
     (ht : t.2 + 4 ≤ m.store.len t.1) (hz : z.2 + 2 ≤ m.store.len z.1) :
-    Writes .total I τ Pair.complexDivideWithScratch.body (Env.frame [] [x, y, t, z])
+    Writes .total I τ complexDivideWithScratch (Env.frame [] [x, y, t, z])
       (Fp.blocks [t, z] [4, 2])
       (fun μ => μ.pos = m.pos ∧ μ.store.readBlock z.1 z.2 2 =
         some [(Pair.divideWords M xv yv).1, (Pair.divideWords M xv yv).2]) m := by
@@ -190,7 +190,7 @@ theorem complexDivideWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Ts
     rcases hw with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
       dsimp <;> omega
   have hwrite := writes_machineScalarBlock (τ := τ) hI hev hroom
-  change Writes .total I τ Pair.complexDivideWithScratch.body _ _ _ m at hwrite
+  change Writes .total I τ complexDivideWithScratch _ _ _ m at hwrite
   refine hwrite.mono ?_ ?_
   · intro b i hi
     simp only [divisionTrace, divisionPrefix, List.map_append, List.map_cons, List.map_nil,
@@ -201,6 +201,6 @@ theorem complexDivideWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Ts
   · rintro μ _ rfl
     have hout := Pair.readBlock_updCells_pair (m := m)
       (prior := divisionPrefix M t xv yv) (v := divisionWords M xv yv) hz
-    exact ⟨rfl, by simpa only [divisionTrace] using hout⟩
+    exact ⟨rfl, by simp only [divisionTrace] at hout ⊢; exact hout⟩
 
 end NLAlib.ShiftedQR

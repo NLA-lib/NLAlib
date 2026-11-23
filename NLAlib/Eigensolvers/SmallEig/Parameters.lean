@@ -20,8 +20,8 @@ accuracy $\beta' = \omega/20$ of `OneEig`, the radii $\eta_1, \eta_2$ of the reg
 degree $m = 2^q$ of `DistSpec`, the round cap $t$ of `OneEig` and the step cap $m_2$ of
 `Decouple`, and the scan thresholds. The words are fixed at the outer bound $n_{\max}$ and serve
 every order $d \le n_{\max}$: the program computes the scale $\gamma/\sqrt d$ itself. Logarithms
-are in base $2$ (the paper's erratum P7); the corrections of the paper's choices of $t$ (P6) and
-$\eta_2$ (P5) are in `NLAlib.SmallEig.oneEigRounds_spec` and `NLAlib.SmallEig.oneEigRadii_spec`.
+are in base $2$; the choices of $t$ and $\eta_2$, with corrected constants, are justified by
+`NLAlib.SmallEig.oneEigRounds_spec` and `NLAlib.SmallEig.oneEigRadii_spec`.
 
 ## Main definitions
 
@@ -96,8 +96,8 @@ theorem distSpecDegree_spec {κ p : ℝ} (hκ : 1 ≤ κ) (hp : 0 < p) (hp1 : p 
     rw [← div_eq_mul_inv, le_div_iff₀ hpos1]; nlinarith
   · nlinarith
 
-/-- The round cap $t = \lceil 2\log_2(5.2\,\Sigma/\beta)\rceil$ of `OneEig` (the paper's
-$\lceil 2\log(\Sigma/(5\beta))\rceil$ corrected, its erratum P6). -/
+/-- The round cap $t = \lceil 2\log_2(5.2\,\Sigma/\beta)\rceil$ of `OneEig`, with a
+corrected constant. -/
 noncomputable def oneEigRounds (S β : ℝ) : ℕ := ⌈2 * logb 2 (5.2 * S / β)⌉₊
 
 /-- The contraction of the round cap: for $0 < \beta \le \Sigma$ and $t$ =
@@ -147,8 +147,8 @@ theorem oneEigRounds_spec {S β : ℝ} (hβ : 0 < β) (hβS : β ≤ S) :
         show (7:ℝ) = ((7:ℕ):ℝ) by norm_num, rpow_natCast]; norm_num
     rw [e]; linarith
 
-/-- The radius $\eta_2 = \min(\beta/40, g/3)$ of the disk samples of `OneEig` (the paper's
-$\beta/5$ corrected, its erratum P5). -/
+/-- The radius $\eta_2 = \min(\beta/40, g/3)$ of the disk samples of `OneEig`, with a
+corrected constant. -/
 noncomputable def oneEigOuterRadius (β g : ℝ) : ℝ := min (β / 40) (g / 3)
 
 /-- The radius $\eta_1 = \eta_2\sqrt{\varphi/(12\log_2(8\Sigma/\beta))}$ that the accepted point of
@@ -156,8 +156,8 @@ noncomputable def oneEigOuterRadius (β g : ℝ) : ℝ := min (β / 40) (g / 3)
 noncomputable def oneEigInnerRadius (S β g φ : ℝ) : ℝ :=
   oneEigOuterRadius β g * √(φ / (12 * logb 2 (8 * S / β)))
 
-/-- **The radii of `OneEig`** ([BanksGarzaVargasSrivastava2025, Observation 3.4], with
-$\eta_2 = \min(\beta/40, g/3)$, its errata P5 and N6): for $0 < \beta \le 0.8\,\Sigma$, $g > 0$
+/-- **The radii of `OneEig`** ([BanksGarzaVargasSrivastava2025, Observation 3.4], with a
+corrected radius $\eta_2 = \min(\beta/40, g/3)$): for $0 < \beta \le 0.8\,\Sigma$, $g > 0$
 and $0 < \varphi \le 1$, with $\eta_1, \eta_2$ = `NLAlib.SmallEig.oneEigInnerRadius`,
 `NLAlib.SmallEig.oneEigOuterRadius` and $t$ = `NLAlib.SmallEig.oneEigRounds` $\Sigma$ $\beta$:
 $\eta_1 > 0$, $\eta_1 + \eta_2 \le g/2$, $\eta_2 \le 0.02\,\Sigma$ and

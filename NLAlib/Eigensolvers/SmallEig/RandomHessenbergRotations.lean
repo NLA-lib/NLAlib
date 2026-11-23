@@ -24,7 +24,7 @@ rotations that take $\mathbf{e}_N$ to the drawn direction $\mathbf{g}$, on both 
 matrix. On a machine with the standard model they are a unitary similarity up to
 $((1 + 50\boldsymbol{u})^{N-1} - 1)\|\mathbf{A}\|_2$, and the last column of the unitary factor is
 a unit multiple of a vector within a small distance of $\mathbf{g}/\|\mathbf{g}\|$: the phase of the
-paper's reflector (its erratum P3) is explicit here.
+last column is explicit here.
 
 ## Main definitions
 

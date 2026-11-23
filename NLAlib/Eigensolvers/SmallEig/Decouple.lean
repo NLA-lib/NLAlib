@@ -17,8 +17,8 @@ public import NLAlib.Matrix.FinitePrecision.GivensLogSlots
 `Decouple` ([BanksGarzaVargasSrivastava2025, §4]) runs rounded QR steps with one shift
 $\tilde\lambda$ close to an eigenvalue of large weight until the last subdiagonal entry is small:
 after each step the bottom entry is scanned against the threshold word $t_L$, and the run stops
-with the flag $0$ when it passes, with the flag $1$ at the cap $m_2$ (the paper's loop is
-uncapped, its erratum P13). By inverse iteration (`NLAlib.exists_le_norm_subdiag_shiftedQR_pow`)
+with the flag $0$ when it passes and with the flag $1$ at the cap $m_2$, so the loop is always
+finite. By inverse iteration (`NLAlib.exists_le_norm_subdiag_shiftedQR_pow`)
 and the forward error of the rounded steps
 (`NLAlib.IsStableQRChain.exists_norm_subdiag_le_of_dist`), a shift within $\beta' = \omega/20$ of
 an eigenvalue of weight at least $p$ decouples within $m_2$ steps. The scan threshold is that of

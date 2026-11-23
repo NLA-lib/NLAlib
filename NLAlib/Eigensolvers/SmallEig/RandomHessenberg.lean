@@ -24,11 +24,11 @@ matrix large: a unitary similarity whose last column is a random direction, foll
 bottom-up Hessenberg reduction, which fixes the last coordinate vector. The direction here is a
 complex Gaussian vector $\mathbf{g}$ of $2N$ draws, rotated to $\mathbf{e}_N$ by $N - 1$ rounded
 Givens rotations, instead of the paper's uniform vector on the sphere applied by a reflector: the
-phase of the last column is explicit (the paper's erratum P3), anti-concentration in a fixed
+phase of the last column is explicit, anti-concentration in a fixed
 direction is that of a Gaussian
 (`NLAlib.measureReal_norm_dotProduct_le_le_of_hasLaw_complexGaussianVector`),
 and the weights are taken for the eigenvectors of the input, fixed before the draw, then
-transferred to the output (`NLAlib.exists_lastRowWeights_ge_of_norm_sub_le`, the erratum P4).
+transferred to the output (`NLAlib.exists_lastRowWeights_ge_of_norm_sub_le`).
 
 ## Main definitions
 
@@ -703,7 +703,7 @@ theorem rhess_isPerturbedUnitarySimilar {M : Machine ℝ} {u : ℝ} (hM : StdMod
 
 /-- **`RHess` makes the last-row weights large** ([BanksGarzaVargasSrivastava2025,
 Proposition 5.3], corrected: the anti-concentration is applied to the eigenvectors of the input,
-fixed before the draw, its erratum P4): on a scalar machine with the standard model at the unit
+fixed before the draw): on a scalar machine with the standard model at the unit
 roundoff $\boldsymbol{u}$, $M.\mathrm{lit}(0) = 0$ and exact comparisons, a measurable
 interpretation reading the tape only in its windows whose draws store the tape entry, and a
 stream `sG` with the standard real Gaussian law: let $\mathbf{A}$ of order $n + 1$ have

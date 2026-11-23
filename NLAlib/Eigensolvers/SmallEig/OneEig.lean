@@ -12,11 +12,11 @@ public import NLAlib.Eigensolvers.SmallEig.OneEigParts
 
 `OneEig` ([BanksGarzaVargasSrivastava2025, §3.2]) finds a point within $\beta'$ of the spectrum of
 an upper Hessenberg matrix whose eigenvalues all carry weight, and at least $\eta_1$ away from it:
-from a disk sample $s_0$ of radius $\eta_2$ (not the paper's unperturbed start, its erratum B3),
+from a disk sample $s_0$ of radius $\eta_2$ (a perturbed start, adapted from the source),
 each round estimates the distances of the six perturbed net points $s + \tau e^{i\pi j/3} + w$
 with `DistSpec` and moves to the best one if its estimate is at most $0.66\,\tau$; the search stops
 with the flag $0$ when the estimate is at most $0.9\beta'$, with the flag $1$ if a round makes no
-progress or the round cap $t$ is reached. One attempt, no retry loop (the paper's erratum P13):
+progress or the round cap $t$ is reached. The run makes one attempt, with no retry loop:
 a failure is counted in the probability.
 
 The probability of failure is a union bound over the start and the $t$ rounds: each draws one
@@ -793,8 +793,8 @@ theorem rounding_le_innerRadius {u S η₁ L : ℝ} (hS : 0 < S) (hη₁ : 0 < �
     exact le_of_mul_le_mul_left a5 (by positivity)
 
 /-- **`OneEig` finds a point near the spectrum, with the norm slightly above the parameters**
-([BanksGarzaVargasSrivastava2025, Proposition 3.5], corrected: $\eta_2 = \min(\beta'/40, g/3)$ (P5),
-the round cap (P6), $\log_2$ (P7), a perturbed start (B3)): on a scalar machine with the standard
+([BanksGarzaVargasSrivastava2025, Proposition 3.5], adapted: $\eta_2 = \min(\beta'/40, g/3)$,
+a round cap in $\log_2$ and a perturbed start): on a scalar machine with the standard
 model at the unit roundoff $\boldsymbol{u}$, index literals, exact natural literals up to $1$, exact
 comparisons, a measurable interpretation reading the tape only in its windows and an exact polar
 sampler on a stream `sU` uniform on $[0, 1]$: let $\mathbf{H}$ of order $n + 1 \ge 2$ be upper
@@ -907,8 +907,8 @@ theorem oneEig_pwrites_of_norm_le {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
     hη₂T hβ' hηr hη₁ε hsep hr' hqs hq4 hq5).mono (fun _ h => h) le_rfl (fun _ h => h) hφt
 
 /-- **`OneEig` finds a point near the spectrum** ([BanksGarzaVargasSrivastava2025,
-Proposition 3.5], corrected: $\eta_2 = \min(\beta'/40, g/3)$ (P5), the round cap (P6), $\log_2$
-(P7), a perturbed start (B3)): on a scalar machine with the standard model at the unit roundoff
+Proposition 3.5], adapted: $\eta_2 = \min(\beta'/40, g/3)$, a round cap in $\log_2$ and
+a perturbed start): on a scalar machine with the standard model at the unit roundoff
 $\boldsymbol{u}$, index literals, exact natural literals up to $1$, exact comparisons,
 a measurable interpretation reading the tape only in its windows and an exact polar sampler on a
 stream `sU` uniform on $[0, 1]$: let $\mathbf{H}$ of order $n + 1 \ge 2$ be upper Hessenberg,

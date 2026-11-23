@@ -183,7 +183,7 @@ theorem IsPerturbedUnitarySimilar.exists_pseudoConditionNumber_le_and_le_norm_su
     _ = _ := by rw [hAV', Matrix.mul_assoc]
 
 /-- **Eigenvector weights survive a perturbation** ([BanksGarzaVargasSrivastava2025,
-Proposition 5.3], the eigenvector-perturbation step corrected for its erratum P4): let
+Proposition 5.3], the eigenvector-perturbation step, in corrected form): let
 $\mathbf{A}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\mathbf{V}$ invertible,
 $\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le B$, eigenvalues separated by $g > 0$, and
 $\|\mathbf{E}\|_2 \le g/(16(n + 1)B)$. Then $\mathbf{A} + \mathbf{E}$ has a diagonalization

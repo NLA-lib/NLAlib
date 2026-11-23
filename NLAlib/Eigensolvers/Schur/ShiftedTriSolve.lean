@@ -34,11 +34,11 @@ was floored, and no pivot is floored when the diagonal gaps exceed $2s_{\min}$.
 
 ## Main results
 
-* `NLAlib.shiftedTriSolve_writes_word`: the program stores the computed words and the flag.
 * `NLAlib.shiftedTriSolve_isComponentwiseBackwardSolution`: the computed column is a componentwise
   backward solution.
 * `NLAlib.shiftedTriSolve_flag`: no pivot is floored when the diagonal gaps exceed $2s_{\min}$.
-* `NLAlib.shiftedTriSolve_writes`: the program under the standard model.
+
+The run of the program is in `NLAlib/Eigensolvers/Schur/ShiftedTriSolveWrites.lean`.
 -/
 
 @[expose] public section
@@ -386,6 +386,66 @@ private theorem row_le_of_pivot {u γ A ε σ smin : ℝ} {d m m' s R q : ℂ}
     have := mul_nonneg hε hdq
     linarith
 
+/-- The residual of a row from its rounded sum, in the two cases of the pivot test: the quotient
+of $\hat s$ by the rounded shift $m$, or by the floor $s_{\min} > 0$ when the rounded squared
+modulus of $m$ is at most the rounded square of $s_{\min}$. -/
+private theorem row_le_of_word {M : Machine ℝ} {u ε γ A σ smin : ℝ} (hM : StdModel u id M)
+    (hu0 : 0 ≤ u) (hu32 : u ≤ 1 / 32) (hsmin : 0 < smin) {d m s R : ℂ}
+    (hchain : ‖s - R‖ ≤ γ * A) (hRA : ‖R‖ ≤ A) (hcoef : 8 * u * (1 + γ) + γ ≤ ε) (hcoefu : u ≤ ε)
+    (hσ : 0 ≤ σ) (hdm : ‖d - m‖ ≤ u * ‖d‖)
+    (hflag : M.add (M.mul m.re m.re) (M.mul m.im m.im) ≤ M.mul smin smin → σ = 3 * smin) :
+    ‖d * -(⟨(Pair.divideWords M (s.re, s.im)
+          ((if decide (M.add (M.mul m.re m.re) (M.mul m.im m.im) ≤ M.mul smin smin) then
+            (⟨smin, M.lit 0⟩ : ℂ) else m).re,
+          (if decide (M.add (M.mul m.re m.re) (M.mul m.im m.im) ≤ M.mul smin smin) then
+            (⟨smin, M.lit 0⟩ : ℂ) else m).im)).1,
+        (Pair.divideWords M (s.re, s.im)
+          ((if decide (M.add (M.mul m.re m.re) (M.mul m.im m.im) ≤ M.mul smin smin) then
+            (⟨smin, M.lit 0⟩ : ℂ) else m).re,
+          (if decide (M.add (M.mul m.re m.re) (M.mul m.im m.im) ≤ M.mul smin smin) then
+            (⟨smin, M.lit 0⟩ : ℂ) else m).im)).2⟩ : ℂ) + R‖ ≤
+      ε * (‖d‖ * ‖-(⟨(Pair.divideWords M (s.re, s.im)
+          ((if decide (M.add (M.mul m.re m.re) (M.mul m.im m.im) ≤ M.mul smin smin) then
+            (⟨smin, M.lit 0⟩ : ℂ) else m).re,
+          (if decide (M.add (M.mul m.re m.re) (M.mul m.im m.im) ≤ M.mul smin smin) then
+            (⟨smin, M.lit 0⟩ : ℂ) else m).im)).1,
+        (Pair.divideWords M (s.re, s.im)
+          ((if decide (M.add (M.mul m.re m.re) (M.mul m.im m.im) ≤ M.mul smin smin) then
+            (⟨smin, M.lit 0⟩ : ℂ) else m).re,
+          (if decide (M.add (M.mul m.re m.re) (M.mul m.im m.im) ≤ M.mul smin smin) then
+            (⟨smin, M.lit 0⟩ : ℂ) else m).im)).2⟩ : ℂ)‖ + A) +
+        σ * ‖-(⟨(Pair.divideWords M (s.re, s.im)
+          ((if decide (M.add (M.mul m.re m.re) (M.mul m.im m.im) ≤ M.mul smin smin) then
+            (⟨smin, M.lit 0⟩ : ℂ) else m).re,
+          (if decide (M.add (M.mul m.re m.re) (M.mul m.im m.im) ≤ M.mul smin smin) then
+            (⟨smin, M.lit 0⟩ : ℂ) else m).im)).1,
+        (Pair.divideWords M (s.re, s.im)
+          ((if decide (M.add (M.mul m.re m.re) (M.mul m.im m.im) ≤ M.mul smin smin) then
+            (⟨smin, M.lit 0⟩ : ℂ) else m).re,
+          (if decide (M.add (M.mul m.re m.re) (M.mul m.im m.im) ≤ M.mul smin smin) then
+            (⟨smin, M.lit 0⟩ : ℂ) else m).im)).2⟩ : ℂ)‖ := by
+  by_cases hle : M.add (M.mul m.re m.re) (M.mul m.im m.im) ≤ M.mul smin smin
+  · have hmm : (if decide (M.add (M.mul m.re m.re) (M.mul m.im m.im) ≤ M.mul smin smin) then
+        (⟨smin, M.lit 0⟩ : ℂ) else m) = (smin : ℂ) := by
+      have h0 : M.lit 0 = 0 := hM.zero
+      rw [if_pos (decide_eq_true hle)]
+      apply Complex.ext <;> simp [h0]
+    rw [hmm]
+    have hm0 : (smin : ℂ) ≠ 0 := by exact_mod_cast hsmin.ne'
+    have hq := NLAlib.Ops.StdModel.norm_complexDivide_sub_le hM hu32 (x := s) hm0
+    have hd2 : ‖d‖ ≤ 2 * smin :=
+      norm_le_two_mul_of_floored hM hu0 hu32 hsmin.le hdm hle
+    exact row_le_of_pivot hchain hRA hu0 hcoef hcoefu hσ hq hdm
+      (Or.inr ⟨rfl, hsmin, hd2, hflag hle⟩)
+  · have hmm : (if decide (M.add (M.mul m.re m.re) (M.mul m.im m.im) ≤ M.mul smin smin) then
+        (⟨smin, M.lit 0⟩ : ℂ) else m) = m := by
+      rw [if_neg (by simpa using hle)]
+    rw [hmm]
+    have hm0 : m ≠ 0 := ne_zero_of_not_floored hM hu0 (by linarith) (smin := smin) hle
+    have hq := NLAlib.Ops.StdModel.norm_complexDivide_sub_le hM hu32 (x := s) hm0
+    exact row_le_of_pivot (smin := smin) hchain hRA hu0 hcoef hcoefu hσ hq hdm
+      (Or.inl ⟨rfl, hm0⟩)
+
 /-- **The residual of one computed row**: under the standard model with
 $64(N + 1)\boldsymbol{u} \le 1$, $s_{\min} > 0$ and $i < j < N$, the computed entries $\hat x$ of
 column $j$ satisfy, at row $i$ with $r = j - 1 - i$,
@@ -477,30 +537,8 @@ private theorem shiftedTriSolveWord_row_le {u ε : ℝ} (hM : StdModel u id M)
   have hσ : 0 ≤ (if (shiftedTriSolveWord M T smin j j).2 then 3 * smin else 0) := by
     split_ifs <;> linarith
   rw [hxi]
-  have hu32 : u ≤ 1 / 32 := by nlinarith
-  cases hfl : fl0 with
-  | false =>
-    have hmm : m' = m := by simp only [m', hfl]; rfl
-    have hm0 : m ≠ 0 := ne_zero_of_not_floored hM hu0 (by linarith) (smin := smin) (by
-      intro h; have h' : fl0 = true := decide_eq_true h; rw [hfl] at h'
-      exact absurd h' (by decide))
-    have hq := NLAlib.Ops.StdModel.norm_complexDivide_sub_le hM hu32 (x := s) (hmm ▸ hm0)
-    exact row_le_of_pivot (smin := smin) hchain hRA hu0 hcoef hcoefu hσ hq hdm
-      (Or.inl ⟨hmm, hm0⟩)
-  | true =>
-    have hmm : m' = (smin : ℂ) := by
-      have h0 : M.lit 0 = 0 := hM.zero
-      simp only [m', hfl, if_true]; apply Complex.ext <;> simp [h0]
-    have hm0 : m' ≠ 0 := by rw [hmm]; exact_mod_cast hsmin.ne'
-    have hq := NLAlib.Ops.StdModel.norm_complexDivide_sub_le hM hu32 (x := s) hm0
-    have hle : M.add (M.mul m.re m.re) (M.mul m.im m.im) ≤ M.mul smin smin :=
-      of_decide_eq_true hfl
-    have hd2 : ‖d‖ ≤ 2 * smin :=
-      norm_le_two_mul_of_floored hM hu0 (by nlinarith) hsmin.le hdm hle
-    have hσ3 : (if (shiftedTriSolveWord M T smin j j).2 then 3 * smin else 0) = 3 * smin :=
-      if_pos (hflag hfl)
-    exact row_le_of_pivot hchain hRA hu0 hcoef hcoefu hσ hq hdm
-      (Or.inr ⟨hmm, hsmin, hd2, hσ3⟩)
+  exact row_le_of_word hM hu0 (by nlinarith) hsmin hchain hRA hcoef hcoefu hσ hdm
+    fun hle => if_pos (hflag (decide_eq_true hle))
 
 end Rows
 
@@ -538,6 +576,23 @@ private theorem entryAt_of_lt (hT : T.IsUpperTriangular) {i k : ℕ} (hki : k < 
   · exact hT (show (⟨k, h.2⟩ : Fin N) < ⟨i, h.1⟩ from hki)
   · rfl
 
+/-- A row at or below the diagonal of column $j$ of $\mathbf{T} - t_{jj}\mathbf{I}$ vanishes
+on a vector supported on the indices up to $j$. -/
+private theorem column_row_zero {N : ℕ} {T : Matrix (Fin N) (Fin N) ℂ}
+    (hT : T.IsUpperTriangular) {i j : Fin N} (hij : ¬ (i : ℕ) < j)
+    (hjj : entryAt T j j = T j j) {yN : ℕ → ℂ} (hy : ∀ k : ℕ, (j : ℕ) < k → yN k = 0) (k : ℕ) :
+    (entryAt T i k - if (i : ℕ) = k then T j j else 0) * yN k = 0 := by
+  by_cases hkj : k ≤ j
+  · by_cases hki : k < i
+    · simp only [entryAt_of_lt hT hki, if_neg (show (i : ℕ) ≠ k by omega), sub_zero, zero_mul]
+    · have hk : k = j := by omega
+      have hik : (i : ℕ) = j := by omega
+      subst hk
+      have : i = j := Fin.ext hik
+      subst this
+      simp [hjj]
+  · rw [hy k (by omega), mul_zero]
+
 end Column
 
 /-! ### The theorems -/
@@ -558,10 +613,7 @@ theorem shiftedTriSolve_isComponentwiseBackwardSolution_of_le {M : Machine ℝ} 
     IsComponentwiseBackwardSolution ε
       (if shiftedTriSolveFlag M T smin j then 3 * smin else 0) (T - T j j • 1) 0
       (shiftedTriSolveColumn M T smin j) := by
-  have hu0 : 0 ≤ u := by
-    have := hM.lit 1
-    simp only [Rat.cast_one, abs_one, mul_one, id] at this
-    exact (abs_nonneg _).trans this
+  have hu0 : 0 ≤ u := (abs_nonneg _).trans (by simpa using hM.lit 1)
   set σ := if shiftedTriSolveFlag M T smin j then 3 * smin else 0 with hσdef
   have hσ : 0 ≤ σ := by simp only [σ]; split_ifs <;> linarith
   have hN : (0 : ℝ) ≤ N := Nat.cast_nonneg N
@@ -635,19 +687,9 @@ theorem shiftedTriSolve_isComponentwiseBackwardSolution_of_le {M : Machine ℝ} 
           ‖entryAt T i (i + 1 + l)‖ * ‖w (i + 1 + l)‖) := by rw [norm_one]; ring
     rw [e1, e2]
     exact hrow
-  · have hzero : ∀ k ∈ Finset.range N, cN k * yN k = 0 := fun k _ => by
-      by_cases hkj : k ≤ j
-      · by_cases hki : k < i
-        · simp only [cN, entryAt_of_lt hT hki, if_neg (show (i : ℕ) ≠ k by omega), sub_zero,
-            zero_mul]
-        · have hk : k = j := by omega
-          have hik : (i : ℕ) = j := by omega
-          subst hk
-          have : i = j := Fin.ext hik
-          subst this
-          simp [cN, hjj]
-      · simp only [yN, if_neg (show ¬ k < j by omega), if_neg (show k ≠ (j : ℕ) by omega),
-          mul_zero]
+  · have hzero : ∀ k ∈ Finset.range N, cN k * yN k = 0 := fun k _ =>
+      column_row_zero hT hij hjj (fun k hk => by
+        simp only [yN, if_neg (show ¬ k < j by omega), if_neg (show k ≠ (j : ℕ) by omega)]) k
     rw [Finset.sum_eq_zero hzero, norm_zero]
     have hε0 : 0 ≤ ε := le_trans (by positivity) hε
     positivity
@@ -698,76 +740,5 @@ theorem shiftedTriSolve_flag {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M) 
     simp only [entryAt, hi, j.isLt, and_self, dif_pos] at hd
     linarith
 
-section Writes
-
-variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
-
-/-- **The program stores the computed words**: on a scalar machine with index literals and exact
-comparisons, from a memory holding $\mathbf{T}$ of order $N$ at `t`, the floor $s_{\min}$ at `sm`,
-room for `Y` and a flag word at `g`, the four blocks live and apart, and $j < N$, the run writes
-only the first $j$ entries of column $j$ of `Y` and the flag: they hold the words of
-`NLAlib.shiftedTriSolveWord`, and the flag is the literal $1$ if a pivot was floored and unchanged
-otherwise. -/
-theorem shiftedTriSolve_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
-    (hL : IsIndexLit M I) (hC : IsCmp id I) {N j : ℕ} (hj : j < N) {t sm y g : ℕ × ℕ}
-    {T : Matrix (Fin N) (Fin N) ℂ} {smin : ℝ} {τ : Tape ℝ} {μ : Mem ℝ}
-    (hT : HoldsMatrix t T μ.store) (hsm : μ.store.get sm.1 sm.2 = some smin)
-    (hl : μ.Live [t, sm, y, g]) (hroom : μ.Room [y, g] [2 * (N * N), 1])
-    (hap : Fp.Apart [t, sm, y, g] [2 * (N * N), 1, 2 * (N * N), 1]) :
-    Writes .total I τ (shiftedTriSolve (O := O) (Q := Q))
-      (Env.frame [N, j] [t, sm, y, g, y, g])
-      (Store.inBlock y.1 (y.2 + 2 * (j * N)) (2 * j) ⊔ Store.inBlock g.1 g.2 1)
-      (fun μ' => (∀ i < j, μ'.store.get y.1 (y.2 + 2 * (j * N + i)) =
-            some ((shiftedTriSolveWord M T smin j j).1 i).re ∧
-          μ'.store.get y.1 (y.2 + 2 * (j * N + i) + 1) =
-            some ((shiftedTriSolveWord M T smin j j).1 i).im) ∧
-        (shiftedTriSolveFlag M T smin j = true → μ'.store.get g.1 g.2 = some (M.lit 1)) ∧
-        (shiftedTriSolveFlag M T smin j = false →
-          μ'.store.get g.1 g.2 = μ.store.get g.1 g.2)) μ := by
-  sorry
-
-/-- **Rounded shifted back substitution under the standard model**: on a scalar machine with the
-standard model at $\boldsymbol{u}$, $64(N + 1)\boldsymbol{u} \le 1$, index literals and exact
-comparisons, from the memory of `NLAlib.shiftedTriSolve_writes_word` with $\mathbf{T}$ upper
-triangular, $s_{\min} \ge 0$ and $j < N$, the run stores the first $j$ entries of a column
-$\mathbf{y}$ with $y_j = 1$, $y_i = 0$ for $i > j$, that is a componentwise backward solution of
-$(\mathbf{T} - t_{jj}\mathbf{I})\mathbf{y} = \mathbf{0}$ with $16(N + 1)\boldsymbol{u}$ and the
-floor $3s_{\min}$ if the flag was set, $0$ if the flag is unchanged; the flag is unchanged when
-$\lvert t_{ii} - t_{jj}\rvert > 2s_{\min}$ for $i < j$. -/
-theorem shiftedTriSolve_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
-    (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I) {N : ℕ}
-    (hu : 64 * ((N : ℝ) + 1) * u ≤ 1) {t sm y g : ℕ × ℕ} {T : Matrix (Fin N) (Fin N) ℂ}
-    (hTu : T.IsUpperTriangular) {smin : ℝ} (hsmin : 0 < smin) (j : Fin N) {τ : Tape ℝ}
-    {μ : Mem ℝ} (hT : HoldsMatrix t T μ.store) (hsm : μ.store.get sm.1 sm.2 = some smin)
-    (hl : μ.Live [t, sm, y, g]) (hroom : μ.Room [y, g] [2 * (N * N), 1])
-    (hap : Fp.Apart [t, sm, y, g] [2 * (N * N), 1, 2 * (N * N), 1]) :
-    Writes .total I τ (shiftedTriSolve (O := O) (Q := Q))
-      (Env.frame [N, j] [t, sm, y, g, y, g])
-      (Store.inBlock y.1 (y.2 + 2 * (j * N)) (2 * j) ⊔ Store.inBlock g.1 g.2 1)
-      (fun μ' => ∃ (yv : Fin N → ℂ) (fl : Bool),
-        (∀ i : Fin N, (i : ℕ) < j → μ'.store.get y.1 (y.2 + 2 * (j * N + i)) = some (yv i).re ∧
-          μ'.store.get y.1 (y.2 + 2 * (j * N + i) + 1) = some (yv i).im) ∧
-        yv j = 1 ∧ (∀ i : Fin N, j < i → yv i = 0) ∧
-        IsComponentwiseBackwardSolution (16 * ((N : ℝ) + 1) * u) (if fl then 3 * smin else 0)
-          (T - T j j • 1) 0 yv ∧
-        (fl = true → μ'.store.get g.1 g.2 = some (M.lit 1)) ∧
-        (fl = false → μ'.store.get g.1 g.2 = μ.store.get g.1 g.2) ∧
-        ((∀ i : Fin N, i < j → 2 * smin < ‖T i i - T j j‖) → fl = false)) μ := by
-  have hu32 : u ≤ 1 / 32 := by
-    have hN : (0 : ℝ) ≤ N := Nat.cast_nonneg N
-    have hu0 : 0 ≤ u := by
-      have := hM.lit 1
-      simp only [Rat.cast_one, abs_one, mul_one, id] at this
-      exact (abs_nonneg _).trans this
-    nlinarith
-  refine (shiftedTriSolve_writes_word hS hL hC j.isLt hT hsm hl hroom hap).mono le_rfl
-    fun μ' _ ⟨hy, h1, h0⟩ => ⟨shiftedTriSolveColumn M T smin j, shiftedTriSolveFlag M T smin j,
-      fun i hi => by simpa only [shiftedTriSolveColumn, hi, if_true] using hy i hi,
-      by simp [shiftedTriSolveColumn],
-      fun i hi => by simp [shiftedTriSolveColumn, not_lt.mpr hi.le, (Fin.val_ne_of_ne hi.ne')],
-      shiftedTriSolve_isComponentwiseBackwardSolution hM hu hTu hsmin j, h1, h0,
-      fun hgap => shiftedTriSolve_flag hM hu32 hsmin.le j hgap⟩
-
-end Writes
 
 end NLAlib

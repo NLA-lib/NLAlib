@@ -967,6 +967,7 @@ public import NLAlib.Matrix.FinitePrecision.StoredProducts
 public import NLAlib.Matrix.FinitePrecision.TapeRounding
 public import NLAlib.Matrix.FinitePrecision.Traces
 public import NLAlib.Eigensolvers.Schur.ShiftedTriSolve
+public import NLAlib.Eigensolvers.Schur.ShiftedTriSolveWrites
 public import NLAlib.Matrix.FinitePrecision.VectorErrors
 public import NLAlib.Matrix.FinitePrecision.WordRepresentation
 public import NLAlib.Matrix.Functions.AbsoluteValue

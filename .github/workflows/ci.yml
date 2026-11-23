@@ -74,6 +74,13 @@ jobs:
         run: python3 scripts/check_constants.py
       - name: Extract the declaration data (about a minute on the built library)
         run: bash scripts/explore_data.sh "$RUNNER_TEMP/explore-data.json"
+      - name: Keep the declaration data for the explorer check
+        uses: actions/upload-artifact@v4
+        with:
+          name: explore-data
+          path: ${{ runner.temp }}/explore-data.json
+          retention-days: 1
+          if-no-files-found: error
       - name: Contribution rules by id, names (N1-N18) included, ratcheted (scripts/check_rules.py)
         run: python3 scripts/check_rules.py "$RUNNER_TEMP/explore-data.json"
       - uses: actions/setup-node@v4
@@ -95,6 +102,34 @@ jobs:
           compression-level: 0
           retention-days: 1
           if-no-files-found: error
+  explorer-site:
+    # nla-lib.org/explore is built in NLA-lib/NLA-lib.github.io from this library's data and that
+    # repository's own metadata, which names declarations. This job runs that build on the data
+    # extracted above, so a rename or removal that breaks the website shows here. It is advisory
+    # (continue-on-error): the website's metadata can only follow a library change, and a failure
+    # must not hold back the publication of the data or the reuse of the build, which both
+    # require this workflow to succeed. docs/contributing/checks.md, "The explorer build".
+    name: Explorer build against website metadata (advisory)
+    needs: build
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    # The job runs code fetched from the website repository: it gets no secret and a read-only
+    # token that is not left in the checkout.
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: explore-data
+          path: ${{ runner.temp }}/explore-data
+      - name: Build the website's explorer with this data
+        run: python3 scripts/explore_site_check.py --data "$RUNNER_TEMP/explore-data/explore-data.json"
   documentation-windows:
     name: Documentation regressions (Windows)
     runs-on: windows-latest

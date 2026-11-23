@@ -472,7 +472,7 @@ The unconditional form of
 `NLAlib.ShiftedQR.roundedShQRSmallEig_algorithm_measureReal_not_accepts_le`
 ([BanksGarzaVargasSrivastava2022, Theorem 6.3 with Theorem 1.4's quantifiers, corrected]): the
 eigenvalue-gap and eigenvector-condition tails of a complex Ginibre perturbation are proved, at
-the records `NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ and
+the records `NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(2048e, 11/3, 2/3, 2)$ and
 `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$.
 Result: shifted-qr-rounded-small-eig-certificate-accuracy -/
 theorem roundedShQRSmallEig_algorithm_measureReal_not_accepts_le_unconditional
@@ -550,7 +550,7 @@ noncomputable def shqrSmallEigClaim (admitted : ∃ d, ShQRSmallEigSizes Mch c�
 
 /-- The randomized claim of rounded shifted QR with the small-eigenvalue leaf, with the proved
 Ginibre tails, at the records `NLAlib.ginibreGapTail` <!-- value ginibreGapTail -->
-$(10000e, 5, 1/2, 2)$ and `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail -->
+$(2048e, 11/3, 2/3, 2)$ and `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail -->
 $(128e, 3, 2, 2)$. -/
 noncomputable def shqrSmallEigGinibreClaim
     (admitted : ∃ d, ShQRSmallEigSizes Mch ginibreGapTail ginibreConditionTail d)

@@ -960,7 +960,7 @@ The certificates' constants are larger than TH5 and HL5 because they also count 
 program. HL5's exponent of $k + 1$ is $4$, not the $5$ of the target row.
 
 The random-matrix tails (RM1, RM2) are proved (`NLAlib.boundsGinibreGap_ginibreGapTail`,
-`NLAlib.boundsGinibreCondition_ginibreConditionTail` at the records $(10000e, 5, 1/2, 2)$ and $(128e, 3, 2, 2)$), so
+`NLAlib.boundsGinibreCondition_ginibreConditionTail` at the records $(2048e, 11/3, 2/3, 2)$ and $(128e, 3, 2, 2)$), so
 every headline has an `_unconditional` form without the tail hypotheses.
 
 ### 14.1 Changes after the stage review (Fable, `Review-Fable-SMALLEIG-Stage.md`)

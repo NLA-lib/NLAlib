@@ -148,8 +148,10 @@ It runs, in order:
 
 `scripts/stage_check.sh EXCLUDE_REGEX` leaves out the modules matching the regex from steps 1
 and 6, for files you are still editing. CI (`.github/workflows/ci.yml`) runs the same checks on
-every push and PR, and in addition the unit tests of the checks on Windows and
-`mk_all --check` for `NLAlibTools`. One of those unit tests requires
+every push and PR, and in addition the unit tests of the checks on Windows,
+`mk_all --check` for `NLAlibTools`, and an advisory job that builds the website's explorer with
+the extracted data ([checks](docs/contributing/checks.md), "The explorer build"): when a rename
+or a removal turns it red, prepare the matching change to the website repository. One of those unit tests requires
 `NLAlib/Ops/Tools/LintAll.lean` to import every module in a subdirectory of `NLAlib/Ops` other
 than `Logic/` and `Tools/`: add the import when you add such a module.
 

@@ -336,6 +336,7 @@ private def stSumFp (L : ℕ) : Fp :=
 private theorem stSumFp_le (L : ℕ) : stSumFp L ≤ stScratch L := by
   simp only [stSumFp, stScratch]; fp_sub
 
+omit [Has IndexOp O] [Has CmpTst Q] in
 /-- One multiply–add of the sum of a row. -/
 private theorem rowSumBody_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {N j r l : ℕ}
@@ -444,6 +445,7 @@ private theorem rowSum_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSca
   refine (rowSumBody_writes hS hj hr hl hc htL hyL hD hkl.1 hkl.2 a b).mono le_rfl
     fun μ'' h'' ⟨p'', c'', a'', b''⟩ => ⟨hf.trans h'', p''.trans hp, c'', a'', b''⟩
 
+omit [Has IndexOp O] [Has CmpTst Q] in
 /-- The quotient of a row, negated into the column. -/
 private theorem rowFinish_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I) {N j r : ℕ}
     (hj : j < N) (hr : r < j) {t sm y g : ℕ × ℕ} {L : ℕ}
@@ -798,7 +800,7 @@ theorem shiftedTriSolve_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
   have hb0 : ∀ L', Store.inBlock L' 0 1 ≤ Fp.above L' := fun _ _ _ h => h.1 ▸ le_rfl
   have hb1 : ∀ L', Store.inBlock L' 1 1 ≤ Fp.above L' := fun _ _ _ h => h.1 ▸ le_rfl
   have hb6 : ∀ L', Store.inBlock (L' + 6) 1 1 ≤ Fp.above L' := fun L' b _ h => by
-    have := h.1; show L' ≤ b; omega
+    have := h.1; change L' ≤ b; omega
   have hAbove : ∀ {b o n}, L ≤ b → Store.inBlock b o n ≤ (Store.inBlock y.1 (y.2 + 2 * (j * N))
       (2 * j) ⊔ Store.inBlock g.1 g.2 1) ⊔ Fp.above L := fun hb _ _ h =>
     Or.inr (show L ≤ _ from h.1 ▸ hb)
@@ -838,7 +840,7 @@ theorem shiftedTriSolve_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
       ry := by rw [h₃.len_eq, h₂.len_eq, h₁.len_eq, (hBelow y.1 hyl).1]; exact hyr
       rg := by rw [h₃.len_eq, h₂.len_eq, h₁.len_eq, (hBelow g.1 hgl).1]; exact hgr }
   have hgk : μ₃.store.get g.1 g.2 = μ.store.get g.1 g.2 := by
-    rw [hfrA.2 _ _ (by show ¬ L ≤ g.1; omega), (hBelow g.1 hgl).2]
+    rw [hfrA.2 _ _ (by change ¬ L ≤ g.1; omega), (hBelow g.1 hgl).2]
   obtain ⟨hD, hDy, hyg⟩ := stDisj (T := T) htl hsl hyl hgl hap
   refine (shiftedTriSolve_rows hS hL hC hj htl hyl hgl hD hDy hyg ctx).mono ?_ ?_
   · refine sup_le (sup_le ?_ (le_sup_of_le_left le_sup_right))

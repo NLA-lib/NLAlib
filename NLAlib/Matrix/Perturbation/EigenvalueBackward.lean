@@ -183,7 +183,7 @@ theorem IsPerturbedUnitarySimilar.exists_pseudoConditionNumber_le_and_le_norm_su
     _ = _ := by rw [hAV', Matrix.mul_assoc]
 
 /-- **Eigenvector weights survive a perturbation** ([BanksGarzaVargasSrivastava2025,
-Proposition 5.3], the eigenvector-perturbation step corrected for its erratum P4): let
+Proposition 5.3], the eigenvector-perturbation step, in corrected form): let
 $\mathbf{A}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$ with $\mathbf{V}$ invertible,
 $\|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2 \le B$, eigenvalues separated by $g > 0$, and
 $\|\mathbf{E}\|_2 \le g/(16(n + 1)B)$. Then $\mathbf{A} + \mathbf{E}$ has a diagonalization
@@ -270,6 +270,17 @@ theorem IsConditionedDiagonalizable.isDiagonalizable {n : Type*} [Fintype n] [De
     IsDiagonalizable A := by
   obtain ⟨V, d, hV, hAV, -, -⟩ := h
   exact ⟨V, d, (Matrix.isUnit_iff_isUnit_det V).mp hV, hAV⟩
+
+/-- **The class is scaled**: if $\mathbf{A}$ is of the class $(B, \Gamma)$, then $c\mathbf{A}$ is of
+the class $(B, \lvert c\rvert\Gamma)$ (the same eigenvectors, the eigenvalues scaled). -/
+theorem IsConditionedDiagonalizable.smul {n : Type*} [Fintype n] [DecidableEq n] {B Γ : ℝ}
+    {A : Matrix n n ℂ} (h : IsConditionedDiagonalizable B Γ A) (c : ℂ) :
+    IsConditionedDiagonalizable B (‖c‖ * Γ) (c • A) := by
+  obtain ⟨V, d, hV, hAV, hB, hgap⟩ := h
+  refine ⟨V, c • d, hV, ?_, hB, fun i j hij => ?_⟩
+  · rw [Matrix.smul_mul, hAV, ← Matrix.mul_smul, ← Matrix.diagonal_smul]
+  · rw [Pi.smul_apply, Pi.smul_apply, smul_eq_mul, smul_eq_mul, ← mul_sub, norm_mul]
+    exact mul_le_mul_of_nonneg_left (hgap i j hij) (norm_nonneg c)
 
 /-- **The class through a perturbed unitary similarity**: a step by any unitary with backward
 error at most $\Gamma/(16(n+1)B)$ keeps the matrix in the class $(2B, \Gamma/2)$ (from

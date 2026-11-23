@@ -98,8 +98,8 @@ $$\mathbb{P}\bigl[\mathsf{smallEigProg}(\mathbf{M}) \text{ fails, or writes outs
   or lists no } \operatorname{spec}(\mathbf{M} + \mathbf{E}),\ \|\mathbf{E}\|_2 \le \delta\bigr]
   \le \varphi\,.$$
 Here $\boldsymbol{u}_{\mathrm{SmallEig}}$ is `NLAlib.SmallEig.uSmallEig` at $n_{\max}$.
-[BanksGarzaVargasSrivastava2025, Theorem 1.1]; there $\Sigma$ is not an input (its errata P9,
-N4) and the error is relative.
+[BanksGarzaVargasSrivastava2025, Theorem 1.1]; there $\Sigma$ is not an input and the error
+is relative.
 
 Note: The run terminates on every tape (`NLAlib.SmallEig.smallEigProg_terminates`). The failure
 is split in four: the gap, the condition, the norm of the perturbation, and the worklist.
@@ -136,8 +136,8 @@ $\delta = \varepsilon\Sigma/c$,
 $$\mathbb{P}\bigl[\mathsf{smallEigProg}(\mathbf{M}) \text{ fails, or writes outside its output,
   or lists no } \operatorname{spec}(\mathbf{M} + \mathbf{E}),\
   \|\mathbf{E}\|_2 \le \varepsilon\|\mathbf{M}\|_2\bigr] \le \varphi\,.$$
-[BanksGarzaVargasSrivastava2025, Theorem 1.1]; the bound $\Sigma$ of the norm is an input there
-too (its errata P9, N4).
+[BanksGarzaVargasSrivastava2025, Theorem 1.1], adapted: the bound $\Sigma$ of the norm is an
+input.
 Result: small-eig-backward-error -/
 theorem smallEig_relative {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
@@ -213,8 +213,8 @@ Theorem 1.1], running time, on every tape): the instrumented static count
 (`NLAlib.Ops.stmtCost` of `NLAlib.Ops.Stmt.instrument`, every structural instruction counted) of
 `NLAlib.SmallEig.smallEigProg` at the order $n + 1$, $n_q$ words, the cap $T$ and the zero
 offsets of its four operands is at most $80390(n + 1)^4(T + 1)^2$. The count holds on every
-tape: the loops are capped by $T$ ($m, t, m_2 \le T$, $q \le m$). The paper's count has the factor
-$n$ in its last term (its erratum N5). The constant is the monomial bound of the instrumented
+tape: the loops are capped by $T$ ($m, t, m_2 \le T$, $q \le m$). This count is adapted from the
+printed one. The constant is the monomial bound of the instrumented
 tree (`NLAlib.Ops.size_stmtCost_le_stmtWorkMono`); the certificate's
 `NLAlib.SmallEig.smallEigWork` also counts the frame of the program. -/
 theorem smallEig_work_le (sG n nq T : ℕ) :

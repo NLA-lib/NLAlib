@@ -723,10 +723,9 @@ upper Hessenberg matrix with $\psi_k > 0$, $k$ $\theta$-optimal Ritz values (as
 Then for every $\delta > 0$ some
 $$t \le \Bigl\lceil\frac{\log(1/\delta)}{\log(1/(1 - \gamma))}\Bigr\rceil$$
 has $\mathsf{shqrIterate}(\mathbf{H}_0)_t$ $\delta$-decoupled: a subdiagonal entry of modulus at
-most $\delta\|\mathbf{H}_t\|_2$. [BanksGarzaVargasSrivastava2021, Theorem 1.6, item 1], printed
-as $\mathrm{dec}_\delta(\mathbf{H}_0) \le 4\log_2(1/\delta)$, which is false for $\delta$ near
-$1$ (gap G2 of the design note); here with the ceiling, $\le 4\log_2(1/\delta) + 1$ at
-$\gamma = 0.2$.
+most $\delta\|\mathbf{H}_t\|_2$. Adapted from [BanksGarzaVargasSrivastava2021, Theorem 1.6,
+item 1]; the ceiling makes the bound hold for every $\delta > 0$, and it is at most
+$4\log_2(1/\delta) + 1$ at $\gamma = 0.2$.
 Result: shifted-qr-rapid-decoupling -/
 theorem IsUpperHessenberg.exists_le_isDecoupled_shqrIterate
     {H₀ V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hH : IsUpperHessenberg H₀)
@@ -839,8 +838,7 @@ $\gamma = 0.2$ and $\alpha = B^{4m/2^m}$,
 $$\varepsilon \ge 0.0018\,B^{-(8m + 4)/(2^m - 1)}\,,$$
 so the number of shifts per iteration is $O(B^{(16\log_2 k + 8)/(k-1)})$, which is $O(1)$ for
 $k \ge C\log B\log\log B$. [BanksGarzaVargasSrivastava2021, Lemma 4.7, proof], there
-$0.002B^{-(8\log k + 4)/(k-1)}$ for the constant $12$ (the statement of Lemma 4.7 there prints
-$k$ for $k - 1$; gap G6). -/
+$0.002B^{-(8\log k + 4)/(k-1)}$ for the constant $12$. -/
 theorem exceptionalSpacing_ge {B : ℝ} (hB : 1 ≤ B) {m : ℕ} (hm : 1 ≤ m) :
     0.0018 * B ^ (-(8 * m + 4 : ℝ) / ((2 : ℝ) ^ m - 1)) ≤
       exceptionalSpacing (2 ^ m) B 2 (B ^ ((4 * m : ℝ) / (2 : ℝ) ^ m)) ((1 - 0.2) ^ 2) := by
@@ -886,9 +884,8 @@ at some
 $$t \le \Bigl\lceil\frac{\log(1/\delta)}{\log(1/(1 - \gamma))}\Bigr\rceil$$
 for every $\delta > 0$; by `NLAlib.length_shqrCandidates_le` each iteration tries at most
 $1 + 12/\varepsilon^2$ shifts, $\varepsilon = ((1 - \gamma)^2/14^{1/k})^{k/(k-1)}$.
-[BanksGarzaVargasSrivastava2021, Theorem 1.2] (Theorem 3.3 there for $k = 2$), which uses the
-separate strategy $\mathrm{Sh}_{2,1}$ with a quadratic shift $(z - r)^2$ and whose
-exceptional-shift count does not reduce the potential as printed (gap G1); here as the case
+Adapted from [BanksGarzaVargasSrivastava2021, Theorem 1.2] (Theorem 3.3 there for $k = 2$), which
+uses a separate strategy $\mathrm{Sh}_{2,1}$ with a quadratic shift $(z - r)^2$; here as the case
 $B = 1$ of the general strategy.
 Result: shifted-qr-normal-decoupling -/
 theorem _root_.IsStarNormal.exists_le_isDecoupled_shqrIterate_ritzValues

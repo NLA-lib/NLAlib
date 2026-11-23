@@ -17,7 +17,7 @@ the six points $s_i + \tau_i e^{i\pi j/3} + w_i$ ($w_i$ a small disk sample) and
 one if its estimate is at most $0.66\,\tau_i$. This file states the arithmetic of the search on an
 abstract run (a sequence of points and estimates with these properties, as the merged abstract
 loop of the shifted QR iteration): the estimates decrease geometrically and the points stay in
-the disk of radius $10\Sigma$ (Lemma 3.7, with the start a disk sample, the paper's erratum B3),
+the disk of radius $10\Sigma$ (Lemma 3.7, adapted to a start at a disk sample),
 a round with accurate estimates at every net point makes progress (Lemma 3.8, its statement
 corrected), and after the round cap some estimate is below $0.9\beta$.
 

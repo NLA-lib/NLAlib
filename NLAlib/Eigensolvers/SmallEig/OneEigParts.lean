@@ -15,7 +15,7 @@ public import NLAlib.Matrix.QRIteration.EigenvectorWeights
 
 The parts of the program `OneEig` ([BanksGarzaVargasSrivastava2025, §3.2]): the six directions,
 one candidate point of a round with its `DistSpec` estimate, the move to the best candidate, a
-round, the start at a polar disk sample of radius $\eta_2$ (the paper's erratum B3) and the flag at
+round, the start at a polar disk sample of radius $\eta_2$ and the flag at
 the round cap; their footprints, and their accurate forms: with `DistSpec` accurate on the
 candidates (`NLAlib.SmallEig.DistSpecAccurateOn`), a round whose six candidates include one with
 $1.1$ times its distance below the bar moves to a candidate with an estimate within $10\%$ of its

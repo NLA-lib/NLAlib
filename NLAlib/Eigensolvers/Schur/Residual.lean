@@ -225,6 +225,166 @@ theorem schurPipeline_budget {a F s c₁ c₂ x u δR εHT εCT ε t₁ t₂ : �
   have p₅ : 0 ≤ x * x * u * a := by positivity
   linarith
 
+/-- The scaled regularized norm in the split budget: from the bounds on $st_1$ and
+$t_2 \le t_1 + \delta_R$, $st_2 \le 2.1K/c_1$ and $st_2 \le a + 3wa + K\delta_R$. -/
+private theorem schurPipeline_budget_scaled {a F s c₁ u w K δR t₁ t₂ : ℝ} (hc₁ : 0 < c₁)
+    (hs : 0 < s) (hu : 0 ≤ u) (hu32 : u ≤ 1 / 32) (hK0 : 0 ≤ K) (hsK : s ≤ K) (hFK : F * c₁ ≤ K)
+    (hδR0 : 0 ≤ δR) (hδR : δR ≤ 1 / c₁) (ht₁a : s * t₁ ≤ a + 3 * u * F)
+    (ht₁F : s * t₁ ≤ (1 + 3 * u) * F) (ht₂ : t₂ ≤ t₁ + δR) (huF : u * F ≤ w * a) :
+    s * t₂ ≤ 21 / 10 * K / c₁ ∧ s * t₂ ≤ a + 3 * (w * a) + K * δR := by
+  have hsδ : s * δR ≤ K * δR := mul_le_mul_of_nonneg_right hsK hδR0
+  have hYst : s * t₂ ≤ s * t₁ + s * δR := by
+    rw [← mul_add]; exact mul_le_mul_of_nonneg_left ht₂ hs.le
+  refine ⟨?_, by linarith⟩
+  rw [le_div_iff₀ hc₁]
+  have hKδ : K * δR * c₁ ≤ K := by
+    have := mul_le_mul_of_nonneg_left hδR hK0
+    rw [mul_one_div, le_div_iff₀ hc₁] at this; linarith
+  have h1 : s * t₂ * c₁ ≤ s * t₁ * c₁ + s * δR * c₁ := by
+    rw [← add_mul]; exact mul_le_mul_of_nonneg_right hYst hc₁.le
+  have h2 : s * t₁ * c₁ ≤ (1 + 3 * u) * (F * c₁) := by
+    rw [← mul_assoc]; exact mul_le_mul_of_nonneg_right ht₁F hc₁.le
+  have h3 : (1 + 3 * u) * (F * c₁) ≤ (1 + 3 * u) * K :=
+    mul_le_mul_of_nonneg_left hFK (by linarith)
+  have h4 : s * δR * c₁ ≤ K * δR * c₁ := mul_le_mul_of_nonneg_right hsδ hc₁.le
+  have h5 : u * K ≤ 1 / 32 * K := mul_le_mul_of_nonneg_right hu32 hK0
+  linarith [mul_comm u K, show (1 + 3 * u) * K = K + 3 * (u * K) by ring]
+
+/-- The rounding of the scaling back in the split budget: for $0 \le \varepsilon \le 1/16$,
+$(1 + \varepsilon)^2$ is at most $289/256$ on the nonnegative product. -/
+private theorem schurPipeline_budget_rounding {ε u s x T : ℝ} (hε0 : 0 ≤ ε) (hε : ε ≤ 1 / 16)
+    (hw : 0 ≤ u * x) (hX : 0 ≤ s * T) :
+    (1 + ε) ^ 2 * u * s * x * T ≤ 289 / 256 * (u * x) * (s * T) := by
+  have hq : (1 + ε) ^ 2 ≤ 289 / 256 := by
+    have := pow_le_pow_left₀ (by linarith : (0 : ℝ) ≤ 1 + ε)
+      (by linarith : 1 + ε ≤ 17 / 16) 2
+    norm_num at this ⊢; linarith
+  have e : (1 + ε) ^ 2 * u * s * x * T = (1 + ε) ^ 2 * (u * x * (s * T)) := by ring
+  rw [e, show 289 / 256 * (u * x) * (s * T) = 289 / 256 * (u * x * (s * T)) by ring]
+  exact mul_le_mul_of_nonneg_right hq (mul_nonneg hw hX)
+
+/-- The two $\boldsymbol{u}$-terms of the split budget, with $K = c_2xa$ and $w = \boldsymbol{u}x$:
+$wa \le x^2\boldsymbol{u}a$ and $wK\delta_R \le (c_2/c_1)x^2\boldsymbol{u}a$. -/
+private theorem schurPipeline_budget_uTerms {a K c₁ c₂ x u δR : ℝ} (hK : K = c₂ * x * a)
+    (ha : 0 ≤ a) (hu : 0 ≤ u) (hx : 1 ≤ x) (hc₂ : 0 ≤ c₂) (hδR : δR ≤ 1 / c₁) :
+    u * x * a ≤ x * x * u * a ∧ u * x * (K * δR) ≤ c₂ / c₁ * (x * x) * u * a := by
+  have hx0 : 0 ≤ x := by linarith
+  refine ⟨?_, ?_⟩
+  · have : u * x * a * 1 ≤ u * x * a * x := mul_le_mul_of_nonneg_left hx (by positivity)
+    linarith [show u * x * a * x = x * x * u * a by ring]
+  · have e : u * x * (K * δR) = c₂ * (x * x) * u * a * δR := by rw [hK]; ring
+    rw [e]
+    have h0 : 0 ≤ c₂ * (x * x) * u * a := by positivity
+    calc c₂ * (x * x) * u * a * δR ≤ c₂ * (x * x) * u * a * (1 / c₁) :=
+          mul_le_mul_of_nonneg_left hδR h0
+      _ = c₂ / c₁ * (x * x) * u * a := by ring
+
+/-- **The split budget of the pipeline residual**: let $a, F \ge 0$, $F \le xa$, $x \ge 1$,
+$x^2\boldsymbol{u} \le 1/32$, $\boldsymbol{u} \ge 0$, $c_1 > 0$, $s > 0$ with
+$c_1F \le s \le c_2F$, $st_1 \le a + 3\boldsymbol{u}F$, $st_1 \le (1 + 3\boldsymbol{u})F$,
+$0 \le t_2 \le t_1 + \delta_R$, $0 \le \delta_R \le 1/c_1$, $0 \le \varepsilon_{H,T} \le 1/8$,
+$\varepsilon_{C,T} \ge 0$ and $0 \le \varepsilon \le 1/16$. Then the regularizer's and the
+scaling's part is at most
+$(c_2x\delta_R + 3x\boldsymbol{u})a$, and the rest, the scaling back of the regularizer's part
+included as a $\boldsymbol{u}$-term, at most $(2c_2x(3\varepsilon_{H,T}/c_1 + \varepsilon_{C,T} +
+8\varepsilon/c_1) + (8 + 2c_2/c_1)x^2\boldsymbol{u})a$; here $x = \sqrt{n + 1}$,
+$a = \|\mathbf{A}\|_2$, $F = \|\mathbf{A}\|_{\mathsf F}$, $t_1$, $t_2$ the norms of the scaled and
+the regularized matrix. -/
+theorem schurPipeline_budget_split {a F s c₁ c₂ x u δR εHT εCT ε t₁ t₂ : ℝ} (ha : 0 ≤ a)
+    (hF0 : 0 ≤ F) (hFa : F ≤ x * a) (hx : 1 ≤ x) (hxu : x * x * u ≤ 1 / 32) (hu : 0 ≤ u)
+    (hc₁ : 0 < c₁) (hs : 0 < s) (hsl : c₁ * F ≤ s) (hsu : s ≤ c₂ * F)
+    (ht₁a : s * t₁ ≤ a + 3 * u * F) (ht₁F : s * t₁ ≤ (1 + 3 * u) * F) (ht₂ : t₂ ≤ t₁ + δR)
+    (ht₂0 : 0 ≤ t₂) (hδR0 : 0 ≤ δR) (hδR : δR ≤ 1 / c₁) (hεHT0 : 0 ≤ εHT)
+    (hεHT : εHT ≤ 1 / 8) (hεCT : 0 ≤ εCT) (hε0 : 0 ≤ ε) (hε : ε ≤ 1 / 16) :
+    s * δR + 3 * u * F ≤ (c₂ * x * δR + 3 * x * u) * a ∧
+    s * ((εHT * t₂ + εCT) + (2 * ε + ε ^ 2) * (t₂ + (εHT * t₂ + εCT))) +
+        (1 + ε) ^ 2 * u * s * x * (t₂ + (εHT * t₂ + εCT)) ≤
+      (2 * c₂ * x * (3 * εHT / c₁ + εCT + 8 * ε / c₁) + (8 + 2 * c₂ / c₁) * (x * x) * u) * a := by
+  set K := c₂ * x * a with hK
+  set w := u * x with hw
+  have hx0 : 0 ≤ x := by linarith
+  have hw0 : 0 ≤ w := mul_nonneg hu hx0
+  have hw32 : w ≤ 1 / 32 :=
+    calc w ≤ u * x * x := le_mul_of_one_le_right (mul_nonneg hu hx0) hx
+      _ = x * x * u := by ring
+      _ ≤ 1 / 32 := hxu
+  have hu32 : u ≤ 1 / 32 := (le_mul_of_one_le_right hu hx).trans hw32
+  have hc₂ : 0 ≤ c₂ := by
+    by_contra h
+    nlinarith [mul_le_mul_of_nonneg_right (le_of_lt (lt_of_not_ge h)) hF0]
+  have hsK : s ≤ K := hsu.trans (by
+    rw [hK, mul_assoc]; exact mul_le_mul_of_nonneg_left hFa hc₂)
+  have hK0 : 0 ≤ K := hs.le.trans hsK
+  have hFK : F * c₁ ≤ K := by linarith [mul_comm c₁ F]
+  have hsδ : s * δR ≤ K * δR := mul_le_mul_of_nonneg_right hsK hδR0
+  refine ⟨?_, ?_⟩
+  · have h1 : 3 * u * F ≤ 3 * x * u * a := by
+      have := mul_le_mul_of_nonneg_left hFa (by positivity : (0 : ℝ) ≤ 3 * u)
+      linarith [show 3 * u * (x * a) = 3 * x * u * a by ring]
+    have h2 : K * δR = c₂ * x * δR * a := by rw [hK]; ring
+    nlinarith
+  set Y := s * t₂ with hY
+  have hY0 : 0 ≤ Y := mul_nonneg hs.le ht₂0
+  obtain ⟨hYK, hYa⟩ : Y ≤ 21 / 10 * K / c₁ ∧ Y ≤ a + 3 * (w * a) + K * δR :=
+    schurPipeline_budget_scaled hc₁ hs hu hu32 hK0 hsK hFK hδR0 hδR ht₁a ht₁F ht₂
+      (by rw [hw, mul_assoc]; exact mul_le_mul_of_nonneg_left hFa hu)
+  set X := s * (t₂ + (εHT * t₂ + εCT)) with hXdef
+  have hX : X ≤ 9 / 8 * Y + K * εCT := by
+    have h1 : X = Y + εHT * Y + s * εCT := by rw [hXdef, hY]; ring
+    have h2 : εHT * Y ≤ 1 / 8 * Y := mul_le_mul_of_nonneg_right hεHT hY0
+    have h3 : s * εCT ≤ K * εCT := mul_le_mul_of_nonneg_right hsK hεCT
+    linarith
+  have hX0 : 0 ≤ X := by positivity
+  have hKc : 0 ≤ K / c₁ := div_nonneg hK0 hc₁.le
+  have b₂ : s * (εHT * t₂) ≤ 3 * εHT * K / c₁ := by
+    have e : s * (εHT * t₂) = εHT * Y := by rw [hY]; ring
+    rw [e]
+    calc εHT * Y ≤ εHT * (21 / 10 * K / c₁) := mul_le_mul_of_nonneg_left hYK hεHT0
+      _ ≤ 3 * εHT * K / c₁ := by
+        rw [show 3 * εHT * K / c₁ = 3 * (εHT * (K / c₁)) by ring,
+          show εHT * (21 / 10 * K / c₁) = 21 / 10 * (εHT * (K / c₁)) by ring]
+        linarith [mul_nonneg hεHT0 hKc]
+  have b₃ : s * εCT ≤ K * εCT := mul_le_mul_of_nonneg_right hsK hεCT
+  have b₄ := schurPipeline_budget_acc hε0 hε hX0 hX hYK hc₁ hK0 hεCT
+  -- the rounding of the scaling back, the regularizer's part as a `u`-term
+  have hγ : (1 + ε) ^ 2 * u * s * x * (t₂ + (εHT * t₂ + εCT)) ≤ 289 / 256 * w * X :=
+    schurPipeline_budget_rounding hε0 hε hw0 hX0
+  have hwa : 0 ≤ w * a := mul_nonneg hw0 ha
+  have hwX : w * X ≤ w * (9 / 8 * (a + 3 * (w * a) + K * δR) + K * εCT) :=
+    mul_le_mul_of_nonneg_left (hX.trans (by linarith)) hw0
+  have r₁ : w * (w * a) ≤ 1 / 32 * (w * a) := mul_le_mul_of_nonneg_right hw32 hwa
+  have r₂ : w * (K * εCT) ≤ 1 / 32 * (K * εCT) :=
+    mul_le_mul_of_nonneg_right hw32 (mul_nonneg hK0 hεCT)
+  obtain ⟨r₃, r₄⟩ : w * a ≤ x * x * u * a ∧ w * (K * δR) ≤ c₂ / c₁ * (x * x) * u * a :=
+    schurPipeline_budget_uTerms hK ha hu hx hc₂ hδR
+  have hcc : 0 ≤ c₂ / c₁ * (x * x) * u * a := by
+    have := div_nonneg hc₂ hc₁.le; positivity
+  have eL : s * ((εHT * t₂ + εCT) + (2 * ε + ε ^ 2) * (t₂ + (εHT * t₂ + εCT))) =
+      s * (εHT * t₂) + s * εCT + (2 * ε + ε ^ 2) * X := by rw [hXdef]; ring
+  have eR : (2 * c₂ * x * (3 * εHT / c₁ + εCT + 8 * ε / c₁) + (8 + 2 * c₂ / c₁) * (x * x) * u) *
+      a = 2 * (3 * εHT * K / c₁) + 2 * (K * εCT) + 16 * (ε * K / c₁) + 8 * (x * x * u * a) +
+        2 * (c₂ / c₁ * (x * x) * u * a) := by rw [hK]; ring
+  rw [eL, eR]
+  have p₂ : 0 ≤ K * εCT := mul_nonneg hK0 hεCT
+  have p₃ : 0 ≤ ε * K / c₁ := by positivity
+  have p₄ : 0 ≤ 3 * εHT * K / c₁ := by positivity
+  have hR : 289 / 256 * w * X ≤ 289 / 256 * (9 / 8 * (w * a) + 27 / 8 * (w * (w * a)) +
+      9 / 8 * (w * (K * δR)) + w * (K * εCT)) := by
+    have e : w * (9 / 8 * (a + 3 * (w * a) + K * δR) + K * εCT) = 9 / 8 * (w * a) +
+        27 / 8 * (w * (w * a)) + 9 / 8 * (w * (K * δR)) + w * (K * εCT) := by ring
+    rw [mul_assoc, ← e]
+    exact mul_le_mul_of_nonneg_left hwX (by norm_num)
+  have hxa : 0 ≤ x * x * u * a := by positivity
+  linarith
+
+/-- **The error of the pipeline against its regularized matrix**:
+$e_X = 2c_2\sqrt{n + 1}\,(3\varepsilon_{H,T}/c_1 + \varepsilon_{C,T} + 8\varepsilon/c_1) +
+(8 + 2c_2/c_1)(n + 1)\boldsymbol{u}$, the second part of
+`NLAlib.Schur.schurPipeline_budget_split` at $x = \sqrt{n + 1}$. -/
+noncomputable def schurPipelineEX (n : ℕ) (c₁ c₂ u εHT εCT ε : ℝ) : ℝ :=
+  2 * c₂ * √((n : ℝ) + 1) * (3 * εHT / c₁ + εCT + 8 * ε / c₁) +
+    (8 + 2 * c₂ / c₁) * ((n : ℝ) + 1) * u
+
 /-- **The residual of the pipeline in matrix form**: the input $\mathbf{A}$ scaled by $1/s$ to
 $\mathbf{A}_1$ ($\|s\mathbf{A}_1 - \mathbf{A}\|_2 \le 3\boldsymbol{u}\|\mathbf{A}\|_{\mathsf F}$),
 regularized to $\mathbf{A}_2$ within $\delta_R$, carried by a tracked run from
@@ -290,6 +450,57 @@ theorem specNorm_sub_mul_mul_conjTranspose_le_of_scaled {N : ℕ}
         s * (εT + (2 * ε + ε ^ 2) * (specNorm A₂ + εT)) + 3 * u * frobNorm A +
           c * (specNorm A₂ + εT) := by ring
   rw [eR]
+  linarith
+
+/-- **The residual of a tracked run against its scaled start**: a run tracked from
+$(\mathbf{I}, \mathbf{A}_2)$ to $(\mathbf{U}, \mathbf{T})$ and scaled back to $\mathbf{T}'$
+($\|\mathbf{T}' - s\mathbf{T}\|_{\mathsf F} \le \boldsymbol{u}s\|\mathbf{T}\|_{\mathsf F}$) has
+$\|s\mathbf{A}_2 - \mathbf{U}\mathbf{T}'\mathbf{U}^{\mathsf H}\|_2 \le s(\varepsilon_T +
+(2\varepsilon + \varepsilon^2)(\|\mathbf{A}_2\|_2 + \varepsilon_T)) + (1 + \varepsilon)^2
+\boldsymbol{u}s\sqrt N(\|\mathbf{A}_2\|_2 + \varepsilon_T)$: the part of
+`NLAlib.Schur.specNorm_sub_mul_mul_conjTranspose_le_of_scaled` after the regularizer. -/
+theorem specNorm_smul_sub_mul_mul_conjTranspose_le_of_tracked {N : ℕ}
+    {A₂ U T T' : Matrix (Fin N) (Fin N) ℂ} {s u εT ε : ℝ} (hs : 0 < s) (hu : 0 ≤ u)
+    (hT : IsTrackedUnitarySimilar ε εT 1 A₂ U T) (hε0 : 0 ≤ ε)
+    (hT' : frobNorm (T' - (s : ℂ) • T) ≤ u * s * frobNorm T) :
+    specNorm ((s : ℂ) • A₂ - U * T' * Uᴴ) ≤
+      s * (εT + (2 * ε + ε ^ 2) * (specNorm A₂ + εT)) +
+        (1 + ε) ^ 2 * u * s * √(N : ℝ) * (specNorm A₂ + εT) := by
+  obtain ⟨V, E, hV, hUV, hE, hAE⟩ := hT.exists_eq_mul_mul_conjTranspose hε0
+  have hres := (hT.specNorm_sub_mul_mul_conjTranspose_le hε0).1
+  have hTn : specNorm T ≤ specNorm A₂ + εT := by
+    rw [← hV.specNorm_mul_conjTranspose_right, ← hV.specNorm_mul_left, ← Matrix.mul_assoc, ← hAE]
+    exact (specNorm_add_le _ _).trans (by linarith)
+  have hUn : specNorm U ≤ 1 + ε := by
+    have := specNorm_add_le V (U - V)
+    rw [add_sub_cancel] at this
+    linarith [hV.specNorm_le_one]
+  have hD : specNorm (U * (T' - (s : ℂ) • T) * Uᴴ) ≤
+      (1 + ε) ^ 2 * u * s * √(N : ℝ) * specNorm T := by
+    have h1 : specNorm (T' - (s : ℂ) • T) ≤ u * s * (√(N : ℝ) * specNorm T) :=
+      (specNorm_le_frobNorm _).trans (hT'.trans (mul_le_mul_of_nonneg_left
+        (by have := frobNorm_le_sqrt_card_mul_specNorm T; rwa [Fintype.card_fin] at this)
+        (by positivity)))
+    have h0 := specNorm_nonneg (T' - (s : ℂ) • T)
+    calc _ ≤ specNorm U * specNorm (T' - (s : ℂ) • T) * specNorm Uᴴ :=
+          (specNorm_mul_le _ _).trans (mul_le_mul_of_nonneg_right (specNorm_mul_le _ _)
+            (specNorm_nonneg _))
+      _ ≤ (1 + ε) * (u * s * (√(N : ℝ) * specNorm T)) * (1 + ε) := by
+          rw [specNorm_conjTranspose]
+          have hU0 := specNorm_nonneg U
+          exact mul_le_mul (mul_le_mul hUn h1 h0 (by linarith)) hUn hU0 (by positivity)
+      _ = _ := by ring
+  have e : (s : ℂ) • A₂ - U * T' * Uᴴ =
+      (s : ℂ) • (A₂ - U * T * Uᴴ) - U * (T' - (s : ℂ) • T) * Uᴴ := by
+    simp only [smul_sub, Matrix.mul_sub, Matrix.sub_mul, Matrix.mul_smul, Matrix.smul_mul]
+    abel
+  rw [e]
+  refine (specNorm_sub_le _ _).trans ?_
+  rw [specNorm_smul, Complex.norm_real, Real.norm_of_nonneg hs.le]
+  have h₃ := mul_le_mul_of_nonneg_left hres hs.le
+  have hTn' : (1 + ε) ^ 2 * u * s * √(N : ℝ) * specNorm T ≤
+      (1 + ε) ^ 2 * u * s * √(N : ℝ) * (specNorm A₂ + εT) :=
+    mul_le_mul_of_nonneg_left hTn (by positivity)
   linarith
 
 /-- **Near a unitary, nearly orthonormal**: if $\|\mathbf{U} - \mathbf{W}\|_2 \le \varepsilon$

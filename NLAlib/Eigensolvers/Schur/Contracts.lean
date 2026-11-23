@@ -28,6 +28,7 @@ error $\varepsilon_U$ and a backward error $\varepsilon_T$), so that the stages 
   stage contracts.
 * `NLAlib.Schur.TerminatingSchurCore`: the all-tape companion of a core.
 * `NLAlib.Schur.HoldsSchurPair`: the stored pair $(\widehat{\mathbf{U}}, \mathbf{T})$.
+* `NLAlib.Schur.EigenvectorStageContract`: an eigenvector stage after a Schur solver.
 -/
 
 @[expose] public section
@@ -35,6 +36,7 @@ error $\varepsilon_U$ and a backward error $\varepsilon_T$), so that the stages 
 namespace NLAlib.Schur
 
 open Ops MeasureTheory
+open scoped Matrix
 
 variable {O Q : Type} [Inhabited ℝ]
 
@@ -140,5 +142,37 @@ def RandomSchurLeafContract (law : ℕ → Measure ℝ) (εU εT φ : ℝ) (kmax
         Fp.Apart [w, p, ub] [2 * (d * d), ps.length, 2 * (d * d)])
       (fun μ' => ∃ Ub Tb : Matrix (Fin d) (Fin d) ℂ, HoldsSchurPair w ub Ub Tb μ'.store ∧
         Tb.IsUpperTriangular ∧ IsTrackedUnitarySimilar εU εT 1 B Ub Tb) φ
+
+/-- **An eigenvector stage**: for every order $N \le N_{\max}$, `[N, ne] (T, U, Pe) → (V, G)`
+with its $n_e$ words `ps` at `Pe`, deterministic and total for any stored pair, stores a matrix
+$\mathbf{V}$ and a flag $0$ or $1$. For $\mathbf{T} = \mathbf{0}$ it stores
+$\mathbf{V} = \mathbf{U}$ exactly and the flag $0$. For an upper triangular $\mathbf{T}$ it stores
+$\mathbf{V}$ within $c_V\|\mathbf{U}\|_{\mathsf F}\|\mathbf{Y}\|_{\mathsf F}$ of
+$\mathbf{U}\mathbf{Y}$, where the columns of $\mathbf{Y}$ have norms within $c_N$ of $1$ and
+residuals $\|(\mathbf{T} - t_{jj}\mathbf{I})\mathbf{y}_j\| \le c\|\mathbf{T}\|_{\mathsf F}
+\|\mathbf{y}_j\|$, $c = c_{R,0}$ when the flag is $0$ and $c = c_R$ otherwise; and the flag is $0$
+when the diagonal gaps exceed $g_0\|\mathbf{T}\|_{\mathsf F}$. The contract is normwise and names
+no method; the constants are fixed outside the quantifier over orders and memories. -/
+def EigenvectorStageContract (cR₀ cR cV cN g₀ : ℝ) (nmax : ℕ) (ps : List ℝ) (Ev : Stmt O Q)
+    (I : Interp O Q ℝ) : Prop :=
+  ∀ {N : ℕ} {a uo pe v g : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ} (U T : Matrix (Fin N) (Fin N) ℂ),
+    N ≤ nmax → HoldsSchurPair a uo U T μ.store →
+    μ.store.readBlock pe.1 pe.2 ps.length = some ps → μ.Live [a, uo, pe, v, g] →
+    μ.Room [v, g] [2 * (N * N), 1] →
+    Fp.Apart [a, uo, pe, v, g] [2 * (N * N), 2 * (N * N), ps.length, 2 * (N * N), 1] →
+    Writes .total I tape Ev (Env.frame [N, ps.length] [a, uo, pe, v, g])
+      (Store.inBlock v.1 v.2 (2 * (N * N)) ⊔ Store.inBlock g.1 g.2 1)
+      (fun μ' => ∃ V : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix v V μ'.store ∧
+        (μ'.store.get g.1 g.2 = some 0 ∨ μ'.store.get g.1 g.2 = some 1) ∧
+        (T = 0 → V = U ∧ μ'.store.get g.1 g.2 = some 0) ∧
+        (T.IsUpperTriangular →
+          (∃ Y : Matrix (Fin N) (Fin N) ℂ,
+            (∀ j, |‖WithLp.toLp 2 (Y.col j)‖ - 1| ≤ cN ∧
+              ‖WithLp.toLp 2 ((T - T j j • 1) *ᵥ Y.col j)‖ ≤
+                (if μ'.store.get g.1 g.2 = some 0 then cR₀ else cR) * frobNorm T *
+                  ‖WithLp.toLp 2 (Y.col j)‖) ∧
+            specNorm (V - U * Y) ≤ cV * frobNorm U * frobNorm Y) ∧
+          ((∀ i j, i ≠ j → g₀ * frobNorm T < ‖T i i - T j j‖) →
+            μ'.store.get g.1 g.2 = some 0))) μ
 
 end NLAlib.Schur

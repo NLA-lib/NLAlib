@@ -295,9 +295,9 @@ entry. Then `rs` is a set of $\theta$-optimal Ritz values, or some $r$ in `rs` i
 or
 $$\tfrac25\,\psi_k(\mathbf{H})\Bigl(1 - \frac x\theta\Bigr) \le \kappa^{2/k}(\|\mathbf{H}\|_2 +
 \beta)\,\beta\,\|\mathbf{e}_n^{\mathsf{H}}(\mathbf{H} - r\mathbf{I})^{-k}\|^{1/k}$$
-for some $r$ in `rs`. [BanksGarzaVargasSrivastava2022, Theorem 4.1], there with $\tfrac12$ for
-$\tfrac25$ (a factor $k^{-1/(2k)}/2 \ge 2/5$ is lost in its last display; gap G10) and
-$\beta \le c\Gamma$ (which can let two eigenvalues share a Ritz value).
+for some $r$ in `rs`. Adapted from [BanksGarzaVargasSrivastava2022, Theorem 4.1]: the constant
+$\tfrac25$ bounds the factor $k^{-1/(2k)}/2$, and the strict $\beta < c\Gamma$ keeps two
+eigenvalues from sharing a Ritz value.
 Result: shifted-qr-ritz-dichotomy -/
 theorem IsUpperHessenberg.isOptimalRitzValues_or_exists_mem_det_eq_zero_or_le
     {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hH : IsUpperHessenberg H) {d : Fin (n + 1) → ℂ}

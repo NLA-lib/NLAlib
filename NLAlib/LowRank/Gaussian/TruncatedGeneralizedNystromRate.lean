@@ -30,7 +30,7 @@ Real throughout; the constants are existential.
 
 ## Main results
 
-* the compressed core noise at a fixed range test matrix (G43):
+* the compressed core noise at a fixed range test matrix:
 `integral_specNorm_mul_obliqueProjector_mul_sub_rsvd_mul_le_of_hasLaw_gaussianMatrix`;
 * the conditional expected error (C45):
 `exists_forall_integral_frobNorm_sub_truncatedSVD_generalizedNystrom_sq_le_of_gaussianMatrix`;

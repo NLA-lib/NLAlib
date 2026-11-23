@@ -14,7 +14,7 @@ public import NLAlib.Ops.Blas.Matrix
 
 The worklist of the small-eigenvalue solver runs at the bottom width $k = 1$, so its leaves are
 blocks of order $0$ or $1$, whose eigenvalue is the entry itself ([BanksGarzaVargasSrivastava2025,
-§6], the base case, the paper's erratum P13). In Schur mode the leaf keeps the block, which is
+§6], with the base case at order $1$). In Schur mode the leaf keeps the block, which is
 already upper triangular, and writes the identity accumulator: exact on
 every tape, with backward error $0$ and failure $0$ on orders at most $1$.
 

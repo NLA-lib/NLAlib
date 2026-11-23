@@ -24,10 +24,8 @@ Two facts give it under an eigenvalue gap ([BanksGarzaVargasSrivastava2022, Lemm
   and at most doubles $\kappa_V$ (Lemma 6.1 there; the eigenvector perturbation of
   [BanksGarzaVargasKulkarniSrivastava2020, Proposition 1.1]);
 * each diagonal block of a diagonalizable block upper triangular matrix has an eigenvector
-  matrix with $\kappa_V$ at most that of the whole (Lemma 6.2 there). Its proof claims that every
-  eigenvector matrix is block triangular, which is false when two blocks share an eigenvalue (gap
-  G15 of `docs/design/Eigensolvers-ShiftedQR-Ops.md`); the statement is true in general, by the
-  Cholesky argument recorded in `docs/design/Eigensolvers-ShiftedQR-Ops.md`, §G15: with
+  matrix with $\kappa_V$ at most that of the whole (adapted from Lemma 6.2 there), also when two
+  blocks share an eigenvalue, by a Cholesky argument: with
   $\mathbf{V}^{-\mathsf H}\mathbf{V}^{-1} = \mathbf{R}^{\mathsf H}\mathbf{R}$, the matrix
   $\mathbf{R}\mathbf{M}\mathbf{R}^{-1}$ is normal and block triangular, hence block diagonal.
 
@@ -223,8 +221,9 @@ block upper triangular for a partition `rs` of the indices into ranges, with
 $\mathbf{M}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{d})$ and $\mathbf{V}$ invertible.
 Then the diagonal block of every range has an invertible eigenvector matrix $\mathbf{V}_r$ with
 $\|\mathbf{V}_r\|_2\|\mathbf{V}_r^{-1}\|_2 \le \|\mathbf{V}\|_2\|\mathbf{V}^{-1}\|_2$; no
-hypothesis on the eigenvalues. [BanksGarzaVargasSrivastava2022, Lemma 6.2], whose proof has gap
-G15; the proof here: Cholesky $\mathbf{V}^{-\mathsf H}\mathbf{V}^{-1} = \mathbf{R}^{\mathsf H}
+hypothesis on the eigenvalues, so two blocks may share one. Adapted from
+[BanksGarzaVargasSrivastava2022, Lemma 6.2]; the proof here: Cholesky
+$\mathbf{V}^{-\mathsf H}\mathbf{V}^{-1} = \mathbf{R}^{\mathsf H}
 \mathbf{R}$, $\mathbf{W} = \mathbf{R}\mathbf{V}$ unitary, $\mathbf{N} = \mathbf{R}\mathbf{M}
 \mathbf{R}^{-1}$ normal and block triangular, hence block diagonal
 (`IsStarNormal.apply_eq_zero_of_blockTriangular`); $\mathbf{N}_{rr} = \mathbf{U}_r\mathbf{D}_r

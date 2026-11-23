@@ -25,11 +25,11 @@ its a priori form there is heuristic. Here the iterate bound is proved under (H)
 
 The proof is one joint induction (the private theorem `gapErrorInduction`) on the gap and the
 true $\mathbf{A}$-norm error $E_j$ of the computed run: the descent
-$\mathbf{p}_j^{\mathsf{T}}\mathbf{r}_j \ge 0.999\rho_j^2$ (G1, from the line search defect), the
-step $\gamma_j^2\mathbf{p}_j^{\mathsf{T}}\mathbf{A}\mathbf{p}_j \le 1.001\gamma_j\rho_j^2$ (G2),
+$\mathbf{p}_j^{\mathsf{T}}\mathbf{r}_j \ge 0.999\rho_j^2$ (from the line search defect), the
+step $\gamma_j^2\mathbf{p}_j^{\mathsf{T}}\mathbf{A}\mathbf{p}_j \le 1.001\gamma_j\rho_j^2$,
 $\gamma_j\|\mathbf{p}_j\| \le 1.5\|\mathbf{b}\|/a$ through the model's
-$\sum_j\gamma_j\rho_j^2 \le 2\|\mathbf{b}\|^2/a$ (G2′), and the one-step inequality for
-$E_{j+1}$ (G3).
+$\sum_j\gamma_j\rho_j^2 \le 2\|\mathbf{b}\|^2/a$, and the one-step inequality for
+$E_{j+1}$.
 
 The **attainable accuracy** for $\varepsilon > 0$: after
 $k_\star = \lceil\tfrac12(\sqrt{\kappa'} + 1)\ell\rceil$ steps,
@@ -290,7 +290,7 @@ theorem p_dotProduct_r_ge_mul {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A �
   have h := (abs_le.mp (C.abs_p_dotProduct_r_sub_le ha hs hsmall hj)).1
   nlinarith
 
-/-- **Descent (G1)**: under (H), $\mathbf{p}_j^{\mathsf{T}}\mathbf{r}_j \ge
+/-- **Descent**: under (H), $\mathbf{p}_j^{\mathsf{T}}\mathbf{r}_j \ge
 0.999\,\|\mathbf{r}_j\|^2$ for $j < k$. Exact CG has equality; here the line search defect
 $\mathbf{p}_{j-1}^{\mathsf{T}}\mathbf{r}_j$ enters through
 $\mathbf{p}_j = \mathbf{r}_j + \delta_{j-1}\mathbf{p}_{j-1} + \mathbf{e}^p_{j-1}$. -/
@@ -385,7 +385,7 @@ theorem γ_sq_mul_dotProduct_mulVec_le_mul {a a' : ℝ} (ha : 0 < a)
     nlinarith
   exact (mul_le_mul_iff_left₀ hm).mp hcancel
 
-/-- **The step against the residual (G2)**: under (H), for $j < k$,
+/-- **The step against the residual**: under (H), for $j < k$,
 $\gamma_j^2\,\mathbf{p}_j^{\mathsf{T}}\mathbf{A}\mathbf{p}_j \le
 1.001\,\gamma_j\|\mathbf{r}_j\|^2$. -/
 theorem γ_sq_mul_dotProduct_mulVec_le {a a' : ℝ} (ha : 0 < a)
@@ -399,7 +399,7 @@ theorem γ_sq_mul_dotProduct_mulVec_le {a a' : ℝ} (ha : 0 < a)
     mul_nonneg (C.γ_pos hj).le (sq_nonneg _)
   nlinarith [mul_le_mul_of_nonneg_right hz hγρ]
 
-/-- **The step length, a priori (G2′)**: under (H), $\gamma_j\|\mathbf{p}_j\| \le
+/-- **The step length, a priori**: under (H), $\gamma_j\|\mathbf{p}_j\| \le
 1.5\|\mathbf{b}\|/a$ for $j < k$. -/
 theorem γ_mul_norm_p_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
     (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {j : ℕ} (hj : j < k) :
@@ -434,7 +434,7 @@ theorem γ_mul_norm_p_le {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Se
     nlinarith [sq_nonneg B]
   exact (pow_le_pow_iff_left₀ hX0 (by positivity) two_ne_zero).mp h5
 
-/-- G3 with the nonnegativity of the bracket, for the induction. -/
+/-- The one-step error inequality with the nonnegativity of the bracket, for the induction. -/
 private theorem quadForm_sub_x_succ_le_of_descent {a a' : ℝ} (ha : 0 < a)
     (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
     {xs : Fin n → ℝ}
@@ -495,7 +495,7 @@ private theorem quadForm_sub_x_succ_le_of_descent {a a' : ℝ} (ha : 0 < a)
         nlinarith
     _ ≤ _ := by gcongr
 
-/-- **One step of the computed run's $\mathbf{A}$-norm error (G3)**: under (H), for
+/-- **One step of the computed run's $\mathbf{A}$-norm error**: under (H), for
 $\mathbf{A}\mathbf{x}_\star = \mathbf{b}$ and $j < k$, with the gap
 $\mathbf{g}_j = \mathbf{b} - \mathbf{A}\mathbf{x}_j - \mathbf{r}_j$,
 $$\|\mathbf{x}_\star - \mathbf{x}_{j+1}\|_{\mathbf{A}} \le
@@ -709,7 +709,7 @@ private theorem acc_err_step {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A �
   have : 0 ≤ (C.ε * κ) * u := by positivity
   linarith
 
-/-- The joint induction on the gap and the computed run's error (G4). -/
+/-- The joint induction on the gap and the computed run's error. -/
 private theorem gapErrorInduction {a a' : ℝ} (ha : 0 < a) (hs : spectrum ℝ C.A ⊆ Set.Icc a a')
     (hsmall : (k : ℝ) ^ 2 * Real.sqrt k * C.ε * (a' / a) ^ 2 ≤ 1 / 10 ^ 5) {xs : Fin n → ℝ}
     (hx : C.A *ᵥ xs = C.b) {j : ℕ} (hj : j ≤ k) :

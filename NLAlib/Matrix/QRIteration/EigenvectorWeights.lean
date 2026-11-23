@@ -225,7 +225,7 @@ $\lvert c\rvert = 1$, the weight of $i$ is
 $$\frac{\lvert\langle \mathbf{x}, \mathbf{v}_i\rangle\rvert^2}
   {\|\mathbf{V}^{\mathsf{H}}\mathbf{x}\|^2}\,,$$
 $\mathbf{v}_i$ the $i$-th column of $\mathbf{V}$. The phase $c$ of a rotation to $\mathbf{x}$
-cancels, which the paper's reflector does not make explicit (its erratum P3). -/
+cancels. -/
 theorem lastRowWeights_conjTranspose_mul {Q V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {x : Fin (n + 1) → ℂ} {c : ℂ} (hc : ‖c‖ = 1) (hQx : ∀ k, Q k (Fin.last n) = c * x k)
     (i : Fin (n + 1)) :

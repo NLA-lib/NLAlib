@@ -9,14 +9,19 @@ nonzero flag is probabilistic.
 
 **Status: built** (single-shot). Every statement below is proved with no `sorry`. The retry loop
 of §5 is designed, not built. Nothing in the checks, CI, the lakefile, the allowlists,
-`*Targets.lean`, `docs/targets.*` or `scripts/ops_certificates.txt` changed.
+`*Targets.lean`, `docs/targets.*` or `scripts/ops_certificates.txt` changed. The check and the
+certified solver are routines ([routines](../contributing/routines.md)); the pieces of the check
+are fragments of its tree.
 
 ## 1. The check (a stage contract, solver-agnostic)
 
-`schurResidualCheck : [N] (A0, U, T, P) → (T, Fl)` with `P = [θ, κ]`
-(`Eigensolvers/Schur/ResidualCheck.lean`) runs four sub-programs:
+The routine `schurResidualCheck : [N] (A0 : read, U : read, T : update, P : read 2) →
+(Fl : write 1)` with `P = [θ, κ]` (`Eigensolvers/Schur/ResidualCheck.lean`; blocks apart, draws
+not declared because the norm-estimate contract does not state the tape position) runs four
+fragments of its tree:
 
-1. `zeroStrictLower [N] (T) → (T)`: the literal $0$ over the strict lower triangle, so the stored
+1. `zeroStrictLower [N] (T) → (T)`: the routine `fillRoutine` of the literal $0$ on each entry of
+   the strict lower triangle, so the stored
    $\widehat{\mathbf{T}}$ is exactly upper triangular **whatever the solver did**
    (`zeroStrictLower_writes`: the block holds `upperPart T`);
 2. `residualWords [N] (A0, U, T) → (D)`: $\mathbf{D} = \mathrm{fl}(\mathbf{A}_0 -
@@ -29,7 +34,9 @@ of §5 is designed, not built. Nothing in the checks, CI, the lakefile, the allo
    w\hat w)\hat t)\kappa)$ (`checkGuard`), and flag $0$ iff $\mathrm{fl}(\hat r + \hat g) \le
    \mathrm{fl}(\hat a\theta)$ by the exact comparison `CmpTst.le`, else $1$.
 
-**Every tape** (`schurResidualCheck_writes`): on a scalar machine with the standard model, index
+**Every tape** (the judgment `schurResidualCheck_meets` against `schurResidualCheckSpec`, whose
+postcondition is `ResidualCheckPost`; `schurResidualCheck_writes` reads it on the final memory for
+the proofs of the verified solver): on a scalar machine with the standard model, index
 literals and exact comparisons, from any stored $\mathbf{A}_0$, $\mathbf{U}$, $\mathbf{T}$ (no
 hypothesis on them), the run writes only $\mathbf{T}$ and the flag and ends in
 `ResidualCheckOutcome M c₁ c₂ θ κ A₀ U T t f`: the block holds `upperPart T`, and there are
@@ -64,12 +71,14 @@ $0 \le 0$. $\mathbf{A}_0 = 0$: $\hat a = 0$, the flag is $0$ only if $\hat r = \
 $\mathbf{U}\mathbf{T}'\mathbf{U}^{\mathsf H} = 0$ exactly; the comparison is exact and non-strict,
 so the exact zero output of the solver on $\mathbf{A} = 0$ passes. No division anywhere.
 
-**Cost** (`size_stmtCost_schurResidualCheck_le`): $1619(n + 1)^3$, by `kernel_rfl`.
+**Cost** (`size_stmtCost_schurResidualCheck_le`): $1619(n + 1)^3$; the monomial computed by
+`kernel_rfl` is $1616(n + 1)^3$.
 
 ## 2. The verified solver (generic)
 
 `verifiedSchurWith Solve : [N, nr, nq, k, F, T] (A, P) → (A, U, Fl)`
-(`Eigensolvers/Schur/Verified.lean`): copy $\mathbf{A}$ into scratch, run `Solve` on its
+(`Eigensolvers/Schur/Verified.lean`, a tree over the stage `Solve`, as the pipeline is): copy
+$\mathbf{A}$ into scratch by the routine `PairMatrix.copyRoutine`, run `Solve` on its
 $n_r + n_q$ words `P[0]`, …, then the check on the copy, $\widehat{\mathbf{U}}$,
 $\widehat{\mathbf{T}}$ and the words $\theta, \kappa$ at `P[nr + nq]`. The check's words come
 **after** the solver's, so the solver runs at the offsets of its own work bounds.
@@ -121,15 +130,22 @@ $O(\log(n/\delta))$.
 
 ## 4. The certificate (`VerifiedCertificate.lean`)
 
-`verifiedSchurAlgorithm Mch hM admitted sU sG` (`Algorithm.ofWp` over `smallEigModel`) with
-`StdModel u id Mch` a parameter of the certificate. The problem admits an input
+The routine `verifiedSchurRoutine sG` (`verifiedSchurWithRoutine` around `denseSchur sG`) meets
+`verifiedSchurSpec` (`verifiedSchurRoutine_meets`, whose postcondition `VerifiedSchurPost` is the
+flag-conditional Schur form on the blocks written). `verifiedSchurAlgorithm Mch hM admitted sU sG`
+is `Routine.Domain.algorithm` of that judgment over `smallEigModel`, with
+`StdModel u id Mch` a parameter of the certificate. The problem is derived from
+`verifiedSchurInputs`, which accepts an input
 $(\mathbf{A}, \delta, \varphi)$ with $0 < \delta, \varphi \le 1$ and $\boldsymbol{u} \le$
-`uVerifiedSchur` (`verifiedSchurProblem`, the precision condition in `admissible`). `S.good` is
+`uVerifiedSchur` (the acceptance predicate) and holds the words computed from
+$(\delta, \varphi)$ in a derived slot. `verifiedSchur_checked` states the certificate. `S.good` is
 **the flag-conditional statement**: the frame, and flag $0$ ⇒ `SchurOutput` of the input matrix at
 its $\delta$. Work and span `verifiedSchurWork` $= 384547(n+1)^3(k+1)^4(n_r+n_q+1)(F+1)(T+1)^2 +
 1619(n+1)^3 + 32(n+1)^2 + 128$ (`verifiedSchur_work_le`,
 `size_staticCost_verifiedSchurProgram_le`). The probability on one counted run:
-`verifiedSchur_algorithm_measureReal_not_accepts_le` (Result: verified-schur-certificate).
+`verifiedSchur_algorithm_measureReal_not_accepts_le` (Result: verified-schur-certificate), and as
+the randomized claim of the certificate `verifiedSchurClaim` (independent tape entries, uniform
+on $s_U$ and standard Gaussian on $s_G$, realizable for $s_U \ne s_G$; failure at most $\varphi$).
 
 ## 5. Retries (designed, not built)
 

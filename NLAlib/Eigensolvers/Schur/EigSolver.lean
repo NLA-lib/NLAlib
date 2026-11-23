@@ -88,7 +88,7 @@ private theorem measurableSet_eigResidualOf {n : ℕ} (A : Matrix (Fin (n + 1)) 
     (eC eM c : ℝ) :
     MeasurableSet {p : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ × Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ |
       EigResidualOf A p.1 p.2 eC eM c} := by
-  simp only [EigResidualOf, Set.setOf_and, Set.setOf_forall]
+  simp only [EigResidualOf, Set.ofPred_and, Set.ofPred_forall]
   refine (MeasurableSet.iInter fun j => ?_).inter ((MeasurableSet.iInter fun j => ?_).inter ?_)
   · exact measurableSet_le (((continuous_toLp_col j).comp continuous_snd).norm.sub
       continuous_const).abs.measurable measurable_const
@@ -99,8 +99,8 @@ private theorem measurableSet_eigResidualOf {n : ℕ} (A : Matrix (Fin (n + 1)) 
     · exact (continuous_const.mul ((continuous_toLp_col j).comp continuous_snd).norm).measurable
   · refine measurableSet_le ?_ ?_
     · exact (continuous_specNorm.comp ((continuous_const.matrix_mul continuous_snd).sub
-        (continuous_snd.matrix_mul (continuous_matrix_diagonal (continuous_pi fun i =>
-          (continuous_apply_apply i i).comp continuous_fst))))).measurable
+        (continuous_snd.matrix_mul (Continuous.matrix_diagonal (continuous_pi fun i =>
+          continuous_fst.matrix_elem i i))))).measurable
     · exact (continuous_const.mul (continuous_specNorm.comp continuous_snd)).measurable
 
 /-- The pairs $(\mathbf{T}, \mathbf{V})$ with an eigendecomposition of $\mathbf{A}$ form a
@@ -109,13 +109,13 @@ private theorem measurableSet_eigDecompOf {n : ℕ} (A : Matrix (Fin (n + 1)) (F
     (eC eM c eE K g : ℝ) :
     MeasurableSet {p : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ × Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ |
       EigDecompOf A p.1 p.2 eC eM c eE K g} := by
-  simp only [EigDecompOf, Set.setOf_and]
+  simp only [EigDecompOf, Set.ofPred_and]
   refine (measurableSet_eigResidualOf A eC eM c).inter (MeasurableSet.inter ?_
     (MeasurableSet.inter ?_ (MeasurableSet.inter ?_ ?_)))
   · have e : {p : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ × Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ |
         IsUnit p.2} = {p | p.2.det = 0}ᶜ := by
       ext p
-      simp only [Set.mem_setOf_eq, Set.mem_compl_iff, Matrix.isUnit_iff_isUnit_det,
+      simp only [Set.mem_ofPred_eq, Set.mem_compl_iff, Matrix.isUnit_iff_isUnit_det,
         isUnit_iff_ne_zero]
     rw [e]
     exact (measurableSet_eq_fun (continuous_snd.matrix_det).measurable measurable_const).compl
@@ -125,16 +125,21 @@ private theorem measurableSet_eigDecompOf {n : ℕ} (A : Matrix (Fin (n + 1)) (F
       (continuous_specNorm.measurable.comp (measurable_pinv.comp measurable_snd))
   · refine measurableSet_le ?_ measurable_const
     exact continuous_specNorm.measurable.comp (((measurable_snd.matrix_mul
-      (continuous_matrix_diagonal (continuous_pi fun i =>
-        (continuous_apply_apply i i).comp continuous_fst)).measurable).matrix_mul
+      (Continuous.matrix_diagonal (continuous_pi fun i =>
+        continuous_fst.matrix_elem i i)).measurable).matrix_mul
       measurable_snd.matrix_inv).matrix_sub measurable_const)
-  · simp only [Set.setOf_forall]
+  · simp only [Set.ofPred_forall]
     refine MeasurableSet.iInter fun i => MeasurableSet.iInter fun j => ?_
     by_cases hij : i = j
     · simp [hij]
-    · simp only [hij, ne_eq, not_false_eq_true, forall_const]
-      exact measurableSet_le measurable_const (((continuous_apply_apply i i).comp
-        continuous_fst).sub ((continuous_apply_apply j j).comp continuous_fst)).norm.measurable
+    · simp only [hij, ne_eq, not_false_eq_true]
+      have hd : ∀ l, Continuous fun p : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ ×
+          Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ => p.1 l l :=
+        fun l => continuous_fst.matrix_elem l l
+      have hm : Measurable fun p : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ ×
+          Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ => ‖p.1 i i - p.1 j j‖ :=
+        ((hd i).sub (hd j)).norm.measurable
+      exact MeasurableSet.iInter fun _ => measurableSet_le measurable_const hm
 
 /-- A stored matrix: the words are initialised and the matrix is the one read. -/
 private theorem holdsMatrix_iff {n : ℕ} (b : ℕ × ℕ) (X : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
@@ -286,7 +291,7 @@ private theorem gap_lt_of_schur {n : ℕ} {A X U T : Matrix (Fin (n + 1)) (Fin (
     simpa using frobNorm_le_sqrt_card_mul_specNorm T
   have hsq := Real.sqrt_nonneg ((n : ℝ) + 1)
   have hg := hgap i j hij
-  rcases le_or_lt g₀ 0 with hg0 | hg0
+  rcases le_or_gt g₀ 0 with hg0 | hg0
   · have : g₀ * frobNorm T ≤ 0 := mul_nonpos_of_nonpos_of_nonneg hg0 (frobNorm_nonneg T)
     have : 0 < 7 / 8 * c₁ * Γ * specNorm A := by positivity
     linarith
@@ -297,7 +302,10 @@ private theorem gap_lt_of_schur {n : ℕ} {A X U T : Matrix (Fin (n + 1)) (Fin (
             mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left hTn hsq) hg0.le
         _ = _ := by ring
     have h2 : g₀ * √((n : ℝ) + 1) * (12 / 7 * specNorm A) <
-        7 / 8 * c₁ * Γ * specNorm A := by nlinarith
+        7 / 8 * c₁ * Γ * specNorm A := by
+      have h3 := mul_lt_mul_of_pos_right hfloor hA0
+      have h4 : 0 < c₁ * Γ * specNorm A := by positivity
+      nlinarith
     linarith
 
 /-! ### The compositions -/

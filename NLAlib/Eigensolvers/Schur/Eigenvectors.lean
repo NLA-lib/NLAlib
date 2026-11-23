@@ -148,20 +148,21 @@ private theorem isComponentwiseBackwardSolution_of_norm_sub_smul_le {ε σ δ : 
       split_ifs <;> field_simp <;> ring
     rw [hRHS]
     have hM := norm_nonneg (M i k)
-    split_ifs with h0
-    · rw [norm_zero]
+    change ‖if c * y k = 0 then 0 else (M i k + Δ i k) * (c * y k) / z k - M i k‖ ≤ _
+    by_cases h0 : c * y k = 0
+    · rw [if_pos h0, norm_zero]
       exact div_nonneg (by nlinarith [norm_nonneg (Δ i k)]) h1δ.le
     · have hzk := hzne k h0
       have e : (M i k + Δ i k) * (c * y k) / z k - M i k =
           (Δ i k * (c * y k) + M i k * (c * y k - z k)) / z k := by
         field_simp; ring
-      rw [e, norm_div, div_le_div_iff₀ (norm_pos_iff.mpr hzk) h1δ]
+      rw [if_neg h0, e, norm_div, div_le_div_iff₀ (norm_pos_iff.mpr hzk) h1δ]
       have hcy := norm_pos_iff.mpr h0
       have h2 : ‖Δ i k * (c * y k) + M i k * (c * y k - z k)‖ ≤
           (‖Δ i k‖ + δ * ‖M i k‖) * ‖c * y k‖ := by
         refine (norm_add_le _ _).trans ?_
-        rw [norm_mul, norm_mul, norm_sub_rev]
-        nlinarith [hz k, norm_nonneg (Δ i k)]
+        rw [norm_mul (Δ i k), norm_mul (M i k), norm_sub_rev (c * y k)]
+        nlinarith [mul_le_mul_of_nonneg_left (hz k) hM]
       calc ‖Δ i k * (c * y k) + M i k * (c * y k - z k)‖ * (1 - δ)
           ≤ (‖Δ i k‖ + δ * ‖M i k‖) * ‖c * y k‖ * (1 - δ) :=
             mul_le_mul_of_nonneg_right h2 h1δ.le
@@ -185,7 +186,8 @@ private theorem isComponentwiseBackwardSolution_of_norm_sub_smul_le {ε σ δ : 
       · have hzk := hzne k h0
         field_simp
         ring
-    rw [Finset.sum_congr rfl fun k _ => e k, ← Finset.mul_sum, hi, mul_zero]
+    refine (Finset.sum_congr rfl fun k _ => e k).trans ?_
+    rw [← Finset.mul_sum, hi, mul_zero]
 
 end Scaling
 

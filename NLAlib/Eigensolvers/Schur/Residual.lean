@@ -225,6 +225,37 @@ theorem schurPipeline_budget {a F s c₁ c₂ x u δR εHT εCT ε t₁ t₂ : �
   have p₅ : 0 ≤ x * x * u * a := by positivity
   linarith
 
+/-- **The split budget of the pipeline residual**: let $a, F \ge 0$, $F \le xa$, $x \ge 1$,
+$x^2\boldsymbol{u} \le 1/32$, $\boldsymbol{u} \ge 0$, $c_1 > 0$, $s > 0$ with
+$c_1F \le s \le c_2F$, $st_1 \le a + 3\boldsymbol{u}F$, $st_1 \le (1 + 3\boldsymbol{u})F$,
+$0 \le t_2 \le t_1 + \delta_R$, $0 \le \delta_R \le 1/c_1$, $0 \le \varepsilon_{H,T} \le 1/8$,
+$\varepsilon_{C,T} \ge 0$ and $0 \le \varepsilon \le 1/16$. Then the regularizer's and the
+scaling's part is at most
+$(c_2x\delta_R + 3x\boldsymbol{u})a$, and the rest, the scaling back of the regularizer's part
+included as a $\boldsymbol{u}$-term, at most $(2c_2x(3\varepsilon_{H,T}/c_1 + \varepsilon_{C,T} +
+8\varepsilon/c_1) + (8 + 2c_2/c_1)x^2\boldsymbol{u})a$; here $x = \sqrt{n + 1}$,
+$a = \|\mathbf{A}\|_2$, $F = \|\mathbf{A}\|_{\mathsf F}$, $t_1$, $t_2$ the norms of the scaled and
+the regularized matrix. -/
+theorem schurPipeline_budget_split {a F s c₁ c₂ x u δR εHT εCT ε t₁ t₂ : ℝ} (ha : 0 ≤ a)
+    (hF0 : 0 ≤ F) (hFa : F ≤ x * a) (hx : 1 ≤ x) (hxu : x * x * u ≤ 1 / 32) (hu : 0 ≤ u)
+    (hc₁ : 0 < c₁) (hs : 0 < s) (hsl : c₁ * F ≤ s) (hsu : s ≤ c₂ * F)
+    (ht₁a : s * t₁ ≤ a + 3 * u * F) (ht₁F : s * t₁ ≤ (1 + 3 * u) * F) (ht₂ : t₂ ≤ t₁ + δR)
+    (ht₂0 : 0 ≤ t₂) (hδR0 : 0 ≤ δR) (hδR : δR ≤ 1 / c₁) (hεHT0 : 0 ≤ εHT)
+    (hεHT : εHT ≤ 1 / 8) (hεCT : 0 ≤ εCT) (hε0 : 0 ≤ ε) (hε : ε ≤ 1 / 16) :
+    s * δR + 3 * u * F ≤ (c₂ * x * δR + 3 * x * u) * a ∧
+    s * ((εHT * t₂ + εCT) + (2 * ε + ε ^ 2) * (t₂ + (εHT * t₂ + εCT))) +
+        (1 + ε) ^ 2 * u * s * x * (t₂ + (εHT * t₂ + εCT)) ≤
+      (2 * c₂ * x * (3 * εHT / c₁ + εCT + 8 * ε / c₁) + (8 + 2 * c₂ / c₁) * (x * x) * u) * a := by
+  sorry
+
+/-- **The error of the pipeline against its regularized matrix**:
+$e_X = 2c_2\sqrt{n + 1}\,(3\varepsilon_{H,T}/c_1 + \varepsilon_{C,T} + 8\varepsilon/c_1) +
+(8 + 2c_2/c_1)(n + 1)\boldsymbol{u}$, the second part of
+`NLAlib.Schur.schurPipeline_budget_split` at $x = \sqrt{n + 1}$. -/
+noncomputable def schurPipelineEX (n : ℕ) (c₁ c₂ u εHT εCT ε : ℝ) : ℝ :=
+  2 * c₂ * √((n : ℝ) + 1) * (3 * εHT / c₁ + εCT + 8 * ε / c₁) +
+    (8 + 2 * c₂ / c₁) * ((n : ℝ) + 1) * u
+
 /-- **The residual of the pipeline in matrix form**: the input $\mathbf{A}$ scaled by $1/s$ to
 $\mathbf{A}_1$ ($\|s\mathbf{A}_1 - \mathbf{A}\|_2 \le 3\boldsymbol{u}\|\mathbf{A}\|_{\mathsf F}$),
 regularized to $\mathbf{A}_2$ within $\delta_R$, carried by a tracked run from

@@ -47,6 +47,8 @@ and the failure $\varphi/2$. The norm estimate is taken with the constants $(1/2
 * `NLAlib.Schur.denseSchurWith_measureReal_not_schur_le`: the dense Schur theorem with any
   small-block Schur solver.
 * `NLAlib.Schur.denseSchur_measureReal_not_schur_le`: the dense Schur theorem.
+* `NLAlib.Schur.denseSchurAt_measureReal_not_regularizedSchur_le`: the same at two tolerances,
+  with the regularized matrix exposed.
 * `NLAlib.Schur.denseSchur_terminates`: termination and orthogonality on every tape.
 * `NLAlib.Schur.denseSchur_measureReal_not_spectrum_le`,
   `NLAlib.Schur.denseSchur_measureReal_not_exact_schur_le`: the eigenvalues, and an exact unitary.
@@ -378,6 +380,46 @@ theorem denseSchur_writes_orth {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
     hin τ
   rw [hN, show (1 : ℝ) + ((1 + 24 * u) ^ Rc - 1) = (1 + 24 * u) ^ Rc by ring] at hw
   exact hw
+
+/-- **The dense Schur solver at two tolerances, with the regularized matrix exposed.** On the
+machine and streams of `NLAlib.Schur.denseSchur_measureReal_not_schur_le` (the standard model at
+$\boldsymbol{u}$, index literals, exact natural literals up to $n + 1$, exact `toNat` and
+comparisons, a measurable interpretation reading the tape only in its windows whose draws store
+the tape entry, a stream $s_U$ uniform on $[0, 1]$ with an exact polar disk sampler on it and a
+stream $s_G$ with the standard real Gaussian law), let $0 < \delta_R, \delta_C \le 1$,
+$0 < \varphi \le 1$ and $\boldsymbol{u} \le$ `NLAlib.Schur.uDenseSchurAt n δR δC φ`. Then for every
+complex $\mathbf{A}$ of order $n + 1$, from a memory holding $\mathbf{A}$ and the words of
+`NLAlib.Schur.denseSchurParamsAt`, under a random tape with the stream laws,
+$$\mathbb{P}\bigl[\mathsf{denseSchur}(\mathbf{A}) \text{ fails, writes outside }
+  \mathbf{A}, \widehat{\mathbf{U}} \text{ and the flag, or stores no Schur output with a
+  regularized } \mathbf{X}\bigr] \le \varphi\,:$$
+$\|\mathbf{A} - \mathbf{X}\|_2 \le (\delta_R/16 + 3\sqrt{n + 1}\,\boldsymbol{u})\|\mathbf{A}\|_2$,
+the error against $\mathbf{X}$ `NLAlib.Schur.schurPipelineEX` with the constants $(1/2, 2)$, the
+reducer's $50(n + 1)^2\boldsymbol{u}$, the core's $\delta_C/(16\sqrt{n + 1})$ and the accumulator's
+$29R\boldsymbol{u}$, the orthogonality $58R\boldsymbol{u}$, and $s^{-1}\mathbf{X}$ of the class
+$(B, \Gamma)$ at $\delta_R$ unless $\mathbf{A} = 0$. Here $R$ is
+`NLAlib.Schur.denseSchurRotationsAt`, $B$ `NLAlib.Schur.denseSchurB` and $\Gamma$
+`NLAlib.Schur.denseSchurΓ`. No printed source. -/
+theorem denseSchurAt_measureReal_not_regularizedSchur_le {Mch : Machine ℝ} {I : Interp O Q ℝ}
+    {u : ℝ} {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hG : law sG = gaussianReal 0 1) {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {δR δC φ : ℝ}
+    (hδR : 0 < δR) (hδR1 : δR ≤ 1) (hδC : 0 < δC) (hδC1 : δC ≤ 1) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
+    (hu : u ≤ uDenseSchurAt n δR δC φ) {a p uo f : ℕ × ℕ} {μ : Mem ℝ}
+    (hin : SchurPipelineInput (denseSchurParamsAt n δR δC φ) a p uo f A μ)
+    {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
+    P.real {ω | ¬ Writes .total I (ξ ω) (denseSchur (O := O) (Q := Q) sG).body
+      (Env.frame (denseSchurDimsAt n δR δC φ) [a, p, a, uo, f]) (schurFp n a uo f)
+      (RegularizedSchurOutput (IsConditionedDiagonalizable (denseSchurB n δR φ)
+          (denseSchurΓ n δR φ)) a uo f A (1 / 2) 2
+        (2 * √((n : ℝ) + 1) * (denseSchurDelta n δR / 2) + 3 * √((n : ℝ) + 1) * u)
+        (schurPipelineEX n (1 / 2) 2 u (50 * ((n : ℝ) + 1) ^ 2 * u) (denseSchurDelta n δC)
+          (29 * denseSchurRotationsAt n δR δC φ * u))
+        (58 * denseSchurRotationsAt n δR δC φ * u)) μ} ≤ φ := by
+  sorry
 
 /-- **The dense Schur solver terminates, with a near-orthonormal accumulator, on every tape**: on
 a scalar machine with the standard model at $\boldsymbol{u} \le \boldsymbol{u}_0$, index

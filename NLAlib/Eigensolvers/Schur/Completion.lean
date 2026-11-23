@@ -24,7 +24,8 @@ certificate's admitted sizes need no standard model.
 ## Main definitions
 
 * `NLAlib.Schur.CompletingNormEstimate`, `NLAlib.Schur.CompletingReducer`,
-  `NLAlib.Schur.CompletingSchurCore`: the stages that complete.
+  `NLAlib.Schur.CompletingSchurCore`, `NLAlib.Schur.CompletingEigenvectorStage`: the stages that
+  complete.
 
 ## Main results
 
@@ -58,6 +59,21 @@ def CompletingReducer (nmax : ℕ) (Red : Stmt O Q) (I : Interp O Q ℝ) : Prop 
     Writes .total I tape Red (Env.frame [N] [a, uo, a, uo])
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock uo.1 uo.2 (2 * (N * N)))
       (fun μ' => ∃ U' H : Matrix (Fin N) (Fin N) ℂ, HoldsSchurPair a uo U' H μ'.store) μ
+
+/-- **An eigenvector stage that completes**: for every order $N \le N_{\max}$ and every stored
+pair, `[N, ne] (T, U, Pe) → (V, G)` with its words `ps` succeeds on every tape, writes only
+$\mathbf{V}$ and the flag, and stores a matrix and a word. -/
+def CompletingEigenvectorStage (nmax : ℕ) (ps : List ℝ) (Ev : Impl O Q) (I : Interp O Q ℝ) :
+    Prop :=
+  ∀ {N : ℕ} {a uo pe v g : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ} (U T : Matrix (Fin N) (Fin N) ℂ),
+    N ≤ nmax → HoldsSchurPair a uo U T μ.store →
+    μ.store.readBlock pe.1 pe.2 ps.length = some ps → μ.Live [a, uo, pe, v, g] →
+    μ.Room [v, g] [2 * (N * N), 1] →
+    Fp.Apart [a, uo, pe, v, g] [2 * (N * N), 2 * (N * N), ps.length, 2 * (N * N), 1] →
+    Writes .total I tape Ev.body (Env.frame [N, ps.length] [a, uo, pe, v, g])
+      (Store.inBlock v.1 v.2 (2 * (N * N)) ⊔ Store.inBlock g.1 g.2 1)
+      (fun μ' => (∃ V : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix v V μ'.store) ∧
+        ∃ x : ℝ, μ'.store.get g.1 g.2 = some x) μ
 
 /-- The rounded Frobenius norm completes on any scalar machine. -/
 theorem frobNormStage_completing [Has ScalarOp O] {M : Machine ℝ} {I : Interp O Q ℝ}

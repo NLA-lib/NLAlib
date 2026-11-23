@@ -31,12 +31,16 @@ accumulator and residual errors of the composition are at most $\delta$.
   rotation count and precision threshold with a leaf's words, cap and rotation count.
 * `NLAlib.Schur.denseSchurParams`, `NLAlib.Schur.denseSchurDims`,
   `NLAlib.Schur.denseSchurRotations`, `NLAlib.Schur.uDenseSchur`: those of the `SmallEig` leaf.
+* `NLAlib.Schur.denseSchurParamsAt`, `NLAlib.Schur.denseSchurDimsAt`,
+  `NLAlib.Schur.denseSchurRotationsAt`, `NLAlib.Schur.uDenseSchurAt`,
+  `NLAlib.Schur.uDenseSchurAtWith`: the same at two tolerances.
 
 ## Main results
 
 * `NLAlib.Schur.uDenseSchurWith_pos`, `NLAlib.Schur.uDenseSchur_pos`: the threshold is positive.
 * `NLAlib.Schur.mul_denseSchurRotations_le`, `NLAlib.Schur.denseSchur_errors_le`: the errors
   below the threshold.
+* `NLAlib.Schur.denseSchurB_le`, `NLAlib.Schur.le_denseSchurΓ`: the class in closed form.
 -/
 
 @[expose] public section
@@ -428,5 +432,144 @@ theorem denseSchur_orth_le {n : ℕ} {δ φ u : ℝ} (hδ : 0 < δ) (hδ1 : δ �
         (0 : ℝ) ≤ 4096 * ((denseSchurRotations n δ φ : ℝ) * u))
       nlinarith
   refine ⟨h58, by nlinarith, by nlinarith⟩
+
+/-! ### Two tolerances
+
+The regularizer at the tolerance $\delta_R$ and the core, the reducer's backward error, the
+replays, the accumulator and the scaling at $\delta_C$, both in the units of the headline (each
+through `NLAlib.Schur.denseSchurDelta`). The class $(B, \Gamma)$ and the shift degree depend on
+$\delta_R$ only. At $\delta_R = \delta_C = \delta$ each definition is the one-tolerance definition
+above (`NLAlib.Schur.denseSchurParamsAt_self` and its siblings, by `rfl`). -/
+
+/-- The iteration cap $F$ of the core at the tolerances $(\delta_R, \delta_C)$. -/
+noncomputable def denseSchurCapAt (n : ℕ) (δR δC φ : ℝ) : ℕ :=
+  shqrCap n (2 * denseSchurB n δR φ) (denseSchurΓ n δR φ / 2) 8 (denseSchurDelta n δC)
+
+/-- The deflation threshold word of the core at the tolerances $(\delta_R, \delta_C)$. -/
+noncomputable def denseSchurThresholdAt (n : ℕ) (δR δC φ : ℝ) : ℝ :=
+  shqrDeflationThreshold n (denseSchurDegree n δR φ) (2 * denseSchurB n δR φ)
+    (denseSchurΓ n δR φ / 2) 8 (denseSchurDelta n δC) (φ / 2)
+
+/-- The shifted QR words of the core at the tolerances $(\delta_R, \delta_C)$. -/
+noncomputable def denseSchurShQRParamsAt (n : ℕ) (δR δC φ : ℝ) : List ℝ :=
+  shqrParams n (denseSchurDegree n δR φ) (2 * denseSchurB n δR φ) (denseSchurΓ n δR φ / 2) 8
+    (denseSchurDelta n δC) (φ / 2)
+
+/-- The failure a leaf may have at the tolerances $(\delta_R, \delta_C)$. -/
+noncomputable def denseSchurLeafFailureAt (n : ℕ) (δR δC φ : ℝ) : ℝ :=
+  shqrSmallEigFailure n (2 * denseSchurB n δR φ) (denseSchurΓ n δR φ / 2) 8
+    (denseSchurDelta n δC) (φ / 2)
+
+/-- **The words of the dense Schur solver at two tolerances with the leaf words `qs`**: the
+regularizer's words at $\delta_R$, then the core's at $\delta_C$. -/
+noncomputable def denseSchurParamsAtWith (n : ℕ) (δR δC φ : ℝ) (qs : List ℝ) : List ℝ :=
+  denseSchurRegParams n δR φ ++
+    (denseSchurThresholdAt n δR δC φ :: (denseSchurShQRParamsAt n δR δC φ ++ qs))
+
+/-- The dimensions of a run at two tolerances with the leaf words `qs` and the leaf cap $T$. -/
+noncomputable def denseSchurDimsAtWith (n : ℕ) (δR δC φ : ℝ) (qs : List ℝ) (T : ℕ) : List ℕ :=
+  [n + 1, (denseSchurRegParams n δR φ).length,
+    (denseSchurThresholdAt n δR δC φ :: (denseSchurShQRParamsAt n δR δC φ ++ qs)).length,
+    denseSchurDegree n δR φ, denseSchurCapAt n δR δC φ, T]
+
+/-- The rotation count $R$ at two tolerances, a leaf of $R_L$ rotation-equivalents and $n_p$ core
+words after the threshold. -/
+noncomputable def denseSchurRotationsAtWith (n : ℕ) (δR δC φ : ℝ) (np RL : ℕ) : ℕ :=
+  (n + 1) ^ 2 + shqrSchurRotations n (denseSchurDegree n δR φ) np (denseSchurCapAt n δR δC φ) RL
+
+/-- **The precision threshold at two tolerances** with a leaf of $R_L$ rotation-equivalents and
+$n_p$ core words: the eight terms of `NLAlib.Schur.uDenseSchurWith`, the regularizer's at
+$\delta_R$, the class transfer and $1/100$ unchanged, the reducer's, the core's, the replays', the
+accumulator's and the scaling's at $\delta_C$. -/
+noncomputable def uDenseSchurAtWith (n : ℕ) (δR δC φ : ℝ) (np RL : ℕ) : ℝ :=
+  min (uSmallEigReduce (n + 1) 4 (denseSchurDelta n δR) (φ / 2) ginibreGapTail
+    ginibreConditionTail) <|
+  min (denseSchurDelta n δC / (3200 * ((n : ℝ) + 1) ^ 2)) <|
+  min (smallEigGap (n + 1) 4 (denseSchurDelta n δR) (φ / 2) ginibreGapTail *
+    smallEigCond (n + 1) 4 (denseSchurDelta n δR) (φ / 2) ginibreConditionTail /
+      (28800 * ((n : ℝ) + 1) ^ 3)) <|
+  min (uShQR n (denseSchurDegree n δR φ) (2 * denseSchurB n δR φ) (denseSchurΓ n δR φ / 2) 8
+    (denseSchurDelta n δC) (φ / 2)) <|
+  min (1 / 100) <|
+  min (uShQRSchurReplay n (denseSchurDegree n δR φ) np (denseSchurCapAt n δR δC φ) RL
+    (2 * denseSchurB n δR φ) (denseSchurΓ n δR φ / 2) 8 (denseSchurDelta n δC)) <|
+  min (δC / (4096 * ((n : ℝ) + 1) * denseSchurRotationsAtWith n δR δC φ np RL))
+    (δC / (64 * ((n : ℝ) + 1)))
+
+/-- The leaf words of the `SmallEig` leaf at two tolerances. -/
+noncomputable def denseSchurLeafParamsAt (n : ℕ) (δR δC φ : ℝ) : List ℝ :=
+  smallEigForwardParams (denseSchurDegree n δR φ) 32
+    (shqrSmallEigAccuracy n (2 * denseSchurB n δR φ) (denseSchurΓ n δR φ / 2) 8
+      (denseSchurDelta n δC))
+    (denseSchurLeafFailureAt n δR δC φ) ginibreGapTail ginibreConditionTail
+
+/-- The cap $T$ of the `SmallEig` leaf at two tolerances. -/
+noncomputable def denseSchurLeafCapAt (n : ℕ) (δR δC φ : ℝ) : ℕ :=
+  shqrSmallEigCap n (denseSchurDegree n δR φ) (2 * denseSchurB n δR φ) (denseSchurΓ n δR φ / 2) 8
+    (denseSchurDelta n δC) (φ / 2) ginibreGapTail ginibreConditionTail
+
+/-- **The words of the dense Schur solver at two tolerances** (`SmallEig` leaf). -/
+noncomputable def denseSchurParamsAt (n : ℕ) (δR δC φ : ℝ) : List ℝ :=
+  denseSchurParamsAtWith n δR δC φ (denseSchurLeafParamsAt n δR δC φ)
+
+/-- **The dimensions of a run at two tolerances** (`SmallEig` leaf). -/
+noncomputable def denseSchurDimsAt (n : ℕ) (δR δC φ : ℝ) : List ℕ :=
+  denseSchurDimsAtWith n δR δC φ (denseSchurLeafParamsAt n δR δC φ) (denseSchurLeafCapAt n δR δC φ)
+
+/-- **The rotation count at two tolerances** (`SmallEig` leaf). -/
+noncomputable def denseSchurRotationsAt (n : ℕ) (δR δC φ : ℝ) : ℕ :=
+  denseSchurRotationsAtWith n δR δC φ
+    (denseSchurShQRParamsAt n δR δC φ ++ denseSchurLeafParamsAt n δR δC φ).length
+    (smallEigLeafRotations (denseSchurDegree n δR φ) (denseSchurLeafCapAt n δR δC φ))
+
+/-- **The precision threshold at two tolerances** (`SmallEig` leaf, with the leaf's own
+`NLAlib.SmallEig.uSmallEigForward` at $\delta_C$). -/
+noncomputable def uDenseSchurAt (n : ℕ) (δR δC φ : ℝ) : ℝ :=
+  min (uDenseSchurAtWith n δR δC φ
+      (denseSchurShQRParamsAt n δR δC φ ++ denseSchurLeafParamsAt n δR δC φ).length
+      (smallEigLeafRotations (denseSchurDegree n δR φ) (denseSchurLeafCapAt n δR δC φ)))
+    (uSmallEigForward (denseSchurDegree n δR φ) 32
+      (shqrSmallEigAccuracy n (2 * denseSchurB n δR φ) (denseSchurΓ n δR φ / 2) 8
+        (denseSchurDelta n δC)) (denseSchurLeafFailureAt n δR δC φ) ginibreGapTail
+      ginibreConditionTail)
+
+/-- The words at equal tolerances are the one-tolerance words. -/
+theorem denseSchurParamsAt_self (n : ℕ) (δ φ : ℝ) :
+    denseSchurParamsAt n δ δ φ = denseSchurParams n δ φ := rfl
+
+/-- The dimensions at equal tolerances are the one-tolerance dimensions. -/
+theorem denseSchurDimsAt_self (n : ℕ) (δ φ : ℝ) :
+    denseSchurDimsAt n δ δ φ = denseSchurDims n δ φ := rfl
+
+/-- The rotation count at equal tolerances is the one-tolerance count. -/
+theorem denseSchurRotationsAt_self (n : ℕ) (δ φ : ℝ) :
+    denseSchurRotationsAt n δ δ φ = denseSchurRotations n δ φ := rfl
+
+/-- The threshold with a leaf at equal tolerances is the one-tolerance threshold. -/
+theorem uDenseSchurAtWith_self (n : ℕ) (δ φ : ℝ) (np RL : ℕ) :
+    uDenseSchurAtWith n δ δ φ np RL = uDenseSchurWith n δ φ np RL := rfl
+
+/-- The threshold at equal tolerances is the one-tolerance threshold. -/
+theorem uDenseSchurAt_self (n : ℕ) (δ φ : ℝ) : uDenseSchurAt n δ δ φ = uDenseSchur n δ φ := rfl
+
+/-! ### Closed forms of the class -/
+
+/-- **The condition bound in closed form**: for $0 < \delta \le 1$ and $0 < \varphi \le 1$,
+$B \le 2^{36}(n + 1)^4W^2/(\delta^2\varphi)$ with $W = 3 + \sqrt{\log(8/\varphi)}$
+(`NLAlib.SmallEig.smallEigNoiseLevel` at $\varphi/2$), from the inverted condition tail
+$(128e, 3, 2, 2)$. -/
+theorem denseSchurB_le {n : ℕ} {δ φ : ℝ} (hδ : 0 < δ) (hδ1 : δ ≤ 1) (hφ : 0 < φ) (hφ1 : φ ≤ 1) :
+    denseSchurB n δ φ ≤
+      2 ^ 36 * ((n : ℝ) + 1) ^ 4 * smallEigNoiseLevel (φ / 2) ^ 2 / (δ ^ 2 * φ) := by
+  sorry
+
+/-- **The separation in closed form**: for $0 < \delta \le 1$ and $0 < \varphi \le 1$,
+$\Gamma \ge \delta^7\varphi^3/(2^{134}(n + 1)^{29/2}W^7)$ with $W = 3 + \sqrt{\log(8/\varphi)}$
+(`NLAlib.SmallEig.smallEigNoiseLevel` at $\varphi/2$), from the inverted gap tail
+$(2048e, 11/3, 2/3, 2)$. -/
+theorem le_denseSchurΓ {n : ℕ} {δ φ : ℝ} (hδ : 0 < δ) (hδ1 : δ ≤ 1) (hφ : 0 < φ) (hφ1 : φ ≤ 1) :
+    δ ^ 7 * φ ^ 3 / (2 ^ 134 * ((n : ℝ) + 1) ^ (29 / 2 : ℝ) * smallEigNoiseLevel (φ / 2) ^ 7) ≤
+      denseSchurΓ n δ φ := by
+  sorry
 
 end NLAlib.Schur

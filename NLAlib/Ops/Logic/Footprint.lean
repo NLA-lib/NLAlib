@@ -189,6 +189,14 @@ theorem Apart.disj_select {zs : List (ℕ × ℕ)} {ls : List ℕ} (h : Apart zs
     List.getElem?_eq_getElem hi', List.getElem?_eq_getElem hj',
     Option.map_some, Option.getD_some] using hd.symm
 
+/-- **A selection from an apart collection is apart**: the blocks at any list of distinct indices
+in range, in any order, are pairwise disjoint. This projects an apart operand collection onto any
+sub-collection, so that a stage's own apart operands follow from its caller's. -/
+theorem Apart.select {zs : List (ℕ × ℕ)} {ls : List ℕ} (h : Apart zs ls) (sel : List ℕ)
+    (hsel : ∀ i ∈ sel, i < min zs.length ls.length) (hnd : sel.Nodup) :
+    Apart (sel.map fun i => zs.getD i (0, 0)) (sel.map fun i => ls.getD i 0) := by
+  sorry
+
 /-- A standard apart-block collection can be constructed from its indexed pairwise spatial
 facts. Combined with indexed projection, this supports reshaping buffer collections and
 refining arena blocks into scalar or matrix subviews without bespoke list inductions. -/

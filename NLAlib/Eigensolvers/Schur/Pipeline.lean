@@ -34,10 +34,12 @@ output comes from the tracked relation (`NLAlib.IsTrackedUnitarySimilar`).
 * `NLAlib.Schur.schurPipelineWith`: the pipeline program.
 * `NLAlib.Schur.SchurPipelineInput`, `NLAlib.Schur.SchurOutput`, `NLAlib.Schur.SchurOrth`,
   `NLAlib.Schur.schurFp`: its input memory, output, all-tape output and footprint.
+* `NLAlib.Schur.RegularizedSchurOutput`: a Schur output with its regularized matrix.
 
 ## Main results
 
 * `NLAlib.Schur.schurPipelineWith_terminates`: termination and orthogonality on every tape.
+* `NLAlib.Schur.schurPipeline_pos_run`: the pieces of a run of the positive branch.
 
 The numerical pieces that do not mention the pipeline (the scaling loop, the residual of a scaled
 tracked run and its budget) are in `NLAlib.Eigensolvers.Schur.Residual`.
@@ -185,6 +187,39 @@ theorem measurableSet_eqOff_schurOutput {n : ℕ} (F : Fp) (a uo f : ℕ × ℕ)
     MeasurableSet {y : Mem ℝ × Mem ℝ | y.1.store.EqOff F y.2.store ∧
       SchurOutput a uo f A eA eU y.2} :=
   (Mem.measurableSet_eqOff F).inter (measurable_snd (measurableSet_schurOutput a uo f A eA eU))
+
+/-! ### The regularized matrix exposed -/
+
+/-- **A Schur output with its regularized matrix**: the flag $0$, stored $\widehat{\mathbf{T}}$
+(upper triangular) and $\widehat{\mathbf{U}}$ with $\|\widehat{\mathbf{U}}^{\mathsf H}
+\widehat{\mathbf{U}} - \mathbf{I}\|_2 \le e_U$, and a matrix $\mathbf{X}$ with
+$\|\mathbf{A} - \mathbf{X}\|_2 \le e_R\|\mathbf{A}\|_2$ and $\|\mathbf{X} - \widehat{\mathbf{U}}
+\widehat{\mathbf{T}}\widehat{\mathbf{U}}^{\mathsf H}\|_2 \le e_X\|\mathbf{A}\|_2$; unless
+$\mathbf{A} = 0$, $s^{-1}\mathbf{X}$ is in the class `C` for some
+$c_1\|\mathbf{A}\|_{\mathsf F} \le s \le c_2\|\mathbf{A}\|_{\mathsf F}$. -/
+def RegularizedSchurOutput {n : ℕ} (C : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop)
+    (a uo f : ℕ × ℕ) (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (c₁ c₂ eR eX eU : ℝ)
+    (μ' : Mem ℝ) : Prop :=
+  μ'.store.get f.1 f.2 = some 0 ∧ ∃ U T X : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+    HoldsMatrix a T μ'.store ∧ HoldsMatrix uo U μ'.store ∧ T.IsUpperTriangular ∧
+    specNorm (Uᴴ * U - 1) ≤ eU ∧ specNorm (A - X) ≤ eR * specNorm A ∧
+    specNorm (X - U * T * Uᴴ) ≤ eX * specNorm A ∧
+    (A = 0 ∨ ∃ s : ℝ, c₁ * frobNorm A ≤ s ∧ s ≤ c₂ * frobNorm A ∧ C (s⁻¹ • X))
+
+/-- A Schur output with its regularized matrix is a Schur output with the error $e_R + e_X$. -/
+theorem RegularizedSchurOutput.schurOutput {n : ℕ}
+    {C : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop} {a uo f : ℕ × ℕ}
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {c₁ c₂ eR eX eU : ℝ} {μ' : Mem ℝ}
+    (h : RegularizedSchurOutput C a uo f A c₁ c₂ eR eX eU μ') :
+    SchurOutput a uo f A (eR + eX) eU μ' := by
+  sorry
+
+/-- **The memories holding a Schur output with its regularized matrix form a measurable set.** -/
+theorem measurableSet_regularizedSchurOutput {n : ℕ}
+    (C : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop) (a uo f : ℕ × ℕ)
+    (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (c₁ c₂ eR eX eU : ℝ) :
+    MeasurableSet {μ' : Mem ℝ | RegularizedSchurOutput C a uo f A c₁ c₂ eR eX eU μ'} := by
+  sorry
 
 /-! ### The memory of a pipeline run -/
 
@@ -903,6 +938,63 @@ theorem schurPipelineWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
       (T := T) (eA := 0) hS hM hL h1 hm' hA' heU).mono le_sup_left ?_
     rintro m' - ⟨-, U, T', hT', hU, -, -, ho⟩
     exact ⟨⟨T', hT'⟩, U, hU, ho⟩
+
+omit [Has IndexOp O] [Has CmpTst Q] in
+/-- **The run of the positive branch**: from a run memory holding $\mathbf{A}$ and a norm estimate
+$c_1\|\mathbf{A}\|_{\mathsf F} \le x \le c_2\|\mathbf{A}\|_{\mathsf F}$, $x > 0$, except with
+probability $\varphi_R + \varphi_C$ the run of the scaling, the four stages and the scaling back
+stores the flag $0$, an upper triangular $\widehat{\mathbf{T}}'$ and $\widehat{\mathbf{U}}$, and
+there are the scaled input $\mathbf{A}_1$ ($\|x\mathbf{A}_1 - \mathbf{A}\|_2 \le
+3\boldsymbol{u}\|\mathbf{A}\|_{\mathsf F}$), the regularized $\mathbf{A}_2$ in the class `C`
+($\|\mathbf{A}_2 - \mathbf{A}_1\|_2 \le \delta_R$), the run tracked from $(\mathbf{I},
+\mathbf{A}_2)$
+to $(\widehat{\mathbf{U}}, \mathbf{T})$ with $\varepsilon = (1 + \varepsilon_{H,U})(1 +
+\varepsilon_{C,U}) - 1$ and the backward error $\varepsilon_{H,T}\|\mathbf{A}_2\|_2 +
+\varepsilon_{C,T}$, and the scaling back
+$\|\widehat{\mathbf{T}}' - x\mathbf{T}\|_{\mathsf F} \le \boldsymbol{u}x\|\mathbf{T}\|_{\mathsf F}$.
+Both budgets of the pipeline (`NLAlib.Schur.schurPipeline_budget`,
+`NLAlib.Schur.schurPipeline_budget_split`) are read off these pieces. -/
+theorem schurPipeline_pos_run {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (h1 : Mch.lit 1 = 1) (hI : I.IsMeasurable)
+    {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
+    {Reg Red Core : Impl O Q} {n k F T L : ℕ} {c₁ c₂ δR φR εHU εHT εCU εCT φC : ℝ}
+    {qR qC : List ℝ} {C C' : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop}
+    (hReg : RandomRegularizerContract law δR φR C (n + 1) (2 / c₁) qR Reg I)
+    (hRed : HessenbergReducerContract εHU εHT (n + 1) Red I)
+    (hCore : RandomSchurCoreContract law εCU εCT φC C' k F T (n + 1) (4 / c₁) qC Core I)
+    (hCC' : ∀ (A H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), C A →
+      IsPerturbedUnitarySimilarBy V A H (εHT * (2 / c₁ + δR)) → C' H)
+    (hc₁ : 0 < c₁) (hu0 : 0 ≤ u) (hu : 8 * ((n : ℝ) + 1) * u ≤ 1 / 4) (hδR : δR ≤ 1 / c₁)
+    (hεHT0 : 0 ≤ εHT) (hεHT : εHT ≤ 1 / 8) (hεHU : 0 ≤ εHU) (hεCU : 0 ≤ εCU)
+    (hεU : (1 + εHU) * (1 + εCU) - 1 ≤ 1 / 16) (hφR : 0 ≤ φR) (hφC : 0 ≤ φC)
+    {a p uo f : ℕ × ℕ} {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {m : Mem ℝ}
+    (hm : SchurPipelineMem n (qR ++ qC) a p uo f L m) (hA : HoldsMatrix a A m.store) {x : ℝ}
+    (hx : m.store.get L 0 = some x) (hx0 : 0 < x) (hxl : c₁ * frobNorm A ≤ x)
+    (hxu : x ≤ c₂ * frobNorm A) :
+    PWrites law I ((Stmt.call (Has.inj (ScalarOp.lit 1)) [] [] [⟨6, .const 0⟩]).seq
+        ((Stmt.call (Has.inj ScalarOp.div) [] [⟨6, .const 0⟩, ⟨5, .const 0⟩] [⟨6, .const 0⟩]).seq
+          ((Stmt.loop (.const 2 * (.var 0 * .var 0)) (.call (Has.inj ScalarOp.mul) []
+            [⟨0, .var 6 + .var 11⟩, ⟨6, .const 0⟩] [⟨0, .var 6 + .var 11⟩])).seq
+          ((Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg.body).seq
+            ((Stmt.frame [.var 0] [⟨3, .var 9⟩]
+              (PairMatrix.identity (Op := O) (Tst := Q)).body).seq
+            ((Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩]
+              Red.body).seq
+            ((Stmt.frame [.var 0, .var 2, .var 3, .var 4, .var 5]
+              [⟨0, .var 6⟩, ⟨1, .var 7 + .var 1⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩,
+                ⟨4, .var 10⟩] Core.body).seq (.loop (.const 2 * (.var 0 * .var 0))
+              (.call (Has.inj ScalarOp.mul) [] [⟨0, .var 6 + .var 11⟩, ⟨5, .const 0⟩]
+                [⟨0, .var 6 + .var 11⟩])))))))))
+      (schurPipelineEnv n qR.length qC.length k F T a p uo f L)
+      (schurFp n a uo f ⊔ Store.inBlock (L + 1) 0 1) (· = m)
+      (fun μ' => μ'.store.get f.1 f.2 = some 0 ∧
+        ∃ A₁ A₂ U T₁ T' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+          HoldsMatrix a T' μ'.store ∧ HoldsMatrix uo U μ'.store ∧ T'.IsUpperTriangular ∧
+          specNorm ((x : ℂ) • A₁ - A) ≤ 3 * u * frobNorm A ∧ specNorm (A₂ - A₁) ≤ δR ∧ C A₂ ∧
+          IsTrackedUnitarySimilar ((1 + εHU) * (1 + εCU) - 1) (εHT * specNorm A₂ + εCT) 1 A₂ U
+            T₁ ∧
+          frobNorm (T' - (x : ℂ) • T₁) ≤ u * x * frobNorm T₁) (φR + φC) := by
+  sorry
 
 end Steps
 

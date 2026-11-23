@@ -14,7 +14,10 @@ public import NLAlib.Eigensolvers.Schur.Composition
 public import NLAlib.Eigensolvers.Schur.Contracts
 public import NLAlib.Eigensolvers.Schur.Dense
 public import NLAlib.Eigensolvers.Schur.DenseBits
+public import NLAlib.Eigensolvers.Schur.DenseEig
 public import NLAlib.Eigensolvers.Schur.DenseParameters
+public import NLAlib.Eigensolvers.Schur.EigSolver
+public import NLAlib.Eigensolvers.Schur.Eigenvectors
 public import NLAlib.Eigensolvers.Schur.NormEstimate
 public import NLAlib.Eigensolvers.Schur.Pipeline
 public import NLAlib.Eigensolvers.Schur.Regularizer
@@ -963,6 +966,7 @@ public import NLAlib.Matrix.FinitePrecision.StoredMatrix
 public import NLAlib.Matrix.FinitePrecision.StoredProducts
 public import NLAlib.Matrix.FinitePrecision.TapeRounding
 public import NLAlib.Matrix.FinitePrecision.Traces
+public import NLAlib.Matrix.FinitePrecision.TriangularSolve
 public import NLAlib.Matrix.FinitePrecision.VectorErrors
 public import NLAlib.Matrix.FinitePrecision.WordRepresentation
 public import NLAlib.Matrix.Functions.AbsoluteValue
@@ -1046,15 +1050,18 @@ public import NLAlib.Matrix.Norms.SchattenSmoothness
 public import NLAlib.Matrix.Norms.Spectral
 public import NLAlib.Matrix.Norms.SymmetricGauge
 public import NLAlib.Matrix.Norms.UnitarilyInvariant
+public import NLAlib.Matrix.Perturbation.ApproximateEigendecomposition
 public import NLAlib.Matrix.Perturbation.BackwardClosed
 public import NLAlib.Matrix.Perturbation.BasisExtension
 public import NLAlib.Matrix.Perturbation.BestRankApprox
+public import NLAlib.Matrix.Perturbation.ComponentwiseBackward
 public import NLAlib.Matrix.Perturbation.Continuity
 public import NLAlib.Matrix.Perturbation.DavisKahan
 public import NLAlib.Matrix.Perturbation.DavisKahanGap
 public import NLAlib.Matrix.Perturbation.EigenvalueBackward
 public import NLAlib.Matrix.Perturbation.EigenvalueClustering
 public import NLAlib.Matrix.Perturbation.EigenvalueMatching
+public import NLAlib.Matrix.Perturbation.EigenvectorConditioning
 public import NLAlib.Matrix.Perturbation.ExteriorEigenvalueBranches
 public import NLAlib.Matrix.Perturbation.GramCutoff
 public import NLAlib.Matrix.Perturbation.GramSoftMin
@@ -1148,6 +1155,7 @@ public import NLAlib.Matrix.Spectral.SpectralRadius
 public import NLAlib.Matrix.Spectral.SteinEquation
 public import NLAlib.Matrix.Spectral.SylvesterCriterion
 public import NLAlib.Matrix.Spectral.SylvesterEquation
+public import NLAlib.Matrix.Spectral.TriangularEigenvectors
 public import NLAlib.Matrix.Spectral.Weyl
 public import NLAlib.Matrix.Structured.BoundedOrthonormal
 public import NLAlib.Matrix.Structured.Cauchy

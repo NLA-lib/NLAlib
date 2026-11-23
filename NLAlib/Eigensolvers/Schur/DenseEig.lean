@@ -486,16 +486,159 @@ theorem denseEig_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {
   exact eigSolverWith_terminates hL hC hSolve (triEigvecStage_completes hS hL hC (n + 1) _)
     hin τ
 
+/-- The core tolerance costs polynomially many bits: there is an exponent $P$ with
+$4(n + 1)/(\min(\delta, \delta_C)\varphi) \le Y^P$, $Y = 4(n + 1)/(\delta\varphi)$, the condition
+bound and the inverse separation being polynomial in $Y$. -/
+private theorem denseEig_tolerance_hiBd : ∃ P : ℕ, ∀ {n : ℕ} {δ φ : ℝ}, 0 < δ → δ ≤ 1 → 0 < φ →
+    φ ≤ 1 → HiBd (4 * ((n : ℝ) + 1) / (δ * φ)) P
+      (4 * ((n : ℝ) + 1) / (min δ (denseEigCoreDelta n δ φ) * φ)) := by
+  obtain ⟨E, hE⟩ := denseSchur_arg_bounds
+  refine ⟨4 * E + 20, fun {n δ φ} hδ hδ1 hφ hφ1 => ?_⟩
+  obtain ⟨hY4, hYc, hBY, -, -, -, -, hδY⟩ := hE (n := n) hδ hδ1 hφ hφ1
+  obtain ⟨hd0, hd1, -, -, -, hB, hΓ⟩ := denseSchur_params_basic (n := n) hδ hδ1 hφ hφ1
+  obtain ⟨hD0, -, hDδ, -⟩ := denseEigCoreDelta_pos_le (n := n) hδ hδ1 hφ hφ1
+  clear hE
+  have hN1 : (1 : ℝ) ≤ (n : ℝ) + 1 := by have := (Nat.cast_nonneg n : (0 : ℝ) ≤ n); linarith
+  have hδφ : δ * φ ≤ 1 := by nlinarith
+  set Y := 4 * ((n : ℝ) + 1) / (δ * φ) with hYdef
+  have hY1 : 1 ≤ Y := by linarith
+  have hNY : HiBd Y 1 ((n : ℝ) + 1) := ⟨by linarith, by
+    rw [pow_one, hYdef, le_div_iff₀ (by positivity)]; nlinarith⟩
+  have hφY : LoBd Y 1 φ := ⟨hφ, by
+    rw [pow_one, hYdef, mul_div_assoc', le_div_iff₀ (by positivity)]; nlinarith⟩
+  have hm : LoBd Y E (min (denseSchurΓ n δ φ / 2) 8) := by
+    have hm0 : 0 < min (denseSchurΓ n δ φ / 2) 8 := lt_min (half_pos hΓ) (by norm_num)
+    refine ⟨hm0, ?_⟩
+    have hA : (1 : ℝ) ≤ 4 * ((n : ℝ) + 1) * (2 * denseSchurB n δ φ) * 8 ^ 2 := by nlinarith
+    have hp : denseSchurDelta n δ * (φ / 2) ≤ 1 := by nlinarith
+    have hp0 : 0 < denseSchurDelta n δ * (φ / 2) := by positivity
+    have e : min (denseSchurΓ n δ φ / 2) 8 * (4 * ((n : ℝ) + 1) * (2 * denseSchurB n δ φ) * 8 ^ 2 /
+        (denseSchurDelta n δ * min (denseSchurΓ n δ φ / 2) 8 * (φ / 2))) =
+        4 * ((n : ℝ) + 1) * (2 * denseSchurB n δ φ) * 8 ^ 2 /
+          (denseSchurDelta n δ * (φ / 2)) := by
+      field_simp
+    have h1 : 1 ≤ 4 * ((n : ℝ) + 1) * (2 * denseSchurB n δ φ) * 8 ^ 2 /
+        (denseSchurDelta n δ * (φ / 2)) := by
+      rw [le_div_iff₀ hp0]
+      linarith
+    calc (1 : ℝ) ≤ _ := h1
+      _ = _ := e.symm
+      _ ≤ _ := mul_le_mul_of_nonneg_left hYc.2 hm0.le
+  have hΓY : LoBd Y E (denseSchurΓ n δ φ) :=
+    hm.of_le ((min_le_left _ _).trans (by linarith))
+  have hBY' : HiBd Y E (denseSchurB n δ φ) :=
+    hBY.of_le (by linarith) (by linarith)
+  have hden := ((HiBd.const hY4 (by norm_num : (0 : ℝ) < 2 ^ 10)
+    (by norm_num : (2 : ℝ) ^ 10 ≤ 4 ^ 5)).mul (hNY.pow 2)).mul hBY'
+  have hDY : LoBd Y (E + (5 + 1 * 2 + E)) (denseEigCoreDelta n δ φ) :=
+    (hδY.min hΓY).div hden
+  have hK : (1 : ℝ) ≤ 2 ^ 10 * ((n : ℝ) + 1) ^ 2 * denseSchurB n δ φ := by
+    have : (1 : ℝ) ≤ ((n : ℝ) + 1) ^ 2 := one_le_pow₀ hN1
+    nlinarith
+  have hDle : denseEigCoreDelta n δ φ ≤ δ := by nlinarith
+  rw [min_eq_right hDle]
+  have h := ((HiBd.const hY4 (by norm_num : (0 : ℝ) < 4)
+    (by norm_num : (4 : ℝ) ≤ 4 ^ 1)).mul hNY).div (hDY.mul hφY)
+  exact h.mono hY1 (by omega)
+
+/-- The polylogarithm at a polynomially larger argument: if $2 \le L$, $2 \le L_c \le PL$ and
+$1 \le P$, then $\log_2 L_c + 1 \le (\log_2 P + 1)(\log_2 L + 1)$. -/
+private theorem logb_add_one_le_of_le_mul {P L Lc : ℝ} (hP : 1 ≤ P) (hL : 2 ≤ L) (hLc : 2 ≤ Lc)
+    (h : Lc ≤ P * L) : Real.logb 2 Lc + 1 ≤ (Real.logb 2 P + 1) * (Real.logb 2 L + 1) := by
+  have h1 : Real.logb 2 Lc ≤ Real.logb 2 P + Real.logb 2 L := by
+    rw [← Real.logb_mul (by linarith) (by linarith)]
+    exact Real.logb_le_logb_of_le one_lt_two (by linarith) h
+  have hp := Real.logb_nonneg one_lt_two hP
+  have hl := Real.logb_nonneg one_lt_two (by linarith : (1 : ℝ) ≤ L)
+  nlinarith [mul_nonneg hp hl]
+
 /-- **The bits of precision of the dense eigensolver**: there are constants $c_1, c_2$ such that
 for every order $n + 1$, $0 < \delta \le 1$ and $0 < \varphi \le 1$,
 $\log_2(1/\boldsymbol{u}_E) \le c_1L^4(\log_2L + 1)^2 + c_2$ with $\boldsymbol{u}_E$ =
-`NLAlib.Schur.uDenseEig` and $L = \log_2(4(n + 1)/(\delta\varphi))$: $\log(1/\delta_C) = O(L)$ by
-the closed forms of $B$ and $\Gamma$. -/
+`NLAlib.Schur.uDenseEig` and $L = \log_2(4(n + 1)/(\delta\varphi))$: $\log(1/\delta_C) = O(L)$,
+$B$ and $1/\Gamma$ being polynomial in $4(n + 1)/(\delta\varphi)$. -/
 theorem logb_inv_uDenseEig_le : ∃ c₁ c₂ : ℝ, ∀ {n : ℕ} {δ φ : ℝ}, 0 < δ → δ ≤ 1 → 0 < φ →
     φ ≤ 1 → Real.logb 2 (uDenseEig n δ φ)⁻¹ ≤
       c₁ * Real.logb 2 (4 * (n + 1) / (δ * φ)) ^ 4 *
         (Real.logb 2 (Real.logb 2 (4 * (n + 1) / (δ * φ))) + 1) ^ 2 + c₂ := by
-  sorry
+  obtain ⟨c₁, c₂, hb⟩ := logb_inv_uDenseSchurAt_le
+  obtain ⟨P, hP⟩ := denseEig_tolerance_hiBd
+  obtain ⟨Q, hQ⟩ := denseSchurRotationsAt_hiBd
+  obtain ⟨Ka, -, hca⟩ := denseSchurAt_caps_le
+  obtain ⟨Kb, -, hcb⟩ := denseSchur_caps_le
+  obtain ⟨p, hp⟩ : ∃ p : ℝ, p = (P : ℝ) + 1 := ⟨_, rfl⟩
+  have hp1 : 1 ≤ p := by rw [hp]; linarith [P.cast_nonneg (α := ℝ)]
+  have hlp : 0 ≤ Real.logb 2 p := Real.logb_nonneg one_lt_two hp1
+  obtain ⟨e, he⟩ : ∃ e : ℝ, e = ((1 + (6 + 1 * 3 + Q) : ℕ) : ℝ) := ⟨_, rfl⟩
+  have he0 : 0 ≤ e := by rw [he]; positivity
+  refine ⟨(max c₁ 0 + e) * (p ^ 4 * (Real.logb 2 p + 1) ^ 2), max c₂ 0,
+    fun {n δ φ} hδ hδ1 hφ hφ1 => ?_⟩
+  obtain ⟨hD0, hD1, -, -⟩ := denseEigCoreDelta_pos_le (n := n) hδ hδ1 hφ hφ1
+  have hbn := hb (n := n) hδ hδ1 hD0 hD1 hφ hφ1
+  have hPn := hP (n := n) hδ hδ1 hφ hφ1
+  have hR : HiBd _ Q (denseEigRotations n δ φ : ℝ) := hQ (n := n) hδ hδ1 hD0 hD1 hφ hφ1
+  obtain ⟨hLc2, -⟩ := hca (n := n) hδ hδ1 hD0 hD1 hφ hφ1
+  obtain ⟨hL2, -⟩ := hcb (n := n) hδ hδ1 hφ hφ1
+  clear hb hP hQ hca hcb
+  have hN1 : (1 : ℝ) ≤ (n : ℝ) + 1 := by have := (Nat.cast_nonneg n : (0 : ℝ) ≤ n); linarith
+  have hmin : min δ (denseEigCoreDelta n δ φ) ≤ denseEigCoreDelta n δ φ := min_le_right _ _
+  have hm0 : 0 < min δ (denseEigCoreDelta n δ φ) := lt_min hδ hD0
+  have hmφ : min δ (denseEigCoreDelta n δ φ) * φ ≤ denseEigCoreDelta n δ φ := by nlinarith
+  have hmφ1 : min δ (denseEigCoreDelta n δ φ) * φ ≤ 1 := by linarith
+  set Yc := 4 * ((n : ℝ) + 1) / (min δ (denseEigCoreDelta n δ φ) * φ) with hYc
+  set Lc := Real.logb 2 Yc with hLcdef
+  set L := Real.logb 2 (4 * ((n : ℝ) + 1) / (δ * φ)) with hLdef
+  have hY4 : 4 ≤ Yc := by
+    rw [hYc, le_div_iff₀ (by positivity)]
+    nlinarith
+  have hNY : HiBd Yc 1 ((n : ℝ) + 1) := ⟨by linarith, by
+    rw [pow_one, hYc, le_div_iff₀ (by positivity)]; nlinarith⟩
+  have hDY : LoBd Yc 1 (denseEigCoreDelta n δ φ) := ⟨hD0, by
+    rw [pow_one, hYc, mul_div_assoc', le_div_iff₀ (by positivity)]
+    nlinarith⟩
+  have h2 := (hDY.div (((HiBd.const hY4 (by norm_num : (0 : ℝ) < 4096)
+    (by norm_num : (4096 : ℝ) ≤ 4 ^ 6)).mul (hNY.pow 3)).mul hR)).logb_inv_le
+  rw [← he] at h2
+  have hLc1 : 1 ≤ Lc := by linarith
+  have hℓc : 1 ≤ Real.logb 2 Lc + 1 := by
+    linarith [Real.logb_nonneg one_lt_two hLc1]
+  have hLcle : Lc ≤ p * L := by
+    have h := hPn.logb_le
+    rw [← hLcdef, ← hLdef] at h
+    exact h.trans (mul_le_mul_of_nonneg_right (by rw [hp]; linarith) (by linarith))
+  have hℓ := logb_add_one_le_of_le_mul hp1 hL2 hLc2 hLcle
+  have hX : Lc ^ 4 * (Real.logb 2 Lc + 1) ^ 2 ≤
+      p ^ 4 * (Real.logb 2 p + 1) ^ 2 * (L ^ 4 * (Real.logb 2 L + 1) ^ 2) := by
+    calc Lc ^ 4 * (Real.logb 2 Lc + 1) ^ 2
+        ≤ (p * L) ^ 4 * ((Real.logb 2 p + 1) * (Real.logb 2 L + 1)) ^ 2 := by gcongr
+      _ = _ := by ring
+  have hLX : Lc ≤ Lc ^ 4 * (Real.logb 2 Lc + 1) ^ 2 := by
+    have h4 : Lc ≤ Lc ^ 4 := le_self_pow₀ hLc1 (by norm_num)
+    have h1 : 1 ≤ (Real.logb 2 Lc + 1) ^ 2 := one_le_pow₀ hℓc
+    nlinarith [pow_pos (by linarith : 0 < Lc) 4]
+  have hX0 : 0 ≤ Lc ^ 4 * (Real.logb 2 Lc + 1) ^ 2 := by positivity
+  have hM : max c₁ 0 * (Lc ^ 4 * (Real.logb 2 Lc + 1) ^ 2) + e * Lc ≤
+      (max c₁ 0 + e) * (p ^ 4 * (Real.logb 2 p + 1) ^ 2) * L ^ 4 * (Real.logb 2 L + 1) ^ 2 := by
+    have hM0 : 0 ≤ max c₁ 0 + e := by positivity
+    calc max c₁ 0 * (Lc ^ 4 * (Real.logb 2 Lc + 1) ^ 2) + e * Lc
+        ≤ max c₁ 0 * (Lc ^ 4 * (Real.logb 2 Lc + 1) ^ 2) +
+            e * (Lc ^ 4 * (Real.logb 2 Lc + 1) ^ 2) := by gcongr
+      _ = (max c₁ 0 + e) * (Lc ^ 4 * (Real.logb 2 Lc + 1) ^ 2) := by ring
+      _ ≤ (max c₁ 0 + e) * (p ^ 4 * (Real.logb 2 p + 1) ^ 2 *
+            (L ^ 4 * (Real.logb 2 L + 1) ^ 2)) := by gcongr
+      _ = _ := by ring
+  have hc1 : c₁ * Lc ^ 4 * (Real.logb 2 Lc + 1) ^ 2 ≤
+      max c₁ 0 * (Lc ^ 4 * (Real.logb 2 Lc + 1) ^ 2) := by
+    rw [mul_assoc]
+    exact mul_le_mul_of_nonneg_right (le_max_left _ _) hX0
+  have hc2 := le_max_left c₂ 0
+  have hc20 := le_max_right c₂ 0
+  have heL : 0 ≤ e * Lc := by positivity
+  have hc10 : 0 ≤ max c₁ 0 * (Lc ^ 4 * (Real.logb 2 Lc + 1) ^ 2) := by positivity
+  unfold uDenseEig
+  rcases min_choice (uDenseSchurAt n δ (denseEigCoreDelta n δ φ) φ)
+    (denseEigCoreDelta n δ φ / (4096 * ((n : ℝ) + 1) ^ 3 * denseEigRotations n δ φ)) with h | h <;>
+    rw [h] <;> linarith
 
 /-- **The operation count of the dense eigensolver** (on every tape): the instrumented static
 count of `NLAlib.Schur.denseEig` at the order $n + 1$, $n_r$ regularizer words, $n_q$ core words,
@@ -515,6 +658,14 @@ theorem denseEig_work_le (sG n nr nq k F T ne : ℕ) :
   unfold denseEig
   omega
 
+/-- `NLAlib.Schur.denseEig_work_le` in the reals, at one stage word. -/
+private theorem denseEig_work_le_cast (sG n nr nq k F T : ℕ) :
+    (Count.size (stmtCost (denseEig (O := O) (Q := Q) sG).instrument
+        [n + 1, nr, nq, k, F, T, 1, 0, 0, 0, 0, 0, 0, 0]) : ℝ) ≤
+      384547 * ((n : ℝ) + 1) ^ 3 * ((k : ℝ) + 1) ^ 4 * ((nr : ℝ) + nq + 1) * ((F : ℝ) + 1) *
+        ((T : ℝ) + 1) ^ 2 + 10000 * ((n : ℝ) + 1) ^ 3 + 128 := by
+  exact_mod_cast denseEig_work_le (O := O) (Q := Q) sG n nr nq k F T 1
+
 /-- **The operation count of the dense eigensolver is $n^3$ times a polylogarithm**: there is a
 constant $C$ such that for every order $n + 1$, $0 < \delta \le 1$ and $0 < \varphi \le 1$, the
 instrumented static count at `NLAlib.Schur.denseEigDims` and zero offsets is at most
@@ -527,7 +678,68 @@ theorem denseEig_work_le_polylog (sG : ℕ) : ∃ C : ℝ, ∀ {n : ℕ} {δ φ 
       (denseEigDims n δ φ ++ [0, 0, 0, 0, 0, 0, 0])) : ℝ) ≤
       C * ((n : ℝ) + 1) ^ 3 * Real.logb 2 (4 * (n + 1) / (δ * φ)) ^ 9 *
         (Real.logb 2 (Real.logb 2 (4 * (n + 1) / (δ * φ))) + 1) ^ 6 := by
-  sorry
+  obtain ⟨C, hC0, hC⟩ := denseSchurAt_work_factor_le
+  obtain ⟨P, hP⟩ := denseEig_tolerance_hiBd
+  obtain ⟨Ka, -, hca⟩ := denseSchurAt_caps_le
+  obtain ⟨Kb, -, hcb⟩ := denseSchur_caps_le
+  obtain ⟨p, hp⟩ : ∃ p : ℝ, p = (P : ℝ) + 1 := ⟨_, rfl⟩
+  have hp1 : 1 ≤ p := by rw [hp]; linarith [P.cast_nonneg (α := ℝ)]
+  have hlp : 0 ≤ Real.logb 2 p := Real.logb_nonneg one_lt_two hp1
+  refine ⟨(C + 10128) * (p ^ 9 * (Real.logb 2 p + 1) ^ 6), fun {n δ φ} hδ hδ1 hφ hφ1 => ?_⟩
+  obtain ⟨hD0, hD1, -, -⟩ := denseEigCoreDelta_pos_le (n := n) hδ hδ1 hφ hφ1
+  have hf := hC (n := n) hδ hδ1 hD0 hD1 hφ hφ1
+  have hPn := hP (n := n) hδ hδ1 hφ hφ1
+  obtain ⟨hLc2, -⟩ := hca (n := n) hδ hδ1 hD0 hD1 hφ hφ1
+  obtain ⟨hL2, -⟩ := hcb (n := n) hδ hδ1 hφ hφ1
+  clear hC hP hca hcb
+  set D := denseEigCoreDelta n δ φ with hDdef
+  have hd : denseEigDims n δ φ ++ [0, 0, 0, 0, 0, 0, 0] =
+      [n + 1, (denseSchurRegParams n δ φ).length,
+      (denseSchurThresholdAt n δ D φ :: (denseSchurShQRParamsAt n δ D φ ++
+        denseSchurLeafParamsAt n δ D φ)).length, denseSchurDegree n δ φ, denseSchurCapAt n δ D φ,
+      denseSchurLeafCapAt n δ D φ, 1, 0, 0, 0, 0, 0, 0, 0] := rfl
+  rw [hd]
+  clear hd
+  have hwR := denseEig_work_le_cast (O := O) (Q := Q) sG n (denseSchurRegParams n δ φ).length
+    (denseSchurThresholdAt n δ D φ :: (denseSchurShQRParamsAt n δ D φ ++
+      denseSchurLeafParamsAt n δ D φ)).length (denseSchurDegree n δ φ) (denseSchurCapAt n δ D φ)
+    (denseSchurLeafCapAt n δ D φ)
+  refine hwR.trans ?_
+  set Lc := Real.logb 2 (4 * ((n : ℝ) + 1) / (min δ D * φ)) with hLcdef
+  set L := Real.logb 2 (4 * ((n : ℝ) + 1) / (δ * φ)) with hLdef
+  have hLc1 : 1 ≤ Lc := by linarith
+  have hℓc : 1 ≤ Real.logb 2 Lc + 1 := by
+    linarith [Real.logb_nonneg one_lt_two hLc1]
+  have hLcle : Lc ≤ p * L := by
+    have h := hPn.logb_le
+    rw [← hLcdef, ← hLdef] at h
+    exact h.trans (mul_le_mul_of_nonneg_right (by rw [hp]; linarith) (by linarith))
+  have hℓ := logb_add_one_le_of_le_mul hp1 hL2 hLc2 hLcle
+  have hN1 : (1 : ℝ) ≤ ((n : ℝ) + 1) ^ 3 := one_le_pow₀ (by
+    have := (Nat.cast_nonneg n : (0 : ℝ) ≤ n)
+    linarith)
+  have hX1 : 1 ≤ Lc ^ 9 * (Real.logb 2 Lc + 1) ^ 6 :=
+    one_le_mul_of_one_le_of_one_le (one_le_pow₀ hLc1) (one_le_pow₀ hℓc)
+  have hX : Lc ^ 9 * (Real.logb 2 Lc + 1) ^ 6 ≤
+      p ^ 9 * (Real.logb 2 p + 1) ^ 6 * (L ^ 9 * (Real.logb 2 L + 1) ^ 6) := by
+    calc Lc ^ 9 * (Real.logb 2 Lc + 1) ^ 6
+        ≤ (p * L) ^ 9 * ((Real.logb 2 p + 1) * (Real.logb 2 L + 1)) ^ 6 := by gcongr
+      _ = _ := by ring
+  have hN0 : 0 ≤ ((n : ℝ) + 1) ^ 3 := by linarith
+  have hS : 10000 * ((n : ℝ) + 1) ^ 3 + 128 ≤
+      10128 * (((n : ℝ) + 1) ^ 3 * (Lc ^ 9 * (Real.logb 2 Lc + 1) ^ 6)) := by
+    have : ((n : ℝ) + 1) ^ 3 ≤ ((n : ℝ) + 1) ^ 3 * (Lc ^ 9 * (Real.logb 2 Lc + 1) ^ 6) :=
+      le_mul_of_one_le_right hN0 hX1
+    linarith
+  have e1 : C * ((n : ℝ) + 1) ^ 3 * Lc ^ 9 * (Real.logb 2 Lc + 1) ^ 6 =
+      C * (((n : ℝ) + 1) ^ 3 * (Lc ^ 9 * (Real.logb 2 Lc + 1) ^ 6)) := by ring
+  rw [e1] at hf
+  calc _ ≤ C * (((n : ℝ) + 1) ^ 3 * (Lc ^ 9 * (Real.logb 2 Lc + 1) ^ 6)) +
+        10128 * (((n : ℝ) + 1) ^ 3 * (Lc ^ 9 * (Real.logb 2 Lc + 1) ^ 6)) := by linarith
+    _ = (C + 10128) * ((n : ℝ) + 1) ^ 3 * (Lc ^ 9 * (Real.logb 2 Lc + 1) ^ 6) := by ring
+    _ ≤ (C + 10128) * ((n : ℝ) + 1) ^ 3 *
+        (p ^ 9 * (Real.logb 2 p + 1) ^ 6 * (L ^ 9 * (Real.logb 2 L + 1) ^ 6)) := by gcongr
+    _ = _ := by ring
 
 end Theorems
 

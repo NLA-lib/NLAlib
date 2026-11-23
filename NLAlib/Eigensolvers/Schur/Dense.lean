@@ -398,7 +398,7 @@ theorem denseSchurAt_writes_orth {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
     {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {δR δC φ : ℝ}
     (hu : 400 * ((n : ℝ) + 1) ^ 2 * u ≤ 1) {a p uo f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : SchurPipelineInput (denseSchurParamsAt n δR δC φ) a p uo f A μ) (τ : Tape ℝ) :
-    Writes .total I τ (denseSchur (O := O) (Q := Q) sG).body
+    Writes .total I τ (denseSchur (O := O) (Q := Q) sG)
       (Env.frame (denseSchurDimsAt n δR δC φ) [a, p, a, uo, f]) (schurFp n a uo f)
       (SchurOrth (n := n) a uo
         (2 * ((1 + 27 * ((n : ℝ) + 1) ^ 2 * u) * (1 + 24 * u) ^ shqrSchurRotations n
@@ -435,7 +435,7 @@ theorem denseSchurAt_writes_orth {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
         some (denseSchurRegParams n δR φ) → μ.Live [a, q] →
       Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
         (Store.inBlock q.1 q.2 (denseSchurRegParams n δR φ).length) →
-      Writes .total I τ (ginibrePerturb (O := O) (Q := Q) sG).body
+      Writes .total I τ (ginibrePerturb (O := O) (Q := Q) sG)
         (Env.frame [n + 1, (denseSchurRegParams n δR φ).length] [a, q, a])
         (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
         (fun μ' => ∃ A' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A' μ'.store) μ :=
@@ -507,7 +507,7 @@ theorem denseSchurAt_pwrites_regularizedSchur {Mch : Machine ℝ} {I : Interp O 
     (hG : law sG = gaussianReal 0 1) {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {δR δC φ : ℝ}
     (hδR : 0 < δR) (hδR1 : δR ≤ 1) (hδC : 0 < δC) (hδC1 : δC ≤ 1) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
     (hu : u ≤ uDenseSchurAt n δR δC φ) {a p uo f : ℕ × ℕ} :
-    PWrites law I (denseSchur (O := O) (Q := Q) sG).body
+    PWrites law I (denseSchur (O := O) (Q := Q) sG)
       (Env.frame (denseSchurDimsAt n δR δC φ) [a, p, a, uo, f]) (schurFp n a uo f)
       (SchurPipelineInput (denseSchurParamsAt n δR δC φ) a p uo f A)
       (RegularizedSchurOutput (IsConditionedDiagonalizable (denseSchurB n δR φ)
@@ -662,7 +662,7 @@ theorem denseSchurAt_measureReal_not_regularizedSchur_le {Mch : Machine ℝ} {I 
     (hu : u ≤ uDenseSchurAt n δR δC φ) {a p uo f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : SchurPipelineInput (denseSchurParamsAt n δR δC φ) a p uo f A μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (denseSchur (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (denseSchur (O := O) (Q := Q) sG)
       (Env.frame (denseSchurDimsAt n δR δC φ) [a, p, a, uo, f]) (schurFp n a uo f)
       (RegularizedSchurOutput (IsConditionedDiagonalizable (denseSchurB n δR φ)
           (denseSchurΓ n δR φ)) a uo f A (1 / 2) 2

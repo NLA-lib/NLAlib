@@ -61,17 +61,17 @@ column $j$ with the floor `Sm`, stores the unit entry and the zeros below it, an
 column by $\mathrm{fl}(1/\hat\nu)$, $\hat\nu$ the rounded norm of the column ($\hat\nu \ge 1$ up to
 rounding, because of the unit entry).
 Algorithm: dense-eigendecomposition -/
-def triEigColumn : Impl O Q := opsImpl% [N, j] (T, Sm, Y, G) → (Y, G) {
+def triEigColumn : Stmt O Q := ops% [N, j] (T, Sm, Y, G) → (Y, G) {
   let Nu ← alloc 1;
   let R ← alloc 1;
-  run (shiftedTriSolve (O := O) (Q := Q)).body [N, j] (T, Sm, Y, G, Y, G);
+  run (shiftedTriSolve (O := O) (Q := Q)) [N, j] (T, Sm, Y, G, Y, G);
   call (Has.inj (ScalarOp.lit 1)) [] () → (Y[2 * (j * N + j)]);
   call (Has.inj (ScalarOp.lit 0)) [] () → (Y[2 * (j * N + j) + 1]);
   for l < N - 1 - j {
     call (Has.inj (ScalarOp.lit 0)) [] () → (Y[2 * (j * N + (j + 1 + l))]);
     call (Has.inj (ScalarOp.lit 0)) [] () → (Y[2 * (j * N + (j + 1 + l)) + 1])
   };
-  run (RoundedScalarBlas.nrm2 (Op := O) (Tst := Q)).body [2 * N] (Y[2 * (j * N)], Nu);
+  run (RoundedScalarBlas.nrm2 (Op := O) (Tst := Q)) [2 * N] (Y[2 * (j * N)], Nu);
   call (Has.inj (ScalarOp.lit 1)) [] () → (R);
   call (Has.inj ScalarOp.div) [] (R, Nu) → (R);
   for t < 2 * N {
@@ -82,9 +82,9 @@ def triEigColumn : Impl O Q := opsImpl% [N, j] (T, Sm, Y, G) → (Y, G) {
 /-- **The eigenvector columns**: `[N] (T, Sm, Y, G) → (Y, G)` runs `NLAlib.Schur.triEigColumn` for
 $j = 0, \dots, N - 1$.
 Algorithm: dense-eigendecomposition -/
-def triEigenvectors : Impl O Q := opsImpl% [N] (T, Sm, Y, G) → (Y, G) {
+def triEigenvectors : Stmt O Q := ops% [N] (T, Sm, Y, G) → (Y, G) {
   for j < N {
-    run (triEigColumn (O := O) (Q := Q)).body [N, j] (T, Sm, Y, G, Y, G)
+    run (triEigColumn (O := O) (Q := Q)) [N, j] (T, Sm, Y, G, Y, G)
   }
 }
 
@@ -95,18 +95,18 @@ the columns `NLAlib.Schur.triEigenvectors` into scratch $\mathbf{Y}$ and $\mathb
 \mathrm{fl}(\mathbf{U}\mathbf{Y})$ (`NLAlib.matMulOn`); otherwise $\mathbf{V} = \mathbf{U}$
 exactly.
 Algorithm: dense-eigendecomposition -/
-def triEigvecStage : Impl O Q := opsImpl% [N, ne] (T, U, Pe) → (V, G) {
+def triEigvecStage : Stmt O Q := ops% [N, ne] (T, U, Pe) → (V, G) {
   let S ← alloc 1;
   let Sm ← alloc 1;
   let Y ← alloc (2 * (N * N));
   call (Has.inj IndexOp.lit) [0] () → (G);
-  run (frobNormStage (O := O) (Q := Q)).body [N] (T, S);
+  run (frobNormStage (O := O) (Q := Q)) [N] (T, S);
   if (Has.inj CmpTst.isPos) [] (S) {
     call (Has.inj ScalarOp.mul) [] (Pe, S) → (Sm);
-    run (triEigenvectors (O := O) (Q := Q)).body [N] (T, Sm, Y, G, Y, G);
-    run (matMulOn (O := O) (Q := Q)).body [N, N, N, N, N, N, 0] (U, Y, V)
+    run (triEigenvectors (O := O) (Q := Q)) [N] (T, Sm, Y, G, Y, G);
+    run (matMulOn (O := O) (Q := Q)) [N, N, N, N, N, N, 0] (U, Y, V)
   } else {
-    run (PairMatrix.copy (Op := O) (Tst := Q)).body [N, N] (U, V)
+    run (PairMatrix.copyRoutine (Op := O) (Tst := Q)) [N, N] (U, V)
   }
 }
 
@@ -213,7 +213,7 @@ theorem triEigColumn_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS
     {μ : Mem ℝ} (hT : HoldsMatrix t T μ.store) (hsm : μ.store.get sm.1 sm.2 = some smin)
     (hl : μ.Live [t, sm, y, g]) (hroom : μ.Room [y, g] [2 * (N * N), 1])
     (hap : Fp.Apart [t, sm, y, g] [2 * (N * N), 1, 2 * (N * N), 1]) :
-    Writes .total I τ (triEigColumn (O := O) (Q := Q)).body
+    Writes .total I τ (triEigColumn (O := O) (Q := Q))
       (Env.frame [N, j] [t, sm, y, g, y, g])
       (Store.inBlock y.1 (y.2 + 2 * (j * N)) (2 * N) ⊔ Store.inBlock g.1 g.2 1)
       (fun μ' => ∃ (yv : Fin N → ℂ) (fl : Bool),
@@ -238,7 +238,7 @@ theorem triEigenvectors_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSc
     (hg : ∃ x : ℝ, μ.store.get g.1 g.2 = some x)
     (hl : μ.Live [t, sm, y, g]) (hroom : μ.Room [y, g] [2 * (N * N), 1])
     (hap : Fp.Apart [t, sm, y, g] [2 * (N * N), 1, 2 * (N * N), 1]) :
-    Writes .total I τ (triEigenvectors (O := O) (Q := Q)).body
+    Writes .total I τ (triEigenvectors (O := O) (Q := Q))
       (Env.frame [N] [t, sm, y, g, y, g])
       (Store.inBlock y.1 y.2 (2 * (N * N)) ⊔ Store.inBlock g.1 g.2 1)
       (fun μ' => (∃ Y : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix y Y μ'.store) ∧
@@ -260,7 +260,7 @@ theorem triEigenvectors_isTriangularEigenbasisApprox {M : Machine ℝ} {I : Inte
     (hg : μ.store.get g.1 g.2 = some 0)
     (hl : μ.Live [t, sm, y, g]) (hroom : μ.Room [y, g] [2 * (N * N), 1])
     (hap : Fp.Apart [t, sm, y, g] [2 * (N * N), 1, 2 * (N * N), 1]) :
-    Writes .total I τ (triEigenvectors (O := O) (Q := Q)).body
+    Writes .total I τ (triEigenvectors (O := O) (Q := Q))
       (Env.frame [N] [t, sm, y, g, y, g])
       (Store.inBlock y.1 y.2 (2 * (N * N)) ⊔ Store.inBlock g.1 g.2 1)
       (fun μ' => ∃ Y : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix y Y μ'.store ∧
@@ -285,7 +285,7 @@ theorem triEigenvectors_flag {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hl : μ.Live [t, sm, y, g]) (hroom : μ.Room [y, g] [2 * (N * N), 1])
     (hap : Fp.Apart [t, sm, y, g] [2 * (N * N), 1, 2 * (N * N), 1])
     (hgap : ∀ i j, i ≠ j → 2 * smin < ‖T i i - T j j‖) :
-    Writes .total I τ (triEigenvectors (O := O) (Q := Q)).body
+    Writes .total I τ (triEigenvectors (O := O) (Q := Q))
       (Env.frame [N] [t, sm, y, g, y, g])
       (Store.inBlock y.1 y.2 (2 * (N * N)) ⊔ Store.inBlock g.1 g.2 1)
       (fun μ' => μ'.store.get g.1 g.2 = some 0) μ := by
@@ -326,7 +326,7 @@ theorem triEigvecStage_completes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : Is
 /-- **The static count of the eigenvector stage**: its instrumented static count at the order
 $n + 1$, $n_e$ words and zero offsets is at most $10^4(n + 1)^3$. -/
 theorem size_stmtCost_triEigvecStage_le (n ne : ℕ) :
-    Count.size (stmtCost (triEigvecStage (O := O) (Q := Q)).body.instrument
+    Count.size (stmtCost (triEigvecStage (O := O) (Q := Q)).instrument
       [n + 1, ne, 0, 0, 0, 0, 0]) ≤ 10000 * (n + 1) ^ 3 := by
   sorry
 

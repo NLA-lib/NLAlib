@@ -48,11 +48,11 @@ variable {O Q : Type} [Has ScalarOp O]
 stages, and stores a pair. -/
 theorem schurPipeline_pos_completes_pair {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (h0 : Mch.lit 0 = 0) (h1 : Mch.lit 1 = 1)
-    {Reg Red Core : Impl O Q} {n k F T L : ℕ} {qR qC : List ℝ}
+    {Reg Red Core : Stmt O Q} {n k F T L : ℕ} {qR qC : List ℝ}
     (hReg : ∀ {τ : Tape ℝ} {μ : Mem ℝ} {a q : ℕ × ℕ} (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
       HoldsMatrix a A μ.store → μ.store.readBlock q.1 q.2 qR.length = some qR → μ.Live [a, q] →
       Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock q.1 q.2 qR.length) →
-      Writes .total I τ Reg.body (Env.frame [n + 1, qR.length] [a, q, a])
+      Writes .total I τ Reg (Env.frame [n + 1, qR.length] [a, q, a])
         (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
         (fun μ' => ∃ A' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A' μ'.store) μ)
     (hRed : CompletingReducer (n + 1) Red I) (hCore : CompletingSchurCore k F T (n + 1) qC Core I)
@@ -63,14 +63,14 @@ theorem schurPipeline_pos_completes_pair {Mch : Machine ℝ} {I : Interp O Q ℝ
         ((Stmt.call (Has.inj ScalarOp.div) [] [⟨6, .const 0⟩, ⟨5, .const 0⟩] [⟨6, .const 0⟩]).seq
           ((Stmt.loop (.const 2 * (.var 0 * .var 0)) (.call (Has.inj ScalarOp.mul) []
             [⟨0, .var 6 + .var 11⟩, ⟨6, .const 0⟩] [⟨0, .var 6 + .var 11⟩])).seq
-          ((Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg.body).seq
+          ((Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg).seq
             ((Stmt.frame [.var 0] [⟨3, .var 9⟩]
-              (PairMatrix.identity (Op := O) (Tst := Q)).body).seq
+              (PairMatrix.identity (Op := O) (Tst := Q))).seq
             ((Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩]
-              Red.body).seq
+              Red).seq
             ((Stmt.frame [.var 0, .var 2, .var 3, .var 4, .var 5]
               [⟨0, .var 6⟩, ⟨1, .var 7 + .var 1⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩,
-                ⟨4, .var 10⟩] Core.body).seq (.loop (.const 2 * (.var 0 * .var 0))
+                ⟨4, .var 10⟩] Core).seq (.loop (.const 2 * (.var 0 * .var 0))
               (.call (Has.inj ScalarOp.mul) [] [⟨0, .var 6 + .var 11⟩, ⟨5, .const 0⟩]
                 [⟨0, .var 6 + .var 11⟩])))))))))
       (schurPipelineEnv n qR.length qC.length k F T a p uo f L)
@@ -96,7 +96,7 @@ theorem schurPipeline_pos_completes_pair {Mch : Machine ℝ} {I : Interp O Q ℝ
     fun m₂ hfr₂ h₂ => ?_
   obtain ⟨A₂, hA₂⟩ := h₂
   have hm₂ := hm₁.of_eqOff hfr₂ (hdG.mono hFa le_rfl)
-  refine (writes_identity_holdsMatrix_one_of_lit (N := n + 1) hS h0 h1 hm₂.room_uo).frame_seq_le
+  refine (identity_writes_holdsMatrix_one_of_lit (N := n + 1) hS h0 h1 hm₂.room_uo).frame_seq_le
     rfl rfl (hm₂.live_of_subset (by simp)) hFu fun m₃ hfr₃ hU => ?_
   have hm₃ := hm₂.of_eqOff hfr₃ (hdG.mono hFu le_rfl)
   refine (hRed A₂ 1 le_rfl ⟨hA₂.of_eqOff hfr₃ h2.symm, hU⟩ (hm₃.live_of_subset (by simp))
@@ -134,14 +134,14 @@ theorem schurPipeline_zero_completes_pair [Has IndexOp O] {Mch : Machine ℝ} {I
     {a p uo f : ℕ × ℕ} {τ : Tape ℝ} {m : Mem ℝ} (hm : SchurPipelineMem n qs a p uo f L m)
     {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hA : HoldsMatrix a A m.store) :
     Writes .total I τ (.seq (.frame [.var 0] [⟨3, .var 9⟩]
-        (PairMatrix.identity (Op := O) (Tst := Q)).body)
+        (PairMatrix.identity (Op := O) (Tst := Q)))
         (.call (Has.inj IndexOp.lit) [.const 0] [] [⟨4, .var 10⟩]))
       (schurPipelineEnv n nr nq k F T a p uo f L) (schurFp n a uo f)
       (fun m' => ∃ U T : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsSchurPair a uo U T m'.store)
       m := by
   obtain ⟨-, -, -, -, -, -, -, -, hap, -⟩ := id hm
   obtain ⟨-, h2, h3, -, -, h6⟩ := apart_four hap
-  refine (writes_identity_holdsMatrix_one_of_lit (N := n + 1) hS h0 h1 hm.room_uo).frame_seq_le
+  refine (identity_writes_holdsMatrix_one_of_lit (N := n + 1) hS h0 h1 hm.room_uo).frame_seq_le
     rfl rfl (hm.live_of_subset (by simp)) (by simp only [schurFp]; fp_sub) fun m' hfr hU => ?_
   have hf : f.2 < m'.store.len f.1 := by have := hm.room_f; rw [hfr.len_eq]; omega
   refine (writes_indexLit hL (n := 0) rfl rfl hf).mono (by simp only [schurFp]; fp_sub)
@@ -153,18 +153,18 @@ pair (`NLAlib.Schur.schurPipelineWith_completes` with the pair). -/
 theorem schurPipelineWith_completes_pair [Has IndexOp O] [Has CmpTst Q] {Mch : Machine ℝ}
     {I : Interp O Q ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hNat : IsExactNatLit id Mch (n + 1))
-    (hC : IsCmp id I) {Nm Reg Red Core : Impl O Q} {k F T : ℕ} {qR qC : List ℝ}
+    (hC : IsCmp id I) {Nm Reg Red Core : Stmt O Q} {k F T : ℕ} {qR qC : List ℝ}
     (hNm : CompletingNormEstimate (n + 1) Nm I)
     (hReg : ∀ {τ : Tape ℝ} {μ : Mem ℝ} {a q : ℕ × ℕ} (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
       HoldsMatrix a A μ.store → μ.store.readBlock q.1 q.2 qR.length = some qR → μ.Live [a, q] →
       Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (Store.inBlock q.1 q.2 qR.length) →
-      Writes .total I τ Reg.body (Env.frame [n + 1, qR.length] [a, q, a])
+      Writes .total I τ Reg (Env.frame [n + 1, qR.length] [a, q, a])
         (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
         (fun μ' => ∃ A' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A' μ'.store) μ)
     (hRed : CompletingReducer (n + 1) Red I) (hCore : CompletingSchurCore k F T (n + 1) qC Core I)
     {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {a p uo f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : SchurPipelineInput (qR ++ qC) a p uo f A μ) (τ : Tape ℝ) :
-    Writes .total I τ (schurPipelineWith Nm Reg Red Core).body
+    Writes .total I τ (schurPipelineWith Nm Reg Red Core)
       (Env.frame [n + 1, qR.length, qC.length, k, F, T] [a, p, a, uo, f]) (schurFp n a uo f)
       (fun m' => ∃ U T : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsSchurPair a uo U T m'.store)
       μ := by
@@ -205,7 +205,7 @@ theorem denseSchurAt_completes_pair [Has IndexOp O] [Has SampleOp O] [Has DiskSa
     (hDisk : IsPolarDiskSampler sU I) {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {δR δC φ : ℝ}
     {a p uo f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : SchurPipelineInput (denseSchurParamsAt n δR δC φ) a p uo f A μ) (τ : Tape ℝ) :
-    Writes .total I τ (denseSchur (O := O) (Q := Q) sG).body
+    Writes .total I τ (denseSchur (O := O) (Q := Q) sG)
       (Env.frame (denseSchurDimsAt n δR δC φ) [a, p, a, uo, f]) (schurFp n a uo f)
       (fun m' => ∃ U T : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsSchurPair a uo U T m'.store)
       μ := by
@@ -215,7 +215,7 @@ theorem denseSchurAt_completes_pair [Has IndexOp O] [Has SampleOp O] [Has DiskSa
         some (denseSchurRegParams n δR φ) → μ.Live [a, q] →
       Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
         (Store.inBlock q.1 q.2 (denseSchurRegParams n δR φ).length) →
-      Writes .total I τ (ginibrePerturb (O := O) (Q := Q) sG).body
+      Writes .total I τ (ginibrePerturb (O := O) (Q := Q) sG)
         (Env.frame [n + 1, (denseSchurRegParams n δR φ).length] [a, q, a])
         (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
         (fun μ' => ∃ A' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A' μ'.store) μ :=
@@ -250,16 +250,16 @@ completes: it writes only $\mathbf{A}$, $\widehat{\mathbf{U}}$, $\widehat{\mathb
 flag. No rounding model is needed. -/
 theorem eigSolverWith_completes_of_pair [Has IndexOp O] [Has CmpTst Q] {Mch : Machine ℝ}
     {I : Interp O Q ℝ} {n : ℕ} (hL : IsIndexLit Mch I) (hC : IsCmp id I)
-    {Solve Ev : Impl O Q} {nr nq k F T : ℕ} {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {Solve Ev : Stmt O Q} {nr nq k F T : ℕ} {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {a p pe uo v f : ℕ × ℕ} {qs qe : List ℝ} {μ : Mem ℝ}
     (hSolve : ∀ {τ : Tape ℝ} {μ : Mem ℝ}, SchurPipelineInput qs a p uo f A μ →
-      Writes .total I τ Solve.body (Env.frame [n + 1, nr, nq, k, F, T] [a, p, a, uo, f])
+      Writes .total I τ Solve (Env.frame [n + 1, nr, nq, k, F, T] [a, p, a, uo, f])
         (schurFp n a uo f)
         (fun m' => ∃ U T : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
           HoldsSchurPair a uo U T m'.store) μ)
     (hEv : CompletingEigenvectorStage (n + 1) qe Ev I)
     (hin : EigSolverInput qs qe a p pe uo v f A μ) (τ : Tape ℝ) :
-    Writes .total I τ (eigSolverWith Solve Ev).body
+    Writes .total I τ (eigSolverWith Solve Ev)
       (Env.frame [n + 1, nr, nq, k, F, T, qe.length] [a, p, pe, a, uo, v, f]) (eigFp n a uo v f)
       (fun _ => True) μ := by
   obtain ⟨hpin, hlv, hroom, hap, hqe⟩ := hin
@@ -368,11 +368,11 @@ end CompletesPair
 /-- **The eigensolver program** of a Schur solver `Solve` and an eigenvector stage `Ev` at the
 order `d 0 + 1`, the solver's dimensions `d 1`, …, `d 5` and `d 6` stage words, on the six
 supplied buffers (matrix, solver words, stage words, accumulator, eigenvectors, flag). -/
-def eigSolverProgram (Solve Ev : Impl SmallEigOp Tst) : Program SmallEigOp Tst 7 6 :=
+def eigSolverProgram (Solve Ev : Stmt SmallEigOp Tst) : Program SmallEigOp Tst 7 6 :=
   ⟨.frame [.var 0 + .const 1, .var 1, .var 2, .var 3, .var 4, .var 5, .var 6]
     [⟨0, .var 7⟩, ⟨1, .var 8⟩, ⟨2, .var 9⟩, ⟨0, .var 7⟩, ⟨3, .var 10⟩, ⟨4, .var 11⟩,
       ⟨5, .var 12⟩]
-    (eigSolverWith Solve Ev).body⟩
+    (eigSolverWith Solve Ev)⟩
 
 /-- **The semantic input of the eigensolver** at the sizes `d`, for the word functions `words`
 (solver) and `ewords` (stage) and the size function `sizes` of $(n, \delta, \varphi)$: the matrix
@@ -430,7 +430,7 @@ static count, the work and the span `NLAlib.Schur.eigSolverWork`, and on every t
 the run writes only the matrix, the accumulator, the eigenvectors and the flag. -/
 noncomputable def eigSolverSpecification (Mch : Machine ℝ) (words ewords : ℕ → ℝ → ℝ → List ℝ)
     (sizes : ℕ → ℝ → ℝ → Fin 7 → ℕ) (admitted : ∃ d, EigSizes Mch sizes d)
-    (Solve Ev : Impl SmallEigOp Tst) (WSolve WEv : (Fin 7 → ℕ) → ℕ) :
+    (Solve Ev : Stmt SmallEigOp Tst) (WSolve WEv : (Fin 7 → ℕ) → ℕ) :
     Specification SmallEigOp Tst (eigSolverProblem Mch words ewords sizes admitted) where
   budget := staticCost (eigSolverProgram Solve Ev)
   scratch := staticPeak smallEigResources (eigSolverProgram Solve Ev)
@@ -449,11 +449,11 @@ variable {Mch : Machine ℝ} {words ewords : ℕ → ℝ → ℝ → List ℝ}
 `NLAlib.Schur.eigSolverWork` of bounds on the solver's and the stage's instrumented static counts
 at the offsets the eigensolver passes to them
 (`NLAlib.Schur.size_stmtCost_eigSolverWith_le`). -/
-theorem size_staticCost_eigSolverProgram_le {Solve Ev : Impl SmallEigOp Tst}
+theorem size_staticCost_eigSolverProgram_le {Solve Ev : Stmt SmallEigOp Tst}
     {WSolve WEv : (Fin 7 → ℕ) → ℕ}
-    (hSolve : ∀ d, Count.size (stmtCost Solve.body.instrument
+    (hSolve : ∀ d, Count.size (stmtCost Solve.instrument
       [d 0 + 1, d 1, d 2, d 3, d 4, d 5, 0, 0, 0, 0, 0]) ≤ WSolve d)
-    (hEv : ∀ d, Count.size (stmtCost Ev.body.instrument [d 0 + 1, d 6, 0, 0, 0, 0, 0]) ≤ WEv d)
+    (hEv : ∀ d, Count.size (stmtCost Ev.instrument [d 0 + 1, d 6, 0, 0, 0, 0, 0]) ≤ WEv d)
     (d : Fin 7 → ℕ) :
     Count.size (staticCost (eigSolverProgram Solve Ev) d) ≤ eigSolverWork WSolve WEv d := by
   have he : (Program.environment (b := 6) d).idx =
@@ -530,11 +530,11 @@ matrix, the accumulator, the eigenvectors and the flag (`hwp`), and the componen
 static counts are at most $W_\bullet$, succeeds within the static budget, scratch and memory, with
 work and span at most `NLAlib.Schur.eigSolverWork` of the $W_\bullet$.
 Algorithm: dense-eigendecomposition (run model) -/
-noncomputable def eigSolverAlgorithm (sU : ℕ) (Solve Ev : Impl SmallEigOp Tst)
+noncomputable def eigSolverAlgorithm (sU : ℕ) (Solve Ev : Stmt SmallEigOp Tst)
     (WSolve WEv : (Fin 7 → ℕ) → ℕ)
-    (hSolve : ∀ d, Count.size (stmtCost Solve.body.instrument
+    (hSolve : ∀ d, Count.size (stmtCost Solve.instrument
       [d 0 + 1, d 1, d 2, d 3, d 4, d 5, 0, 0, 0, 0, 0]) ≤ WSolve d)
-    (hEv : ∀ d, Count.size (stmtCost Ev.body.instrument [d 0 + 1, d 6, 0, 0, 0, 0, 0]) ≤ WEv d)
+    (hEv : ∀ d, Count.size (stmtCost Ev.instrument [d 0 + 1, d 6, 0, 0, 0, 0, 0]) ≤ WEv d)
     (hwords : ∀ n δ φ, (words n δ φ).length = sizes n δ φ 1 + sizes n δ φ 2)
     (hewords : ∀ n δ φ, (ewords n δ φ).length = sizes n δ φ 6)
     (ht : (eigSolverProgram Solve Ev).wellTyped smallEigResources
@@ -543,7 +543,7 @@ noncomputable def eigSolverAlgorithm (sU : ℕ) (Solve Ev : Impl SmallEigOp Tst)
       ∀ (x : (eigSolverProblem Mch words ewords sizes admitted).Input d)
         (I : Interp SmallEigOp Tst ℝ),
       (smallEigModel (eigSolverProblem Mch words ewords sizes admitted) Mch sU).contracts d x I →
-      ∀ τ, Wp .total I τ (eigSolverProgram Solve Ev).body (Program.environment (b := 6) d)
+      ∀ τ, Wp .total I τ (eigSolverProgram Solve Ev) (Program.environment (b := 6) d)
         (fun m => ((eigSolverProblem Mch words ewords sizes admitted).initial d x).store.EqOff
           (eigFp (d 0) (0, 0) (3, 0) (4, 0) (5, 0)) m.store)
         ((eigSolverProblem Mch words ewords sizes admitted).initial d x)) :
@@ -614,7 +614,7 @@ theorem denseEigProgram_wp {Mch : Machine ℝ} {admitted : ∃ d, EigSizes Mch d
     {sU sG : ℕ} {d : Fin 7 → ℕ} (hd : EigSizes Mch denseEigSizes d)
     (x : (denseEigProblem Mch admitted).Input d) {I : Interp SmallEigOp Tst ℝ}
     (hI : (smallEigModel (denseEigProblem Mch admitted) Mch sU).contracts d x I) (τ : Tape ℝ) :
-    Wp .total I τ (eigSolverProgram (denseSchur sG) triEigvecStage).body
+    Wp .total I τ (eigSolverProgram (denseSchur sG) triEigvecStage)
       (Program.environment (b := 6) d)
       (fun m => ((denseEigProblem Mch admitted).initial d x).store.EqOff
         (eigFp (d 0) (0, 0) (3, 0) (4, 0) (5, 0)) m.store)

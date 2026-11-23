@@ -1273,7 +1273,7 @@ $\varphi_C$. -/
 theorem schurPipeline_tail_pwrites_eq {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (h1 : Mch.lit 1 = 1) (hI : I.IsMeasurable)
     {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
-    {Red Core : Impl O Q} {n k F T L : ℕ} {c₁ δR εHU εHT εCU εCT φC : ℝ}
+    {Red Core : Stmt O Q} {n k F T L : ℕ} {c₁ δR εHU εHT εCU εCT φC : ℝ}
     {qR qC : List ℝ} {C C' : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop}
     (hRed : HessenbergReducerContract εHU εHT (n + 1) Red I)
     (hCore : RandomSchurCoreContract law εCU εCT φC C' k F T (n + 1) (4 / c₁) qC Core I)
@@ -1285,11 +1285,11 @@ theorem schurPipeline_tail_pwrites_eq {Mch : Machine ℝ} {I : Interp O Q ℝ} {
     {x : ℝ} (hx : m.store.get L 0 = some x) (hx0 : 0 < x)
     {A₁ A₂ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hA₂ : HoldsMatrix a A₂ m.store)
     (hA₁n : specNorm A₁ ≤ 2 / c₁) (hA₂n : specNorm (A₂ - A₁) ≤ δR) (hC : C A₂) :
-    PWrites law I ((Stmt.frame [.var 0] [⟨3, .var 9⟩] (PairMatrix.identity (Op := O) (Tst := Q)).body).seq
-        ((Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩] Red.body).seq
+    PWrites law I ((Stmt.frame [.var 0] [⟨3, .var 9⟩] (PairMatrix.identity (Op := O) (Tst := Q))).seq
+        ((Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩] Red).seq
           ((Stmt.frame [.var 0, .var 2, .var 3, .var 4, .var 5]
             [⟨0, .var 6⟩, ⟨1, .var 7 + .var 1⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩,
-              ⟨4, .var 10⟩] Core.body).seq (.loop (.const 2 * (.var 0 * .var 0))
+              ⟨4, .var 10⟩] Core).seq (.loop (.const 2 * (.var 0 * .var 0))
             (.call (Has.inj ScalarOp.mul) [] [⟨0, .var 6 + .var 11⟩, ⟨5, .const 0⟩]
               [⟨0, .var 6 + .var 11⟩])))))
       (schurPipelineEnv n qR.length qC.length k F T a p uo f L) (schurFp n a uo f) (· = m)
@@ -1309,18 +1309,18 @@ theorem schurPipeline_tail_pwrites_eq {Mch : Machine ℝ} {I : Interp O Q ℝ} {
         IsTrackedUnitarySimilar εHU (εHT * specNorm A₂) 1 A₂ U₁ H with hMid₃
   have hid : ∀ m' τ, m' = m →
       Writes .total I τ (Stmt.frame [.var 0] [⟨3, .var 9⟩]
-        (PairMatrix.identity (Op := O) (Tst := Q)).body)
+        (PairMatrix.identity (Op := O) (Tst := Q)))
         (schurPipelineEnv n qR.length qC.length k F T a p uo f L)
         (Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) Mid₁ m' := by
     rintro m' τ rfl
-    exact (writes_identity_holdsMatrix_one (N := n + 1) hS hM h1 hm.room_uo).in_frame rfl rfl
+    exact (identity_writes_holdsMatrix_one (N := n + 1) hS hM h1 hm.room_uo).in_frame rfl rfl
       (hm.live_of_subset (by simp)) |>.mono le_rfl fun m'' hfr hU => ⟨hm.of_eqOff hfr
         (hm.disj_words.mono (fun _ _ h => Or.inl (Or.inl (hFu _ _ h))) le_rfl),
         by rw [hfr.2 L 0 (fun h => by obtain ⟨h, -⟩ := h; omega), hx],
         hA₂.of_eqOff hfr h2.symm, hU⟩
   have hred : ∀ m' τ, Mid₁ m' →
       Writes .total I τ (Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩]
-        Red.body) (schurPipelineEnv n qR.length qC.length k F T a p uo f L)
+        Red) (schurPipelineEnv n qR.length qC.length k F T a p uo f L)
         (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
           Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1)))) Mid₃ m' := by
     rintro m' τ ⟨hm', hx', hA₂', hU⟩
@@ -1332,7 +1332,7 @@ theorem schurPipeline_tail_pwrites_eq {Mch : Machine ℝ} {I : Interp O Q ℝ} {
       U₁, H, hp₁, hH, htr⟩
   have hcore : ∀ m', Mid₃ m' → PWrites law I ((Stmt.frame [.var 0, .var 2, .var 3, .var 4, .var 5]
         [⟨0, .var 6⟩, ⟨1, .var 7 + .var 1⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩,
-          ⟨4, .var 10⟩] Core.body).seq (.loop (.const 2 * (.var 0 * .var 0))
+          ⟨4, .var 10⟩] Core).seq (.loop (.const 2 * (.var 0 * .var 0))
           (.call (Has.inj ScalarOp.mul) [] [⟨0, .var 6 + .var 11⟩, ⟨5, .const 0⟩]
             [⟨0, .var 6 + .var 11⟩])))
       (schurPipelineEnv n qR.length qC.length k F T a p uo f L) (schurFp n a uo f) (· = m')
@@ -1366,7 +1366,7 @@ of `NLAlib.Schur.measurableSet_eqOff_schurTailOutput`, so the class `C` need not
 theorem schurPipeline_tail_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (h1 : Mch.lit 1 = 1) (hI : I.IsMeasurable)
     {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
-    {Red Core : Impl O Q} {n k F T L : ℕ} {c₁ δR εHU εHT εCU εCT φC : ℝ}
+    {Red Core : Stmt O Q} {n k F T L : ℕ} {c₁ δR εHU εHT εCU εCT φC : ℝ}
     {qR qC : List ℝ} {C C' : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop}
     (hRed : HessenbergReducerContract εHU εHT (n + 1) Red I)
     (hCore : RandomSchurCoreContract law εCU εCT φC C' k F T (n + 1) (4 / c₁) qC Core I)
@@ -1381,11 +1381,11 @@ theorem schurPipeline_tail_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
       m.store.get L 0 = some x → HoldsMatrix a A₂ m.store →
       m.store.EqOff (schurFp n a uo f) m'.store →
       SchurTailOutput a uo f ((1 + εHU) * (1 + εCU) - 1) εHT εCT u x A₂ m' → Post m') :
-    PWrites law I ((Stmt.frame [.var 0] [⟨3, .var 9⟩] (PairMatrix.identity (Op := O) (Tst := Q)).body).seq
-        ((Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩] Red.body).seq
+    PWrites law I ((Stmt.frame [.var 0] [⟨3, .var 9⟩] (PairMatrix.identity (Op := O) (Tst := Q))).seq
+        ((Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩] Red).seq
           ((Stmt.frame [.var 0, .var 2, .var 3, .var 4, .var 5]
             [⟨0, .var 6⟩, ⟨1, .var 7 + .var 1⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩,
-              ⟨4, .var 10⟩] Core.body).seq (.loop (.const 2 * (.var 0 * .var 0))
+              ⟨4, .var 10⟩] Core).seq (.loop (.const 2 * (.var 0 * .var 0))
             (.call (Has.inj ScalarOp.mul) [] [⟨0, .var 6 + .var 11⟩, ⟨5, .const 0⟩]
               [⟨0, .var 6 + .var 11⟩])))))
       (schurPipelineEnv n qR.length qC.length k F T a p uo f L) (schurFp n a uo f) Mid₂ Post
@@ -1396,11 +1396,11 @@ theorem schurPipeline_tail_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
   have hT := measurableSet_eqOff_schurTailOutput (schurFp n a uo f) a uo f
     ((1 + εHU) * (1 + εCU) - 1) εHT εCT u (ShiftedQR.measurable_storedMatrix a (n + 1) (n + 1))
     (measurable_snd.comp (Mem.measurable_cell (L, 0)))
-  have hfam : ∀ y : {m // Mid₂ m}, PWrites law I ((Stmt.frame [.var 0] [⟨3, .var 9⟩] (PairMatrix.identity (Op := O) (Tst := Q)).body).seq
-        ((Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩] Red.body).seq
+  have hfam : ∀ y : {m // Mid₂ m}, PWrites law I ((Stmt.frame [.var 0] [⟨3, .var 9⟩] (PairMatrix.identity (Op := O) (Tst := Q))).seq
+        ((Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩] Red).seq
           ((Stmt.frame [.var 0, .var 2, .var 3, .var 4, .var 5]
             [⟨0, .var 6⟩, ⟨1, .var 7 + .var 1⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩,
-              ⟨4, .var 10⟩] Core.body).seq (.loop (.const 2 * (.var 0 * .var 0))
+              ⟨4, .var 10⟩] Core).seq (.loop (.const 2 * (.var 0 * .var 0))
             (.call (Has.inj ScalarOp.mul) [] [⟨0, .var 6 + .var 11⟩, ⟨5, .const 0⟩]
               [⟨0, .var 6 + .var 11⟩])))))
       (schurPipelineEnv n qR.length qC.length k F T a p uo f L) (schurFp n a uo f)
@@ -1442,7 +1442,7 @@ Both budgets of the pipeline (`NLAlib.Schur.schurPipeline_budget`,
 theorem schurPipeline_pos_run {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (h1 : Mch.lit 1 = 1) (hI : I.IsMeasurable)
     {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
-    {Reg Red Core : Impl O Q} {n k F T L : ℕ} {c₁ c₂ δR φR εHU εHT εCU εCT φC : ℝ}
+    {Reg Red Core : Stmt O Q} {n k F T L : ℕ} {c₁ c₂ δR φR εHU εHT εCU εCT φC : ℝ}
     {qR qC : List ℝ} {C C' : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop}
     (hReg : RandomRegularizerContract law δR φR C (n + 1) (2 / c₁) qR Reg I)
     (hRed : HessenbergReducerContract εHU εHT (n + 1) Red I)
@@ -1460,14 +1460,14 @@ theorem schurPipeline_pos_run {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
         ((Stmt.call (Has.inj ScalarOp.div) [] [⟨6, .const 0⟩, ⟨5, .const 0⟩] [⟨6, .const 0⟩]).seq
           ((Stmt.loop (.const 2 * (.var 0 * .var 0)) (.call (Has.inj ScalarOp.mul) []
             [⟨0, .var 6 + .var 11⟩, ⟨6, .const 0⟩] [⟨0, .var 6 + .var 11⟩])).seq
-          ((Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg.body).seq
+          ((Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg).seq
             ((Stmt.frame [.var 0] [⟨3, .var 9⟩]
-              (PairMatrix.identity (Op := O) (Tst := Q)).body).seq
+              (PairMatrix.identity (Op := O) (Tst := Q))).seq
             ((Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩]
-              Red.body).seq
+              Red).seq
             ((Stmt.frame [.var 0, .var 2, .var 3, .var 4, .var 5]
               [⟨0, .var 6⟩, ⟨1, .var 7 + .var 1⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩,
-                ⟨4, .var 10⟩] Core.body).seq (.loop (.const 2 * (.var 0 * .var 0))
+                ⟨4, .var 10⟩] Core).seq (.loop (.const 2 * (.var 0 * .var 0))
               (.call (Has.inj ScalarOp.mul) [] [⟨0, .var 6 + .var 11⟩, ⟨5, .const 0⟩]
                 [⟨0, .var 6 + .var 11⟩])))))))))
       (schurPipelineEnv n qR.length qC.length k F T a p uo f L)

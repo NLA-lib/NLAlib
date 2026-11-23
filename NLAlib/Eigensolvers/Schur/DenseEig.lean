@@ -295,7 +295,7 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has Dis
 `NLAlib.Schur.triEigvecStage`. The interface is
 `[N, nr, nq, k, F, T, ne] (A, P, Pe) → (A, U, V, Fl)`.
 Algorithm: dense-eigendecomposition -/
-def denseEig (sG : ℕ) : Impl O Q :=
+def denseEig (sG : ℕ) : Stmt O Q :=
   eigSolverWith (denseSchur (O := O) (Q := Q) sG) (triEigvecStage (O := O) (Q := Q))
 
 end Program
@@ -362,7 +362,7 @@ theorem denseEig_measureReal_not_eig_le {Mch : Machine ℝ} {I : Interp O Q ℝ}
     {a p pe uo v f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : EigSolverInput (denseEigSchurParams n δ φ) [denseEigFloor n δ φ] a p pe uo v f A μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (denseEig (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (denseEig (O := O) (Q := Q) sG)
       (Env.frame (denseEigDims n δ φ) [a, p, pe, a, uo, v, f]) (eigFp n a uo v f)
       (fun μ' => SchurOutput a uo f A δ (58 * denseEigRotations n δ φ * u) μ' ∧
         EigOutput a v f A δ δ (1 / 8) δ (2 * √((n : ℝ) + 1) * denseSchurB n δ φ)
@@ -431,7 +431,7 @@ theorem denseEig_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {
     (hφ : 0 < φ) (hφ1 : φ ≤ 1) (hu : u ≤ uDenseEig n δ φ) {a p pe uo v f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : EigSolverInput (denseEigSchurParams n δ φ) [denseEigFloor n δ φ] a p pe uo v f A μ)
     (τ : Tape ℝ) :
-    Writes .total I τ (denseEig (O := O) (Q := Q) sG).body
+    Writes .total I τ (denseEig (O := O) (Q := Q) sG)
       (Env.frame (denseEigDims n δ φ) [a, p, pe, a, uo, v, f]) (eigFp n a uo v f)
       (fun μ' => SchurOrth (n := n) a uo (58 * denseEigRotations n δ φ * u) μ' ∧
         ∃ V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix v V μ'.store) μ := by
@@ -476,7 +476,7 @@ is at most the dense Schur solver's $384547(n + 1)^3(k + 1)^4(n_r + n_q + 1)(F +
 (`NLAlib.Schur.denseSchur_work_le`), the stage's $10^4(n + 1)^3$
 (`NLAlib.Schur.size_stmtCost_triEigvecStage_le`) and the glue $128$. -/
 theorem denseEig_work_le (sG n nr nq k F T ne : ℕ) :
-    Count.size (stmtCost (denseEig (O := O) (Q := Q) sG).body.instrument
+    Count.size (stmtCost (denseEig (O := O) (Q := Q) sG).instrument
         [n + 1, nr, nq, k, F, T, ne, 0, 0, 0, 0, 0, 0, 0]) ≤
       384547 * (n + 1) ^ 3 * (k + 1) ^ 4 * (nr + nq + 1) * (F + 1) * (T + 1) ^ 2 +
         10000 * (n + 1) ^ 3 + 128 := by
@@ -495,7 +495,7 @@ solver (`NLAlib.Schur.denseSchur_work_le_polylog`) at the core tolerance $\delta
 $\log(1/\delta_C) = O(L)$. -/
 theorem denseEig_work_le_polylog (sG : ℕ) : ∃ C : ℝ, ∀ {n : ℕ} {δ φ : ℝ}, 0 < δ →
     δ ≤ 1 → 0 < φ → φ ≤ 1 →
-    (Count.size (stmtCost (denseEig (O := O) (Q := Q) sG).body.instrument
+    (Count.size (stmtCost (denseEig (O := O) (Q := Q) sG).instrument
       (denseEigDims n δ φ ++ [0, 0, 0, 0, 0, 0, 0])) : ℝ) ≤
       C * ((n : ℝ) + 1) ^ 3 * Real.logb 2 (4 * (n + 1) / (δ * φ)) ^ 9 *
         (Real.logb 2 (Real.logb 2 (4 * (n + 1) / (δ * φ))) + 1) ^ 6 := by

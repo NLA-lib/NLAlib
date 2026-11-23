@@ -153,14 +153,14 @@ residuals $\|(\mathbf{T} - t_{jj}\mathbf{I})\mathbf{y}_j\| \le c\|\mathbf{T}\|_{
 \|\mathbf{y}_j\|$, $c = c_{R,0}$ when the flag is $0$ and $c = c_R$ otherwise; and the flag is $0$
 when the diagonal gaps exceed $g_0\|\mathbf{T}\|_{\mathsf F}$. The contract is normwise and names
 no method; the constants are fixed outside the quantifier over orders and memories. -/
-def EigenvectorStageContract (cR₀ cR cV cN g₀ : ℝ) (nmax : ℕ) (ps : List ℝ) (Ev : Impl O Q)
+def EigenvectorStageContract (cR₀ cR cV cN g₀ : ℝ) (nmax : ℕ) (ps : List ℝ) (Ev : Stmt O Q)
     (I : Interp O Q ℝ) : Prop :=
   ∀ {N : ℕ} {a uo pe v g : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ} (U T : Matrix (Fin N) (Fin N) ℂ),
     N ≤ nmax → HoldsSchurPair a uo U T μ.store →
     μ.store.readBlock pe.1 pe.2 ps.length = some ps → μ.Live [a, uo, pe, v, g] →
     μ.Room [v, g] [2 * (N * N), 1] →
     Fp.Apart [a, uo, pe, v, g] [2 * (N * N), 2 * (N * N), ps.length, 2 * (N * N), 1] →
-    Writes .total I tape Ev.body (Env.frame [N, ps.length] [a, uo, pe, v, g])
+    Writes .total I tape Ev (Env.frame [N, ps.length] [a, uo, pe, v, g])
       (Store.inBlock v.1 v.2 (2 * (N * N)) ⊔ Store.inBlock g.1 g.2 1)
       (fun μ' => ∃ V : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix v V μ'.store ∧
         (μ'.store.get g.1 g.2 = some 0 ∨ μ'.store.get g.1 g.2 = some 1) ∧

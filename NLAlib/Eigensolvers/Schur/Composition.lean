@@ -216,10 +216,13 @@ theorem regularizedSchurOutput_of_tail {n : ℕ}
   · refine hX.trans ?_
     unfold schurPipelineEX
     linarith
-  · ext i j
-    simp only [Matrix.smul_apply, smul_eq_mul]
-    rw [Complex.real_smul, ← mul_assoc, ← Complex.ofReal_mul, inv_mul_cancel₀ hx0.ne',
-      Complex.ofReal_one, one_mul]
+  · have e : x⁻¹ • (x : ℂ) • A₂ = A₂ := by
+      ext i j
+      simp only [Matrix.smul_apply, smul_eq_mul]
+      rw [Complex.real_smul, ← mul_assoc, ← Complex.ofReal_mul, inv_mul_cancel₀ hx0.ne',
+        Complex.ofReal_one, one_mul]
+    rw [e]
+    exact hC
 
 /-- **The positive branch of the pipeline with the regularized matrix exposed**: from the run
 memories holding $\mathbf{A}$ and a norm estimate $c_1\|\mathbf{A}\|_{\mathsf F} \le x \le
@@ -231,7 +234,7 @@ theorem schurPipeline_pos_pwrites_regularizedSchur [Has ScalarOp O] {Mch : Machi
     {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (h1 : Mch.lit 1 = 1) (hI : I.IsMeasurable)
     {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
-    {Reg Red Core : Impl O Q} {n k F T L : ℕ} {c₁ c₂ δR φR εHU εHT εCU εCT φC : ℝ}
+    {Reg Red Core : Stmt O Q} {n k F T L : ℕ} {c₁ c₂ δR φR εHU εHT εCU εCT φC : ℝ}
     {qR qC : List ℝ} {C C' : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop}
     (hReg : RandomRegularizerContract law δR φR C (n + 1) (2 / c₁) qR Reg I)
     (hRed : HessenbergReducerContract εHU εHT (n + 1) Red I)
@@ -247,14 +250,14 @@ theorem schurPipeline_pos_pwrites_regularizedSchur [Has ScalarOp O] {Mch : Machi
         ((Stmt.call (Has.inj ScalarOp.div) [] [⟨6, .const 0⟩, ⟨5, .const 0⟩] [⟨6, .const 0⟩]).seq
           ((Stmt.loop (.const 2 * (.var 0 * .var 0)) (.call (Has.inj ScalarOp.mul) []
             [⟨0, .var 6 + .var 11⟩, ⟨6, .const 0⟩] [⟨0, .var 6 + .var 11⟩])).seq
-          ((Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg.body).seq
+          ((Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg).seq
             ((Stmt.frame [.var 0] [⟨3, .var 9⟩]
-              (PairMatrix.identity (Op := O) (Tst := Q)).body).seq
+              (PairMatrix.identity (Op := O) (Tst := Q))).seq
             ((Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩]
-              Red.body).seq
+              Red).seq
             ((Stmt.frame [.var 0, .var 2, .var 3, .var 4, .var 5]
               [⟨0, .var 6⟩, ⟨1, .var 7 + .var 1⟩, ⟨3, .var 9⟩, ⟨0, .var 6⟩, ⟨3, .var 9⟩,
-                ⟨4, .var 10⟩] Core.body).seq (.loop (.const 2 * (.var 0 * .var 0))
+                ⟨4, .var 10⟩] Core).seq (.loop (.const 2 * (.var 0 * .var 0))
               (.call (Has.inj ScalarOp.mul) [] [⟨0, .var 6 + .var 11⟩, ⟨5, .const 0⟩]
                 [⟨0, .var 6 + .var 11⟩])))))))))
       (schurPipelineEnv n qR.length qC.length k F T a p uo f L)
@@ -305,7 +308,7 @@ theorem schurPipeline_pos_pwrites_regularizedSchur [Has ScalarOp O] {Mch : Machi
       fun m' _ ⟨hm', hx', A₁, hA₁, hn⟩ => ⟨hm', x, hx', hx0, hxl, hxu, A₁, hA₁, hn⟩
   -- the regularizer, glued over the scaled memories through the class
   have hfam : ∀ y : {m // Mid₁ m}, PWrites law I
-      (Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg.body)
+      (Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg)
       (schurPipelineEnv n qR.length qC.length k F T a p uo f L)
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (fun m => m = y.1)
       (fun m' => (∀ j < 2 * ((n + 1) * (n + 1)), (m'.store.get a.1 (a.2 + j)).isSome) ∧
@@ -337,7 +340,7 @@ theorem schurPipeline_pos_pwrites_regularizedSchur [Has ScalarOp O] {Mch : Machi
       (measurableSet_le ((continuous_specNorm.comp (continuous_fst.sub continuous_snd)).measurable.comp
         ((hgm.comp measurable_snd).prodMk (hgm.comp measurable_fst))) measurable_const)))
   have hreg : PWrites law I
-      (Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg.body)
+      (Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg)
       (schurPipelineEnv n qR.length qC.length k F T a p uo f L)
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) Mid₁ Mid₂ φR := by
     refine PStep.mono (PWrites.pstep_of_forall hI hloc (ι := {m // Mid₁ m})
@@ -345,7 +348,7 @@ theorem schurPipeline_pos_pwrites_regularizedSchur [Has ScalarOp O] {Mch : Machi
       fun y m m' hm hfr hq => ⟨hfr, hm ▸ hq⟩) (fun m hm => ⟨⟨m, hm⟩, rfl⟩)
       (fun m m' hm ⟨hfr, hsome, hCg, hδ⟩ => ⟨hfr, ?_⟩) le_rfl
     obtain ⟨hm', x, hx, hx0, hxl, hxu, A₁, hA₁, hn⟩ := hm
-    obtain ⟨-, -, -, -, -, -, -, -, -, -⟩ := id hm'
+    have haL : a.1 < L := hm'.2.1
     have e₂ : g m = A₁ := hA₁.eq_storedMatrix.symm
     rw [e₂] at hδ
     exact ⟨hm'.of_eqOff hfr (hm'.disj_words.mono (fun _ _ h => Or.inl (Or.inl (hFa _ _ h)))
@@ -397,7 +400,7 @@ theorem schurPipelineWith_pwrites_regularizedSchur [Has ScalarOp O] [Has IndexOp
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hC : IsCmp id I)
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
-    {law : ℕ → Measure ℝ} {Nm Reg Red Core : Impl O Q} {k F T : ℕ}
+    {law : ℕ → Measure ℝ} {Nm Reg Red Core : Stmt O Q} {k F T : ℕ}
     {c₁ c₂ δR φR εHU εHT εCU εCT φC : ℝ} {qR qC : List ℝ}
     {C C' : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop}
     (hNm : FrobNormEstimateContract c₁ c₂ (n + 1) Nm I)
@@ -411,7 +414,7 @@ theorem schurPipelineWith_pwrites_regularizedSchur [Has ScalarOp O] [Has IndexOp
     (hδR : δR ≤ 1 / c₁) (hεHT0 : 0 ≤ εHT) (hεHT : εHT ≤ 1 / 8) (hεHU : 0 ≤ εHU)
     (hεCU : 0 ≤ εCU) (hεU : (1 + εHU) * (1 + εCU) - 1 ≤ 1 / 16) (hφR : 0 ≤ φR) (hφC : 0 ≤ φC)
     {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {a p uo f : ℕ × ℕ} :
-    PWrites law I (schurPipelineWith Nm Reg Red Core).body
+    PWrites law I (schurPipelineWith Nm Reg Red Core)
       (Env.frame [n + 1, qR.length, qC.length, k, F, T] [a, p, a, uo, f]) (schurFp n a uo f)
       (SchurPipelineInput (qR ++ qC) a p uo f A)
       (RegularizedSchurOutput C a uo f A c₁ c₂
@@ -447,7 +450,7 @@ theorem schurPipelineWith_pwrites_regularizedSchur [Has ScalarOp O] [Has IndexOp
     HoldsMatrix a A m.store ∧ ∃ x : ℝ, m.store.get L 0 = some x ∧ c₁ * frobNorm A ≤ x ∧
       x ≤ c₂ * frobNorm A with hMidN
   have hnm : ∀ m τ, SchurPipelineMem n (qR ++ qC) a p uo f L m ∧ HoldsMatrix a A m.store →
-      Writes .total I τ (Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨5, .const 0⟩] Nm.body)
+      Writes .total I τ (Stmt.frame [.var 0] [⟨0, .var 6⟩, ⟨5, .const 0⟩] Nm)
         (schurPipelineEnv n qR.length qC.length k F T a p uo f L) (Store.inBlock L 0 1) MidN m := by
     rintro m τ ⟨hm, hA'⟩
     obtain ⟨-, ha, hp, -, -, -, hLl, -⟩ := id hm
@@ -513,7 +516,7 @@ theorem schurPipelineWith_measureReal_not_regularizedSchur_le [Has ScalarOp O] [
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hC : IsCmp id I)
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
-    {law : ℕ → Measure ℝ} {Nm Reg Red Core : Impl O Q} {k F T : ℕ}
+    {law : ℕ → Measure ℝ} {Nm Reg Red Core : Stmt O Q} {k F T : ℕ}
     {c₁ c₂ δR φR εHU εHT εCU εCT φC : ℝ} {qR qC : List ℝ}
     {C C' : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop}
     (hNm : FrobNormEstimateContract c₁ c₂ (n + 1) Nm I)
@@ -529,7 +532,7 @@ theorem schurPipelineWith_measureReal_not_regularizedSchur_le [Has ScalarOp O] [
     {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {a p uo f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : SchurPipelineInput (qR ++ qC) a p uo f A μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (schurPipelineWith Nm Reg Red Core).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (schurPipelineWith Nm Reg Red Core)
       (Env.frame [n + 1, qR.length, qC.length, k, F, T] [a, p, a, uo, f]) (schurFp n a uo f)
       (RegularizedSchurOutput C a uo f A c₁ c₂
         (c₂ * √((n : ℝ) + 1) * δR + 3 * √((n : ℝ) + 1) * u)

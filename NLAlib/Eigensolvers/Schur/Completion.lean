@@ -63,14 +63,14 @@ def CompletingReducer (nmax : ℕ) (Red : Stmt O Q) (I : Interp O Q ℝ) : Prop 
 /-- **An eigenvector stage that completes**: for every order $N \le N_{\max}$ and every stored
 pair, `[N, ne] (T, U, Pe) → (V, G)` with its words `ps` succeeds on every tape, writes only
 $\mathbf{V}$ and the flag, and stores a matrix and a word. -/
-def CompletingEigenvectorStage (nmax : ℕ) (ps : List ℝ) (Ev : Impl O Q) (I : Interp O Q ℝ) :
+def CompletingEigenvectorStage (nmax : ℕ) (ps : List ℝ) (Ev : Stmt O Q) (I : Interp O Q ℝ) :
     Prop :=
   ∀ {N : ℕ} {a uo pe v g : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ} (U T : Matrix (Fin N) (Fin N) ℂ),
     N ≤ nmax → HoldsSchurPair a uo U T μ.store →
     μ.store.readBlock pe.1 pe.2 ps.length = some ps → μ.Live [a, uo, pe, v, g] →
     μ.Room [v, g] [2 * (N * N), 1] →
     Fp.Apart [a, uo, pe, v, g] [2 * (N * N), 2 * (N * N), ps.length, 2 * (N * N), 1] →
-    Writes .total I tape Ev.body (Env.frame [N, ps.length] [a, uo, pe, v, g])
+    Writes .total I tape Ev (Env.frame [N, ps.length] [a, uo, pe, v, g])
       (Store.inBlock v.1 v.2 (2 * (N * N)) ⊔ Store.inBlock g.1 g.2 1)
       (fun μ' => (∃ V : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix v V μ'.store) ∧
         ∃ x : ℝ, μ'.store.get g.1 g.2 = some x) μ

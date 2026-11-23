@@ -207,11 +207,11 @@ and an eigenvector stage `Ev` (`[N, ne] (T, U, Pe) → (V, G)`): run the solver,
 the stored pair and its own words `Pe`, and set the flag to $1$ if the stage's flag is positive.
 The interface is `[N, nr, nq, k, F, T, ne] (A, P, Pe) → (A, U, V, Fl)`.
 Algorithm: dense-eigendecomposition -/
-def eigSolverWith (Solve Ev : Impl O Q) : Impl O Q :=
-  opsImpl% [N, nr, nq, k, F, T, ne] (A, P, Pe) → (A, U, V, Fl) {
+def eigSolverWith (Solve Ev : Stmt O Q) : Stmt O Q :=
+  ops% [N, nr, nq, k, F, T, ne] (A, P, Pe) → (A, U, V, Fl) {
     let G ← alloc 1;
-    run Solve.body [N, nr, nq, k, F, T] (A, P, A, U, Fl);
-    run Ev.body [N, ne] (A, U, Pe, V, G);
+    run Solve [N, nr, nq, k, F, T] (A, P, A, U, Fl);
+    run Ev [N, ne] (A, U, Pe, V, G);
     if (Has.inj CmpTst.isPos) [] (G) {
       call (Has.inj IndexOp.lit) [1] () → (Fl)
     } else { skip }
@@ -326,9 +326,9 @@ theorem eigSolverWith_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hC : IsCmp id I) (hI : I.IsMeasurable)
     {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
-    {Solve Ev : Impl O Q} {nr nq k F T : ℕ} {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {Solve Ev : Stmt O Q} {nr nq k F T : ℕ} {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {a p pe uo v f : ℕ × ℕ} {qs qe : List ℝ} {B Γ c₁ c₂ eR eX eU φ cR₀ cR cV cN g₀ : ℝ}
-    (hSolve : PWrites law I Solve.body (Env.frame [n + 1, nr, nq, k, F, T] [a, p, a, uo, f])
+    (hSolve : PWrites law I Solve (Env.frame [n + 1, nr, nq, k, F, T] [a, p, a, uo, f])
       (schurFp n a uo f) (SchurPipelineInput qs a p uo f A)
       (RegularizedSchurOutput (IsConditionedDiagonalizable B Γ) a uo f A c₁ c₂ eR eX eU) φ)
     (hEv : EigenvectorStageContract cR₀ cR cV cN g₀ (n + 1) qe Ev I)
@@ -337,7 +337,7 @@ theorem eigSolverWith_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hfloor : 16 * g₀ * √((n : ℝ) + 1) < 7 * c₁ * Γ)
     (hsep : eX + 6 * eU ≤ c₁ * Γ / (16 * (n + 1) * B))
     (hκ : 8 * √((n : ℝ) + 1) * B * eigEta n eX eU cR₀ cV ≤ c₁ * Γ) :
-    PWrites law I (eigSolverWith Solve Ev).body
+    PWrites law I (eigSolverWith Solve Ev)
       (Env.frame [n + 1, nr, nq, k, F, T, qe.length] [a, p, pe, a, uo, v, f]) (eigFp n a uo v f)
       (EigSolverInput qs qe a p pe uo v f A)
       (fun μ' => SchurOutput a uo f A (eR + eX) eU μ' ∧
@@ -361,18 +361,18 @@ $\sqrt{n + 1}\,\eta$ and column tolerance $c$. No probability and no hypothesis 
 No printed source. -/
 theorem eigSolverWith_writes_residual {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
-    (hNat : IsExactNatLit id Mch (n + 1)) (hC : IsCmp id I) {Solve Ev : Impl O Q}
+    (hNat : IsExactNatLit id Mch (n + 1)) (hC : IsCmp id I) {Solve Ev : Stmt O Q}
     {nr nq k F T : ℕ} {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {a p pe uo v f : ℕ × ℕ}
     {qs qe : List ℝ} {τ : Tape ℝ} {μ : Mem ℝ} {eA eU cR₀ cR cV cN g₀ : ℝ}
     (hSolve : ∀ τ μ, SchurPipelineInput qs a p uo f A μ →
-      Writes .total I τ Solve.body (Env.frame [n + 1, nr, nq, k, F, T] [a, p, a, uo, f])
+      Writes .total I τ Solve (Env.frame [n + 1, nr, nq, k, F, T] [a, p, a, uo, f])
         (schurFp n a uo f) (fun μ' => (∃ U T : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
           HoldsSchurPair a uo U T μ'.store) ∧
           (μ'.store.get f.1 f.2 = some 0 → SchurOutput a uo f A eA eU μ')) μ)
     (hEv : EigenvectorStageContract cR₀ cR cV cN g₀ (n + 1) qe Ev I)
     (he : eA ≤ 1 / 2) (heU : eU ≤ 1 / 8) (hc : eigColTol n eU cV cN ≤ 1 / 8)
     (hin : EigSolverInput qs qe a p pe uo v f A μ) :
-    Writes .total I τ (eigSolverWith Solve Ev).body
+    Writes .total I τ (eigSolverWith Solve Ev)
       (Env.frame [n + 1, nr, nq, k, F, T, qe.length] [a, p, pe, a, uo, v, f]) (eigFp n a uo v f)
       (fun μ' => μ'.store.get f.1 f.2 = some 0 →
         SchurOutput a uo f A eA eU μ' ∧
@@ -388,13 +388,13 @@ succeeds on every tape, writes only $\mathbf{A}$, $\widehat{\mathbf{U}}$, $\wide
 and the flag, and stores a matrix at `a`, $\widehat{\mathbf{U}}$ within $e_U$ of orthonormal and a
 matrix at `v`. -/
 theorem eigSolverWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : ℕ}
-    (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hC : IsCmp id I) {Solve Ev : Impl O Q}
+    (hS : IsScalar Mch I) (hL : IsIndexLit Mch I) (hC : IsCmp id I) {Solve Ev : Stmt O Q}
     {nr nq k F T : ℕ} {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {a p pe uo v f : ℕ × ℕ}
     {qs qe : List ℝ} {eU : ℝ} {μ : Mem ℝ}
     (hSolve : TerminatingSchurSolver eU n [n + 1, nr, nq, k, F, T] qs Solve I)
     (hEv : CompletingEigenvectorStage (n + 1) qe Ev I)
     (hin : EigSolverInput qs qe a p pe uo v f A μ) (τ : Tape ℝ) :
-    Writes .total I τ (eigSolverWith Solve Ev).body
+    Writes .total I τ (eigSolverWith Solve Ev)
       (Env.frame [n + 1, nr, nq, k, F, T, qe.length] [a, p, pe, a, uo, v, f]) (eigFp n a uo v f)
       (fun μ' => SchurOrth (n := n) a uo eU μ' ∧
         ∃ V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix v V μ'.store) μ := by
@@ -403,11 +403,11 @@ theorem eigSolverWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {n : �
 /-- **The static count of the eigensolver** with its structural instructions, at zero offsets, is
 at most the instrumented counts of the solver and the stage at the offsets the eigensolver passes
 to them, plus $128$ for the glue (the flag word, the branch and the frames). -/
-theorem size_stmtCost_eigSolverWith_le (Solve Ev : Impl O Q) (N nr nq k F T ne : ℕ) :
-    Count.size (stmtCost (eigSolverWith Solve Ev).body.instrument
+theorem size_stmtCost_eigSolverWith_le (Solve Ev : Stmt O Q) (N nr nq k F T ne : ℕ) :
+    Count.size (stmtCost (eigSolverWith Solve Ev).instrument
         [N, nr, nq, k, F, T, ne, 0, 0, 0, 0, 0, 0, 0]) ≤
-      Count.size (stmtCost Solve.body.instrument [N, nr, nq, k, F, T, 0, 0, 0, 0, 0]) +
-        Count.size (stmtCost Ev.body.instrument [N, ne, 0, 0, 0, 0, 0]) + 128 := by
+      Count.size (stmtCost Solve.instrument [N, nr, nq, k, F, T, 0, 0, 0, 0, 0]) +
+        Count.size (stmtCost Ev.instrument [N, ne, 0, 0, 0, 0, 0]) + 128 := by
   sorry
 
 end Theorems

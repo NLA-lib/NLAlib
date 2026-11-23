@@ -63,7 +63,7 @@ replaced by the word `Sm` (and the flag `G` set to $1$) when its rounded squared
 most the rounded square of `Sm`; the sum $\mathrm{fl}(t_{ij} + \sum_{i < k < j}t_{ik}x_k)$ by
 rounded complex multiply–adds; the negated rounded quotient. The flag is not cleared.
 Algorithm: dense-eigendecomposition -/
-def shiftedTriSolve : Impl O Q := opsImpl% [N, j] (T, Sm, Y, G) → (Y, G) {
+def shiftedTriSolve : Stmt O Q := ops% [N, j] (T, Sm, Y, G) → (Y, G) {
   let One ← alloc 2;
   let M ← alloc 2;
   let S ← alloc 2;
@@ -647,6 +647,7 @@ theorem shiftedTriSolve_isComponentwiseBackwardSolution_of_le {M : Machine ℝ} 
       · simp only [yN, if_neg (show ¬ k < j by omega), if_neg (show k ≠ (j : ℕ) by omega),
           mul_zero]
     rw [Finset.sum_eq_zero hzero, norm_zero]
+    have hε0 : 0 ≤ ε := le_trans (by positivity) hε
     positivity
 
 /-- **The computed column is a componentwise backward solution**: under the standard model at
@@ -711,7 +712,7 @@ theorem shiftedTriSolve_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
     (hT : HoldsMatrix t T μ.store) (hsm : μ.store.get sm.1 sm.2 = some smin)
     (hl : μ.Live [t, sm, y, g]) (hroom : μ.Room [y, g] [2 * (N * N), 1])
     (hap : Fp.Apart [t, sm, y, g] [2 * (N * N), 1, 2 * (N * N), 1]) :
-    Writes .total I τ (shiftedTriSolve (O := O) (Q := Q)).body
+    Writes .total I τ (shiftedTriSolve (O := O) (Q := Q))
       (Env.frame [N, j] [t, sm, y, g, y, g])
       (Store.inBlock y.1 (y.2 + 2 * (j * N)) (2 * j) ⊔ Store.inBlock g.1 g.2 1)
       (fun μ' => (∀ i < j, μ'.store.get y.1 (y.2 + 2 * (j * N + i)) =
@@ -738,7 +739,7 @@ theorem shiftedTriSolve_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} 
     {μ : Mem ℝ} (hT : HoldsMatrix t T μ.store) (hsm : μ.store.get sm.1 sm.2 = some smin)
     (hl : μ.Live [t, sm, y, g]) (hroom : μ.Room [y, g] [2 * (N * N), 1])
     (hap : Fp.Apart [t, sm, y, g] [2 * (N * N), 1, 2 * (N * N), 1]) :
-    Writes .total I τ (shiftedTriSolve (O := O) (Q := Q)).body
+    Writes .total I τ (shiftedTriSolve (O := O) (Q := Q))
       (Env.frame [N, j] [t, sm, y, g, y, g])
       (Store.inBlock y.1 (y.2 + 2 * (j * N)) (2 * j) ⊔ Store.inBlock g.1 g.2 1)
       (fun μ' => ∃ (yv : Fin N → ℂ) (fl : Bool),

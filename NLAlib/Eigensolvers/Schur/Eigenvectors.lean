@@ -9,6 +9,8 @@ public import NLAlib.Eigensolvers.Schur.Completion
 public import NLAlib.Eigensolvers.Schur.ShiftedTriSolveWrites
 public import NLAlib.Matrix.Spectral.TriangularEigenvectors
 public import NLAlib.Ops.Profiles.RoundedScalarBlas
+public import NLAlib.Ops.Logic.ScalarLoop
+public import NLAlib.Eigensolvers.ShiftedQR.RowSolveStorage
 
 /-!
 # The eigenvector stage of the dense eigensolver
@@ -47,6 +49,7 @@ open scoped Matrix
 namespace NLAlib.Schur
 
 open Ops
+open NLAlib.ShiftedQR (vectorColumn HoldsVector)
 
 variable {O Q : Type}
 
@@ -196,6 +199,360 @@ end Scaling
 section Columns
 
 variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
+
+/-- **The column before its scaling** on the machine `M`: the computed entries above position
+$j$, the pair of the literals $1$, $0$ at $j$ and pairs of the literal $0$ below it. -/
+noncomputable def triEigColumnWord (M : Machine ℝ) {N : ℕ} (T : Matrix (Fin N) (Fin N) ℂ)
+    (smin : ℝ) (j : ℕ) : Fin N → ℂ :=
+  fun i => if (i : ℕ) < j then (shiftedTriSolveWord M T smin j j).1 i
+    else if (i : ℕ) = j then ⟨M.lit 1, M.lit 0⟩ else ⟨M.lit 0, M.lit 0⟩
+
+/-- The environment of a column after its two scratch cells. -/
+private def colEnv (N j : ℕ) (t sm y g : ℕ × ℕ) (L : ℕ) : Env :=
+  ⟨[N, j, t.2, sm.2, y.2, g.2, y.2, g.2], [t.1, sm.1, y.1, g.1, y.1, g.1, L, L + 1]⟩
+
+/-- The end of a column: its rounded norm, the rounded reciprocal and the scaling. -/
+private def colTail : Stmt O Q :=
+  .seq (.frame [.const 2 * .var 0] [⟨2, .var 4 + .const 2 * (.var 1 * .var 0)⟩, ⟨6, .const 0⟩]
+    (RoundedScalarBlas.nrm2 (Op := O) (Tst := Q)).body) <|
+  .seq (.call (Has.inj (ScalarOp.lit 1)) [] [] [⟨7, .const 0⟩]) <|
+  .seq (.call (Has.inj ScalarOp.div) [] [⟨7, .const 0⟩, ⟨6, .const 0⟩] [⟨7, .const 0⟩]) <|
+  .loop (.const 2 * .var 0) (.call (Has.inj ScalarOp.mul) []
+    [⟨2, .var 4 + .const 2 * (.var 1 * .var 0) + .var 8⟩, ⟨7, .const 0⟩]
+    [⟨2, .var 4 + .const 2 * (.var 1 * .var 0) + .var 8⟩])
+
+omit [Has IndexOp O] [Has CmpTst Q] in
+/-- The end of a column stores the words of the column times the rounded reciprocal of a norm
+word `ν` with the property `Pν` of the rounded norm. -/
+private theorem colTail_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    {N j : ℕ} {t sm y g : ℕ × ℕ} {L : ℕ} {w : Fin N → ℂ} {τ : Tape ℝ} {μ : Mem ℝ}
+    {Pν : ℝ → Prop} (hyL : y.1 < L) (hlen : μ.store.length = L + 2)
+    (hl0 : μ.store.len L = 1) (hl1 : μ.store.len (L + 1) = 1)
+    (hw : μ.store.readBlock y.1 (y.2 + 2 * (j * N)) (2 * N) = some (matrixWords (vectorColumn w)))
+    (hν : ∀ m : Mem ℝ, m.Live [(y.1, y.2 + 2 * (j * N)), (L, 0)] →
+      m.store.readBlock y.1 (y.2 + 2 * (j * N)) (2 * N) =
+        some (matrixWords (vectorColumn w)) → 0 < m.store.len L →
+      Writes .total I τ (RoundedScalarBlas.nrm2 (Op := O) (Tst := Q)).body
+        (Env.frame [2 * N] [(y.1, y.2 + 2 * (j * N)), (L, 0)]) (Store.inBlock L 0 1)
+        (fun μ' => ∃ v : ℝ, μ'.store.get L 0 = some v ∧ Pν v) m) :
+    Writes .total I τ (colTail (O := O) (Q := Q)) (colEnv N j t sm y g L)
+      (Store.inBlock y.1 (y.2 + 2 * (j * N)) (2 * N) ⊔ Store.inBlock L 0 1 ⊔
+        Store.inBlock (L + 1) 0 1)
+      (fun μ' => ∃ ν : ℝ, Pν ν ∧ ∀ k < 2 * N, ∀ v, μ.store.get y.1 (y.2 + 2 * (j * N) + k) = some v →
+        μ'.store.get y.1 (y.2 + 2 * (j * N) + k) = some (M.mul v (M.div (M.lit 1) ν))) μ := by
+  have hlive : μ.Live [(y.1, y.2 + 2 * (j * N)), (L, 0)] := by
+    simp only [Mem.live_cons, Mem.live_nil, and_true, hlen]; omega
+  refine (hν μ hlive hw (by omega)).frame_seq_le rfl rfl hlive
+    (le_sup_of_le_left le_sup_right) fun μ₁ h₁ ⟨v, hv, hP⟩ => ?_
+  refine (writes_call_const (hS (.lit 1)) (out := ⟨7, .const 0⟩) (z := (L + 1, 0)) rfl trivial
+    (by simp [h₁.len_eq, hl1])).seq_le le_sup_right fun μ₂ h₂ ⟨p₂, g₂⟩ => ?_
+  have hv₂ : μ₂.store.get L 0 = some v := by
+    rw [h₂.2 _ _ (by simp [Store.inBlock])]; exact hv
+  have hdiv := writes_call_bin (ins := [⟨7, .const 0⟩, ⟨6, .const 0⟩]) (outs := [⟨7, .const 0⟩])
+    (x := (L + 1, 0)) (y := (L, 0)) (z := (L + 1, 0)) (ρ := colEnv N j t sm y g L) (τ := τ)
+    (hS .div) rfl rfl trivial g₂ hv₂ rfl fun _ => ⟨by
+      simp only [Mem.live_cons, Mem.live_nil, and_true, h₂.length_eq, h₁.length_eq, hlen]; omega,
+      by simp [h₂.len_eq, h₁.len_eq, hl1]⟩
+  refine hdiv.seq_le le_sup_right fun μ₃ h₃ ⟨p₃, g₃⟩ => ?_
+  have hkeep : ∀ k v, μ.store.get y.1 (y.2 + 2 * (j * N) + k) = some v →
+      μ₃.store.get y.1 (y.2 + 2 * (j * N) + k) = some v := fun k v h => by
+    have hn : ∀ b, b ≠ y.1 → ¬ Store.inBlock b 0 1 y.1 (y.2 + 2 * (j * N) + k) :=
+      fun b hb h' => hb h'.1.symm
+    rw [h₃.2 _ _ (hn _ (by omega)), h₂.2 _ _ (hn _ (by omega)), h₁.2 _ _ (hn _ (by omega))]
+    exact h
+  have hex : ∀ k < 2 * N, ∃ v, μ₃.store.get y.1 (y.2 + 2 * (j * N) + k) = some v := fun k hk => by
+    have hlw : (matrixWords (vectorColumn w)).length = 2 * N := by simp
+    exact ⟨_, hkeep k _ (Store.get_of_readBlock hw hk 0)⟩
+  have hmul := writes_loop_mul_cell (τ := τ) (ρ := colEnv N j t sm y g L) (m := μ₃) hS
+    (n := .const 2 * .var 0) (N := 2 * N) (b := y.1) (o := y.2 + 2 * (j * N)) (y := (L + 1, 0))
+    (X := ⟨2, .var 4 + .const 2 * (.var 1 * .var 0) + .var 8⟩) (Y := ⟨7, .const 0⟩)
+    rfl (fun _ _ => rfl) (fun _ _ => rfl)
+    (by simp only [Mem.live_cons, Mem.live_nil, and_true, h₃.length_eq, h₂.length_eq,
+      h₁.length_eq, hlen]; omega) hex g₃ (fun h => by have := h.1; omega)
+  refine hmul.mono (le_sup_of_le_left le_sup_left) fun μ₄ _ ⟨_, hm⟩ => ⟨v, hP, fun k hk x hx => ?_⟩
+  exact hm k hk x (hkeep k x hx)
+
+/-- The start of a column: the back substitution, the unit entry and the zeros below it. -/
+private def colHead (next : Stmt O Q) : Stmt O Q :=
+  .seq (.frame [.var 0, .var 1] [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩, ⟨3, .var 5⟩, ⟨2, .var 4⟩,
+    ⟨3, .var 5⟩] shiftedTriSolve) <|
+  .seq (.call (Has.inj (ScalarOp.lit 1)) [] []
+    [⟨2, .var 4 + .const 2 * (.var 1 * .var 0 + .var 1)⟩]) <|
+  .seq (.call (Has.inj (ScalarOp.lit 0)) [] []
+    [⟨2, .var 4 + .const 2 * (.var 1 * .var 0 + .var 1) + .const 1⟩]) <|
+  .seq (.loop (.var 0 - .const 1 - .var 1)
+    (.seq (.call (Has.inj (ScalarOp.lit 0)) [] []
+      [⟨2, .var 4 + .const 2 * (.var 1 * .var 0 + (.var 1 + .const 1 + .var 8))⟩])
+      (.call (Has.inj (ScalarOp.lit 0)) [] []
+        [⟨2, .var 4 + .const 2 * (.var 1 * .var 0 + (.var 1 + .const 1 + .var 8)) + .const 1⟩])))
+    next
+
+/-- The tree of a column is its start and its end. -/
+private theorem triEigColumn_eq :
+    (triEigColumn : Stmt O Q) = Stmt.allocs [.const 1, .const 1] (colHead colTail) := rfl
+
+/-- An entry of column `j` lies in the stored block. -/
+private theorem col_lt {N j k : ℕ} (hj : j < N) (hk : k < N) :
+    2 * (j * N + k) + 1 < 2 * (N * N) := by
+  have : (j + 1) * N ≤ N * N := Nat.mul_le_mul_right N hj
+  have e : (j + 1) * N = j * N + N := by ring
+  omega
+
+omit [Has IndexOp O] [Has CmpTst Q] in
+/-- The zeros below the unit entry of a column. -/
+private theorem colZeros_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    {N j : ℕ} (hj : j < N) {t sm y g : ℕ × ℕ} {L : ℕ} {τ : Tape ℝ} {μ : Mem ℝ}
+    (hry : y.2 + 2 * (N * N) ≤ μ.store.len y.1) :
+    Writes .total I τ (.loop (.var 0 - .const 1 - .var 1)
+      (.seq (.call (Has.inj (ScalarOp.lit 0)) [] []
+        [⟨2, .var 4 + .const 2 * (.var 1 * .var 0 + (.var 1 + .const 1 + .var 8))⟩])
+        (.call (Has.inj (ScalarOp.lit 0)) [] []
+          [⟨2, .var 4 + .const 2 * (.var 1 * .var 0 + (.var 1 + .const 1 + .var 8)) +
+            .const 1⟩]))) (colEnv N j t sm y g L)
+      (Store.inBlock y.1 (y.2 + 2 * (j * N + (j + 1))) (2 * (N - 1 - j)))
+      (fun μ' => ∀ k, j < k → k < N → μ'.store.get y.1 (y.2 + 2 * (j * N + k)) = some (M.lit 0) ∧
+        μ'.store.get y.1 (y.2 + 2 * (j * N + k) + 1) = some (M.lit 0)) μ := by
+  refine (writes_loop (N := N - 1 - j) rfl
+    (fun l => Store.inBlock y.1 (y.2 + 2 * (j * N + (j + 1))) (2 * l))
+    (fun l _ => Fp.inBlock_le_inBlock le_rfl (by omega))
+    (fun l μ' => ∀ k, j < k → k < j + 1 + l →
+      μ'.store.get y.1 (y.2 + 2 * (j * N + k)) = some (M.lit 0) ∧
+      μ'.store.get y.1 (y.2 + 2 * (j * N + k) + 1) = some (M.lit 0))
+    (fun k h₁ h₂ => by omega) fun l hl μ' hfr hP => ?_).mono le_rfl
+    fun μ' _ h k h₁ h₂ => h k h₁ (by omega)
+  have hl' : l < N - 1 - j := hl
+  have hc := col_lt hj (show j + 1 + l < N by omega)
+  have hsub : ∀ o, o = y.2 + 2 * (j * N + (j + 1 + l)) ∨ o = y.2 + 2 * (j * N + (j + 1 + l)) + 1 →
+      Store.inBlock y.1 o 1 ≤ Store.inBlock y.1 (y.2 + 2 * (j * N + (j + 1))) (2 * (l + 1)) := by
+    rintro o (rfl | rfl) <;> exact Fp.inBlock_le_inBlock (by omega) (by omega)
+  refine (writes_call_const (hS (.lit 0)) (z := (y.1, y.2 + 2 * (j * N + (j + 1 + l)))) rfl trivial
+    (by dsimp only; rw [hfr.len_eq]; omega)).seq_le (hsub _ (Or.inl rfl))
+    fun μ₁ h₁ ⟨_, g₁⟩ => ?_
+  refine (writes_call_const (hS (.lit 0)) (z := (y.1, y.2 + 2 * (j * N + (j + 1 + l)) + 1)) rfl
+    trivial (by dsimp only; rw [h₁.len_eq, hfr.len_eq]; omega)).mono (hsub _ (Or.inr rfl))
+    fun μ₂ h₂ ⟨_, g₂⟩ k hk₁ hk₂ => ?_
+  by_cases hk : k = j + 1 + l
+  · subst hk
+    refine ⟨?_, g₂⟩
+    rw [h₂.2 _ _ (by simp [Store.inBlock])]
+    exact g₁
+  · have ⟨a, b⟩ := hP k hk₁ (by omega)
+    have hn : ∀ o c, (o = y.2 + 2 * (j * N + k) ∨ o = y.2 + 2 * (j * N + k) + 1) →
+        (c = y.2 + 2 * (j * N + (j + 1 + l)) ∨ c = y.2 + 2 * (j * N + (j + 1 + l)) + 1) →
+        ¬ Store.inBlock y.1 c 1 y.1 o := by
+      rintro o c (rfl | rfl) (rfl | rfl) ⟨-, h₁, h₂⟩ <;> omega
+    constructor
+    · rw [h₂.2 _ _ (hn _ _ (Or.inl rfl) (Or.inr rfl)), h₁.2 _ _ (hn _ _ (Or.inl rfl) (Or.inl rfl))]
+      exact a
+    · rw [h₂.2 _ _ (hn _ _ (Or.inr rfl) (Or.inr rfl)), h₁.2 _ _ (hn _ _ (Or.inr rfl) (Or.inl rfl))]
+      exact b
+
+/-- The unit entry and the zeros below it complete the stored column. -/
+private theorem colFill_holds {M : Machine ℝ} {N j : ℕ} {y : ℕ × ℕ}
+    {T : Matrix (Fin N) (Fin N) ℂ} {smin : ℝ} {s : Store ℝ}
+    (hup : ∀ i < j, s.get y.1 (y.2 + 2 * (j * N + i)) =
+        some ((shiftedTriSolveWord M T smin j j).1 i).re ∧
+      s.get y.1 (y.2 + 2 * (j * N + i) + 1) = some ((shiftedTriSolveWord M T smin j j).1 i).im)
+    (hd₀ : s.get y.1 (y.2 + 2 * (j * N + j)) = some (M.lit 1))
+    (hd₁ : s.get y.1 (y.2 + 2 * (j * N + j) + 1) = some (M.lit 0))
+    (hlo : ∀ k, j < k → k < N → s.get y.1 (y.2 + 2 * (j * N + k)) = some (M.lit 0) ∧
+      s.get y.1 (y.2 + 2 * (j * N + k) + 1) = some (M.lit 0)) :
+    HoldsVector (y.1, y.2 + 2 * (j * N)) (triEigColumnWord M T smin j) s := by
+  have e : ∀ i : ℕ, y.2 + 2 * (j * N) + 2 * i = y.2 + 2 * (j * N + i) := fun i => by ring
+  refine ShiftedQR.HoldsVector.of_get (fun i => ?_) (fun i => ?_)
+  · simp only [e, triEigColumnWord]
+    split_ifs with h₁ h₂
+    · exact (hup i h₁).1
+    · rw [h₂]; exact hd₀
+    · exact (hlo i (by omega) i.isLt).1
+  · simp only [e, triEigColumnWord]
+    split_ifs with h₁ h₂
+    · exact (hup i h₁).2
+    · rw [h₂]; exact hd₁
+    · exact (hlo i (by omega) i.isLt).2
+
+omit [Has IndexOp O] [Has CmpTst Q] in
+/-- A column after its back substitution: the unit entry, the zeros, the norm and the scaling. -/
+private theorem colRest_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    {N j : ℕ} (hj : j < N) {t sm y g : ℕ × ℕ} {L : ℕ} {T : Matrix (Fin N) (Fin N) ℂ} {smin : ℝ}
+    {τ : Tape ℝ} {μ : Mem ℝ} {Pν : ℝ → Prop} (hyL : y.1 < L) (hgL : g.1 < L)
+    (hlen : μ.store.length = L + 2) (hl0 : μ.store.len L = 1) (hl1 : μ.store.len (L + 1) = 1)
+    (hry : y.2 + 2 * (N * N) ≤ μ.store.len y.1)
+    (hgc : ¬ Store.inBlock y.1 (y.2 + 2 * (j * N)) (2 * N) g.1 g.2)
+    (hup : ∀ i < j, μ.store.get y.1 (y.2 + 2 * (j * N + i)) =
+        some ((shiftedTriSolveWord M T smin j j).1 i).re ∧
+      μ.store.get y.1 (y.2 + 2 * (j * N + i) + 1) =
+        some ((shiftedTriSolveWord M T smin j j).1 i).im)
+    (hν : ∀ m : Mem ℝ, m.Live [(y.1, y.2 + 2 * (j * N)), (L, 0)] →
+      m.store.readBlock y.1 (y.2 + 2 * (j * N)) (2 * N) =
+        some (matrixWords (vectorColumn (triEigColumnWord M T smin j))) → 0 < m.store.len L →
+      Writes .total I τ (RoundedScalarBlas.nrm2 (Op := O) (Tst := Q)).body
+        (Env.frame [2 * N] [(y.1, y.2 + 2 * (j * N)), (L, 0)]) (Store.inBlock L 0 1)
+        (fun μ' => ∃ v : ℝ, μ'.store.get L 0 = some v ∧ Pν v) m) :
+    Writes .total I τ
+      (.seq (.call (Has.inj (ScalarOp.lit 1)) [] []
+        [⟨2, .var 4 + .const 2 * (.var 1 * .var 0 + .var 1)⟩]) <|
+       .seq (.call (Has.inj (ScalarOp.lit 0)) [] []
+        [⟨2, .var 4 + .const 2 * (.var 1 * .var 0 + .var 1) + .const 1⟩]) <|
+       .seq (.loop (.var 0 - .const 1 - .var 1)
+        (.seq (.call (Has.inj (ScalarOp.lit 0)) [] []
+          [⟨2, .var 4 + .const 2 * (.var 1 * .var 0 + (.var 1 + .const 1 + .var 8))⟩])
+          (.call (Has.inj (ScalarOp.lit 0)) [] []
+            [⟨2, .var 4 + .const 2 * (.var 1 * .var 0 + (.var 1 + .const 1 + .var 8)) +
+              .const 1⟩]))) colTail)
+      (colEnv N j t sm y g L)
+      (Store.inBlock y.1 (y.2 + 2 * (j * N)) (2 * N) ⊔ Store.inBlock L 0 1 ⊔
+        Store.inBlock (L + 1) 0 1)
+      (fun μ' => ∃ ν : ℝ, Pν ν ∧
+        (∀ i : Fin N, μ'.store.get y.1 (y.2 + 2 * (j * N + i)) =
+            some (M.mul (triEigColumnWord M T smin j i).re (M.div (M.lit 1) ν)) ∧
+          μ'.store.get y.1 (y.2 + 2 * (j * N + i) + 1) =
+            some (M.mul (triEigColumnWord M T smin j i).im (M.div (M.lit 1) ν))) ∧
+        μ'.store.get g.1 g.2 = μ.store.get g.1 g.2) μ := by
+  have hc := col_lt hj hj
+  have hF : ∀ {o n}, y.2 + 2 * (j * N) ≤ o → o + n ≤ y.2 + 2 * (j * N) + 2 * N →
+      Store.inBlock y.1 o n ≤ Store.inBlock y.1 (y.2 + 2 * (j * N)) (2 * N) ⊔
+        Store.inBlock L 0 1 ⊔ Store.inBlock (L + 1) 0 1 := fun h₁ h₂ =>
+    (Fp.inBlock_le_inBlock h₁ h₂).trans (le_sup_of_le_left le_sup_left)
+  have hjN : j * N + N ≤ N * N := by
+    have : (j + 1) * N ≤ N * N := Nat.mul_le_mul_right N hj
+    have e : (j + 1) * N = j * N + N := by ring
+    omega
+  refine (writes_call_const (hS (.lit 1)) (z := (y.1, y.2 + 2 * (j * N + j))) rfl trivial
+    (by dsimp only; omega)).seq_le (hF (by omega) (by omega)) fun μ₁ h₁ ⟨_, g₁⟩ => ?_
+  refine (writes_call_const (hS (.lit 0)) (z := (y.1, y.2 + 2 * (j * N + j) + 1)) rfl trivial
+    (by dsimp only; rw [h₁.len_eq]; omega)).seq_le (hF (by omega) (by omega))
+    fun μ₂ h₂ ⟨_, g₂⟩ => ?_
+  have hry₂ : y.2 + 2 * (N * N) ≤ μ₂.store.len y.1 := by rw [h₂.len_eq, h₁.len_eq]; exact hry
+  refine (colZeros_writes hS hj (t := t) (sm := sm) (g := g) (L := L) hry₂).seq_le
+    (hF (by omega) (by
+      have : j + 1 + (N - 1 - j) = N := by omega
+      have e : 2 * (j * N + (j + 1)) + 2 * (N - 1 - j) = 2 * (j * N) + 2 * N := by omega
+      omega)) fun μ₃ h₃ hlo => ?_
+  have hn₃ : ∀ o, o < y.2 + 2 * (j * N + (j + 1)) →
+      ¬ Store.inBlock y.1 (y.2 + 2 * (j * N + (j + 1))) (2 * (N - 1 - j)) y.1 o :=
+    fun o ho h => by have := h.2.1; omega
+  have hh := colFill_holds (M := M) (T := T) (smin := smin) (y := y) (N := N) (j := j) (s := μ₃.store)
+    (fun i hi => by
+      have ⟨a, b⟩ := hup i hi
+      have hne : ∀ c d, (c = y.2 + 2 * (j * N + i) ∨ c = y.2 + 2 * (j * N + i) + 1) →
+          (d = y.2 + 2 * (j * N + j) ∨ d = y.2 + 2 * (j * N + j) + 1) →
+          ¬ Store.inBlock y.1 d 1 y.1 c := by
+        rintro c d (rfl | rfl) (rfl | rfl) ⟨-, h₁, h₂⟩ <;> omega
+      constructor
+      · rw [h₃.2 _ _ (hn₃ _ (by omega)), h₂.2 _ _ (hne _ _ (Or.inl rfl) (Or.inr rfl)),
+          h₁.2 _ _ (hne _ _ (Or.inl rfl) (Or.inl rfl))]
+        exact a
+      · rw [h₃.2 _ _ (hn₃ _ (by omega)), h₂.2 _ _ (hne _ _ (Or.inr rfl) (Or.inr rfl)),
+          h₁.2 _ _ (hne _ _ (Or.inr rfl) (Or.inl rfl))]
+        exact b)
+    (by
+      rw [h₃.2 _ _ (hn₃ _ (by omega)), h₂.2 _ _ (by simp [Store.inBlock])]
+      exact g₁)
+    (by rw [h₃.2 _ _ (hn₃ _ (by omega))]; exact g₂) hlo
+  have hrd : μ₃.store.readBlock y.1 (y.2 + 2 * (j * N)) (2 * N) =
+      some (matrixWords (vectorColumn (triEigColumnWord M T smin j))) := by
+    simpa [HoldsMatrix] using hh
+  have hlen₃ : μ₃.store.length = L + 2 := by rw [h₃.length_eq, h₂.length_eq, h₁.length_eq, hlen]
+  have hl₃0 : μ₃.store.len L = 1 := by rw [h₃.len_eq, h₂.len_eq, h₁.len_eq, hl0]
+  have hl₃1 : μ₃.store.len (L + 1) = 1 := by rw [h₃.len_eq, h₂.len_eq, h₁.len_eq, hl1]
+  refine (colTail_writes hS hyL hlen₃ hl₃0 hl₃1 hrd hν).mono le_rfl
+    fun μ₄ h₄ ⟨ν, hP, hm⟩ => ⟨ν, hP, fun i => ?_, ?_⟩
+  · have e : y.2 + 2 * (j * N) + 2 * (i : ℕ) = y.2 + 2 * (j * N + i) := by ring
+    have hre := hm (2 * i) (by omega) _ (ShiftedQR.HoldsVector.get_re hh i)
+    have him := hm (2 * i + 1) (by omega) _ (by
+      have := ShiftedQR.HoldsVector.get_im hh i
+      simpa [Nat.add_assoc] using this)
+    rw [e] at hre
+    refine ⟨hre, ?_⟩
+    have e' : y.2 + 2 * (j * N) + (2 * (i : ℕ) + 1) = y.2 + 2 * (j * N + i) + 1 := by ring
+    rw [e'] at him
+    exact him
+  · have ng : ∀ {o n}, y.2 + 2 * (j * N) ≤ o → o + n ≤ y.2 + 2 * (j * N) + 2 * N →
+        ¬ Store.inBlock y.1 o n g.1 g.2 := fun h₁ h₂ h =>
+      hgc (Fp.inBlock_le_inBlock h₁ h₂ _ _ h)
+    rw [h₄.2 _ _ ?_, h₃.2 _ _ (ng (by omega) (by
+        have e : 2 * (j * N + (j + 1)) + 2 * (N - 1 - j) = 2 * (j * N) + 2 * N := by omega
+        omega)), h₂.2 _ _ (ng (by omega) (by omega)), h₁.2 _ _ (ng (by omega) (by omega))]
+    rintro ((h | h) | h)
+    · exact hgc h
+    · have := h.1; omega
+    · have := h.1; omega
+
+/-- **The words of one column**, on any scalar machine with index literals and exact comparisons:
+the run stores the column `NLAlib.Schur.triEigColumnWord` times the rounded reciprocal of a word
+`ν` with the property `Pν` of the rounded norm of that column, and sets the flag as
+`NLAlib.shiftedTriSolve_writes_word`. -/
+theorem triEigColumn_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hL : IsIndexLit M I) (hC : IsCmp id I) {N j : ℕ} (hj : j < N) {t sm y g : ℕ × ℕ}
+    {T : Matrix (Fin N) (Fin N) ℂ} {smin : ℝ} {τ : Tape ℝ} {μ : Mem ℝ} {Pν : ℝ → Prop}
+    (hT : HoldsMatrix t T μ.store) (hsm : μ.store.get sm.1 sm.2 = some smin)
+    (hl : μ.Live [t, sm, y, g]) (hroom : μ.Room [y, g] [2 * (N * N), 1])
+    (hap : Fp.Apart [t, sm, y, g] [2 * (N * N), 1, 2 * (N * N), 1])
+    (hν : ∀ (m : Mem ℝ) (z : ℕ × ℕ), m.Live [(y.1, y.2 + 2 * (j * N)), z] → z.1 ≠ y.1 →
+      z.2 < m.store.len z.1 → m.store.readBlock y.1 (y.2 + 2 * (j * N)) (2 * N) =
+        some (matrixWords (vectorColumn (triEigColumnWord M T smin j))) →
+      Writes .total I τ (RoundedScalarBlas.nrm2 (Op := O) (Tst := Q)).body
+        (Env.frame [2 * N] [(y.1, y.2 + 2 * (j * N)), z]) (Store.inBlock z.1 z.2 1)
+        (fun μ' => ∃ v : ℝ, μ'.store.get z.1 z.2 = some v ∧ Pν v) m) :
+    Writes .total I τ (triEigColumn (O := O) (Q := Q)) (Env.frame [N, j] [t, sm, y, g, y, g])
+      (Store.inBlock y.1 (y.2 + 2 * (j * N)) (2 * N) ⊔ Store.inBlock g.1 g.2 1)
+      (fun μ' => ∃ ν : ℝ, Pν ν ∧
+        (∀ i : Fin N, μ'.store.get y.1 (y.2 + 2 * (j * N + i)) =
+            some (M.mul (triEigColumnWord M T smin j i).re (M.div (M.lit 1) ν)) ∧
+          μ'.store.get y.1 (y.2 + 2 * (j * N + i) + 1) =
+            some (M.mul (triEigColumnWord M T smin j i).im (M.div (M.lit 1) ν))) ∧
+        (shiftedTriSolveFlag M T smin j = true → μ'.store.get g.1 g.2 = some (M.lit 1)) ∧
+        (shiftedTriSolveFlag M T smin j = false →
+          μ'.store.get g.1 g.2 = μ.store.get g.1 g.2)) μ := by
+  simp only [Mem.live_cons, Mem.live_nil, and_true] at hl
+  obtain ⟨htl, hsl, hyl, hgl⟩ := hl
+  simp only [Mem.room_cons, Mem.room_nil, and_true] at hroom
+  obtain ⟨hyr, hgr⟩ := hroom
+  have hyg : Fp.Disj (Store.inBlock y.1 y.2 (2 * (N * N))) (Store.inBlock g.1 g.2 1) :=
+    hap.2.2.1.mono le_rfl (by simp only [Fp.blocks]; fp_sub)
+  have hcol : Store.inBlock y.1 (y.2 + 2 * (j * N)) (2 * N) ≤
+      Store.inBlock y.1 y.2 (2 * (N * N)) := by
+    have := col_lt hj (show N - 1 < N by omega)
+    exact Fp.inBlock_le_inBlock (by omega) (by omega)
+  have hgc : ¬ Store.inBlock y.1 (y.2 + 2 * (j * N)) (2 * N) g.1 g.2 := fun h =>
+    hyg g.1 g.2 (hcol _ _ h) ⟨rfl, le_rfl, by omega⟩
+  rw [triEigColumn_eq]
+  refine writes_allocs_preserving_post (ns := [1, 1]) rfl
+    (fun {s s' p} hB ⟨ν, hP, h₁, h₂, h₃⟩ => ⟨ν, hP, fun i =>
+      ⟨hB.get_of hyl (h₁ i).1, hB.get_of hyl (h₁ i).2⟩, fun h => hB.get_of hgl (h₂ h),
+      fun h => ((hB g.1 hgl).2 g.2).trans (h₃ h)⟩) ?_
+  intro s₁ hlen hlens hB
+  set L := μ.store.length with hLdef
+  simp only [List.length_cons, List.length_nil] at hlen
+  have hl0 : s₁.len L = 1 := by simpa using hlens 0 (by simp)
+  have hl1 : s₁.len (L + 1) = 1 := by simpa using hlens 1 (by simp)
+  have hry : y.2 + 2 * (N * N) ≤ s₁.len y.1 := by rw [(hB y.1 hyl).1]; exact hyr
+  have hrg : g.2 + 1 ≤ s₁.len g.1 := by rw [(hB g.1 hgl).1]; exact hgr
+  have hsolve := shiftedTriSolve_writes_word (τ := τ) (μ := ⟨s₁, μ.pos⟩) hS hL hC hj
+    (hT.of_below hB htl) (hB.get_of hsl hsm)
+    (by simp only [Mem.live_cons, Mem.live_nil, and_true, hlen]; omega)
+    (by simp only [Mem.room_cons, Mem.room_nil, and_true]; exact ⟨hry, hrg⟩) hap
+  have hBig : ∀ {G : Fp}, G ≤ Store.inBlock y.1 (y.2 + 2 * (j * N)) (2 * N) ⊔
+      Store.inBlock g.1 g.2 1 → G ≤ (Store.inBlock y.1 (y.2 + 2 * (j * N)) (2 * N) ⊔
+        Store.inBlock g.1 g.2 1) ⊔ Fp.above L := fun h => h.trans le_sup_left
+  have hsub : Store.inBlock y.1 (y.2 + 2 * (j * N)) (2 * j) ≤
+      Store.inBlock y.1 (y.2 + 2 * (j * N)) (2 * N) :=
+    Fp.inBlock_le_inBlock le_rfl (by omega)
+  refine hsolve.frame_seq_le rfl rfl
+    (by simp only [Mem.live_cons, Mem.live_nil, and_true, hlen]; omega)
+    (hBig (sup_le_sup hsub le_rfl)) fun μ₁ h₁ ⟨hup, hf1, hf0⟩ => ?_
+  have hlen₁ : μ₁.store.length = L + 2 := by rw [h₁.length_eq]; simpa using hlen
+  refine (colRest_writes (t := t) (sm := sm) (g := g) (L := L) hS hj hyl hgl hlen₁
+    (by rw [h₁.len_eq]; exact hl0) (by rw [h₁.len_eq]; exact hl1)
+    (by rw [h₁.len_eq]; exact hry) hgc hup fun m hm hrd hz =>
+      hν m (L, 0) hm (by dsimp only; omega) hz hrd).mono ?_
+    fun μ₂ _ ⟨ν, hP, hc, hg⟩ => ⟨ν, hP, hc, fun h => hg.trans (hf1 h), fun h => ?_⟩
+  · refine sup_le (sup_le (le_sup_of_le_left le_sup_left) ?_) ?_
+    · exact fun b o h => Or.inr (show L ≤ b from h.1 ▸ le_rfl)
+    · exact fun b o h => Or.inr (show L ≤ b by have := h.1; omega)
+  · rw [hg, hf0 h]
+    exact (hB g.1 hgl).2 g.2
 
 /-- **One eigenvector column under the standard model**: on a scalar machine with the standard
 model at $\boldsymbol{u}$, $64(N + 1)\boldsymbol{u} \le 1$, index literals and exact comparisons,

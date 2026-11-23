@@ -1,0 +1,2994 @@
+{
+ "date": "2026-11-23",
+ "note": "Declarations removed by the routine layer (PR 154) that had no entry, so that old explorer links redirect (N12). Implementations (fooImpl) are routines (fooRoutine); block relations (fooRel and its generated field lemmas) are stated by routine specifications (fooSpec); operand-form statements (foo_spec, foo_writes, writes_foo, wp_foo, runs_foo, stored_foo_wp) are carried by the one judgment fooRoutine_meets; operand structures (FooOperands) by the routine interface. Hand-written problems and their geometry lemmas (RawProblem, StoredProblem, PackedProblem, initial_*, input_buffers, length_input) are replaced by typed inputs (Ops.Inputs, a family's Certification.inputs); context snapshots and guards by isolated data operands (Mem.Isolated, Routine.withData). For an entry marked removed whose rule is typed-inputs, isolated-data, routine-interface, certificate, intro-tactic or proof-step, no declaration restates the old one: the target is the construction that replaced it.",
+ "renames": [
+  {
+   "old": "NLAlib.CGS2.cgs2ExtendImpl",
+   "new": "NLAlib.CGS2.cgs2ExtendRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.CGS2.cgs2Extend_exact_spec",
+   "new": "NLAlib.CGS2.cgs2ExtendRoutine_meets_exact",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.CGS2.cgs2Extend_spec",
+   "new": "NLAlib.CGS2.cgs2ExtendRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.CGS2.cgs2Extend_triple_of",
+   "new": "NLAlib.CGS2.cgs2ExtendRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Deflation.initial_geometry",
+   "new": "NLAlib.Deflation.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Deflation.input_buffers",
+   "new": "NLAlib.Deflation.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Deflation.writes_program",
+   "new": "NLAlib.Deflation.deflateRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.HutchPlusPlus.Certification.staticPeak_program_le",
+   "new": "NLAlib.HutchPlusPlus.Certification.staticPeak_estimateProgram_le",
+   "rule": "naming"
+  },
+  {
+   "old": "NLAlib.HutchPlusPlus.Certification.wellTyped_program",
+   "new": "NLAlib.HutchPlusPlus.Certification.wellTyped_estimateProgram",
+   "rule": "naming"
+  },
+  {
+   "old": "NLAlib.HutchPlusPlus.instInhabitedSolve",
+   "new": "NLAlib.HutchPlusPlus.instInhabitedRoutine",
+   "rule": "naming"
+  },
+  {
+   "old": "NLAlib.HutchPlusPlus.writes_estimate",
+   "new": "NLAlib.HutchPlusPlus.estimateRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.initializeImpl",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.initializeRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.initialize_spec",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.initializeRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.initialize_writes",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.initializeRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.rounds_writes",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.roundsRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.solveImpl",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.solveRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.solve_wellTyped",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.solve_writes",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.step_spec",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.stepRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.stored_solve_wp",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Rounded.Stored.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.SolveOperands",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.solveRoutine",
+   "rule": "routine-interface",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.StepOperands",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.stepRoutine",
+   "rule": "routine-interface",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.initializeImpl",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.initializeRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.initialize_writes",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.initializeRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.roundsImpl",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.roundsRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.rounds_writes",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.roundsRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.solveImpl",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.solveRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.solveRel",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.solveRel_dom",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.solveRel_inLens",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.solveRel_nd",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.solveRel_outLens",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.solveRel_rel",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.solveRel_stream",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.solveRel_win",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.solve_spec",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.solve_writes",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.stepImpl",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.stepRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.stepRel",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.stepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.stepRel_dom",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.stepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.stepRel_inLens",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.stepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.stepRel_nd",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.stepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.stepRel_outLens",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.stepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.stepRel_rel",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.stepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.stepRel_stream",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.stepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.stepRel_win",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.stepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.step_spec",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.stepRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.step_writes",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.stepRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.Carried.stored_solve_wp",
+   "new": "NLAlib.Krylov.CG.HSCG.Carried.Stored.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.InitializeOperands",
+   "new": "NLAlib.Krylov.CG.HSCG.initializeRoutine",
+   "rule": "routine-interface",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.RoundsOperands",
+   "new": "NLAlib.Krylov.CG.HSCG.roundsRoutine",
+   "rule": "routine-interface",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.SolveOperands",
+   "new": "NLAlib.Krylov.CG.HSCG.solveRoutine",
+   "rule": "routine-interface",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.StepOperands",
+   "new": "NLAlib.Krylov.CG.HSCG.stepRoutine",
+   "rule": "routine-interface",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.initializeImpl",
+   "new": "NLAlib.Krylov.CG.HSCG.initializeRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.initializeRel",
+   "new": "NLAlib.Krylov.CG.HSCG.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.initializeRel_dom",
+   "new": "NLAlib.Krylov.CG.HSCG.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.initializeRel_inLens",
+   "new": "NLAlib.Krylov.CG.HSCG.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.initializeRel_nd",
+   "new": "NLAlib.Krylov.CG.HSCG.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.initializeRel_outLens",
+   "new": "NLAlib.Krylov.CG.HSCG.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.initializeRel_rel",
+   "new": "NLAlib.Krylov.CG.HSCG.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.initializeRel_stream",
+   "new": "NLAlib.Krylov.CG.HSCG.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.initializeRel_win",
+   "new": "NLAlib.Krylov.CG.HSCG.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.initialize_spec",
+   "new": "NLAlib.Krylov.CG.HSCG.initializeRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.initialize_writes",
+   "new": "NLAlib.Krylov.CG.HSCG.initializeRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.roundsImpl",
+   "new": "NLAlib.Krylov.CG.HSCG.roundsRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.roundsRel",
+   "new": "NLAlib.Krylov.CG.HSCG.roundsSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.roundsRel_dom",
+   "new": "NLAlib.Krylov.CG.HSCG.roundsSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.roundsRel_inLens",
+   "new": "NLAlib.Krylov.CG.HSCG.roundsSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.roundsRel_nd",
+   "new": "NLAlib.Krylov.CG.HSCG.roundsSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.roundsRel_outLens",
+   "new": "NLAlib.Krylov.CG.HSCG.roundsSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.roundsRel_rel",
+   "new": "NLAlib.Krylov.CG.HSCG.roundsSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.roundsRel_stream",
+   "new": "NLAlib.Krylov.CG.HSCG.roundsSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.roundsRel_win",
+   "new": "NLAlib.Krylov.CG.HSCG.roundsSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.rounds_spec",
+   "new": "NLAlib.Krylov.CG.HSCG.roundsRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.rounds_writes",
+   "new": "NLAlib.Krylov.CG.HSCG.roundsRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.runs_rounds",
+   "new": "NLAlib.Krylov.CG.HSCG.roundsRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.solveImpl",
+   "new": "NLAlib.Krylov.CG.HSCG.solveRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.solveRel",
+   "new": "NLAlib.Krylov.CG.HSCG.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.solveRel_dom",
+   "new": "NLAlib.Krylov.CG.HSCG.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.solveRel_inLens",
+   "new": "NLAlib.Krylov.CG.HSCG.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.solveRel_nd",
+   "new": "NLAlib.Krylov.CG.HSCG.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.solveRel_outLens",
+   "new": "NLAlib.Krylov.CG.HSCG.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.solveRel_rel",
+   "new": "NLAlib.Krylov.CG.HSCG.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.solveRel_stream",
+   "new": "NLAlib.Krylov.CG.HSCG.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.solveRel_win",
+   "new": "NLAlib.Krylov.CG.HSCG.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.solve_spec",
+   "new": "NLAlib.Krylov.CG.HSCG.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.solve_writes",
+   "new": "NLAlib.Krylov.CG.HSCG.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.stepImpl",
+   "new": "NLAlib.Krylov.CG.HSCG.stepRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.step_spec",
+   "new": "NLAlib.Krylov.CG.HSCG.stepRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.step_writes",
+   "new": "NLAlib.Krylov.CG.HSCG.stepRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSCG.stored_solve_wp",
+   "new": "NLAlib.Krylov.CG.HSCG.Stored.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.InitializeOperands",
+   "new": "NLAlib.Krylov.CG.HSPCG.initializeRoutine",
+   "rule": "routine-interface",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.StoredContext.guarded_meets",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.StoredContext.guarded_satisfies",
+   "rule": "interp-satisfies"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.StoredContext.scalar_guarded_laws",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.StoredContext.guarded_laws",
+   "rule": "proof-step",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.guardedStepImpl",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.guardedStep",
+   "rule": "routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeImpl",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeOracleRel",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeOracleSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeOracleRel_dom",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeOracleSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeOracleRel_inLens",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeOracleSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeOracleRel_nd",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeOracleSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeOracleRel_outLens",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeOracleSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeOracleRel_rel",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeOracleSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeOracleRel_stream",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeOracleSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeOracleRel_win",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeOracleSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeRel",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeRel_dom",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeRel_inLens",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeRel_nd",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeRel_outLens",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeRel_rel",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeRel_stream",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeRel_win",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.initialize_oracle_spec",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeRoutine_meets_oracle",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.initialize_oracle_writes",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeRoutine_meets_oracle",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.initialize_spec",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.initialize_writes",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.roundsImpl",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.rounds",
+   "rule": "routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.runs_initialize",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.initializeRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.solveImpl",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.solveRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.solve_writes",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.step_spec",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.stepRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.step_spec_with_pairings",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.stepRoutine_meets_with_pairings",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.step_writes",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.stepRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.step_writes_with_pairings",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.stepRoutine_meets_with_pairings",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.stored_zeroStart_wp",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.Stored.zeroStartRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.zeroStartImpl",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.zeroStartRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Rounded.zeroStart_writes",
+   "new": "NLAlib.Krylov.CG.HSPCG.Rounded.zeroStartRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.RoundsOperands",
+   "new": "NLAlib.Krylov.CG.HSPCG.roundsRoutine",
+   "rule": "routine-interface",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.SolveOperands",
+   "new": "NLAlib.Krylov.CG.HSPCG.solveRoutine",
+   "rule": "routine-interface",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.StepOperands",
+   "new": "NLAlib.Krylov.CG.HSPCG.stepRoutine",
+   "rule": "routine-interface",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Stored.accepts",
+   "new": "NLAlib.Krylov.CG.HSPCG.Stored.Certification.accepts",
+   "rule": "certification-namespace"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Stored.accepts_input",
+   "new": "NLAlib.Krylov.CG.HSPCG.Stored.Certification.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Stored.context_supply",
+   "new": "NLAlib.Krylov.CG.HSPCG.Stored.Certification.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Stored.initialBytes_problem",
+   "new": "NLAlib.Krylov.CG.HSPCG.Stored.Certification.initialBytes_problem",
+   "rule": "certification-namespace"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Stored.initial_len",
+   "new": "NLAlib.Krylov.CG.HSPCG.Stored.Certification.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Stored.initial_matrix",
+   "new": "NLAlib.Krylov.CG.HSPCG.Stored.Certification.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Stored.initial_preconditioner",
+   "new": "NLAlib.Krylov.CG.HSPCG.Stored.Certification.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Stored.initial_rhs",
+   "new": "NLAlib.Krylov.CG.HSPCG.Stored.Certification.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Stored.matrix",
+   "new": "NLAlib.Krylov.CG.HSPCG.Stored.Certification.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Stored.outputs",
+   "new": "NLAlib.Krylov.CG.HSPCG.Stored.Certification.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Stored.preconditioner",
+   "new": "NLAlib.Krylov.CG.HSPCG.Stored.Certification.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.Stored.problem",
+   "new": "NLAlib.Krylov.CG.HSPCG.Stored.Certification.problem",
+   "rule": "certification-namespace"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.StoredContext.guarded_meets",
+   "new": "NLAlib.Krylov.CG.HSPCG.StoredContext.guarded_satisfies",
+   "rule": "interp-satisfies"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.StoresState.read_x",
+   "new": "NLAlib.Krylov.CG.HSPCG.StoresState.read_r_z",
+   "rule": "proof-step",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.initializeImpl",
+   "new": "NLAlib.Krylov.CG.HSPCG.initializeRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.initializeRel",
+   "new": "NLAlib.Krylov.CG.HSPCG.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.initializeRel_dom",
+   "new": "NLAlib.Krylov.CG.HSPCG.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.initializeRel_inLens",
+   "new": "NLAlib.Krylov.CG.HSPCG.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.initializeRel_nd",
+   "new": "NLAlib.Krylov.CG.HSPCG.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.initializeRel_outLens",
+   "new": "NLAlib.Krylov.CG.HSPCG.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.initializeRel_rel",
+   "new": "NLAlib.Krylov.CG.HSPCG.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.initializeRel_stream",
+   "new": "NLAlib.Krylov.CG.HSPCG.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.initializeRel_win",
+   "new": "NLAlib.Krylov.CG.HSPCG.initializeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.initialize_spec",
+   "new": "NLAlib.Krylov.CG.HSPCG.initializeRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.initialize_writes",
+   "new": "NLAlib.Krylov.CG.HSPCG.initializeRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.roundsImpl",
+   "new": "NLAlib.Krylov.CG.HSPCG.roundsRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.roundsRel",
+   "new": "NLAlib.Krylov.CG.HSPCG.roundsSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.roundsRel_dom",
+   "new": "NLAlib.Krylov.CG.HSPCG.roundsSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.roundsRel_inLens",
+   "new": "NLAlib.Krylov.CG.HSPCG.roundsSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.roundsRel_nd",
+   "new": "NLAlib.Krylov.CG.HSPCG.roundsSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.roundsRel_outLens",
+   "new": "NLAlib.Krylov.CG.HSPCG.roundsSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.roundsRel_rel",
+   "new": "NLAlib.Krylov.CG.HSPCG.roundsSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.roundsRel_stream",
+   "new": "NLAlib.Krylov.CG.HSPCG.roundsSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.roundsRel_win",
+   "new": "NLAlib.Krylov.CG.HSPCG.roundsSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.rounds_spec",
+   "new": "NLAlib.Krylov.CG.HSPCG.roundsRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.rounds_writes",
+   "new": "NLAlib.Krylov.CG.HSPCG.roundsRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.solveImpl",
+   "new": "NLAlib.Krylov.CG.HSPCG.solveRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.solveRel",
+   "new": "NLAlib.Krylov.CG.HSPCG.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.solveRel_dom",
+   "new": "NLAlib.Krylov.CG.HSPCG.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.solveRel_inLens",
+   "new": "NLAlib.Krylov.CG.HSPCG.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.solveRel_nd",
+   "new": "NLAlib.Krylov.CG.HSPCG.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.solveRel_outLens",
+   "new": "NLAlib.Krylov.CG.HSPCG.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.solveRel_rel",
+   "new": "NLAlib.Krylov.CG.HSPCG.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.solveRel_stream",
+   "new": "NLAlib.Krylov.CG.HSPCG.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.solveRel_win",
+   "new": "NLAlib.Krylov.CG.HSPCG.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.solve_spec",
+   "new": "NLAlib.Krylov.CG.HSPCG.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.solve_writes",
+   "new": "NLAlib.Krylov.CG.HSPCG.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.stepImpl",
+   "new": "NLAlib.Krylov.CG.HSPCG.stepRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.stepRel",
+   "new": "NLAlib.Krylov.CG.HSPCG.stepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.stepRel_dom",
+   "new": "NLAlib.Krylov.CG.HSPCG.stepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.stepRel_inLens",
+   "new": "NLAlib.Krylov.CG.HSPCG.stepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.stepRel_nd",
+   "new": "NLAlib.Krylov.CG.HSPCG.stepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.stepRel_outLens",
+   "new": "NLAlib.Krylov.CG.HSPCG.stepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.stepRel_rel",
+   "new": "NLAlib.Krylov.CG.HSPCG.stepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.stepRel_stream",
+   "new": "NLAlib.Krylov.CG.HSPCG.stepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.stepRel_win",
+   "new": "NLAlib.Krylov.CG.HSPCG.stepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.step_spec",
+   "new": "NLAlib.Krylov.CG.HSPCG.stepRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.step_writes",
+   "new": "NLAlib.Krylov.CG.HSPCG.stepRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.HSPCG.stored_solve_wp",
+   "new": "NLAlib.Krylov.CG.HSPCG.Stored.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.RawProblem.forgetInput",
+   "new": "NLAlib.Ops.Inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.RawProblem.initialBytes_eq",
+   "new": "NLAlib.Ops.Inputs.initialBytes_eq",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.RawProblem.initial_len",
+   "new": "NLAlib.Ops.Inputs.initial_eq",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.RawProblem.initial_readBlock",
+   "new": "NLAlib.Ops.Inputs.initial_eq",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.RawProblem.input_buffers",
+   "new": "NLAlib.Ops.Inputs.buffers_eq",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.RawProblem.length_input",
+   "new": "NLAlib.Ops.Inputs.buffers_eq",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.RawProblem.problem",
+   "new": "NLAlib.Ops.Inputs.problem",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.RawProblem.restricted",
+   "new": "NLAlib.Ops.Inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.SweepOperands",
+   "new": "NLAlib.Krylov.CG.Reorth.sweepRoutine",
+   "rule": "routine-interface",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.roundImpl",
+   "new": "NLAlib.Krylov.CG.Reorth.round",
+   "rule": "routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.runs_sweep",
+   "new": "NLAlib.Krylov.CG.Reorth.sweepRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.solveImpl",
+   "new": "NLAlib.Krylov.CG.Reorth.solveRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.solve_writes",
+   "new": "NLAlib.Krylov.CG.Reorth.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.stored_solve_wp",
+   "new": "NLAlib.Krylov.CG.Reorth.Stored.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.sweepImpl",
+   "new": "NLAlib.Krylov.CG.Reorth.sweepRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.sweepRel",
+   "new": "NLAlib.Krylov.CG.Reorth.sweepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.sweepRel_dom",
+   "new": "NLAlib.Krylov.CG.Reorth.sweepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.sweepRel_inLens",
+   "new": "NLAlib.Krylov.CG.Reorth.sweepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.sweepRel_nd",
+   "new": "NLAlib.Krylov.CG.Reorth.sweepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.sweepRel_outLens",
+   "new": "NLAlib.Krylov.CG.Reorth.sweepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.sweepRel_rel",
+   "new": "NLAlib.Krylov.CG.Reorth.sweepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.sweepRel_stream",
+   "new": "NLAlib.Krylov.CG.Reorth.sweepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.sweepRel_win",
+   "new": "NLAlib.Krylov.CG.Reorth.sweepSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.sweep_spec",
+   "new": "NLAlib.Krylov.CG.Reorth.sweepRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.Reorth.sweep_writes",
+   "new": "NLAlib.Krylov.CG.Reorth.sweepRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.StoredProblem.context_supply",
+   "new": "NLAlib.Ops.Inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.StoredProblem.initial_len",
+   "new": "NLAlib.Ops.Inputs.initial_eq",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.StoredProblem.initial_matrix",
+   "new": "NLAlib.Ops.Inputs.initial_eq",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.StoredProblem.initial_rhs",
+   "new": "NLAlib.Ops.Inputs.initial_eq",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.StoredProblem.matrix",
+   "new": "NLAlib.Ops.Inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.StoredProblem.problem",
+   "new": "NLAlib.Ops.Inputs.problem",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.staticCost_zeroVector",
+   "new": "NLAlib.Ops.stmtCost_fillMap",
+   "rule": "fill-routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.writes_zeroVector",
+   "new": "NLAlib.Ops.fillRoutine_meets",
+   "rule": "fill-routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.writes_zeroVector_readBlock",
+   "new": "NLAlib.Ops.fillRoutine_meets",
+   "rule": "fill-routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.CG.zeroVector",
+   "new": "NLAlib.Ops.fillRoutine",
+   "rule": "fill-routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.Certification.staticPeak_program_le",
+   "new": "NLAlib.Krylov.GolubKahan.Band.Certification.staticPeak_solveProgram_le",
+   "rule": "naming"
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.Certification.staticPeak_program_le_solvePeak",
+   "new": "NLAlib.Krylov.GolubKahan.Band.Certification.staticPeak_solveProgram_le_solvePeak",
+   "rule": "naming"
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.Certification.wellTyped_program",
+   "new": "NLAlib.Krylov.GolubKahan.Band.Certification.wellTyped_solveProgram",
+   "rule": "naming"
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.Certification.wp_program",
+   "new": "NLAlib.Krylov.GolubKahan.Band.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.Rounded.linkedSolve_spec",
+   "new": "NLAlib.Krylov.GolubKahan.Band.Rounded.linkedSolveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.Rounded.solveRel",
+   "new": "NLAlib.Krylov.GolubKahan.Band.Rounded.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.Rounded.solve_spec",
+   "new": "NLAlib.Krylov.GolubKahan.Band.Rounded.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.Rounded.solve_writes",
+   "new": "NLAlib.Krylov.GolubKahan.Band.Rounded.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.SolveOperands",
+   "new": "NLAlib.Krylov.GolubKahan.Band.solveRoutine",
+   "rule": "routine-interface",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.linkedSolve_spec",
+   "new": "NLAlib.Krylov.GolubKahan.Band.linkedSolveRoutine_meets_exact",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.solveRel",
+   "new": "NLAlib.Krylov.GolubKahan.Band.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.solveRelOf",
+   "new": "NLAlib.Krylov.GolubKahan.Band.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.solveRelOf_dom",
+   "new": "NLAlib.Krylov.GolubKahan.Band.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.solveRelOf_inLens",
+   "new": "NLAlib.Krylov.GolubKahan.Band.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.solveRelOf_nd",
+   "new": "NLAlib.Krylov.GolubKahan.Band.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.solveRelOf_outLens",
+   "new": "NLAlib.Krylov.GolubKahan.Band.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.solveRelOf_rel",
+   "new": "NLAlib.Krylov.GolubKahan.Band.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.solveRelOf_stream",
+   "new": "NLAlib.Krylov.GolubKahan.Band.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.solveRelOf_win",
+   "new": "NLAlib.Krylov.GolubKahan.Band.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.solve_spec",
+   "new": "NLAlib.Krylov.GolubKahan.Band.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.solve_spec_of",
+   "new": "NLAlib.Krylov.GolubKahan.Band.solveRoutine_meets_of",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.solve_writes",
+   "new": "NLAlib.Krylov.GolubKahan.Band.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.GolubKahan.Band.solve_writes_of",
+   "new": "NLAlib.Krylov.GolubKahan.Band.solveRoutine_meets_of",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Certification.initial_live",
+   "new": "NLAlib.Krylov.Lanczos.Certification.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Certification.initial_readBlock",
+   "new": "NLAlib.Krylov.Lanczos.Certification.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Certification.initial_room",
+   "new": "NLAlib.Krylov.Lanczos.Certification.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Certification.input_buffers",
+   "new": "NLAlib.Krylov.Lanczos.Certification.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Certification.length_input",
+   "new": "NLAlib.Krylov.Lanczos.Certification.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.NormalizeOperands",
+   "new": "NLAlib.Krylov.Lanczos.normalizeRoutine",
+   "rule": "routine-interface",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.PackedProblem.initialBytes_problem",
+   "new": "NLAlib.Ops.Inputs.initialBytes_eq",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.PackedProblem.initial_live",
+   "new": "NLAlib.Ops.Inputs.initial_eq",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.PackedProblem.initial_readBlock",
+   "new": "NLAlib.Ops.Inputs.initial_eq",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.PackedProblem.initial_room",
+   "new": "NLAlib.Ops.Inputs.initial_eq",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.PackedProblem.input_buffers",
+   "new": "NLAlib.Ops.Inputs.buffers_eq",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.PackedProblem.length_input",
+   "new": "NLAlib.Ops.Inputs.buffers_eq",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.PackedProblem.problem",
+   "new": "NLAlib.Ops.Inputs.problem",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.PassOperands",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgsPassRoutine",
+   "rule": "routine-interface",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.Rounded.solveRel",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.Rounded.solveRel_dom",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.Rounded.solveRel_inLens",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.Rounded.solveRel_nd",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.Rounded.solveRel_outLens",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.Rounded.solveRel_rel",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.Rounded.solveRel_stream",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.Rounded.solveRel_win",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.Rounded.solve_spec",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.Rounded.solve_writes",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.Rounded.stored_solve_wp",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.Rounded.wellTyped_program",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Rounded.Stored.Certification.algorithm",
+   "rule": "certificate",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.SolveOperands",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.solveRoutine",
+   "rule": "routine-interface",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.TwoPassOperands",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgs2Routine",
+   "rule": "routine-interface",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.cgs2Impl",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgs2Routine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.cgs2_spec",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgs2Routine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.cgs2_spec_exact",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgs2Routine_meets_exact",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.cgs2_writes",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgs2Routine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.cgs2_writes_exact",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgs2Routine_meets_exact",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.cgsPassImpl",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgsPassRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.cgsPass_spec",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgsPassRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.cgsPass_spec_exact",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgsPassRoutine_meets_exact",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.cgsPass_writes",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgsPassRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.passRel",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgsPassSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.passRel_dom",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgsPassSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.passRel_inLens",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgsPassSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.passRel_nd",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgsPassSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.passRel_outLens",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgsPassSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.passRel_rel",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgsPassSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.passRel_stream",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgsPassSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.passRel_win",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgsPassSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.solveImpl",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.solveRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.solveRel",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.solveRel_dom",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.solveRel_inLens",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.solveRel_nd",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.solveRel_outLens",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.solveRel_rel",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.solveRel_stream",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.solveRel_win",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.solve_spec",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.solve_writes",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.stored_solve_wp",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.Stored.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.twoPassRel",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgs2Spec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.twoPassRel_dom",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgs2Spec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.twoPassRel_inLens",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgs2Spec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.twoPassRel_nd",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgs2Spec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.twoPassRel_outLens",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgs2Spec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.twoPassRel_rel",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgs2Spec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.twoPassRel_stream",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgs2Spec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Reorth.twoPassRel_win",
+   "new": "NLAlib.Krylov.Lanczos.Reorth.cgs2Spec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Rounded.solveRel",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Rounded.solveRel_dom",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Rounded.solveRel_inLens",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Rounded.solveRel_nd",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Rounded.solveRel_outLens",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Rounded.solveRel_rel",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Rounded.solveRel_stream",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Rounded.solveRel_win",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Rounded.solve_spec",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Rounded.solve_writes",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Rounded.stored_solve_wp",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.Stored.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.Rounded.wellTyped_program",
+   "new": "NLAlib.Krylov.Lanczos.Rounded.Stored.Certification.algorithm",
+   "rule": "certificate",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.SolveOperands",
+   "new": "NLAlib.Krylov.Lanczos.solveRoutine",
+   "rule": "routine-interface",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.StoredProblem.denseMatrix_replicate_zero",
+   "new": "NLAlib.Ops.Inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.StoredProblem.extra",
+   "new": "NLAlib.Ops.Inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.StoredProblem.initialBytes_eq",
+   "new": "NLAlib.Ops.Inputs.initialBytes_eq",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.StoredProblem.initial_live",
+   "new": "NLAlib.Ops.Inputs.initial_eq",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.StoredProblem.initial_matrix",
+   "new": "NLAlib.Ops.Inputs.initial_eq",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.StoredProblem.initial_rhs",
+   "new": "NLAlib.Ops.Inputs.initial_eq",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.StoredProblem.initial_room",
+   "new": "NLAlib.Ops.Inputs.initial_eq",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.StoredProblem.matrix",
+   "new": "NLAlib.Ops.Inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.StoredProblem.matrix_isHermitian",
+   "new": "NLAlib.Ops.Inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.StoredProblem.problem",
+   "new": "NLAlib.Ops.Inputs.problem",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.StoredProblem.supply",
+   "new": "NLAlib.Ops.Inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.normalizeImpl",
+   "new": "NLAlib.Krylov.Lanczos.normalizeRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.normalizeRel",
+   "new": "NLAlib.Krylov.Lanczos.normalizeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.normalizeRel_dom",
+   "new": "NLAlib.Krylov.Lanczos.normalizeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.normalizeRel_inLens",
+   "new": "NLAlib.Krylov.Lanczos.normalizeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.normalizeRel_nd",
+   "new": "NLAlib.Krylov.Lanczos.normalizeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.normalizeRel_outLens",
+   "new": "NLAlib.Krylov.Lanczos.normalizeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.normalizeRel_rel",
+   "new": "NLAlib.Krylov.Lanczos.normalizeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.normalizeRel_stream",
+   "new": "NLAlib.Krylov.Lanczos.normalizeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.normalizeRel_win",
+   "new": "NLAlib.Krylov.Lanczos.normalizeSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.normalizeRoundedRel",
+   "new": "NLAlib.Krylov.Lanczos.normalizeRoundedSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.normalizeRoundedRel_dom",
+   "new": "NLAlib.Krylov.Lanczos.normalizeRoundedSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.normalizeRoundedRel_inLens",
+   "new": "NLAlib.Krylov.Lanczos.normalizeRoundedSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.normalizeRoundedRel_nd",
+   "new": "NLAlib.Krylov.Lanczos.normalizeRoundedSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.normalizeRoundedRel_outLens",
+   "new": "NLAlib.Krylov.Lanczos.normalizeRoundedSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.normalizeRoundedRel_rel",
+   "new": "NLAlib.Krylov.Lanczos.normalizeRoundedSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.normalizeRoundedRel_stream",
+   "new": "NLAlib.Krylov.Lanczos.normalizeRoundedSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.normalizeRoundedRel_win",
+   "new": "NLAlib.Krylov.Lanczos.normalizeRoundedSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.normalize_rounded_spec",
+   "new": "NLAlib.Krylov.Lanczos.normalizeRoutine_meets_rounded",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.normalize_rounded_writes",
+   "new": "NLAlib.Krylov.Lanczos.normalizeRoutine_meets_rounded",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.normalize_spec",
+   "new": "NLAlib.Krylov.Lanczos.normalizeRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.normalize_writes",
+   "new": "NLAlib.Krylov.Lanczos.normalizeRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.solveImpl",
+   "new": "NLAlib.Krylov.Lanczos.solveRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.solveRel",
+   "new": "NLAlib.Krylov.Lanczos.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.solveRel_dom",
+   "new": "NLAlib.Krylov.Lanczos.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.solveRel_inLens",
+   "new": "NLAlib.Krylov.Lanczos.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.solveRel_nd",
+   "new": "NLAlib.Krylov.Lanczos.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.solveRel_outLens",
+   "new": "NLAlib.Krylov.Lanczos.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.solveRel_rel",
+   "new": "NLAlib.Krylov.Lanczos.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.solveRel_stream",
+   "new": "NLAlib.Krylov.Lanczos.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.solveRel_win",
+   "new": "NLAlib.Krylov.Lanczos.solveSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.solve_spec",
+   "new": "NLAlib.Krylov.Lanczos.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.solve_writes",
+   "new": "NLAlib.Krylov.Lanczos.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.stmtCost_zero",
+   "new": "NLAlib.Ops.stmtCost_fillMap",
+   "rule": "fill-routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.stmtPeak_zero_le",
+   "new": "NLAlib.Ops.stmtPeak_fillMap_le",
+   "rule": "fill-routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.stored_solve_wp",
+   "new": "NLAlib.Krylov.Lanczos.Stored.solveRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.zero",
+   "new": "NLAlib.Ops.fillRoutine",
+   "rule": "fill-routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.zeroImpl",
+   "new": "NLAlib.Ops.fillRoutine",
+   "rule": "fill-routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.zeroRel",
+   "new": "NLAlib.Ops.fillSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.zeroRel_dom",
+   "new": "NLAlib.Ops.fillSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.zeroRel_inLens",
+   "new": "NLAlib.Ops.fillSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.zeroRel_nd",
+   "new": "NLAlib.Ops.fillSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.zeroRel_outLens",
+   "new": "NLAlib.Ops.fillSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.zeroRel_rel",
+   "new": "NLAlib.Ops.fillSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.zeroRel_stream",
+   "new": "NLAlib.Ops.fillSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.zeroRel_win",
+   "new": "NLAlib.Ops.fillSpec",
+   "rule": "routine-spec",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.zero_spec",
+   "new": "NLAlib.Ops.fillRoutine_meets",
+   "rule": "fill-routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Krylov.Lanczos.zero_writes",
+   "new": "NLAlib.Ops.fillRoutine_meets",
+   "rule": "fill-routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.MGS.Certification.staticPeak_program",
+   "new": "NLAlib.MGS.Certification.staticPeak_factorProgram",
+   "rule": "naming"
+  },
+  {
+   "old": "NLAlib.MGS.ScalarCertification.instInhabitedScalarCertification",
+   "new": "NLAlib.MGS.Scalar.Certification.instInhabitedScalarCertification",
+   "rule": "naming"
+  },
+  {
+   "old": "NLAlib.MGS.writes_factor",
+   "new": "NLAlib.MGS.factorRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.BlockRel.contextSnapshot_of_post",
+   "new": "NLAlib.Ops.BlockRel.isolated_of_post",
+   "rule": "isolated-data"
+  },
+  {
+   "old": "NLAlib.Ops.BlockRel.eqOff_above_of_post",
+   "new": "NLAlib.Ops.BlockRel.isolated_of_post",
+   "rule": "isolated-data",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.ContextDense.callS_source",
+   "new": "NLAlib.Ops.ContextDense.callS_source_of_ne",
+   "rule": "isolated-data"
+  },
+  {
+   "old": "NLAlib.Ops.ContextDense.wp_source",
+   "new": "NLAlib.Ops.ContextDense.source_wp_of_ne",
+   "rule": "isolated-data"
+  },
+  {
+   "old": "NLAlib.Ops.ContextDenseRounded.callS_source",
+   "new": "NLAlib.Ops.ContextDenseRounded.callS_source_of_ne",
+   "rule": "isolated-data"
+  },
+  {
+   "old": "NLAlib.Ops.ContextDenseRounded.callS_source_fn",
+   "new": "NLAlib.Ops.ContextDenseRounded.callS_source_fn_of_ne",
+   "rule": "isolated-data"
+  },
+  {
+   "old": "NLAlib.Ops.ContextDenseRounded.impl",
+   "new": "NLAlib.Ops.ContextDense.impl",
+   "rule": "routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.ContextDenseRounded.wp_source",
+   "new": "NLAlib.Ops.ContextDenseRounded.source_wp_of_ne",
+   "rule": "isolated-data"
+  },
+  {
+   "old": "NLAlib.Ops.ContextDenseRounded.wp_source_fn",
+   "new": "NLAlib.Ops.ContextDenseRounded.source_wp_fn_of_ne",
+   "rule": "isolated-data"
+  },
+  {
+   "old": "NLAlib.Ops.ContextLinear.guarded_meets",
+   "new": "NLAlib.Ops.ContextLinear.guarded_satisfies",
+   "rule": "interp-satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.ContextLinear.meets_guarded",
+   "new": "NLAlib.Ops.ContextLinear.satisfies_guarded",
+   "rule": "interp-satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.ContextLinearRounded.meets_guarded",
+   "new": "NLAlib.Ops.ContextLinearRounded.satisfies_guarded",
+   "rule": "interp-satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Env.Above",
+   "new": "NLAlib.Ops.Mem.Isolated",
+   "rule": "isolated-data",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.Env.Above.frame",
+   "new": "NLAlib.Ops.Mem.Isolated",
+   "rule": "isolated-data",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.Env.Above.pushBuf",
+   "new": "NLAlib.Ops.Mem.Isolated.push",
+   "rule": "isolated-data",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.Env.Above.pushIdx",
+   "new": "NLAlib.Ops.Mem.Isolated",
+   "rule": "isolated-data",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.Examples.FixedPoint.wp_axpyLoop",
+   "new": "NLAlib.Ops.Examples.FixedPoint.axpyLoopRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.Examples.bilinearImpl",
+   "new": "NLAlib.Ops.Examples.bilinearRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.cgsImpl",
+   "new": "NLAlib.Ops.Examples.cgsRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.gemmImpl",
+   "new": "NLAlib.Ops.Examples.gemmRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.hutchImpl",
+   "new": "NLAlib.Ops.Examples.hutchRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.mgsImpl",
+   "new": "NLAlib.Ops.Examples.mgsRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.nmvImpl",
+   "new": "NLAlib.Ops.Examples.nmvRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.npowImpl",
+   "new": "NLAlib.Ops.Examples.npowRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Ops.Examples.splitImpl",
+   "new": "NLAlib.Ops.Examples.splitRoutine",
+   "rule": "routine"
+  },
+  {
+   "old": "NLAlib.Ops.Impl.Meets",
+   "new": "NLAlib.Ops.Impl.Satisfies",
+   "rule": "interp-satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Impl.meets_fn_of_run",
+   "new": "NLAlib.Ops.Impl.satisfies_fn_of_run",
+   "rule": "interp-satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Impl.meets_liberal_abort",
+   "new": "NLAlib.Ops.Impl.satisfies_liberal_abort",
+   "rule": "interp-satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Impl.meets_of_writes",
+   "new": "NLAlib.Ops.Impl.satisfies_of_writes",
+   "rule": "interp-satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Impl.meets_rel",
+   "new": "NLAlib.Ops.Impl.satisfies_rel",
+   "rule": "interp-satisfies"
+  },
+  {
+   "old": "NLAlib.Ops.Impl.program",
+   "new": "NLAlib.Ops.Routine.close",
+   "rule": "routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.Interp.callS_guardContext",
+   "new": "NLAlib.Ops.Interp.callS_guardIsolated",
+   "rule": "isolated-data"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.callS_guardContext_of_good",
+   "new": "NLAlib.Ops.Interp.callS_guardIsolated_of_good",
+   "rule": "isolated-data"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.guardContext",
+   "new": "NLAlib.Ops.Interp.guardIsolated",
+   "rule": "isolated-data"
+  },
+  {
+   "old": "NLAlib.Ops.Interp.meets_guardContext",
+   "new": "NLAlib.Ops.Interp.satisfies_guardIsolated",
+   "rule": "isolated-data"
+  },
+  {
+   "old": "NLAlib.Ops.Mem.ContextSnapshot",
+   "new": "NLAlib.Ops.Mem.Isolated",
+   "rule": "isolated-data"
+  },
+  {
+   "old": "NLAlib.Ops.Mem.ContextSnapshot.live",
+   "new": "NLAlib.Ops.Mem.Isolated.live",
+   "rule": "isolated-data"
+  },
+  {
+   "old": "NLAlib.Ops.Mem.ContextSnapshot.pop",
+   "new": "NLAlib.Ops.Mem.Isolated.pop",
+   "rule": "isolated-data"
+  },
+  {
+   "old": "NLAlib.Ops.Mem.ContextSnapshot.push",
+   "new": "NLAlib.Ops.Mem.Isolated.push",
+   "rule": "isolated-data"
+  },
+  {
+   "old": "NLAlib.Ops.Mem.ContextSnapshot.refl",
+   "new": "NLAlib.Ops.Mem.Isolated.refl",
+   "rule": "isolated-data"
+  },
+  {
+   "old": "NLAlib.Ops.Operand.above_of_eval",
+   "new": "NLAlib.Ops.Mem.Isolated",
+   "rule": "isolated-data",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.Operand.above_of_evalList",
+   "new": "NLAlib.Ops.Mem.Isolated",
+   "rule": "isolated-data",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.Problem.withContext",
+   "new": "NLAlib.Ops.Routine.withData",
+   "rule": "isolated-data",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.Problem.withContext.buffers_eq",
+   "new": "NLAlib.Ops.Routine.withData",
+   "rule": "isolated-data",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.Problem.withContext.extra_input",
+   "new": "NLAlib.Ops.Routine.withData",
+   "rule": "isolated-data",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.Problem.withContext.initialBytes_eq",
+   "new": "NLAlib.Ops.Routine.withData",
+   "rule": "isolated-data",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.Problem.withContext.initial_len_context",
+   "new": "NLAlib.Ops.Routine.withData",
+   "rule": "isolated-data",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.Problem.withContext.initial_len_original",
+   "new": "NLAlib.Ops.Routine.withData",
+   "rule": "isolated-data",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.Problem.withContext.initial_readBlock_context",
+   "new": "NLAlib.Ops.Routine.withData",
+   "rule": "isolated-data",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.Problem.withContext.initial_readBlock_original",
+   "new": "NLAlib.Ops.Routine.withData",
+   "rule": "isolated-data",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.Problem.withContext.initial_store",
+   "new": "NLAlib.Ops.Routine.withData",
+   "rule": "isolated-data",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.Problem.withContext.length_context",
+   "new": "NLAlib.Ops.Routine.withData",
+   "rule": "isolated-data",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.Problem.withContext.originalInput",
+   "new": "NLAlib.Ops.Routine.withData",
+   "rule": "isolated-data",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.RCLikeScalar.writes_dot",
+   "new": "NLAlib.Ops.RCLikeScalar.dotRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.RCLikeScalar.writes_nrm2",
+   "new": "NLAlib.Ops.RCLikeScalar.nrm2Routine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.RCLikeScalar.writes_sum",
+   "new": "NLAlib.Ops.RCLikeScalar.sumRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.StoredCOO.writes_matvec",
+   "new": "NLAlib.Ops.StoredCOO.matvecRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.StoredDense.writes_impl",
+   "new": "NLAlib.Ops.StoredDense.implRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.Tools.LintFixtures.canonical_meets",
+   "new": "NLAlib.Ops.Tools.LintFixtures.canonical_runs",
+   "rule": "proof-step",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.Wp.linkContext_of_guarded",
+   "new": "NLAlib.Ops.Wp.linkContext_of_isolated",
+   "rule": "isolated-data"
+  },
+  {
+   "old": "NLAlib.Ops.certLenLemma",
+   "new": "NLAlib.Ops.«tacticRoutine_intro[_](_)Reads(_)Memory_»",
+   "rule": "intro-tactic",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.certPat",
+   "new": "NLAlib.Ops.«tacticRoutine_intro[_](_)Reads(_)Memory_»",
+   "rule": "intro-tactic",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.eval_guardContext",
+   "new": "NLAlib.Ops.eval_guardIsolated",
+   "rule": "isolated-data"
+  },
+  {
+   "old": "NLAlib.Ops.eval_sim_of_contextSnapshot",
+   "new": "NLAlib.Ops.eval_sim_of_isolated",
+   "rule": "isolated-data"
+  },
+  {
+   "old": "NLAlib.Ops.opsImpl",
+   "new": "NLAlib.Ops.Routine.impl",
+   "rule": "routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.sumSeq",
+   "new": "NLAlib.Ops.Blas.sumSeq",
+   "rule": "naming"
+  },
+  {
+   "old": "NLAlib.Ops.wp_axpyLoop",
+   "new": "NLAlib.Ops.axpyLoopRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.wp_axpyLoop_mixed",
+   "new": "NLAlib.Ops.axpyLoopRoutine_meets_mixed",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.wp_copyLoop",
+   "new": "NLAlib.Ops.copyLoopRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.wp_dotSum",
+   "new": "NLAlib.Ops.dotSumRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.wp_nrm2Sum",
+   "new": "NLAlib.Ops.nrm2SumRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.wp_scalLoop",
+   "new": "NLAlib.Ops.scalLoopRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.wp_scalLoop_mixed",
+   "new": "NLAlib.Ops.scalLoopRoutine_meets_mixed",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.wp_sumPairwise",
+   "new": "NLAlib.Ops.sumPairwiseRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.wp_sumSeq",
+   "new": "NLAlib.Ops.sumSeqRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Ops.«tacticCert_intro[_](_)→(_)Reads(_)»",
+   "new": "NLAlib.Ops.«tacticRoutine_intro[_](_)Reads(_)Memory_»",
+   "rule": "intro-tactic"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.DeflationAdmissible",
+   "new": "NLAlib.ShiftedQR.deflationInputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.ShiftedQR.DeflationData",
+   "new": "NLAlib.ShiftedQR.deflationInputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.ShiftedQR.DeflationData.matrix",
+   "new": "NLAlib.ShiftedQR.deflationInputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.ShiftedQR.ShQRSmallEigData.buffers",
+   "new": "NLAlib.ShiftedQR.shqrSmallEigProblem_buffers",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.ShiftedQR.deflation_input_buffers",
+   "new": "NLAlib.ShiftedQR.deflationInputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.ShiftedQR.deflation_parameters_eq",
+   "new": "NLAlib.ShiftedQR.deflationInputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.ShiftedQR.initial_deflation_geometry",
+   "new": "NLAlib.ShiftedQR.deflationInputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.ShiftedQR.initial_deflation_matrix",
+   "new": "NLAlib.ShiftedQR.deflationInputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.ShiftedQR.initial_deflation_parameters",
+   "new": "NLAlib.ShiftedQR.deflationInputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.ShiftedQR.initial_step_geometry",
+   "new": "NLAlib.ShiftedQR.stepInputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.ShiftedQR.initial_step_matrix",
+   "new": "NLAlib.ShiftedQR.stepInputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.ShiftedQR.initial_step_shift",
+   "new": "NLAlib.ShiftedQR.stepInputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.ShiftedQR.shiftedStep_writes",
+   "new": "NLAlib.ShiftedQR.shiftedStepRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.ShiftedQR.solve_writes",
+   "new": "NLAlib.ShiftedQR.deflationRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.ShiftedQR.step_input_buffers",
+   "new": "NLAlib.ShiftedQR.stepInputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Sign.initial_geometry",
+   "new": "NLAlib.Sign.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Sign.initial_matrix",
+   "new": "NLAlib.Sign.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Sign.initial_parameters",
+   "new": "NLAlib.Sign.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Sign.input_buffers",
+   "new": "NLAlib.Sign.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.Sign.writes_program",
+   "new": "NLAlib.Sign.signRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.SmallEig.SmallEigData.buffers",
+   "new": "NLAlib.SmallEig.SmallEigData",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.SpectralBisection.body_program_eq_solve",
+   "new": "NLAlib.SpectralBisection.bisectionProgram",
+   "rule": "routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.SpectralBisection.bottomResultImpl",
+   "new": "NLAlib.SpectralBisection.bottomResult",
+   "rule": "routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.SpectralBisection.bottomResultImpl_matrixWork_zero",
+   "new": "NLAlib.SpectralBisection.bottomResult_matrixWork_zero",
+   "rule": "naming"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.countPoly_program",
+   "new": "NLAlib.SpectralBisection.countPoly_bisectionProgram",
+   "rule": "naming"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.downLargeImpl",
+   "new": "NLAlib.SpectralBisection.downLarge",
+   "rule": "routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.SpectralBisection.downLevelImpl",
+   "new": "NLAlib.SpectralBisection.downLevel",
+   "rule": "routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.SpectralBisection.downLevelImpl_kernelWeight_sum_le_of_exec",
+   "new": "NLAlib.SpectralBisection.downLevelBody_kernelWeight_sum_le_of_exec",
+   "rule": "naming"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.downNodeImpl",
+   "new": "NLAlib.SpectralBisection.downNode",
+   "rule": "routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.SpectralBisection.downNodesImpl",
+   "new": "NLAlib.SpectralBisection.downNodes",
+   "rule": "routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.SpectralBisection.downPrepareImpl",
+   "new": "NLAlib.SpectralBisection.downPrepare",
+   "rule": "routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.SpectralBisection.downPrepareImpl_matrixWork_zero",
+   "new": "NLAlib.SpectralBisection.downPrepare_matrixWork_zero",
+   "rule": "naming"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.eval_countPoly_program",
+   "new": "NLAlib.SpectralBisection.eval_countPoly_bisectionProgram",
+   "rule": "naming"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.initial_get_parameter",
+   "new": "NLAlib.SpectralBisection.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.SpectralBisection.initial_readBlock_matrix",
+   "new": "NLAlib.SpectralBisection.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.SpectralBisection.initial_readBlock_parameters",
+   "new": "NLAlib.SpectralBisection.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.SpectralBisection.input_buffers",
+   "new": "NLAlib.SpectralBisection.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.SpectralBisection.length_input_matrix",
+   "new": "NLAlib.SpectralBisection.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.SpectralBisection.length_input_parameters",
+   "new": "NLAlib.SpectralBisection.inputs",
+   "rule": "typed-inputs",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.SpectralBisection.program_kernelWeight_le_of_exec",
+   "new": "NLAlib.SpectralBisection.bisectionProgram_kernelWeight_le_of_exec",
+   "rule": "naming"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.program_matrixShapes",
+   "new": "NLAlib.SpectralBisection.bisectionProgram_matrixShapes",
+   "rule": "naming"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.solveImpl",
+   "new": "NLAlib.SpectralBisection.solve",
+   "rule": "routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.SpectralBisection.stmtPeak_downLevelImpl_zero_le",
+   "new": "NLAlib.SpectralBisection.stmtPeak_downLevelBody_zero_le",
+   "rule": "naming"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.upNodeImpl",
+   "new": "NLAlib.SpectralBisection.upNode",
+   "rule": "routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.SpectralBisection.upNodesImpl",
+   "new": "NLAlib.SpectralBisection.upNodes",
+   "rule": "routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.SpectralBisection.upShiftResultImpl",
+   "new": "NLAlib.SpectralBisection.upShiftResult",
+   "rule": "routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.SpectralBisection.upSplitResultImpl",
+   "new": "NLAlib.SpectralBisection.upSplitResult",
+   "rule": "routine",
+   "removed": true
+  },
+  {
+   "old": "NLAlib.SpectralBisection.wellTyped_program",
+   "new": "NLAlib.SpectralBisection.wellTyped_bisectionProgram",
+   "rule": "naming"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_downLevelImpl",
+   "new": "NLAlib.SpectralBisection.downLevelBody_writes",
+   "rule": "naming"
+  },
+  {
+   "old": "NLAlib.SpectralBisection.writes_solve",
+   "new": "NLAlib.SpectralBisection.bisectionRoutine_meets",
+   "rule": "routine-judgment",
+   "removed": true
+  }
+ ],
+ "statementChanged": []
+}

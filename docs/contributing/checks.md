@@ -163,10 +163,67 @@ does not change the file. The explanation of each declaration, for a reader, is 
 [reviewer's declaration map](../design/Ops-ReferenceReview.md). The aim is a smaller list: a
 definition that can be replaced by a theorem about the others should be.
 
+**Worked instances.** `NLAlib/Ops/Examples/WorkedInstances/` states, for a few trees of the
+library, the exact outcome of one small run under the execution rules. They test the
+definitions of the core against values obtained outside the library:
+`scripts/worked_instances.py` computes the outputs and the numbers of arithmetic operations
+from the textbook formula of each operation, with exact rational arithmetic, and
+`scripts/test_worked_instances.py` (one of the unit tests below) fails if a literal of a Lean
+theorem is not the value the script computes. A change of the core that alters an output or
+an operation count of an instance fails the build of its module; if the theorem is then edited
+to the new value, the unit test fails. The totals that include structural instructions are
+regression values with no outside source: a deliberate change of a charge changes them, and
+the pull request says so. To add an instance, write the computation in the script from the
+mathematics (not from the tree), state the theorem with the literals, and add its assertion to
+the test.
+
 It rejects imports of the retired execution core. Structural rejection
 and accounting regressions are kernel-checked modules in `NLAlib/Ops/Examples/Certification.lean`
 and `NLAlib/Ops/Tools/ProgramFixtures.lean`; the whole-library audit and replay cover them.
 The former E3–E6 and E8–E9 registry/syntax rules are retired, and their identifiers are not reused.
+
+## The explorer build
+
+nla-lib.org/explore is built in the repository `NLA-lib/NLA-lib.github.io`, from the data that
+`scripts/explore_data.sh` extracts here and from that repository's own metadata
+(`explore/results.toml` and the pages under `explore/content/`), which names declarations of
+this library: the headline of a result, the theorems a page presents. A rename or a removal
+here can therefore make the website's build fail, and the website then stays at its last
+successful build without any check of this repository saying so.
+
+`scripts/explore_site_check.py` runs that build on a given extraction, as the website's deploy
+workflow does, and reports two things: whether the build passes, with its first error if not,
+and every name in the website's metadata that is not a declaration of the data, with the target
+of the rename maps when there is one.
+
+```
+bash scripts/explore_data.sh explore-data.json
+python3 scripts/explore_site_check.py --data explore-data.json
+```
+
+It fetches the website's `main` (or reads a local copy: `--site DIR`), installs the website's two
+pinned requirements into a temporary directory (`--no-install` uses the installed ones), and
+exits 1 when the build fails. Names that are stale without failing the build are a warning.
+It is not part of `scripts/stage_check.sh`, which needs no network.
+
+In CI it is the job "Explorer build against website metadata (advisory)", which runs after the
+main job on the extraction that job made, and writes the same report as the job summary. The
+job is advisory, and is not a required check:
+
+- The website's metadata can only follow a library change, because the website builds against
+  the data of `main`. A rename is therefore expected to turn this job red once.
+- The job does not fail the workflow. The publication of the data and the reuse of the build
+  both require the workflow to succeed, and must not wait for the website.
+
+When the job fails on your pull request: prepare the matching change to the website repository
+(the report lists the names and where they are used), say so in the pull request, merge the
+library change first, and then the website's. The job is green again on the next push after
+that. A rename also needs its entry in a rename map ([naming](naming.md) N12), from which the
+website redirects old links.
+
+The job runs code from the website repository's `main`. It is given no secret, a read-only
+token that is not left in the checkout, and the script passes none of its own environment to
+that code.
 
 ## CI build reuse
 

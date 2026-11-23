@@ -10,7 +10,8 @@ Lean statement and definition of this note was elaborated with `sorry` proofs ag
 fixes are listed in §13. Internal constants may move at proof time (O7). The headline's $K$, gap and
 tolerances do not move.*
 
-**Status.** The maintainer approved the stage on 2026-11-20, with options O1–O10 as recommended
+**Status.** Implemented on the Ops routine core; §14 states what was proved and supersedes the
+plan below wherever they differ. The maintainer approved the stage on 2026-11-20, with options O1–O10 as recommended
 (`state/decisions/RESEARCH-TRACK.json`, item 1). The design review
 (`Review-Fable-EIG-Design.md`, verdict "revise, then skeleton") is applied in full. The changes are
 listed in §12.
@@ -127,7 +128,7 @@ theorem denseEig_measureReal_not_eig_le {Mch : Machine ℝ} {I : Interp O Q ℝ}
     {a p pe uo v f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : EigSolverInput (denseEigSchurParams n δ φ) [denseEigFloor n δ φ] a p pe uo v f A μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (denseEig (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (denseEig (O := O) (Q := Q) sG)
       (Env.frame (denseEigDims n δ φ) [a, p, pe, a, uo, v, f]) (eigFp n a uo v f)
       (fun μ' => SchurOutput a uo f A δ (58 * denseEigRotations n δ φ * u) μ' ∧
         EigOutput a v f A δ δ (1 / 8) δ (2 * √((n : ℝ) + 1) * denseSchurB n δ φ)
@@ -364,14 +365,14 @@ deterministic and total for any stored pair. It stores a flag `0` or `1`. For `T
 `cV‖U‖_F‖Y‖_F` of `U Y`, where the columns of `Y` have norm within `cN` of `1` and residual
 $\|(\mathbf{T} - t_{jj})\mathbf{y}_j\| \le c_R\|\mathbf{T}\|_{\mathsf F}\|\mathbf{y}_j\|$ (`cR₀` when
 the flag is `0`). The flag is `0` when the diagonal gaps exceed `g₀‖T‖_F`. -/
-def EigenvectorStageContract (cR₀ cR cV cN g₀ : ℝ) (nmax : ℕ) (ps : List ℝ) (Ev : Impl O Q)
+def EigenvectorStageContract (cR₀ cR cV cN g₀ : ℝ) (nmax : ℕ) (ps : List ℝ) (Ev : Stmt O Q)
     (I : Interp O Q ℝ) : Prop :=
   ∀ {N : ℕ} {a uo pe v g : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ} (U T : Matrix (Fin N) (Fin N) ℂ),
     N ≤ nmax → HoldsSchurPair a uo U T μ.store →
     μ.store.readBlock pe.1 pe.2 ps.length = some ps → μ.Live [a, uo, pe, v, g] →
     μ.Room [v, g] [2 * (N * N), 1] →
     Fp.Apart [a, uo, pe, v, g] [2 * (N * N), 2 * (N * N), ps.length, 2 * (N * N), 1] →
-    Writes .total I tape Ev.body (Env.frame [N, ps.length] [a, uo, pe, v, g])
+    Writes .total I tape Ev (Env.frame [N, ps.length] [a, uo, pe, v, g])
       (Store.inBlock v.1 v.2 (2 * (N * N)) ⊔ Store.inBlock g.1 g.2 1)
       (fun μ' => ∃ V : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix v V μ'.store ∧
         (μ'.store.get g.1 g.2 = some 0 ∨ μ'.store.get g.1 g.2 = some 1) ∧
@@ -388,14 +389,14 @@ def EigenvectorStageContract (cR₀ cR cV cN g₀ : ℝ) (nmax : ℕ) (ps : List
 
 /-- **A stage that completes** (no rounding model): total on every tape for any stored pair,
 writing only `V` and the flag, and storing a matrix and a word. -/
-def CompletingEigenvectorStage (nmax : ℕ) (ps : List ℝ) (Ev : Impl O Q) (I : Interp O Q ℝ) :
+def CompletingEigenvectorStage (nmax : ℕ) (ps : List ℝ) (Ev : Stmt O Q) (I : Interp O Q ℝ) :
     Prop :=
   ∀ {N : ℕ} {a uo pe v g : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ} (U T : Matrix (Fin N) (Fin N) ℂ),
     N ≤ nmax → HoldsSchurPair a uo U T μ.store →
     μ.store.readBlock pe.1 pe.2 ps.length = some ps → μ.Live [a, uo, pe, v, g] →
     μ.Room [v, g] [2 * (N * N), 1] →
     Fp.Apart [a, uo, pe, v, g] [2 * (N * N), 2 * (N * N), ps.length, 2 * (N * N), 1] →
-    Writes .total I tape Ev.body (Env.frame [N, ps.length] [a, uo, pe, v, g])
+    Writes .total I tape Ev (Env.frame [N, ps.length] [a, uo, pe, v, g])
       (Store.inBlock v.1 v.2 (2 * (N * N)) ⊔ Store.inBlock g.1 g.2 1)
       (fun μ' => (∃ V : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix v V μ'.store) ∧
         ∃ x : ℝ, μ'.store.get g.1 g.2 = some x) μ
@@ -486,7 +487,7 @@ theorem schurPipelineWith_pwrites_regularizedSchur [Has ScalarOp O] [Has IndexOp
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hC : IsCmp id I)
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
-    {law : ℕ → Measure ℝ} {Nm Reg Red Core : Impl O Q} {k F T : ℕ}
+    {law : ℕ → Measure ℝ} {Nm Reg Red Core : Stmt O Q} {k F T : ℕ}
     {c₁ c₂ δR φR εHU εHT εCU εCT φC : ℝ} {qR qC : List ℝ}
     {C C' : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop}
     (hNm : FrobNormEstimateContract c₁ c₂ (n + 1) Nm I)
@@ -499,7 +500,7 @@ theorem schurPipelineWith_pwrites_regularizedSchur [Has ScalarOp O] [Has IndexOp
     (hδR : δR ≤ 1 / c₁) (hεHT0 : 0 ≤ εHT) (hεHT : εHT ≤ 1 / 8) (hεHU : 0 ≤ εHU)
     (hεCU : 0 ≤ εCU) (hεU : (1 + εHU) * (1 + εCU) - 1 ≤ 1 / 16) (hφR : 0 ≤ φR) (hφC : 0 ≤ φC)
     {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {a p uo f : ℕ × ℕ} :
-    PWrites law I (schurPipelineWith Nm Reg Red Core).body
+    PWrites law I (schurPipelineWith Nm Reg Red Core)
       (Env.frame [n + 1, qR.length, qC.length, k, F, T] [a, p, a, uo, f]) (schurFp n a uo f)
       (SchurPipelineInput (qR ++ qC) a p uo f A)
       (RegularizedSchurOutput C a uo f A c₁ c₂
@@ -560,11 +561,11 @@ The eigen parameters:
 ### 4.3 The eigen solver (B2) and the composition (EP3)
 
 ```lean
-def eigSolverWith (Solve Ev : Impl O Q) : Impl O Q :=
-  opsImpl% [N, nr, nq, k, F, T, ne] (A, P, Pe) → (A, U, V, Fl) {
+def eigSolverWith (Solve Ev : Stmt O Q) : Stmt O Q :=
+  ops% [N, nr, nq, k, F, T, ne] (A, P, Pe) → (A, U, V, Fl) {
     let G ← alloc 1;
-    run Solve.body [N, nr, nq, k, F, T] (A, P, A, U, Fl);
-    run Ev.body [N, ne] (A, U, Pe, V, G);
+    run Solve [N, nr, nq, k, F, T] (A, P, A, U, Fl);
+    run Ev [N, ne] (A, U, Pe, V, G);
     if (Has.inj CmpTst.isPos) [] (G) {
       call (Has.inj IndexOp.lit) [1] () → (Fl)
     } else { skip }
@@ -575,9 +576,9 @@ theorem eigSolverWith_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
     (hNat : IsExactNatLit id Mch (n + 1)) (hC : IsCmp id I) (hI : I.IsMeasurable)
     {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
-    {Solve Ev : Impl O Q} {nr nq k F T : ℕ} {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {Solve Ev : Stmt O Q} {nr nq k F T : ℕ} {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {a p pe uo v f : ℕ × ℕ} {qs qe : List ℝ} {B Γ c₁ c₂ eR eX eU φ cR₀ cR cV cN g₀ : ℝ}
-    (hSolve : PWrites law I Solve.body (Env.frame [n + 1, nr, nq, k, F, T] [a, p, a, uo, f])
+    (hSolve : PWrites law I Solve (Env.frame [n + 1, nr, nq, k, F, T] [a, p, a, uo, f])
       (schurFp n a uo f) (SchurPipelineInput qs a p uo f A)
       (RegularizedSchurOutput (IsConditionedDiagonalizable B Γ) a uo f A c₁ c₂ eR eX eU) φ)
     (hEv : EigenvectorStageContract cR₀ cR cV cN g₀ (n + 1) qe Ev I)
@@ -586,7 +587,7 @@ theorem eigSolverWith_pwrites {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hfloor : 16 * g₀ * √((n : ℝ) + 1) < 7 * c₁ * Γ)
     (hsep : eX + 6 * eU ≤ c₁ * Γ / (16 * (n + 1) * B))
     (hκ : 8 * √((n : ℝ) + 1) * B * eigEta n eX eU cR₀ cV ≤ c₁ * Γ) :
-    PWrites law I (eigSolverWith Solve Ev).body
+    PWrites law I (eigSolverWith Solve Ev)
       (Env.frame [n + 1, nr, nq, k, F, T, qe.length] [a, p, pe, a, uo, v, f]) (eigFp n a uo v f)
       (EigSolverInput qs qe a p pe uo v f A)
       (fun μ' => SchurOutput a uo f A (eR + eX) eU μ' ∧
@@ -647,18 +648,18 @@ tolerance words $(\theta, \kappa)$. Because the stage's word now lives in its ow
 (plumbing around EM4'). -/
 theorem eigSolverWith_writes_residual {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
-    (hNat : IsExactNatLit id Mch (n + 1)) (hC : IsCmp id I) {Solve Ev : Impl O Q}
+    (hNat : IsExactNatLit id Mch (n + 1)) (hC : IsCmp id I) {Solve Ev : Stmt O Q}
     {nr nq k F T : ℕ} {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {a p pe uo v f : ℕ × ℕ}
     {qs qe : List ℝ} {τ : Tape ℝ} {μ : Mem ℝ} {eA eU cR₀ cR cV cN g₀ : ℝ}
     (hSolve : ∀ τ μ, SchurPipelineInput qs a p uo f A μ →
-      Writes .total I τ Solve.body (Env.frame [n + 1, nr, nq, k, F, T] [a, p, a, uo, f])
+      Writes .total I τ Solve (Env.frame [n + 1, nr, nq, k, F, T] [a, p, a, uo, f])
         (schurFp n a uo f) (fun μ' => (∃ U T : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
           HoldsSchurPair a uo U T μ'.store) ∧
           (μ'.store.get f.1 f.2 = some 0 → SchurOutput a uo f A eA eU μ')) μ)
     (hEv : EigenvectorStageContract cR₀ cR cV cN g₀ (n + 1) qe Ev I)
     (he : eA ≤ 1 / 2) (heU : eU ≤ 1 / 8) (hc : eigColTol n eU cV cN ≤ 1 / 8)
     (hin : EigSolverInput qs qe a p pe uo v f A μ) :
-    Writes .total I τ (eigSolverWith Solve Ev).body
+    Writes .total I τ (eigSolverWith Solve Ev)
       (Env.frame [n + 1, nr, nq, k, F, T, qe.length] [a, p, pe, a, uo, v, f]) (eigFp n a uo v f)
       (fun μ' => μ'.store.get f.1 f.2 = some 0 →
         SchurOutput a uo f A eA eU μ' ∧
@@ -717,14 +718,14 @@ $\|\mathbf{A} - \widehat{\mathbf{X}}\|$, and EIG-V.
 | `Eigensolvers/Schur/DenseParameters.lean` (EM5) | `denseSchurB_le`, `le_denseSchurΓ` | existing |
 | `Ops/Logic/…` (where `Fp.Apart` lives) | list-generic `Fp.Apart` projection (`Fp.Apart.sublist` or similar; search first) | existing |
 | `Matrix/FinitePrecision/StoredProducts.lean` | strided componentwise dot-product bound (if `norm_rowEntryWord_sub_le` does not cover it) | existing |
-| `Ops/Blas/Pair.lean` (moved from `ShiftedQR/Division`, O10) | `complexDivideWithScratch` (deprecated alias), `Ops.StdModel.norm_complexDivide_sub_le` | existing |
-| `Matrix/FinitePrecision/TriangularSolve.lean` | `shiftedTriSolve` and lemmas | new |
+| `Ops/Blas/Pair.lean`, `ShiftedQR/Division.lean` | `Pair.divideWords`, `Ops.StdModel.norm_complexDivide_sub_le`; main's one program `ShiftedQR.complexDivideWithScratch` and `complexDivideWithScratch_writes_word` | existing |
+| `Eigensolvers/Schur/ShiftedTriSolve.lean`, `ShiftedTriSolveWrites.lean`, `Matrix/FinitePrecision/RoundedScaling.lean` | `shiftedTriSolve` (a fragment of the column tree), its words and backward error; the rounded scaling | new |
 | `Eigensolvers/Schur/Contracts.lean`, `Completion.lean` | `EigenvectorStageContract`, `CompletingEigenvectorStage` | existing |
 | `Eigensolvers/Schur/Eigenvectors.lean` | `triEigColumn`, `triEigenvectors`, `triEigvecStage`, instance, completion, count | new |
 | `Eigensolvers/Schur/Pipeline.lean`, `Composition.lean`, `Residual.lean` | `RegularizedSchurOutput`, `schurPipeline_pos_run`, `schurPipeline_budget_split`, `schurPipelineEX`, PP2X; PP2 rerouted | existing |
 | `Eigensolvers/Schur/DenseParameters.lean`, `Dense.lean`, `DenseBits.lean` | `…At` family, HD1X, HD5-At | existing |
 | `Eigensolvers/Schur/EigSolver.lean` | `EigSolverInput`, `eigFp`, `EigResidual`, `EigOutput`, measurability, `eigSolverWith`, EP3, EP4, termination, count | new |
-| `Eigensolvers/Schur/DenseEig.lean`, `Certificate.lean` | eig parameters, HE1–HE4, CT | new / existing |
+| `Eigensolvers/Schur/DenseEig.lean`, `EigCertification.lean` | eig parameters, HE1–HE4; routine, domain, certificate and claim | new |
 
 **Vocabulary rows.** `IsComponentwiseBackwardSolution`, `IsTriangularEigenbasisApprox`,
 `EigResidualOf`, `EigDecompOf`, `EigenvectorStageContract`, `CompletingEigenvectorStage`,
@@ -803,7 +804,7 @@ the tightened gap tail (§13).
 | `schurPipeline_budget`, `schurPipeline_budget_round` | unchanged; `schurPipeline_budget_split` is added next to them | – |
 | the dense parameter definitions (`denseSchurParams`, `…Dims`, `…Cap`, `…Threshold`, `…ShQRParams`, `…LeafAccuracy`, `…LeafFailure`, `…LeafParams`, `…LeafCap`, `…ParamsWith`, `…DimsWith`, `…Rotations(With)`, `uDenseSchur(With)`) | diagonal instances of the `…At` family | definitional, values unchanged |
 | HD1, HD1', HD5 | reproved through HD1X / HD5-At | statements unchanged |
-| `complexDivideWithScratch` | moved to `Ops/Blas/Pair` with a deprecated alias (O10) | none |
+| `complexDivideWithScratch` | not moved: main's program in `ShiftedQR/Division` is the only one | none |
 | programs, contracts, certificates, check files | none; new `ops_certificates` lines need approval | – |
 
 ## 10. Material
@@ -877,7 +878,7 @@ Every statement and definition above was elaborated with `sorry` proofs (`lake e
 `ba5ad537`). All elaborate after these fixes; none changes the headline's meaning.
 
 * **EP3.** `EigOutput … (7 / 8 * c₁ * Γ)` lacked its memory argument `μ'` (it did not elaborate).
-* **Glue.** `if` in `opsImpl%` needs an `else` branch (`else { skip }`). The flag $1$ is written
+* **Glue.** `if` in `ops%` needs an `else` branch (`else { skip }`). The flag $1$ is written
   with `IndexOp.lit [1]`, the library's flag literal; EP3 and EP4 take `hL : IsIndexLit Mch I`.
 * **EP4.** `hSolve` must also store the pair on every tape,
   `(∃ U T, HoldsSchurPair a uo U T μ'.store) ∧ (flag 0 → SchurOutput …)`. Otherwise the stage, whose
@@ -924,3 +925,50 @@ Every statement and definition above was elaborated with `sorry` proofs (`lake e
 * **EP2.** The `…At` family is new definitions with `rfl` lemmas `…At_self` to the merged names;
   the merged definitions and their proofs are untouched. No separate `denseSchurAt` program: the
   tolerances are words, so the program is `denseSchur`.
+
+## 14. What was proved
+
+Everything below is checked, with no `sorry`, on the routine core. Names are in `NLAlib.Schur`
+unless they are in `Matrix/`.
+
+**Theory (program-free, `Matrix/`).** `IsComponentwiseBackwardSolution`,
+`IsTriangularEigenbasisApprox`, the conditioning of approximate eigenvectors, `EigResidualOf`,
+`EigDecompOf`, `eigDecompOf_of_schur`, `eigResidualOf_of_schur`.
+
+**Layers.**
+
+| layer | object |
+|---|---|
+| fragment | `shiftedTriSolve`, `triEigColumn`, `triEigenvectors`: they work on the scratch `Y` that the stage allocates, uninitialized, so they are plain `Stmt` trees with operand-form lemmas |
+| swappable stage | `triEigvecStage`, a `Stmt` parameter value meeting `EigenvectorStageContract` and `CompletingEigenvectorStage` |
+| composition | `eigSolverWith Solve Ev`; `eigSolverWith_pwrites`, `eigSolverWith_writes_residual`, `eigSolverWith_verifiedSchurWith_writes_residual`, `eigSolverWith_terminates` |
+| routine | `eigSolverRoutine`, `eigSolverSpec`, `denseEigRoutine_meets` |
+| certificate | `eigSolverInputs` (a `Routine.Domain`), `denseEigAlgorithm`, `denseEig_checked` |
+| randomized claim | `denseEigClaim` |
+
+**Headline.** `denseEig_algorithm_measureReal_not_decomposition_le`: for a complex $\mathbf{A}$ of
+order $n + 1$, $0 < \delta, \varphi \le 1$ and $\boldsymbol{u} \le$ `uDenseEig`, except with
+probability at most $\varphi$ one counted run stays within its resources and footprint, stores the
+flag $0$ and $\widehat{\mathbf{V}}$, $\widehat{\mathbf{D}}$ with
+$\|\mathbf{A}\widehat{\mathbf{V}} - \widehat{\mathbf{V}}\widehat{\mathbf{D}}\|_2 \le
+\delta\|\mathbf{A}\|_2\|\widehat{\mathbf{V}}\|_2$, $\widehat{\mathbf{V}}$ invertible,
+$\kappa(\widehat{\mathbf{V}}) \le 2\sqrt{n + 1}\,B$,
+$\|\widehat{\mathbf{V}}\widehat{\mathbf{D}}\widehat{\mathbf{V}}^{-1} - \mathbf{A}\|_2 \le
+\delta\|\mathbf{A}\|_2$ and diagonal gaps at least $(\Gamma/4)\|\mathbf{A}\|_2$. The closed forms
+are `denseSchurB_le` and `le_denseSchurΓ`; the bits are `logb_inv_uDenseEig_le`, $O(L^4(\log L +
+1)^2)$; the work is `denseEig_work_le_polylog`, $O(n^3L^9(\log L + 1)^6)$, with
+$L = \log_2(4(n + 1)/(\delta\varphi))$.
+
+**Differences from the plan.**
+
+- The column theorems `triEigColumn_writes` and `triEigenvectors_isTriangularEigenbasisApprox` take
+  $s_{\min} > 0$, not $s_{\min} \ge 0$. At a zero floor a zero pivot is divided by: for
+  $\mathbf{T} = \begin{pmatrix}1 & 1\\ 0 & 1\end{pmatrix}$, $j = 1$ and $x/0 = 0$ the column is
+  $(0, 1)$, with residual $(1, 0)$, so it is no backward solution. The stage's floor is positive.
+- There is no generic `eigSolverAlgorithm`: a certificate whose claim is termination alone is
+  rejected by the certificate check, so the certificate is `denseEigAlgorithm`.
+- `Pe` is an isolated operand, so `EigSolverInput` has `P` and `Pe` apart.
+- $\log(1/\delta_C) = O(L)$ comes from the polynomial bounds of `denseSchur_arg_bounds`.
+- With the verified solver, flag $0$ certifies the residual part on every tape
+  (`eigSolverWith_verifiedSchurWith_writes_residual`). The probability theorem for that composition
+  (§6.1) is not stated: the headline is on `denseEig`, the unverified Schur solver.

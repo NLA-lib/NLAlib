@@ -32,6 +32,8 @@ flag $0$ certifies the residual part on every tape (`NLAlib.eigResidualOf_of_sch
 
 * `NLAlib.Schur.eigSolverWith_pwrites`: the Monte Carlo composition.
 * `NLAlib.Schur.eigSolverWith_writes_residual`: the verified composition on every tape.
+* `NLAlib.Schur.eigSolverWith_verifiedSchurWith_writes_residual`: the same around the verified
+  Schur solver.
 * `NLAlib.Schur.eigSolverWith_terminates`: termination on every tape.
 * `NLAlib.Schur.size_stmtCost_eigSolverWith_le`: the static count.
 -/
@@ -922,6 +924,41 @@ theorem size_stmtCost_eigSolverWith_le (Solve Ev : Stmt O Q) (N nr nq k F T ne :
     List.map_nil, List.getElem?_cons_succ, List.getElem?_cons_zero, Option.map_some,
     Option.getD_some, map_add, map_zero, hsup, Count.one, Count.test, size_single]
   omega
+
+/-- **The eigensolver around the verified Schur solver, on every tape.** On a scalar machine with
+the standard model at $\boldsymbol{u}$, index literals, exact natural literals up to $n + 1$ and
+exact comparisons, with $64(n + 2)^3\boldsymbol{u} \le 1$, $\kappa \ge 32(n + 2)^2\boldsymbol{u}$,
+$\theta \ge 0$ and $2\theta\sqrt{n + 1} \le \delta \le 1/2$, let `Solve` terminate on every tape
+with the accumulator within $e_U \le 1/8$ of orthonormal on its $n_r + n_q$ words `qs`, and let
+`Ev` meet `NLAlib.Schur.EigenvectorStageContract` with column tolerance
+$c$ = `eigColTol n eU cV cN` $\le 1/8$. Then from every input of
+`NLAlib.Schur.eigSolverWith` around `NLAlib.Schur.verifiedSchurWith Solve`, with the words
+$\theta, \kappa$ after `qs`, on every tape, the run writes only $\mathbf{A}$,
+$\widehat{\mathbf{U}}$, $\widehat{\mathbf{V}}$ and the flag, and a flag $0$ certifies a Schur
+output with the errors $(\delta, e_U)$ and the residual part of an eigendecomposition with
+$\eta$ = `eigEta n δ eU cR₀ cV`: column residuals $\eta$, matrix residual $\sqrt{n + 1}\,\eta$
+and column tolerance $c$. No probability and no hypothesis on $\mathbf{A}$. No printed source. -/
+theorem eigSolverWith_verifiedSchurWith_writes_residual {Mch : Machine ℝ} {I : Interp O Q ℝ}
+    {u : ℝ} {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hC : IsCmp id I) {Solve Ev : Stmt O Q}
+    {nr nq k F T : ℕ} {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {a p pe uo v f : ℕ × ℕ}
+    {qs qe : List ℝ} {μ : Mem ℝ} {δ θ κ eU cR₀ cR cV cN g₀ : ℝ}
+    (hSolve : TerminatingSchurSolver eU n [n + 1, nr, nq, k, F, T] qs Solve I)
+    (hu : 64 * ((n : ℝ) + 2) ^ 3 * u ≤ 1) (hκ : 32 * ((n : ℝ) + 2) ^ 2 * u ≤ κ) (hθ0 : 0 ≤ θ)
+    (hθ : 2 * θ * √((n : ℝ) + 1) ≤ δ) (hq : qs.length = nr + nq)
+    (hEv : EigenvectorStageContract cR₀ cR cV cN g₀ (n + 1) qe Ev I)
+    (he : δ ≤ 1 / 2) (heU : eU ≤ 1 / 8) (hc : eigColTol n eU cV cN ≤ 1 / 8)
+    (hin : EigSolverInput (qs ++ [θ, κ]) qe a p pe uo v f A μ) (τ : Tape ℝ) :
+    Writes .total I τ (eigSolverWith (verifiedSchurWith Solve) Ev)
+      (Env.frame [n + 1, nr, nq, k, F, T, qe.length] [a, p, pe, a, uo, v, f]) (eigFp n a uo v f)
+      (fun μ' => μ'.store.get f.1 f.2 = some 0 →
+        SchurOutput a uo f A δ eU μ' ∧
+        EigResidual a v A (eigEta n δ eU cR₀ cV) (√((n : ℝ) + 1) * eigEta n δ eU cR₀ cV)
+          (eigColTol n eU cV cN) μ') μ :=
+  eigSolverWith_writes_residual hL hNat hC
+    (fun τ _ h => (verifiedSchurWith_writes hS hM hL hC hSolve hu hκ hθ0 hθ hq h τ).mono le_rfl
+      fun _ _ ⟨⟨⟨T', hT⟩, U, hU, _⟩, _, hout⟩ => ⟨⟨U, T', hT, hU⟩, hout⟩)
+    hEv he heU hc hin
 
 end Theorems
 

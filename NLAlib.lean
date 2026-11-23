@@ -965,6 +965,7 @@ public import NLAlib.Matrix.FinitePrecision.StoredDense
 public import NLAlib.Matrix.FinitePrecision.StoredMatrix
 public import NLAlib.Matrix.FinitePrecision.StoredProducts
 public import NLAlib.Matrix.FinitePrecision.TapeRounding
+public import NLAlib.Matrix.FinitePrecision.RoundedScaling
 public import NLAlib.Matrix.FinitePrecision.Traces
 public import NLAlib.Eigensolvers.Schur.ShiftedTriSolve
 public import NLAlib.Eigensolvers.Schur.ShiftedTriSolveWrites

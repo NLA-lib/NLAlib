@@ -7,9 +7,11 @@ module
 
 public import NLAlib.Eigensolvers.Schur.Completion
 public import NLAlib.Eigensolvers.Schur.ShiftedTriSolveWrites
+public import NLAlib.Matrix.FinitePrecision.RoundedScaling
 public import NLAlib.Matrix.Spectral.TriangularEigenvectors
 public import NLAlib.Ops.Profiles.RoundedScalarBlas
 public import NLAlib.Ops.Logic.ScalarLoop
+public import NLAlib.Ops.Blas.MatrixCorrect
 public import NLAlib.Eigensolvers.ShiftedQR.RowSolveStorage
 
 /-!
@@ -34,6 +36,10 @@ $4\rho\|\widehat{\mathbf{T}}\|_{\mathsf F}$.
 
 ## Main results
 
+* `NLAlib.Schur.triEigColumn_writes_word`: the words of one column on any scalar machine.
+* `NLAlib.Schur.triEigColumn_writes_of_pos`,
+  `NLAlib.Schur.triEigenvectors_isTriangularEigenbasisApprox_of_pos`: the columns at a positive
+  floor.
 * `NLAlib.Schur.triEigColumn_writes`, `NLAlib.Schur.triEigenvectors_writes`,
   `NLAlib.Schur.triEigenvectors_isTriangularEigenbasisApprox`, `NLAlib.Schur.triEigenvectors_flag`:
   the columns.
@@ -115,173 +121,6 @@ def triEigvecStage : Stmt O Q := ops% [N, ne] (T, U, Pe) → (V, G) {
 
 end Program
 
-/-! ### Scaling a backward solution -/
-
-section Scaling
-
-variable {n : Type*} [Fintype n] [DecidableEq n]
-
-/-- **A rounded scaling of a componentwise backward solution**: if $\mathbf{y}$ is a
-componentwise backward solution of $\mathbf{M}\mathbf{y} = \mathbf{0}$ with $(\varepsilon,
-\sigma)$ and every $z_k$ is within $\delta\lvert cy_k\rvert$ of $cy_k$, $0 \le \delta < 1$, then
-$\mathbf{z}$ is one with $((\varepsilon + \delta)/(1 - \delta), \sigma/(1 - \delta))$. -/
-private theorem isComponentwiseBackwardSolution_of_norm_sub_smul_le {ε σ δ : ℝ}
-    {M : Matrix n n ℂ} {y z : n → ℂ} {c : ℂ} (h : IsComponentwiseBackwardSolution ε σ M 0 y)
-    (hδ0 : 0 ≤ δ) (hδ : δ < 1) (hz : ∀ k, ‖z k - c * y k‖ ≤ δ * ‖c * y k‖) :
-    IsComponentwiseBackwardSolution ((ε + δ) / (1 - δ)) (σ / (1 - δ)) M 0 z := by
-  obtain ⟨Δ, hΔ, hsol⟩ := h
-  have h1δ : 0 < 1 - δ := by linarith
-  have hzlo : ∀ k, (1 - δ) * ‖c * y k‖ ≤ ‖z k‖ := fun k => by
-    have := norm_sub_norm_le (c * y k) (z k)
-    rw [norm_sub_rev] at this
-    linarith [hz k]
-  have hz0 : ∀ k, c * y k = 0 → z k = 0 := fun k h0 => by
-    have := hz k; rw [h0, norm_zero, mul_zero, sub_zero] at this
-    exact norm_le_zero_iff.mp this
-  have hzne : ∀ k, c * y k ≠ 0 → z k ≠ 0 := fun k hne h0 => by
-    have := hzlo k
-    rw [h0, norm_zero] at this
-    have : 0 < (1 - δ) * ‖c * y k‖ := mul_pos h1δ (norm_pos_iff.mpr hne)
-    linarith
-  refine ⟨fun i k => if c * y k = 0 then 0 else (M i k + Δ i k) * (c * y k) / z k - M i k,
-    fun i k => ?_, ?_⟩
-  · have hb := hΔ i k
-    have hRHS : (ε + δ) / (1 - δ) * ‖M i k‖ + (if i = k then σ / (1 - δ) else 0) =
-        ((ε * ‖M i k‖ + (if i = k then σ else 0)) + δ * ‖M i k‖) / (1 - δ) := by
-      split_ifs <;> field_simp <;> ring
-    rw [hRHS]
-    have hM := norm_nonneg (M i k)
-    change ‖if c * y k = 0 then 0 else (M i k + Δ i k) * (c * y k) / z k - M i k‖ ≤ _
-    by_cases h0 : c * y k = 0
-    · rw [if_pos h0, norm_zero]
-      exact div_nonneg (by nlinarith [norm_nonneg (Δ i k)]) h1δ.le
-    · have hzk := hzne k h0
-      have e : (M i k + Δ i k) * (c * y k) / z k - M i k =
-          (Δ i k * (c * y k) + M i k * (c * y k - z k)) / z k := by
-        field_simp; ring
-      rw [if_neg h0, e, norm_div, div_le_div_iff₀ (norm_pos_iff.mpr hzk) h1δ]
-      have hcy := norm_pos_iff.mpr h0
-      have h2 : ‖Δ i k * (c * y k) + M i k * (c * y k - z k)‖ ≤
-          (‖Δ i k‖ + δ * ‖M i k‖) * ‖c * y k‖ := by
-        refine (norm_add_le _ _).trans ?_
-        rw [norm_mul (Δ i k), norm_mul (M i k), norm_sub_rev (c * y k)]
-        nlinarith [mul_le_mul_of_nonneg_left (hz k) hM]
-      calc ‖Δ i k * (c * y k) + M i k * (c * y k - z k)‖ * (1 - δ)
-          ≤ (‖Δ i k‖ + δ * ‖M i k‖) * ‖c * y k‖ * (1 - δ) :=
-            mul_le_mul_of_nonneg_right h2 h1δ.le
-        _ = (‖Δ i k‖ + δ * ‖M i k‖) * ((1 - δ) * ‖c * y k‖) := by ring
-        _ ≤ (‖Δ i k‖ + δ * ‖M i k‖) * ‖z k‖ :=
-            mul_le_mul_of_nonneg_left (hzlo k) (by positivity)
-        _ ≤ (ε * ‖M i k‖ + (if i = k then σ else 0) + δ * ‖M i k‖) * ‖z k‖ :=
-            mul_le_mul_of_nonneg_right (by linarith) (norm_nonneg _)
-  · funext i
-    have hi := congrFun hsol i
-    simp only [Matrix.mulVec, dotProduct, Matrix.add_apply, Pi.zero_apply] at hi ⊢
-    have e : ∀ k, (M i k + (if c * y k = 0 then 0 else
-        (M i k + Δ i k) * (c * y k) / z k - M i k)) * z k = c * ((M i k + Δ i k) * y k) := by
-      intro k
-      split_ifs with h0
-      · rw [hz0 k h0, mul_zero]
-        have : c = 0 ∨ y k = 0 := mul_eq_zero.mp h0
-        rcases this with hc | hy
-        · rw [hc, zero_mul]
-        · rw [hy, mul_zero, mul_zero]
-      · have hzk := hzne k h0
-        field_simp
-        ring
-    refine (Finset.sum_congr rfl fun k _ => e k).trans ?_
-    rw [← Finset.mul_sum, hi, mul_zero]
-
-/-- The norm of a rounded scaled column: if $\nu$ is within the factors $1 \pm a$ of $W > 0$,
-$\ell$ within $\boldsymbol{u}$ of $1$, $r$ a rounded $\ell/\nu$ and $Z$ within the relative error
-$\boldsymbol{u}$ of $\lvert r\rvert W$, then $\lvert Z - 1\rvert \le 2a + 4\boldsymbol{u}$, for
-$a \le 1/16$ and $\boldsymbol{u} \le 1/64$. -/
-private theorem abs_column_norm_sub_one_le {u a W ν l r Z : ℝ} (hu0 : 0 ≤ u) (hu : u ≤ 1 / 64)
-    (ha0 : 0 ≤ a) (ha : a ≤ 1 / 16) (hW : 0 < W) (h1 : (1 - a) * W ≤ ν) (h2 : ν ≤ (1 + a) * W)
-    (hl : |l - 1| ≤ u) (hr : |r - l / ν| ≤ u * |l / ν|) (hZ : |Z - |r| * W| ≤ u * (|r| * W)) :
-    |Z - 1| ≤ 2 * a + 4 * u := by
-  have hν : 0 < ν := lt_of_lt_of_le (mul_pos (by linarith) hW) h1
-  obtain ⟨hl₁, hl₂⟩ := abs_le.mp hl
-  have hl0 : 0 < l := by linarith
-  have hq : 0 < l / ν := div_pos hl0 hν
-  rw [abs_of_pos hq] at hr
-  obtain ⟨hr₁, hr₂⟩ := abs_le.mp hr
-  have hr0 : 0 < r := by nlinarith
-  rw [abs_of_pos hr0] at hZ
-  obtain ⟨hZ₁, hZ₂⟩ := abs_le.mp hZ
-  set p := W / ν with hp
-  have hp0 : 0 < p := div_pos hW hν
-  have hpν : p * ν = W := by rw [hp]; field_simp
-  have hp₁ : 1 ≤ (1 + a) * p := by
-    have : ν ≤ (1 + a) * (p * ν) := by rw [hpν]; exact h2
-    have h' : 1 * ν ≤ ((1 + a) * p) * ν := by linarith [this, mul_assoc (1 + a) p ν]
-    exact le_of_mul_le_mul_right h' hν
-  have hp₂ : (1 - a) * p ≤ 1 := by
-    have : (1 - a) * (p * ν) ≤ ν := by rw [hpν]; exact h1
-    have h' : ((1 - a) * p) * ν ≤ 1 * ν := by linarith [this, mul_assoc (1 - a) p ν]
-    exact le_of_mul_le_mul_right h' hν
-  have hpu : p ≤ 1 + 2 * a := by nlinarith
-  have hpl : 1 - a ≤ p := by nlinarith
-  have hqW : l / ν * W = l * p := by rw [hp]; ring
-  have hX₁ : (1 - u) * (l * p) ≤ r * W := by
-    have := mul_le_mul_of_nonneg_right (show (1 - u) * (l / ν) ≤ r by linarith) hW.le
-    rwa [mul_assoc, hqW] at this
-  have hX₂ : r * W ≤ (1 + u) * (l * p) := by
-    have := mul_le_mul_of_nonneg_right (show r ≤ (1 + u) * (l / ν) by linarith) hW.le
-    rwa [mul_assoc, hqW] at this
-  have hlp₁ : (1 - u) * (1 - a) ≤ l * p :=
-    mul_le_mul (by linarith) hpl (by linarith) hl0.le
-  have hlp₂ : l * p ≤ (1 + u) * (1 + 2 * a) :=
-    mul_le_mul (by linarith) hpu hp0.le (by linarith)
-  have hup : Z ≤ 1 + 2 * a + 4 * u := by
-    have h3 : r * W ≤ (1 + u) * ((1 + u) * (1 + 2 * a)) :=
-      hX₂.trans (mul_le_mul_of_nonneg_left hlp₂ (by linarith))
-    have h4 : Z ≤ (1 + u) * (r * W) := by linarith
-    have h5 : (1 + u) * (r * W) ≤ (1 + u) * ((1 + u) * ((1 + u) * (1 + 2 * a))) :=
-      mul_le_mul_of_nonneg_left h3 (by linarith)
-    have h6 : (1 + u) * ((1 + u) * ((1 + u) * (1 + 2 * a))) ≤ 1 + 2 * a + 4 * u := by
-      have hc : (1 + u) * ((1 + u) * (1 + u)) ≤ 1 + 7 / 2 * u := by nlinarith [mul_nonneg hu0 hu0]
-      have : (1 + u) * ((1 + u) * ((1 + u) * (1 + 2 * a))) =
-          (1 + u) * ((1 + u) * (1 + u)) * (1 + 2 * a) := by ring
-      rw [this]
-      nlinarith [mul_le_mul_of_nonneg_right hc (show 0 ≤ 1 + 2 * a by linarith),
-        mul_nonneg hu0 ha0]
-    linarith
-  have hlo : 1 - 2 * a - 4 * u ≤ Z := by
-    have h3 : (1 - u) * ((1 - u) * (1 - a)) ≤ r * W :=
-      (mul_le_mul_of_nonneg_left hlp₁ (by linarith)).trans hX₁
-    have h4 : (1 - u) * (r * W) ≤ Z := by linarith
-    have h5 : (1 - u) * ((1 - u) * ((1 - u) * (1 - a))) ≤ (1 - u) * (r * W) :=
-      mul_le_mul_of_nonneg_left h3 (by linarith)
-    have h6 : 1 - 2 * a - 4 * u ≤ (1 - u) * ((1 - u) * ((1 - u) * (1 - a))) := by
-      have hc : 1 - 3 * u ≤ (1 - u) * ((1 - u) * (1 - u)) := by
-        nlinarith [mul_nonneg hu0 hu0, mul_nonneg (mul_nonneg hu0 hu0) hu0]
-      have : (1 - u) * ((1 - u) * ((1 - u) * (1 - a))) =
-          (1 - u) * ((1 - u) * (1 - u)) * (1 - a) := by ring
-      rw [this]
-      nlinarith [mul_le_mul_of_nonneg_right hc (show 0 ≤ 1 - a by linarith), mul_nonneg hu0 ha0]
-    linarith
-  exact abs_le.mpr ⟨by linarith, by linarith⟩
-
-/-- A rounded real scaling of a complex number: each part of $z$ times $r$ is rounded with the
-relative error $\boldsymbol{u}$. -/
-private theorem norm_mul_pair_sub_le {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M) (hu : 0 ≤ u)
-    (z : ℂ) (r : ℝ) :
-    ‖(⟨M.mul z.re r, M.mul z.im r⟩ : ℂ) - (r : ℂ) * z‖ ≤ u * ‖(r : ℂ) * z‖ := by
-  refine (sq_le_sq₀ (norm_nonneg _) (by positivity)).mp ?_
-  rw [mul_pow, Complex.sq_norm, Complex.sq_norm, Complex.normSq_apply, Complex.normSq_apply]
-  have h1 := hM.mul z.re r
-  have h2 := hM.mul z.im r
-  simp only [id] at h1 h2
-  have e1 := mul_self_le_mul_self (abs_nonneg _) h1
-  have e2 := mul_self_le_mul_self (abs_nonneg _) h2
-  rw [abs_mul_abs_self, mul_mul_mul_comm, abs_mul_abs_self] at e1 e2
-  simp only [Complex.sub_re, Complex.sub_im, Complex.mul_re, Complex.mul_im, Complex.ofReal_re,
-    Complex.ofReal_im, zero_mul, sub_zero, add_zero]
-  nlinarith [mul_self_nonneg u]
-
-end Scaling
-
 /-! ### The columns -/
 
 section Columns
@@ -326,7 +165,8 @@ private theorem colTail_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSc
     Writes .total I τ (colTail (O := O) (Q := Q)) (colEnv N j t sm y g L)
       (Store.inBlock y.1 (y.2 + 2 * (j * N)) (2 * N) ⊔ Store.inBlock L 0 1 ⊔
         Store.inBlock (L + 1) 0 1)
-      (fun μ' => ∃ ν : ℝ, Pν ν ∧ ∀ k < 2 * N, ∀ v, μ.store.get y.1 (y.2 + 2 * (j * N) + k) = some v →
+      (fun μ' => ∃ ν : ℝ, Pν ν ∧ ∀ k < 2 * N, ∀ v,
+        μ.store.get y.1 (y.2 + 2 * (j * N) + k) = some v →
         μ'.store.get y.1 (y.2 + 2 * (j * N) + k) = some (M.mul v (M.div (M.lit 1) ν))) μ := by
   have hlive : μ.Live [(y.1, y.2 + 2 * (j * N)), (L, 0)] := by
     simp only [Mem.live_cons, Mem.live_nil, and_true, hlen]; omega
@@ -520,7 +360,8 @@ private theorem colRest_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSc
   have hn₃ : ∀ o, o < y.2 + 2 * (j * N + (j + 1)) →
       ¬ Store.inBlock y.1 (y.2 + 2 * (j * N + (j + 1))) (2 * (N - 1 - j)) y.1 o :=
     fun o ho h => by have := h.2.1; omega
-  have hh := colFill_holds (M := M) (T := T) (smin := smin) (y := y) (N := N) (j := j) (s := μ₃.store)
+  have hh := colFill_holds (M := M) (T := T) (smin := smin) (y := y) (N := N) (j := j)
+    (s := μ₃.store)
     (fun i hi => by
       have ⟨a, b⟩ := hup i hi
       have hne : ∀ c d, (c = y.2 + 2 * (j * N + i) ∨ c = y.2 + 2 * (j * N + i) + 1) →
@@ -652,22 +493,6 @@ private theorem sqrt_sum_sq_columnWords {N : ℕ} (w : Fin N → ℂ) :
     simp [frobNorm_sq_eq_sum, vectorColumn, EuclideanSpace.norm_sq_eq]
   rw [h, e, Real.sqrt_sq (norm_nonneg _)]
 
-/-- The rounded scaling of a stored column, in the Euclidean norm. -/
-private theorem norm_scaled_sub_le {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M) (hu : 0 ≤ u)
-    {N : ℕ} (w : Fin N → ℂ) (r : ℝ) :
-    ‖WithLp.toLp 2 (fun i => (⟨M.mul (w i).re r, M.mul (w i).im r⟩ : ℂ)) -
-        (r : ℂ) • WithLp.toLp 2 w‖ ≤ u * (|r| * ‖WithLp.toLp 2 w‖) := by
-  refine (sq_le_sq₀ (norm_nonneg _) (by positivity)).mp ?_
-  rw [EuclideanSpace.norm_sq_eq, mul_pow, mul_pow, EuclideanSpace.norm_sq_eq, Finset.mul_sum,
-    Finset.mul_sum]
-  refine Finset.sum_le_sum fun k _ => ?_
-  have h := norm_mul_pair_sub_le hM hu (w k) r
-  rw [norm_mul, Complex.norm_real, Real.norm_eq_abs] at h
-  have h2 := pow_le_pow_left₀ (norm_nonneg _) h 2
-  simp only [PiLp.sub_apply, PiLp.smul_apply, smul_eq_mul]
-  calc _ ≤ (u * (|r| * ‖w k‖)) ^ 2 := h2
-    _ = _ := by ring
-
 /-- **The scaled column** under the standard model: from the bounds of the rounded norm $\nu$ of
 the column before scaling, the stored column has norm within $4(N + 2)\boldsymbol{u}$ of $1$ and
 is a componentwise backward solution with $16(N + 1)\boldsymbol{u}$ and the floor
@@ -713,12 +538,12 @@ private theorem triEigColumn_scaled {M : Machine ℝ} {u : ℝ} (hM : StdModel u
   have hrdiv : |r - M.lit 1 / ν| ≤ u * |M.lit 1 / ν| := by
     simpa [hr] using hM.div (M.lit 1) ν hν0
   constructor
-  · have hd := norm_scaled_sub_le hM hu0 w r
+  · have hd := hM.norm_scaled_sub_le hu0 w r
     have hn : ‖(r : ℂ) • WithLp.toLp 2 w‖ = |r| * ‖WithLp.toLp 2 w‖ := by
       rw [norm_smul, Complex.norm_real, Real.norm_eq_abs]
     have hZ := (abs_norm_sub_norm_le _ _).trans hd
     rw [hn] at hZ
-    have := abs_column_norm_sub_one_le hu0 hu64 ha0 ha hW hν₁ hν₂ hl hrdiv hZ
+    have := abs_norm_roundedScale_sub_one_le hu0 hu64 ha0 ha hW hν₁ hν₂ hl hrdiv hZ
     push_cast at this
     calc _ ≤ _ := this
       _ = 4 * ((N : ℝ) + 2) * u := by ring
@@ -729,27 +554,8 @@ private theorem triEigColumn_scaled {M : Machine ℝ} {u : ℝ} (hM : StdModel u
       by_cases hk : k = j
       · subst hk
         rw [hyj, mul_one, Complex.norm_real, Real.norm_eq_abs, hwj]
-        have h0 : M.mul 0 r = 0 := by
-          have := hM.mul 0 r
-          simpa using this
-        have e : (⟨M.mul (M.lit 1) r, M.mul 0 r⟩ : ℂ) - (r : ℂ) = ((M.mul (M.lit 1) r - r : ℝ) : ℂ) := by
-          apply Complex.ext <;> simp [h0]
-        simp only
-        rw [e, Complex.norm_real, Real.norm_eq_abs]
-        have h1 := hM.mul (M.lit 1) r
-        simp only [id, abs_mul] at h1
-        have h2 : |M.lit 1| ≤ 1 + u := by
-          have := abs_sub_abs_le_abs_sub (M.lit 1) 1
-          simp only [abs_one] at this
-          linarith
-        have h3 : |M.lit 1 * r - r| ≤ u * |r| := by
-          rw [show M.lit 1 * r - r = (M.lit 1 - 1) * r by ring, abs_mul]
-          exact mul_le_mul_of_nonneg_right hl (abs_nonneg _)
-        have h4 := abs_sub_le (M.mul (M.lit 1) r) (M.lit 1 * r) r
-        have h5 : u * (|M.lit 1| * |r|) ≤ u * ((1 + u) * |r|) :=
-          mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_right h2 (abs_nonneg _)) hu0
-        nlinarith [abs_nonneg r, mul_nonneg hu0 (abs_nonneg r)]
-      · have := norm_mul_pair_sub_le hM hu0 (w k) r
+        exact hM.norm_mul_unit_sub_le hu0 (by linarith) hl r
+      · have := hM.norm_mul_pair_sub_le hu0 (w k) r
         rw [hwk k hk] at this ⊢
         have h3 : u * ‖(r : ℂ) * shiftedTriSolveColumn M T smin j k‖ ≤
             3 * u * ‖(r : ℂ) * shiftedTriSolveColumn M T smin j k‖ :=
@@ -806,7 +612,8 @@ private theorem ColsInv.step {N : ℕ} {M : Machine ℝ} {T : Matrix (Fin N) (Fi
   have hyg : Fp.Disj (Store.inBlock y.1 y.2 (2 * (N * N))) (Store.inBlock g.1 g.2 1) :=
     hap.2.2.1.mono le_rfl (by simp only [Fp.blocks]; fp_sub)
   have hold : ∀ c : Fin N, (c : ℕ) < k → ∀ i : Fin N, ∀ e ≤ 1,
-      μ'.store.get y.1 (y.2 + 2 * (c * N + i) + e) = μ.store.get y.1 (y.2 + 2 * (c * N + i) + e) := by
+      μ'.store.get y.1 (y.2 + 2 * (c * N + i) + e) =
+        μ.store.get y.1 (y.2 + 2 * (c * N + i) + e) := by
     intro c hck i e he
     have hcN : (c + 1) * N ≤ k * N := Nat.mul_le_mul_right N hck
     have e₁ : (c + 1) * N = c * N + N := by ring
@@ -1051,7 +858,7 @@ theorem triEigenvectors_isTriangularEigenbasisApprox {M : Machine ℝ} {I : Inte
 
 /-- **The eigenvector columns are an approximate triangular eigenbasis, with a positive floor**:
 the conclusion of `NLAlib.Schur.triEigenvectors_isTriangularEigenbasisApprox` for
-$s_{\min} > 0$. -/
+$s_{\min} > 0$, with the flag $0$ when $\lvert t_{ii} - t_{jj}\rvert > 2s_{\min}$ for $i \ne j$. -/
 theorem triEigenvectors_isTriangularEigenbasisApprox_of_pos {M : Machine ℝ} {I : Interp O Q ℝ}
     {u : ℝ} (hS : IsScalar M I) (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {N : ℕ} (hu : 64 * ((N : ℝ) + 1) * u ≤ 1) {t sm y g : ℕ × ℕ} {T : Matrix (Fin N) (Fin N) ℂ}
@@ -1068,7 +875,8 @@ theorem triEigenvectors_isTriangularEigenbasisApprox_of_pos {M : Machine ℝ} {I
         IsTriangularEigenbasisApprox (16 * ((N : ℝ) + 1) * u) (7 / 2 * smin)
           (4 * ((N : ℝ) + 2) * u) T Y ∧
         (μ'.store.get g.1 g.2 = some 0 →
-          IsTriangularEigenbasisApprox (16 * ((N : ℝ) + 1) * u) 0 (4 * ((N : ℝ) + 2) * u) T Y))
+          IsTriangularEigenbasisApprox (16 * ((N : ℝ) + 1) * u) 0 (4 * ((N : ℝ) + 2) * u) T Y) ∧
+        ((∀ i j, i ≠ j → 2 * smin < ‖T i i - T j j‖) → μ'.store.get g.1 g.2 = some 0))
       μ := by
   have hN0 : (0 : ℝ) ≤ N := Nat.cast_nonneg N
   have hu0 : 0 ≤ u := (abs_nonneg _).trans (by simpa using hM.lit 1)
@@ -1076,16 +884,20 @@ theorem triEigenvectors_isTriangularEigenbasisApprox_of_pos {M : Machine ℝ} {I
   have hσ : (0 : ℝ) ≤ 7 / 2 * smin := by positivity
   refine (triEigenvectors_loop (Φ := fun j yv fl => |‖WithLp.toLp 2 yv‖ - 1| ≤
       4 * ((N : ℝ) + 2) * u ∧ IsComponentwiseBackwardSolution (16 * ((N : ℝ) + 1) * u)
-        (if fl then 7 / 2 * smin else 0) (T - T j j • 1) 0 yv)
+        (if fl then 7 / 2 * smin else 0) (T - T j j • 1) 0 yv ∧
+        ((∀ i : Fin N, i < j → 2 * smin < ‖T i i - T j j‖) → fl = false))
     hT hsm hl hroom hap fun j μ' hT' hsm' hl' hrm' =>
       (triEigColumn_writes_of_pos hS hM hL hC hu hTu hsmin j hT' hsm' hl' hrm' hap).mono le_rfl
-        fun μ'' _ ⟨yv, fl, hc, hn, hb, h1, h0, _⟩ => ⟨yv, fl, hc, ⟨hn, hb⟩, h1, h0⟩).mono le_rfl ?_
+        fun μ'' _ ⟨yv, fl, hc, hn, hb, h1, h0, hgp⟩ =>
+          ⟨yv, fl, hc, ⟨hn, hb, hgp⟩, h1, h0⟩).mono le_rfl ?_
   rintro μ' - ⟨Y, f, hY, hΦ, h1, h0⟩
   have hwide : IsTriangularEigenbasisApprox (16 * ((N : ℝ) + 1) * u) (7 / 2 * smin)
       (4 * ((N : ℝ) + 2) * u) T Y := fun j =>
-    ⟨(hΦ j).1, (hΦ j).2.mono le_rfl (by split_ifs <;> first | exact le_rfl | exact hσ)⟩
+    ⟨(hΦ j).1, (hΦ j).2.1.mono le_rfl (by split_ifs <;> first | exact le_rfl | exact hσ)⟩
+  have hgapg : (∀ i j, i ≠ j → 2 * smin < ‖T i i - T j j‖) → μ'.store.get g.1 g.2 = some 0 :=
+    fun hgap => (h0 fun j => (hΦ j).2.2 fun i hi => hgap i j hi.ne).trans hg
   by_cases hex : ∃ j, f j = true
-  · refine ⟨Y, hY, Or.inr (h1 hex), hwide, fun h => ?_⟩
+  · refine ⟨Y, hY, Or.inr (h1 hex), hwide, fun h => ?_, hgapg⟩
     have e : M.lit 1 = 0 := Option.some.inj ((h1 hex).symm.trans h)
     have hl1 := hM.lit 1
     simp only [id, e, Rat.cast_one, abs_one, mul_one, zero_sub, abs_neg] at hl1
@@ -1094,8 +906,8 @@ theorem triEigenvectors_isTriangularEigenbasisApprox_of_pos {M : Machine ℝ} {I
       cases hj : f j with
       | false => rfl
       | true => exact absurd ⟨j, hj⟩ hex
-    refine ⟨Y, hY, Or.inl ((h0 hall).trans hg), hwide, fun _ j => ⟨(hΦ j).1, ?_⟩⟩
-    simpa [hall j] using (hΦ j).2
+    refine ⟨Y, hY, Or.inl ((h0 hall).trans hg), hwide, fun _ j => ⟨(hΦ j).1, ?_⟩, hgapg⟩
+    simpa [hall j] using (hΦ j).2.1
 
 /-- **No pivot is floored when the diagonal is separated**: on a scalar machine with the standard
 model at $\boldsymbol{u}$, $64(N + 1)\boldsymbol{u} \le 1$, index literals and exact comparisons,
@@ -1131,6 +943,373 @@ section Stage
 
 variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 
+/-- The branch of the stage on a positive norm: the floor, the columns and the product. -/
+private def stageThen : Stmt O Q :=
+  .seq (.call (Has.inj ScalarOp.mul) [] [⟨2, .var 4⟩, ⟨5, .const 0⟩] [⟨6, .const 0⟩]) <|
+  .seq (.frame [.var 0] [⟨0, .var 2⟩, ⟨6, .const 0⟩, ⟨7, .const 0⟩, ⟨4, .var 6⟩, ⟨7, .const 0⟩,
+    ⟨4, .var 6⟩] triEigenvectors)
+    (.frame [.var 0, .var 0, .var 0, .var 0, .var 0, .var 0, .const 0]
+      [⟨1, .var 3⟩, ⟨7, .const 0⟩, ⟨3, .var 5⟩] matMulOn)
+
+/-- The environment of the stage after its three scratch blocks. -/
+private def stageEnv (N ne : ℕ) (a uo pe v g : ℕ × ℕ) (L : ℕ) : Env :=
+  ⟨[N, ne, a.2, uo.2, pe.2, v.2, g.2], [a.1, uo.1, pe.1, v.1, g.1, L, L + 1, L + 2]⟩
+
+/-- The branch of the stage on a positive norm stores the rounded product of $\mathbf{U}$ and the
+columns. -/
+private theorem stageThen_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    {N ne : ℕ} {a uo pe v g : ℕ × ℕ} {L : ℕ} {T U : Matrix (Fin N) (Fin N) ℂ} {ρ x : ℝ}
+    {τ : Tape ℝ} {μ : Mem ℝ} {Ψ : Matrix (Fin N) (Fin N) ℂ → Option ℝ → Prop}
+    (hlt : a.1 < L ∧ uo.1 < L ∧ pe.1 < L ∧ v.1 < L ∧ g.1 < L) (hlen : μ.store.length = L + 3)
+    (hl0 : μ.store.len (L + 1) = 1) (hl2 : μ.store.len (L + 2) = 2 * (N * N))
+    (hT : HoldsMatrix a T μ.store) (hU : HoldsMatrix uo U μ.store)
+    (hρ : μ.store.get pe.1 pe.2 = some ρ) (hx : μ.store.get L 0 = some x)
+    (hg : μ.store.get g.1 g.2 = some (M.lit 0))
+    (hv : v.2 + 2 * (N * N) ≤ μ.store.len v.1) (hgr : g.2 + 1 ≤ μ.store.len g.1)
+    (huv : Fp.Disj (Store.inBlock uo.1 uo.2 (2 * (N * N))) (Store.inBlock v.1 v.2 (2 * (N * N))))
+    (hug : Fp.Disj (Store.inBlock uo.1 uo.2 (2 * (N * N))) (Store.inBlock g.1 g.2 1))
+    (hag : Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N))) (Store.inBlock g.1 g.2 1))
+    (hvg : ¬ Store.inBlock v.1 v.2 (2 * (N * N)) g.1 g.2)
+    (hev : ∀ m : Mem ℝ, HoldsMatrix a T m.store → m.store.get (L + 1) 0 = some (M.mul ρ x) →
+      m.store.get g.1 g.2 = some (M.lit 0) → m.Live [a, (L + 1, 0), (L + 2, 0), g] →
+      m.Room [(L + 2, 0), g] [2 * (N * N), 1] →
+      Fp.Apart [a, (L + 1, 0), (L + 2, 0), g] [2 * (N * N), 1, 2 * (N * N), 1] →
+      Writes .total I τ (triEigenvectors (O := O) (Q := Q))
+        (Env.frame [N] [a, (L + 1, 0), (L + 2, 0), g, (L + 2, 0), g])
+        (Store.inBlock (L + 2) 0 (2 * (N * N)) ⊔ Store.inBlock g.1 g.2 1)
+        (fun μ' => ∃ Y : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix (L + 2, 0) Y μ'.store ∧
+          Ψ Y (μ'.store.get g.1 g.2)) m) :
+    Writes .total I τ (stageThen (O := O) (Q := Q)) (stageEnv N ne a uo pe v g L)
+      (Store.inBlock v.1 v.2 (2 * (N * N)) ⊔ Store.inBlock g.1 g.2 1 ⊔ Fp.above L)
+      (fun μ' => ∃ Y : Matrix (Fin N) (Fin N) ℂ, Ψ Y (μ'.store.get g.1 g.2) ∧
+        HoldsMatrix v (matMulWord M U Y) μ'.store) μ := by
+  obtain ⟨hal, hul, hpl, hvl, hgl⟩ := hlt
+  have hdiv := writes_call_bin (ins := [⟨2, .var 4⟩, ⟨5, .const 0⟩]) (outs := [⟨6, .const 0⟩])
+    (x := pe) (y := (L, 0)) (z := (L + 1, 0)) (ρ := stageEnv N ne a uo pe v g L) (τ := τ) (m := μ)
+    (hS .mul) rfl rfl trivial hρ hx rfl fun _ => ⟨by
+      simp only [Mem.live_cons, Mem.live_nil, and_true, hlen]; omega, by simp [hl0]⟩
+  refine hdiv.seq_le (fun b _ h => Or.inr (show L ≤ b by have := h.1; omega))
+    fun μ₁ h₁ ⟨_, g₁⟩ => ?_
+  have hnL : ∀ {b o}, b < L → ¬ Store.inBlock (L + 1) 0 1 b o := fun hb h => by
+    have := h.1; omega
+  have hT₁ : HoldsMatrix a T μ₁.store :=
+    hT.of_eqOff h₁ fun b i h h' => by have := h.1; have := h'.1; omega
+  have hU₁ : HoldsMatrix uo U μ₁.store :=
+    hU.of_eqOff h₁ fun b i h h' => by have := h.1; have := h'.1; omega
+  have hg₁ : μ₁.store.get g.1 g.2 = some (M.lit 0) := by rw [h₁.2 _ _ (hnL hgl)]; exact hg
+  have hap₁ : Fp.Apart [a, (L + 1, 0), (L + 2, 0), g] [2 * (N * N), 1, 2 * (N * N), 1] := by
+    refine ⟨?_, ?_, ?_, ?_⟩
+    · simp only [Fp.blocks]
+      refine Fp.disj_sup_right.mpr ⟨fun b i h h' => ?_, Fp.disj_sup_right.mpr
+        ⟨fun b i h h' => ?_, Fp.disj_sup_right.mpr ⟨hag, fun _ _ _ h' => h'⟩⟩⟩
+      · have := h.1; have := h'.1; omega
+      · have := h.1; have := h'.1; omega
+    · simp only [Fp.blocks]
+      refine Fp.disj_sup_right.mpr ⟨fun b i h h' => ?_, Fp.disj_sup_right.mpr
+        ⟨fun b i h h' => ?_, fun _ _ _ h' => h'⟩⟩
+      · have := h.1; have := h'.1; omega
+      · have := h.1; have := h'.1; omega
+    · simp only [Fp.blocks]
+      refine Fp.disj_sup_right.mpr ⟨fun b i h h' => ?_, fun _ _ _ h' => h'⟩
+      have := h.1; have := h'.1; omega
+    · simp only [Fp.blocks, Fp.Apart]
+      exact ⟨fun _ _ _ h' => h', trivial⟩
+  have hlv₁ : μ₁.Live [a, (L + 1, 0), (L + 2, 0), g] := by
+    simp only [Mem.live_cons, Mem.live_nil, and_true, h₁.length_eq, hlen]; omega
+  have hrm₁ : μ₁.Room [(L + 2, 0), g] [2 * (N * N), 1] := by
+    simp only [Mem.room_cons, Mem.room_nil, and_true, h₁.len_eq, hl2]
+    exact ⟨by omega, hgr⟩
+  have hlv₁' : μ₁.Live [a, (L + 1, 0), (L + 2, 0), g, (L + 2, 0), g] := by
+    simp only [Mem.live_cons, Mem.live_nil, and_true, h₁.length_eq, hlen]; omega
+  refine (hev μ₁ hT₁ g₁ hg₁ hlv₁ hrm₁ hap₁).frame_seq_le rfl rfl hlv₁'
+    (sup_le (fun b _ h => Or.inr (show L ≤ b by have := h.1; omega))
+      (le_sup_of_le_left le_sup_right)) fun μ₂ h₂ ⟨Y, hY, hΨ⟩ => ?_
+  have hU₂ : HoldsMatrix uo U μ₂.store := hU₁.of_eqOff h₂ (Fp.disj_sup_left.mpr
+    ⟨fun b i h h' => by have := h.1; have := h'.1; omega, hug.symm⟩)
+  have hlv₂ : μ₂.Live [uo, (L + 2, 0), v] := by
+    simp only [Mem.live_cons, Mem.live_nil, and_true, h₂.length_eq, h₁.length_eq, hlen]; omega
+  have hmul := matMulOn_writes_word (O := O) (Q := Q) hS (τ := τ) (μ := μ₂) (z := v) hU₂ hY hlv₂
+    (by rw [h₂.len_eq, h₁.len_eq]; exact hv) huv
+    (fun b i h h' => by have := h.1; have := h'.1; omega)
+  refine (hmul.in_frame rfl rfl (by
+    simp only [Mem.live_cons, Mem.live_nil, and_true] at hlv₂ ⊢; exact hlv₂)).mono
+    (le_sup_of_le_left le_sup_left) fun μ₃ h₃ ⟨_, hV⟩ => ⟨Y, ?_, hV⟩
+  have hgv : μ₃.store.get g.1 g.2 = μ₂.store.get g.1 g.2 := h₃.2 _ _ hvg
+  rwa [hgv]
+
+/-- The disjointness facts of the stage, from the apartness of its operands. -/
+private theorem stage_disj {N ne : ℕ} {a uo pe v g : ℕ × ℕ}
+    (hap : Fp.Apart [a, uo, pe, v, g] [2 * (N * N), 2 * (N * N), ne, 2 * (N * N), 1]) :
+    Fp.Disj (Store.inBlock uo.1 uo.2 (2 * (N * N))) (Store.inBlock v.1 v.2 (2 * (N * N))) ∧
+      Fp.Disj (Store.inBlock uo.1 uo.2 (2 * (N * N))) (Store.inBlock g.1 g.2 1) ∧
+      Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N))) (Store.inBlock g.1 g.2 1) ∧
+      ¬ Store.inBlock v.1 v.2 (2 * (N * N)) g.1 g.2 := by
+  have hvg : Fp.Disj (Store.inBlock v.1 v.2 (2 * (N * N))) (Store.inBlock g.1 g.2 1) :=
+    hap.2.2.2.1.mono le_rfl (by simp only [Fp.blocks]; fp_sub)
+  exact ⟨hap.2.1.mono le_rfl (by simp only [Fp.blocks]; fp_sub),
+    hap.2.1.mono le_rfl (by simp only [Fp.blocks]; fp_sub),
+    hap.1.mono le_rfl (by simp only [Fp.blocks]; fp_sub),
+    fun h => hvg _ _ h ⟨rfl, le_rfl, by omega⟩⟩
+
+/-- **The run of the stage**, for a norm word with the property `Pn` and columns with the property
+`Ψ`: on a positive norm word the stage stores the rounded product of $\mathbf{U}$ and the columns;
+otherwise $\mathbf{U}$ and the literal $0$ in the flag. -/
+private theorem triEigvecStage_writes_of {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+    (hL : IsIndexLit M I) (hC : IsCmp id I) {N ne : ℕ} (hne0 : 0 < ne) {a uo pe v g : ℕ × ℕ}
+    {T U : Matrix (Fin N) (Fin N) ℂ} {ρ : ℝ} {τ : Tape ℝ} {μ : Mem ℝ} {Pn : ℝ → Prop}
+    {Ψ : ℝ → Matrix (Fin N) (Fin N) ℂ → Option ℝ → Prop} (hpair : HoldsSchurPair a uo U T μ.store)
+    (hρ : μ.store.get pe.1 pe.2 = some ρ) (hl : μ.Live [a, uo, pe, v, g])
+    (hroom : μ.Room [v, g] [2 * (N * N), 1])
+    (hap : Fp.Apart [a, uo, pe, v, g] [2 * (N * N), 2 * (N * N), ne, 2 * (N * N), 1])
+    (hnorm : ∀ (m : Mem ℝ) (s : ℕ × ℕ), HoldsMatrix a T m.store → m.Live [a, s] →
+      s.2 + 1 ≤ m.store.len s.1 → a.1 ≠ s.1 →
+      Writes .total I τ (frobNormStage (O := O) (Q := Q)) (Env.frame [N] [a, s])
+        (Store.inBlock s.1 s.2 1) (fun μ' => ∃ x : ℝ, μ'.store.get s.1 s.2 = some x ∧ Pn x) m)
+    (hev : ∀ x, Pn x → 0 < x → ∀ (L : ℕ) (m : Mem ℝ), HoldsMatrix a T m.store →
+      m.store.get (L + 1) 0 = some (M.mul ρ x) → m.store.get g.1 g.2 = some (M.lit 0) →
+      m.Live [a, (L + 1, 0), (L + 2, 0), g] → m.Room [(L + 2, 0), g] [2 * (N * N), 1] →
+      Fp.Apart [a, (L + 1, 0), (L + 2, 0), g] [2 * (N * N), 1, 2 * (N * N), 1] →
+      Writes .total I τ (triEigenvectors (O := O) (Q := Q))
+        (Env.frame [N] [a, (L + 1, 0), (L + 2, 0), g, (L + 2, 0), g])
+        (Store.inBlock (L + 2) 0 (2 * (N * N)) ⊔ Store.inBlock g.1 g.2 1)
+        (fun μ' => ∃ Y : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix (L + 2, 0) Y μ'.store ∧
+          Ψ x Y (μ'.store.get g.1 g.2)) m) :
+    Writes .total I τ (triEigvecStage (O := O) (Q := Q)) (Env.frame [N, ne] [a, uo, pe, v, g])
+      (Store.inBlock v.1 v.2 (2 * (N * N)) ⊔ Store.inBlock g.1 g.2 1)
+      (fun μ' => ∃ V : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix v V μ'.store ∧ ∃ x, Pn x ∧
+        ((0 < x ∧ ∃ Y, Ψ x Y (μ'.store.get g.1 g.2) ∧ V = matMulWord M U Y) ∨
+          (¬ 0 < x ∧ V = U ∧ μ'.store.get g.1 g.2 = some (M.lit 0)))) μ := by
+  obtain ⟨hT, hU⟩ := hpair
+  simp only [Mem.live_cons, Mem.live_nil, and_true] at hl
+  obtain ⟨hal, hul, hpl, hvl, hgl⟩ := hl
+  simp only [Mem.room_cons, Mem.room_nil, and_true] at hroom
+  obtain ⟨hvr, hgr⟩ := hroom
+  obtain ⟨huv, hug, hag, hvg⟩ := stage_disj hap
+  change Writes .total I τ (Stmt.allocs [.const 1, .const 1, .const 2 * (.var 0 * .var 0)]
+    (.seq (.call (Has.inj IndexOp.lit) [.const 0] [] [⟨4, .var 6⟩])
+      (.seq (.frame [.var 0] [⟨0, .var 2⟩, ⟨5, .const 0⟩] frobNormStage)
+        (.ite (Has.inj CmpTst.isPos) [] [⟨5, .const 0⟩] stageThen
+          (.frame [.var 0, .var 0] [⟨1, .var 3⟩, ⟨3, .var 5⟩]
+            (PairMatrix.copyRoutine (Op := O) (Tst := Q)).body))))) _ _ _ μ
+  refine writes_allocs_preserving_post (ns := [1, 1, 2 * (N * N)]) rfl
+    (fun {s s' p} hB ⟨V, hV, x, hP, hc⟩ => ⟨V, hV.of_below hB hvl, x, hP, ?_⟩) ?_
+  · have hge : Store.get s' g.1 g.2 = Store.get s g.1 g.2 := (hB g.1 hgl).2 g.2
+    simpa only [hge] using hc
+  intro s₁ hlen hlens hB
+  set L := μ.store.length with hLdef
+  simp only [List.length_cons, List.length_nil] at hlen
+  have hl0 : s₁.len L = 1 := by simpa using hlens 0 (by simp)
+  have hl1 : s₁.len (L + 1) = 1 := by simpa using hlens 1 (by simp)
+  have hl2 : s₁.len (L + 2) = 2 * (N * N) := by simpa using hlens 2 (by simp)
+  have hrg : g.2 < s₁.len g.1 := by rw [(hB g.1 hgl).1]; omega
+  refine (writes_indexLit (n := 0) (z := g) (out := ⟨4, .var 6⟩) hL rfl rfl hrg).seq_le
+    (le_sup_of_le_left le_sup_right) fun μ₁ h₁ ⟨_, g₁⟩ => ?_
+  have hne : ∀ {b}, b ≠ g.1 → ∀ o, ¬ Store.inBlock g.1 g.2 1 b o := fun hb _ h => hb h.1
+  have hT₁ : HoldsMatrix a T μ₁.store :=
+    (hT.of_below hB hal).of_eqOff h₁ fun b i h h' => hag b i h' h
+  have hU₁ : HoldsMatrix uo U μ₁.store :=
+    (hU.of_below hB hul).of_eqOff h₁ fun b i h h' => hug b i h' h
+  have hlv : μ₁.Live [a, (L, 0)] := by
+    simp only [Mem.live_cons, Mem.live_nil, and_true, h₁.length_eq, hlen]; omega
+  refine (hnorm μ₁ (L, 0) hT₁ hlv (by simp [h₁.len_eq, hl0])
+    (by dsimp only; omega)).frame_seq_le rfl rfl hlv
+    (fun b _ h => Or.inr (show L ≤ b from h.1 ▸ le_rfl)) fun μ₂ h₂ ⟨x, hx, hP⟩ => ?_
+  have hL₂ : ∀ {b o}, b < L → μ₂.store.get b o = μ₁.store.get b o := fun hb =>
+    h₂.2 _ _ fun h => by have := h.1; omega
+  have hg₂ : μ₂.store.get g.1 g.2 = some (M.lit 0) := by
+    rw [hL₂ hgl]; simpa using g₁
+  have hT₂ : HoldsMatrix a T μ₂.store :=
+    hT₁.of_eqOff h₂ fun b i h h' => by have := h.1; have := h'.1; omega
+  have hU₂ : HoldsMatrix uo U μ₂.store :=
+    hU₁.of_eqOff h₂ fun b i h h' => by have := h.1; have := h'.1; omega
+  have hρ₂ : μ₂.store.get pe.1 pe.2 = some ρ := by
+    rw [hL₂ hpl, h₁.2 _ _ ?_, (hB pe.1 hpl).2]
+    · exact hρ
+    · intro h
+      have hpg : Fp.Disj (Store.inBlock pe.1 pe.2 ne) (Store.inBlock g.1 g.2 1) :=
+        hap.2.2.1.mono le_rfl (by simp only [Fp.blocks]; fp_sub)
+      exact hpg _ _ ⟨rfl, le_rfl, by omega⟩ h
+  have hlen₂ : μ₂.store.length = L + 3 := by rw [h₂.length_eq, h₁.length_eq, hlen]
+  have htest := hC.test_isPos (d := []) (x := (L, 0)) (m := μ₂) hx
+  by_cases hpos : 0 < x
+  · have hc : decide (0 < id x) = true := decide_eq_true hpos
+    rw [hc] at htest
+    refine writes_ite (c := true) (d := []) (a := [(L, 0)]) rfl rfl htest ?_
+    refine (stageThen_writes (ne := ne) (Ψ := Ψ x) hS ⟨hal, hul, hpl, hvl, hgl⟩ hlen₂
+      (by rw [h₂.len_eq, h₁.len_eq]; exact hl1) (by rw [h₂.len_eq, h₁.len_eq]; exact hl2)
+      hT₂ hU₂ hρ₂ hx hg₂ (by rw [h₂.len_eq, h₁.len_eq, (hB v.1 hvl).1]; exact hvr)
+      (by rw [h₂.len_eq, h₁.len_eq, (hB g.1 hgl).1]; omega) huv hug hag hvg
+      (hev x hP hpos L)).mono le_rfl ?_
+    rintro μ₃ - ⟨Y, hΨ, hV⟩
+    exact ⟨_, hV, x, hP, Or.inl ⟨hpos, Y, hΨ, rfl⟩⟩
+  · have hc : decide (0 < id x) = false := decide_eq_false hpos
+    rw [hc] at htest
+    refine writes_ite (c := false) (d := []) (a := [(L, 0)]) rfl rfl htest ?_
+    have hlvc : μ₂.Live [uo, v] := by
+      simp only [Mem.live_cons, Mem.live_nil, and_true, h₂.length_eq, h₁.length_eq, hlen]; omega
+    have hcp := PairMatrix.copy_writes (Op := O) (Tst := Q) hS (τ := τ) (m := μ₂) (rows := N)
+      (cols := N) hlvc huv hU₂ (by rw [h₂.len_eq, h₁.len_eq, (hB v.1 hvl).1]; exact hvr)
+    refine (Writes.in_frame (ds := [.var 0, .var 0]) (args := [⟨1, .var 3⟩, ⟨3, .var 5⟩])
+      (ρ := stageEnv N ne a uo pe v g L) hcp rfl rfl hlvc).mono
+      (le_sup_of_le_left le_sup_left) ?_
+    rintro μ₃ h₃ ⟨_, hV⟩
+    refine ⟨U, hV, x, hP, Or.inr ⟨hpos, rfl, ?_⟩⟩
+    rw [h₃.2 _ _ hvg]
+    exact hg₂
+
+/-- What the stage knows of its columns on a positive norm word, at the floor `smin`. -/
+private def StageColumns {N : ℕ} (M : Machine ℝ) (u : ℝ) (T : Matrix (Fin N) (Fin N) ℂ)
+    (smin : ℝ) (Y : Matrix (Fin N) (Fin N) ℂ) (gw : Option ℝ) : Prop :=
+  (gw = some 0 ∨ gw = some (M.lit 1)) ∧ (T.IsUpperTriangular →
+    IsTriangularEigenbasisApprox (16 * ((N : ℝ) + 1) * u) (7 / 2 * smin)
+      (4 * ((N : ℝ) + 2) * u) T Y ∧
+    (gw = some 0 →
+      IsTriangularEigenbasisApprox (16 * ((N : ℝ) + 1) * u) 0 (4 * ((N : ℝ) + 2) * u) T Y) ∧
+    ((∀ i j, i ≠ j → 2 * smin < ‖T i i - T j j‖) → gw = some 0))
+
+/-- The columns of the stage at a positive floor, for any stored $\mathbf{T}$. -/
+private theorem triEigenvectors_stageColumns {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
+    (hS : IsScalar M I) (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I) {N : ℕ}
+    (hu : 64 * ((N : ℝ) + 1) * u ≤ 1) {t sm y g : ℕ × ℕ} {T : Matrix (Fin N) (Fin N) ℂ}
+    {smin : ℝ} (hsmin : 0 < smin) {τ : Tape ℝ} {μ : Mem ℝ}
+    (hT : HoldsMatrix t T μ.store) (hsm : μ.store.get sm.1 sm.2 = some smin)
+    (hg : μ.store.get g.1 g.2 = some 0)
+    (hl : μ.Live [t, sm, y, g]) (hroom : μ.Room [y, g] [2 * (N * N), 1])
+    (hap : Fp.Apart [t, sm, y, g] [2 * (N * N), 1, 2 * (N * N), 1]) :
+    Writes .total I τ (triEigenvectors (O := O) (Q := Q)) (Env.frame [N] [t, sm, y, g, y, g])
+      (Store.inBlock y.1 y.2 (2 * (N * N)) ⊔ Store.inBlock g.1 g.2 1)
+      (fun μ' => ∃ Y : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix y Y μ'.store ∧
+        StageColumns M u T smin Y (μ'.store.get g.1 g.2)) μ := by
+  by_cases hTu : T.IsUpperTriangular
+  · refine (triEigenvectors_isTriangularEigenbasisApprox_of_pos hS hM hL hC hu hTu hsmin hT hsm
+      hg hl hroom hap).mono le_rfl ?_
+    rintro μ' - ⟨Y, hY, hf, ha, ha0, hgp⟩
+    exact ⟨Y, hY, hf, fun _ => ⟨ha, ha0, hgp⟩⟩
+  · refine (triEigenvectors_writes_flags hS hL hC hT hsm hl hroom hap).mono le_rfl ?_
+    rintro μ' - ⟨Y, f, hY, -, h1, h0⟩
+    refine ⟨Y, hY, ?_, fun h => absurd h hTu⟩
+    by_cases hex : ∃ j, f j = true
+    · exact Or.inr (h1 hex)
+    · refine Or.inl ((h0 fun j => ?_).trans hg)
+      cases hj : f j with
+      | false => rfl
+      | true => exact absurd ⟨j, hj⟩ hex
+
+/-- The clauses of the contract on a positive norm word. -/
+private theorem stage_post_pos {M : Machine ℝ} {u : ℝ} (hM : StdModel u id M)
+    (hNat : IsExactNatLit id M 1) {nmax N : ℕ} (hN : N ≤ nmax) {ρ x : ℝ} (hρ : 0 < ρ)
+    (hu : 64 * ((nmax : ℝ) + 1) ^ 2 * u ≤ 1) {T U Y : Matrix (Fin N) (Fin N) ℂ} {gw : Option ℝ}
+    (hx₂ : x ≤ (1 + (2 * (nmax : ℝ) ^ 2 + 2) * u) * frobNorm T) (hxp : 0 < x)
+    (hΨ : StageColumns M u T (M.mul ρ x) Y gw) :
+    (gw = some 0 ∨ gw = some 1) ∧ (T = 0 → matMulWord M U Y = U ∧ gw = some 0) ∧
+      (T.IsUpperTriangular →
+        (∃ Y' : Matrix (Fin N) (Fin N) ℂ,
+          (∀ j, |‖WithLp.toLp 2 (Y'.col j)‖ - 1| ≤ 4 * ((nmax : ℝ) + 2) * u ∧
+            ‖WithLp.toLp 2 ((T - T j j • 1) *ᵥ Y'.col j)‖ ≤
+              (if gw = some 0 then 16 * (1 + √(nmax : ℝ)) * ((nmax : ℝ) + 1) * u
+                else 16 * (1 + √(nmax : ℝ)) * ((nmax : ℝ) + 1) * u + 4 * ρ) * frobNorm T *
+                ‖WithLp.toLp 2 (Y'.col j)‖) ∧
+          specNorm (matMulWord M U Y - U * Y') ≤
+            8 * ((nmax : ℝ) + 1) * u * frobNorm U * frobNorm Y') ∧
+        ((∀ i j, i ≠ j → 4 * ρ * frobNorm T < ‖T i i - T j j‖) → gw = some 0)) := by
+  have hu0 : 0 ≤ u := (abs_nonneg _).trans (by simpa using hM.lit 1)
+  have hn0 : (0 : ℝ) ≤ nmax := Nat.cast_nonneg nmax
+  have hNr : (N : ℝ) ≤ nmax := by exact_mod_cast hN
+  have hN0 : (0 : ℝ) ≤ N := Nat.cast_nonneg N
+  have hsq : (1 : ℝ) ≤ ((nmax : ℝ) + 1) ^ 2 := by nlinarith
+  have hu64 : u ≤ 1 / 64 := by nlinarith
+  have hnu : ((nmax : ℝ) + 1) * u ≤ 1 / 64 := by nlinarith [mul_nonneg hn0 hu0]
+  have hc₂ : (2 * (nmax : ℝ) ^ 2 + 2) * u ≤ 1 / 32 := by nlinarith [mul_nonneg hn0 hu0]
+  have hF0 : 0 < frobNorm T := by
+    by_contra h
+    have hF : frobNorm T = 0 := le_antisymm (not_lt.mp h) (frobNorm_nonneg T)
+    rw [hF, mul_zero] at hx₂
+    linarith
+  have hlit : M.lit 1 = 1 := by simpa using hNat 1 le_rfl
+  have hρx : 0 < ρ * x := mul_pos hρ hxp
+  have hm := hM.mul ρ x
+  simp only [id, abs_of_pos hρx] at hm
+  obtain ⟨hm₁, hm₂⟩ := abs_le.mp hm
+  have hx₃ : x ≤ 33 / 32 * frobNorm T :=
+    hx₂.trans (mul_le_mul_of_nonneg_right (by linarith) hF0.le)
+  have hρx₂ : ρ * x ≤ ρ * (33 / 32 * frobNorm T) := mul_le_mul_of_nonneg_left hx₃ hρ.le
+  have hsm : M.mul ρ x ≤ 8 / 7 * (ρ * frobNorm T) := by nlinarith [mul_pos hρ hF0]
+  have hsm0 : 0 ≤ M.mul ρ x := by nlinarith
+  refine ⟨hΨ.1.imp id (fun h => by rw [h, hlit]), fun h0 => ?_, fun hTu => ?_⟩
+  · exact absurd (h0 ▸ hF0) (by simp)
+  obtain ⟨happ, happ0, hgp⟩ := hΨ.2 hTu
+  have hcard : (√(Fintype.card (Fin N) : ℝ)) ≤ √(nmax : ℝ) := by
+    rw [Fintype.card_fin]; exact Real.sqrt_le_sqrt hNr
+  have hsq0 : 0 ≤ √(Fintype.card (Fin N) : ℝ) := Real.sqrt_nonneg _
+  have hε : 16 * ((N : ℝ) + 1) * u * (1 + √(Fintype.card (Fin N) : ℝ)) ≤
+      16 * (1 + √(nmax : ℝ)) * ((nmax : ℝ) + 1) * u := by
+    have h1 : ((N : ℝ) + 1) * u ≤ ((nmax : ℝ) + 1) * u :=
+      mul_le_mul_of_nonneg_right (by linarith) hu0
+    have h2 : ((N : ℝ) + 1) * u * (1 + √(Fintype.card (Fin N) : ℝ)) ≤
+        ((nmax : ℝ) + 1) * u * (1 + √(nmax : ℝ)) :=
+      mul_le_mul h1 (by linarith) (by positivity) (by positivity)
+    nlinarith
+  have hnε : 0 ≤ 16 * ((N : ℝ) + 1) * u := by positivity
+  refine ⟨⟨Y, fun j => ⟨(happ j).1.trans (by nlinarith), ?_⟩, ?_⟩,
+    fun hgap => hgp fun i j hij => ?_⟩
+  · have hyn := norm_nonneg (WithLp.toLp 2 (Y.col j))
+    by_cases hg0 : gw = some 0
+    · rw [if_pos hg0]
+      refine ((happ0 hg0).norm_mulVec_col_le hnε le_rfl j).trans
+        (mul_le_mul_of_nonneg_right ?_ hyn)
+      rw [add_zero]
+      exact mul_le_mul_of_nonneg_right hε hF0.le
+    · rw [if_neg hg0]
+      refine (happ.norm_mulVec_col_le hnε (by positivity) j).trans
+        (mul_le_mul_of_nonneg_right ?_ hyn)
+      have h1 := mul_le_mul_of_nonneg_right hε hF0.le
+      have h2 : 7 / 2 * M.mul ρ x ≤ 4 * ρ * frobNorm T := by nlinarith [mul_pos hρ hF0]
+      nlinarith
+  · have hb := hM.specNorm_matMulWord_sub_le (by nlinarith) U Y
+    refine hb.trans ?_
+    have hUY := mul_nonneg (frobNorm_nonneg U) (frobNorm_nonneg Y)
+    have : 8 * ((N : ℝ) + 1) * u ≤ 8 * ((nmax : ℝ) + 1) * u := by nlinarith
+    calc _ ≤ 8 * ((nmax : ℝ) + 1) * u * (frobNorm U * frobNorm Y) :=
+          mul_le_mul_of_nonneg_right this hUY
+      _ = _ := by ring
+  · have h2 : 2 * M.mul ρ x ≤ 4 * ρ * frobNorm T := by nlinarith [mul_pos hρ hF0]
+    exact lt_of_le_of_lt h2 (hgap i j hij)
+
+/-- The clauses of the contract when the norm word is not positive: $\mathbf{T} = \mathbf{0}$,
+$\mathbf{V} = \mathbf{U}$ and $\mathbf{Y} = \mathbf{I}$. -/
+private theorem stage_post_zero {nmax N : ℕ} {ρ u c₁ x : ℝ} (hu0 : 0 ≤ u)
+    (hc₁ : 0 < c₁) {T U : Matrix (Fin N) (Fin N) ℂ} {gw : Option ℝ}
+    (hx₁ : c₁ * frobNorm T ≤ x) (hxp : ¬ 0 < x) (hg : gw = some 0) :
+    (gw = some 0 ∨ gw = some 1) ∧ (T = 0 → U = U ∧ gw = some 0) ∧
+      (T.IsUpperTriangular →
+        (∃ Y : Matrix (Fin N) (Fin N) ℂ,
+          (∀ j, |‖WithLp.toLp 2 (Y.col j)‖ - 1| ≤ 4 * ((nmax : ℝ) + 2) * u ∧
+            ‖WithLp.toLp 2 ((T - T j j • 1) *ᵥ Y.col j)‖ ≤
+              (if gw = some 0 then 16 * (1 + √(nmax : ℝ)) * ((nmax : ℝ) + 1) * u
+                else 16 * (1 + √(nmax : ℝ)) * ((nmax : ℝ) + 1) * u + 4 * ρ) * frobNorm T *
+                ‖WithLp.toLp 2 (Y.col j)‖) ∧
+          specNorm (U - U * Y) ≤ 8 * ((nmax : ℝ) + 1) * u * frobNorm U * frobNorm Y) ∧
+        ((∀ i j, i ≠ j → 4 * ρ * frobNorm T < ‖T i i - T j j‖) → gw = some 0)) := by
+  have hF : frobNorm T = 0 := by
+    have h0 := frobNorm_nonneg T
+    have : c₁ * frobNorm T ≤ 0 := hx₁.trans (not_lt.mp hxp)
+    nlinarith
+  have hT : T = 0 := frobNorm_eq_zero_iff.mp hF
+  subst hT
+  refine ⟨Or.inl hg, fun _ => ⟨rfl, hg⟩, fun _ => ⟨⟨1, fun j => ⟨?_, ?_⟩, ?_⟩, fun _ => hg⟩⟩
+  · have e : WithLp.toLp 2 ((1 : Matrix (Fin N) (Fin N) ℂ).col j) =
+        EuclideanSpace.single j (1 : ℂ) := by
+      ext i
+      simp [Matrix.col, Matrix.one_apply, eq_comm]
+    have h1 : ‖EuclideanSpace.single j (1 : ℂ)‖ = 1 := by simp
+    rw [e, h1, sub_self, abs_zero]
+    positivity
+  · simp [frobNorm_zero]
+  · rw [mul_one, sub_self, specNorm_zero]
+    have := frobNorm_nonneg U
+    have h1 := frobNorm_nonneg (1 : Matrix (Fin N) (Fin N) ℂ)
+    positivity
+
 /-- **The eigenvector stage meets its contract**: on a scalar machine with the standard model at
 $\boldsymbol{u}$, $64(N_{\max} + 1)^2\boldsymbol{u} \le 1$, index literals, exact literals $0$, $1$
 and exact comparisons, for the floor parameter $\rho > 0$, `NLAlib.Schur.triEigvecStage` with the
@@ -1145,7 +1324,39 @@ theorem triEigvecStage_eigenvectorStageContract {M : Machine ℝ} {I : Interp O 
     EigenvectorStageContract (16 * (1 + √(nmax : ℝ)) * ((nmax : ℝ) + 1) * u)
       (16 * (1 + √(nmax : ℝ)) * ((nmax : ℝ) + 1) * u + 4 * ρ) (8 * ((nmax : ℝ) + 1) * u)
       (4 * ((nmax : ℝ) + 2) * u) (4 * ρ) nmax [ρ] (triEigvecStage (O := O) (Q := Q)) I := by
-  sorry
+  intro N a uo pe v g τ μ U T hN hpair hrd hl hroom hap
+  have hu0 : 0 ≤ u := (abs_nonneg _).trans (by simpa using hM.lit 1)
+  have hn0 : (0 : ℝ) ≤ nmax := Nat.cast_nonneg nmax
+  have hNr : (N : ℝ) ≤ nmax := by exact_mod_cast hN
+  have hc : (2 * (nmax : ℝ) ^ 2 + 2) * u ≤ 1 / 32 := by nlinarith [mul_nonneg hn0 hu0]
+  have huN : 64 * ((N : ℝ) + 1) * u ≤ 1 := by
+    have hN0 : (0 : ℝ) ≤ N := Nat.cast_nonneg N
+    nlinarith [mul_nonneg hn0 hu0]
+  have hρg : μ.store.get pe.1 pe.2 = some ρ := by
+    simpa using Store.get_of_readBlock hrd (j := 0) (by simp) 0
+  have hl00 : M.lit 0 = 0 := hM.zero
+  have hnorm : FrobNormEstimateContract (1 - (2 * (nmax : ℝ) ^ 2 + 2) * u)
+      (1 + (2 * (nmax : ℝ) ^ 2 + 2) * u) nmax (frobNormStage (O := O) (Q := Q)) I :=
+    frobNormStage_frobNormEstimateContract hS hM (by linarith)
+  refine (triEigvecStage_writes_of (ne := 1) (ρ := ρ)
+    (Pn := fun x => (1 - (2 * (nmax : ℝ) ^ 2 + 2) * u) * frobNorm T ≤ x ∧
+      x ≤ (1 + (2 * (nmax : ℝ) ^ 2 + 2) * u) * frobNorm T)
+    (Ψ := fun x Y gw => StageColumns M u T (M.mul ρ x) Y gw) hS hL hC one_pos hpair hρg hl hroom hap
+    (fun m s hT hlv hs hne => (hnorm T hN hT hlv hs hne).mono le_rfl
+      fun _ _ ⟨x, hx, h₁, h₂⟩ => ⟨x, hx, h₁, h₂⟩)
+    (fun x _ hxp L m hT hsm hg hlv hrm hap' => ?_)).mono le_rfl ?_
+  · have hmx := hM.mul ρ x
+    have hρx : 0 < ρ * x := mul_pos hρ hxp
+    simp only [id, abs_of_pos hρx] at hmx
+    have hu1 : u ≤ 1 / 64 := by nlinarith
+    have hpos : 0 < M.mul ρ x := by nlinarith [(abs_le.mp hmx).1]
+    exact triEigenvectors_stageColumns hS hM hL hC huN hpos hT hsm (hg.trans (congrArg some hl00))
+      hlv hrm hap'
+  · rintro μ' - ⟨V, hV, x, ⟨hx₁, hx₂⟩, hcase⟩
+    refine ⟨V, hV, ?_⟩
+    rcases hcase with ⟨hxp, Y, hΨ, rfl⟩ | ⟨hxp, rfl, hgw⟩
+    · exact stage_post_pos hM hNat hN hρ hu hx₂ hxp hΨ
+    · exact stage_post_zero hu0 (by linarith) hx₁ hxp (hgw.trans (congrArg some hl00))
 
 /-- **The eigenvector stage completes** on any scalar machine with index literals and exact
 comparisons: for every order at most $N_{\max}$ and every stored pair it succeeds on every tape,
@@ -1153,14 +1364,40 @@ writing only $\mathbf{V}$ and the flag, and stores a matrix and a word. -/
 theorem triEigvecStage_completes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hL : IsIndexLit M I) (hC : IsCmp id I) (nmax : ℕ) (ρ : ℝ) :
     CompletingEigenvectorStage nmax [ρ] (triEigvecStage (O := O) (Q := Q)) I := by
-  sorry
+  intro N a uo pe v g τ μ U T hN hpair hrd hl hroom hap
+  have hρg : μ.store.get pe.1 pe.2 = some ρ := by
+    simpa using Store.get_of_readBlock hrd (j := 0) (by simp) 0
+  refine (triEigvecStage_writes_of (ne := 1) (ρ := ρ) (Pn := fun _ => True)
+    (Ψ := fun _ _ gw => ∃ x, gw = some x) hS hL hC one_pos hpair hρg hl hroom hap
+    (fun m s hT hlv hs hne => (frobNormStage_completing hS nmax T hN hT hlv hs hne).mono le_rfl
+      fun _ _ ⟨x, hx⟩ => ⟨x, hx, trivial⟩)
+    (fun x _ _ L m hT hsm hg hlv hrm hap' =>
+      (triEigenvectors_writes hS hL hC hT hsm ⟨_, hg⟩ hlv hrm hap').mono le_rfl
+        fun _ _ ⟨⟨Y, hY⟩, w, hw⟩ => ⟨Y, hY, w, hw⟩)).mono le_rfl ?_
+  rintro μ' - ⟨V, hV, x, -, hcase⟩
+  refine ⟨⟨V, hV⟩, ?_⟩
+  rcases hcase with ⟨-, Y, ⟨w, hw⟩, -⟩ | ⟨-, -, hw⟩
+  · exact ⟨w, hw⟩
+  · exact ⟨_, hw⟩
 
 /-- **The static count of the eigenvector stage**: its instrumented static count at the order
 $n + 1$, $n_e$ words and zero offsets is at most $10^4(n + 1)^3$. -/
 theorem size_stmtCost_triEigvecStage_le (n ne : ℕ) :
     Count.size (stmtCost (triEigvecStage (O := O) (Q := Q)).instrument
       [n + 1, ne, 0, 0, 0, 0, 0]) ≤ 10000 * (n + 1) ^ 3 := by
-  sorry
+  have hw : stmtWorkMono (triEigvecStage (O := O) (Q := Q)).instrument
+      (⟨1, [1, 0]⟩ :: ⟨1, [0, 1]⟩ :: List.replicate 5 (WorkMono.const 0)) = ⟨1579, [3, 0]⟩ := by
+    rw [stmtWorkMono_instrument]; kernel_rfl
+  have hσ : SlotsLe [n + 1, ne + 1] [n + 1, ne, 0, 0, 0, 0, 0]
+      (⟨1, [1, 0]⟩ :: ⟨1, [0, 1]⟩ :: List.replicate 5 (WorkMono.const 0)) := by
+    simp [SlotsLe, WorkMono.eval, WorkMono.const]
+  have h := size_stmtCost_le_stmtWorkMono (bs := [n + 1, ne + 1]) (by simp)
+    (triEigvecStage (O := O) (Q := Q)).instrument hσ
+  rw [hw] at h
+  have h' : Count.size (stmtCost (triEigvecStage (O := O) (Q := Q)).instrument
+      [n + 1, ne, 0, 0, 0, 0, 0]) ≤ 1579 * (n + 1) ^ 3 := by
+    simpa [WorkMono.eval, mul_assoc] using h
+  exact h'.trans (Nat.mul_le_mul_right _ (by omega))
 
 end Stage
 

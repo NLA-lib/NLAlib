@@ -466,15 +466,17 @@ theorem isSigmaCompact_setOf_isConditionedDiagonalizable {N : ℕ} (B Γ : ℝ) 
     have hV : Continuous fun q : M × M × M × (Fin N → ℂ) => q.2.1 := by fun_prop
     have hW : Continuous fun q : M × M × M × (Fin N → ℂ) => q.2.2.1 := by fun_prop
     have hd : Continuous fun q : M × M × M × (Fin N → ℂ) => q.2.2.2 := by fun_prop
-    refine (isClosed_eq (hV.matrix_mul hW) continuous_const).inter
+    have hgaps : IsClosed {q : M × M × M × (Fin N → ℂ) |
+        ∀ i j, i ≠ j → Γ ≤ ‖q.2.2.2 i - q.2.2.2 j‖} := by
+      simp only [Set.ofPred_forall]
+      exact isClosed_iInter fun i => isClosed_iInter fun j => isClosed_iInter fun _ =>
+        isClosed_le continuous_const
+          ((((continuous_apply i).comp hd).sub ((continuous_apply j).comp hd)).norm)
+    exact (isClosed_eq (hV.matrix_mul hW) continuous_const).inter
       ((isClosed_eq (hX.matrix_mul hV)
         (hV.matrix_mul (continuous_id.matrix_diagonal.comp hd))).inter
       ((isClosed_le ((continuous_specNorm.comp hV).mul (continuous_specNorm.comp hW))
-        continuous_const).inter ?_))
-    simp only [Set.setOf_forall]
-    exact isClosed_iInter fun i => isClosed_iInter fun j => isClosed_iInter fun _ =>
-      isClosed_le continuous_const
-        ((((continuous_apply i).comp hd).sub ((continuous_apply j).comp hd)).norm)
+        continuous_const).inter hgaps))
   have e : {X : M | IsConditionedDiagonalizable B Γ X} = Prod.fst '' Z := by
     ext X
     simp only [Set.mem_ofPred_eq, Set.mem_image, Z, IsConditionedDiagonalizable]
@@ -484,7 +486,7 @@ theorem isSigmaCompact_setOf_isConditionedDiagonalizable {N : ℕ} (B Γ : ℝ) 
         hXV, ?_, hg⟩, rfl⟩
       rwa [← pseudoConditionNumber_of_isUnit hV]
     · rintro ⟨⟨X', V, W, d⟩, ⟨hVW, hXV, hκ, hg⟩, rfl⟩
-      have hV : IsUnit V := Matrix.isUnit_of_right_inverse hVW
+      have hV : IsUnit V := IsUnit.of_mul_eq_one _ hVW
       have hW : V⁻¹ = W := Matrix.inv_eq_right_inv hVW
       refine ⟨V, d, hV, hXV, ?_, hg⟩
       rwa [pseudoConditionNumber_of_isUnit hV, hW]
@@ -553,7 +555,15 @@ theorem denseSchurAt_pwrites_regularizedSchur {Mch : Machine ℝ} {I : Interp O 
       (forwardBackwardError k 32 (shqrSmallEigAccuracy n B2 Γ2 8 δ'C))
       (denseSchurLeafFailureAt n δR δC φ) (min k (n + 1)) (4 * 8) qs T
       (smallEigProg (O := O) (Q := Q) sG) I := by
-    have h := SmallEig.smallEigProg_randomSchurLeafContract (O := O) (Q := Q) hS hM hL
+    have h : RandomSchurLeafContract law ((1 + 24 * u) ^ smallEigLeafRotations k
+          (smallEigForwardCap k 32 (shqrSmallEigAccuracy n B2 Γ2 8 δ'C)
+            (denseSchurLeafFailureAt n δR δC φ) ginibreGapTail ginibreConditionTail) - 1)
+        (forwardBackwardError k 32 (shqrSmallEigAccuracy n B2 Γ2 8 δ'C))
+        (denseSchurLeafFailureAt n δR δC φ) (min k (n + 1)) 32 qs
+        (smallEigForwardCap k 32 (shqrSmallEigAccuracy n B2 Γ2 8 δ'C)
+          (denseSchurLeafFailureAt n δR δC φ) ginibreGapTail ginibreConditionTail)
+        (smallEigProg (O := O) (Q := Q) sG) I :=
+      SmallEig.smallEigProg_randomSchurLeafContract (O := O) (Q := Q) hS hM hL
       (dmax := min k (n + 1)) (min_le_left _ _)
       (hNat.mono (min_le_right _ _)) hQ hC hI hloc hSmp hDisk hU hG
       boundsGinibreGap_ginibreGapTail boundsGinibreCondition_ginibreConditionTail
@@ -561,7 +571,7 @@ theorem denseSchurAt_pwrites_regularizedSchur {Mch : Machine ℝ} {I : Interp O 
       (by linarith) (hu.trans (min_le_right _ _))
     rw [← denseSchurLeafCapAt_eq] at h
     rw [show (4 : ℝ) * 8 = 32 by norm_num]
-    exact h
+    exact @h
   have hR0 : 0 ≤ (1 + 24 * u) ^ RL - 1 := by
     have := one_le_pow₀ (M₀ := ℝ) (n := RL) (by linarith : (1 : ℝ) ≤ 1 + 24 * u)
     linarith
@@ -598,7 +608,7 @@ theorem denseSchurAt_pwrites_regularizedSchur {Mch : Machine ℝ} {I : Interp O 
     exact roundedShQRSchurWith_randomSchurCoreContract hS hM hL hNat hQ hC hI hloc hDisk hU
       hB1 (half_pos hΓ) hdC0 (by linarith) (half_pos hφ) (by linarith) rfl hLeaf
       (SmallEig.length_smallEigParams _ _ _ _ _ _) hR0 le_rfl hb0.le
-      (by rw [show (4 : ℝ) * 8 = 32 by norm_num]) hφL.le le_rfl hu4 hu6
+      (by rw [show (4 : ℝ) * 8 = 32 by norm_num]; exact le_rfl) hφL.le le_rfl hu4 hu6
   have hCC' : ∀ (A H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
       IsConditionedDiagonalizable (denseSchurB n δR φ) (denseSchurΓ n δR φ) A →
       IsPerturbedUnitarySimilarBy V A H
@@ -685,9 +695,11 @@ theorem denseSchurAt_measureReal_not_regularizedSchur_le {Mch : Machine ℝ} {I 
   rw [← hRe] at hεU
   have hε29 : (1 + 27 * ((n : ℝ) + 1) ^ 2 * u) * (1 + 24 * u) ^ Rc - 1 ≤
       29 * (denseSchurRotationsAt n δR δC φ : ℝ) * u := by nlinarith
-  refine (measureReal_mono fun ω hω hs => hω (hs.mono le_rfl fun μ' _ hout =>
-    hout.mono le_rfl ?_ hεU)).trans ((denseSchurAt_pwrites_regularizedSchur hS hM hL hNat hQ hC
-      hI hloc hSmp hDisk hU hG hδR hδR1 hδC hδC1 hφ hφ1 hu).measureReal_not_writes_le hin hξ)
+  have hP := (denseSchurAt_pwrites_regularizedSchur (O := O) (Q := Q) hS hM hL hNat hQ hC
+    hI hloc hSmp hDisk hU hG hδR hδR1 hδC hδC1 hφ hφ1 hu).measureReal_not_writes_le hin hξ
+  have := hξ.isProbabilityMeasure
+  refine (measureReal_mono (fun ω (hω : ¬ _) (hs : Writes _ _ _ _ _ _ _ _) =>
+    hω (hs.mono le_rfl fun μ' _ hout => hout.mono le_rfl ?_ hεU))).trans hP
   unfold schurPipelineEX
   have : 0 ≤ 2 * 2 * √((n : ℝ) + 1) := by positivity
   gcongr

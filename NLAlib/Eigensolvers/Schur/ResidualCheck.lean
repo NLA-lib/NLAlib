@@ -327,7 +327,8 @@ omit [Has IndexOp O] [Has CmpTst Q] in
 order $N$ in place of `NLAlib.Schur.frobNormStage`'s contract: the run writes only the four
 words of `S` and stores there estimates of $\|\mathbf{D}\|_{\mathsf F}$,
 $\|\mathbf{A}_0\|_{\mathsf F}$, $\|\mathbf{U}\|_{\mathsf F}$ and $\|\mathbf{T}\|_{\mathsf F}$
-within the factors $c_1$, $c_2$. -/
+within the factors $c_1$, $c_2$. A step in the proof of
+`NLAlib.Schur.schurResidualCheck_meets`. -/
 theorem checkNorms_writes {I : Interp O Q ℝ} {c₁ c₂ : ℝ} {N : ℕ}
     (hNm : FrobNormEstimateContract c₁ c₂ N (frobNormStage (O := O) (Q := Q)) I) {τ : Tape ℝ}
     {μ : Mem ℝ} {a0 uo t d s : ℕ × ℕ} {A₀ U T D : Matrix (Fin N) (Fin N) ℂ}

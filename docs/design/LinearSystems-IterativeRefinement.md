@@ -2,8 +2,8 @@
 
 Design, 2026-11-20; revised 2026-11-23 for the routine core and the folder
 `NLAlib/LinearSystems`, on `main` at `833cee56`.
-Requested as the library's example of mixed precision. Stages 1 and 2 below are implemented and
-checked with this note; stages 3 and 4 are planned here and not started. The note was written
+Requested as the library's example of mixed precision. All four stages below are implemented and
+checked. The note was written
 with the code, not reviewed before it: the interface questions in section 8 are open.
 
 ## Why this algorithm
@@ -125,6 +125,10 @@ error of a factorization into `θ`. `solveSpec` is what a caller of `solve` uses
 | `NLAlib/LinearSystems/Refinement/Solve.lean` | `solve`, `solveSpec`, `solve_meets` |
 | `NLAlib/LinearSystems/Refinement/Model.lean` | `Model.signature`, `Model.resources`, `Model.model`, `Model.laws`, `Model.confined_model` |
 | `NLAlib/LinearSystems/Refinement/Certification.lean` | `accepts`, `inputs`, `problem`, `program`, `model`, the count, `algorithm`, `oracles`, `algorithm_checked` |
+| `NLAlib/LinearSystems/Refinement/Kernels.lean` | the residual, update and cast routines |
+| `NLAlib/LinearSystems/Refinement/Rounded/` | `Signature`, `Bounds`, `Solve`, `Certification`: the three-precision program and certificate |
+| `NLAlib/Matrix/Factorizations/Cholesky/Routine.lean`, `TriangularSolve/{Substitution,Routine}.lean` | the kernels |
+| `NLAlib/Matrix/FinitePrecision/CholeskyRoundingError.lean`, `CholeskyTraceBounds.lean` | their rounding analysis |
 
 Additions outside the new files:
 
@@ -163,23 +167,28 @@ times, a componentwise rounding bound turned into a Euclidean one
 
 ## Stages
 
-1. **Run model** (done). `RefinementRun.lean`.
-2. **Routine and certificate over three vector operations** (done). The three precisions appear
-   as the accuracies of three contracts; no scalar arithmetic at a tag is executed yet. The
-   certificate is confined, not uniform (two declared oracles for the unstored matrix), with
-   closed-form work `25 k + 15` in calls of the three operations, and a derived problem.
-3. **Implementations at precision tags.** Three routines whose specifications are
-   `Routine.Spec.ofRel` of the three relations, linked below `solve`: `update` as a loop of
-   `Tagged W ScalarOp.add` (`ε = u`); `residual` as a matrix-vector product and a subtraction
-   at `Tagged R`, then a loop of `CastOp R W` (`ζ = u`, `η = (1+u)·c_n u_r`, from
-   `StdModel.norm_mulVec_sub_rowWord_le`); `solve` as two triangular solves at `Tagged F` with
-   stored factors as input, the factors assumed to satisfy
-   $A + \Delta A = \hat L\hat L^{\mathsf T}$. Needs a rounded triangular-solve routine:
-   `IsSubstTrace.exists_sum_add_mul_eq` [Higham2002, Theorem 8.5] is the mathematics, for the
-   lower solve only; the upper solve is missing. The matrix then becomes a stored input and
-   the oracles go away.
-4. **Factorization.** A rounded Cholesky routine at `Tagged F` and [Higham2002, Theorem 10.3],
-   discharging the hypothesis of stage 3.
+1. **Run model** (done). `Matrix/FinitePrecision/RefinementRun.lean`.
+2. **Routine and certificate over three abstract operations** (done). `Refinement/Solve.lean`,
+   `Model.lean`, `Certification.lean`: the matrix is an unstored input and the accuracies are
+   assumptions. It remains as the statement for any other implementation of the operations.
+3. **Rounding mathematics and kernels** (done).
+   `Matrix/FinitePrecision/CholeskyRoundingError.lean` and `CholeskyTraceBounds.lean`: for
+   positive definite $A$ read with relative error $v$ and $4(n+1)^2(u+v)\kappa(A) \le 1$, every
+   computed pivot is positive and $\|A - \hat L\hat L^{\mathsf T}\|_2 \le 2(n+1)^2(u+v)\|A\|_2$;
+   the solve with the factors has relative error at most $24(n+1)^2(u+v)\kappa(A)$; the rounded
+   residual has a normwise bound. Routines: `Cholesky.leftLooking`, `TriangularSolve.forward`,
+   `TriangularSolve.backward`, `Refinement.residualRows`, `addInPlace`, `castLoop`.
+4. **The three-precision program** (done). `Refinement/Rounded/`: scalar arithmetic at three
+   tags and four casts, the matrix stored, no oracle. `Rounded.solve` factors at $u_f$, computes
+   residuals at $u_r$ and updates at $u$, with $\theta = 24(n+1)^2(2u_f)\kappa(A)$,
+   $\eta = (1+u)(n+1)\gamma_{n+1}(u_r)$ and $\zeta = \varepsilon = u$.
+   `Rounded.Certification.algorithm` is uniform and confined, with closed-form work
+   $52n^3 + 104n^2k + 97n^2 + 125nk + 38n + 113k + 119$ instructions.
+
+Limits of the result: normwise in the 2-norm; the standard model on all operands, so no overflow
+or underflow; narrowing casts round and widening casts are exact; memory is one abstract cell
+per word, so the three formats are not given different byte widths; positive definite $A$ only.
+LU with pivoting, a stopping test and concrete IEEE formats are not covered.
 
 ## The port to the routine core (2026-11-23)
 

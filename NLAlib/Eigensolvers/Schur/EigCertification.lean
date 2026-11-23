@@ -18,14 +18,18 @@ public import NLAlib.Eigensolvers.Schur.DenseEig
 * `NLAlib.Schur.eigSolverInputs`, `NLAlib.Schur.eigSolverProgram`, `NLAlib.Schur.eigSolverProblem`,
   `NLAlib.Schur.eigSolverWork`, `NLAlib.Schur.eigSolverSpecification`,
   `NLAlib.Schur.eigSolverAlgorithm`: the eigensolver's generic certificate.
-* `NLAlib.Schur.denseEigProblem`, `NLAlib.Schur.denseEigWork`, `NLAlib.Schur.denseEigAlgorithm`:
-  the dense eigensolver's.
+* `NLAlib.Schur.denseEigProblem`, `NLAlib.Schur.denseEigWork`, `NLAlib.Schur.denseEigAlgorithm`,
+  `NLAlib.Schur.denseEigClaim`: the dense eigensolver's.
+* `NLAlib.Schur.DenseEigOutput`: the stored eigendecomposition the claim states.
 
 ## Main results
 
 * `NLAlib.Schur.denseEigRoutine_meets`: the judgment of the routine, on every tape.
-* `NLAlib.Schur.denseEig_algorithm_measureReal_not_accepts_le`: the dense eigendecomposition
-  theorem on one counted run.
+* `NLAlib.Schur.denseEig_algorithm_measureReal_not_decomposition_le`: the dense
+  eigendecomposition theorem on one counted run.
+* `NLAlib.Schur.denseEig_algorithm_measureReal_not_accepts_le`: the same run with the Schur output
+  and the column residuals.
+* `NLAlib.Schur.denseEig_checked`: what the certificate states.
 -/
 
 @[expose] public section
@@ -806,8 +810,8 @@ on one counted run, with the work and the span `NLAlib.Schur.denseEigWork`, the 
 computes eigenvalues only.
 
 Note: General form, any program meeting the model: `NLAlib.Ops.Algorithm`; the statement on the
-program is `NLAlib.Schur.denseEig_measureReal_not_eig_le`.
-Result: dense-eigendecomposition-certificate -/
+program is `NLAlib.Schur.denseEig_measureReal_not_eig_le`, the readable form of the event
+`NLAlib.Schur.denseEig_algorithm_measureReal_not_decomposition_le`. -/
 theorem denseEig_algorithm_measureReal_not_accepts_le {Mch : Machine ℝ}
     {admitted : ∃ d, EigSizes Mch denseEigSizes d} {u : ℝ} (hM : StdModel u id Mch)
     {law : ℕ → Measure ℝ} {sU sG : ℕ} (hU : law sU = volume.restrict (Set.Icc 0 1))
@@ -847,5 +851,121 @@ theorem denseEig_algorithm_measureReal_not_accepts_le {Mch : Machine ℝ}
     simp [Program.environment, IExp.evalList, IExp.eval, denseEigDims, denseSchurDimsAt,
       denseSchurDimsAtWith, List.ofFn_succ, h 1, h 2, h 3, h 4, h 5, h 6, denseEigSizes]
   · simp [Program.environment, Operand.evalList, Operand.eval, IExp.eval, List.ofFn_succ]
+
+/-- **A stored approximate eigendecomposition of $\mathbf{A}$**, at the output blocks `a` (the
+triangular factor), `v` (the eigenvectors) and `f` (the flag) of order $n + 1$: the flag is $0$,
+and with $\mathbf{D} = \operatorname{diag}(t_{ii})$ for the stored $\widehat{\mathbf{T}}$ and the
+stored $\mathbf{V}$,
+$$\|\mathbf{A}\mathbf{V} - \mathbf{V}\mathbf{D}\|_2 \le \delta\|\mathbf{A}\|_2\|\mathbf{V}\|_2\,,
+\quad \kappa(\mathbf{V}) \le 2\sqrt{n + 1}\,B\,,\quad
+\|\mathbf{V}\mathbf{D}\mathbf{V}^{-1} - \mathbf{A}\|_2 \le \delta\|\mathbf{A}\|_2\,,$$
+$\mathbf{V}$ is invertible, and $\lvert t_{ii} - t_{jj}\rvert \ge (\Gamma/4)\|\mathbf{A}\|_2$ for
+$i \ne j$. -/
+def DenseEigOutput {n : ℕ} (a v f : ℕ × ℕ) (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+    (δ B Γ : ℝ) (m : Mem ℝ) : Prop :=
+  m.store.get f.1 f.2 = some 0 ∧ ∃ T V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+    HoldsMatrix a T m.store ∧ HoldsMatrix v V m.store ∧
+    specNorm (A * V - V * Matrix.diagonal (fun i => T i i)) ≤ δ * specNorm A * specNorm V ∧
+    IsUnit V ∧ pseudoConditionNumber V ≤ 2 * √((n : ℝ) + 1) * B ∧
+    specNorm (V * Matrix.diagonal (fun i => T i i) * V⁻¹ - A) ≤ δ * specNorm A ∧
+    ∀ i j, i ≠ j → Γ / 4 * specNorm A ≤ ‖T i i - T j j‖
+
+/-- An eigendecomposition output with the errors $\delta$ is a `NLAlib.Schur.DenseEigOutput`. -/
+theorem EigOutput.denseEigOutput {n : ℕ} {a v f : ℕ × ℕ}
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {eC c δ B Γ : ℝ} {m : Mem ℝ}
+    (h : EigOutput a v f A eC δ c δ (2 * √((n : ℝ) + 1) * B) (Γ / 4) m) :
+    DenseEigOutput a v f A δ B Γ m := by
+  obtain ⟨hf, T, V, hT, hV, ⟨-, -, hres⟩, hu, hκ, hb, hg⟩ := h
+  exact ⟨hf, T, V, hT, hV, hres, hu, hκ, hb, hg⟩
+
+/-- **The dense eigendecomposition theorem, on one counted run.** Let the machine `Mch` have the
+standard model at $\boldsymbol{u}$; let the tape $\xi$ have the stream laws `law`, with `law`
+$s_U$ uniform on $[0, 1]$ and `law` $s_G$ the standard real Gaussian law. Let
+$(n, n_r, n_q, k, F, T, n_e)$ = `d` be admitted and let the input `x` hold a complex $\mathbf{A}$
+of order $n + 1$, $0 < \delta \le 1$, $0 < \varphi \le 1$ and $\boldsymbol{u} \le
+\boldsymbol{u}_E$. Let `I` meet the model, be measurable and read the tape only in its windows.
+Then, except with probability at most $\varphi$, the run of $\mathsf{denseEigAlgorithm}(\mathbf{A})$
+succeeds within its budget, scratch, memory, work and span, writes only $\mathbf{A}$,
+$\widehat{\mathbf{U}}$, $\mathbf{V}$ and the flag, stores the flag $0$, and with
+$\mathbf{D} = \operatorname{diag}(t_{ii})$,
+$$\|\mathbf{A}\mathbf{V} - \mathbf{V}\mathbf{D}\|_2 \le \delta\|\mathbf{A}\|_2\|\mathbf{V}\|_2\,,
+\quad \kappa(\mathbf{V}) \le 2\sqrt{n + 1}\,B\,,\quad
+\|\mathbf{V}\mathbf{D}\mathbf{V}^{-1} - \mathbf{A}\|_2 \le \delta\|\mathbf{A}\|_2\,,$$
+and $\lvert t_{ii} - t_{jj}\rvert \ge (\Gamma/4)\|\mathbf{A}\|_2$ for $i \ne j$
+(`NLAlib.Schur.DenseEigOutput`). Here $B$ = `NLAlib.Schur.denseSchurB`, $\Gamma$ =
+`NLAlib.Schur.denseSchurΓ` and $\boldsymbol{u}_E$ = `NLAlib.Schur.uDenseEig`.
+No printed source: [BanksGarzaVargasSrivastava2022, Theorem 1.4] computes eigenvalues only.
+Result: dense-eigendecomposition-certificate -/
+theorem denseEig_algorithm_measureReal_not_decomposition_le {Mch : Machine ℝ}
+    {admitted : ∃ d, EigSizes Mch denseEigSizes d} {u : ℝ} (hM : StdModel u id Mch)
+    {law : ℕ → Measure ℝ} {sU sG : ℕ} (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hG : law sG = gaussianReal 0 1) {d : Fin 7 → ℕ} (hd : EigSizes Mch denseEigSizes d)
+    (x : (denseEigProblem Mch admitted).Input d) {I : Interp SmallEigOp Tst ℝ}
+    (hI : (smallEigModel (denseEigProblem Mch admitted) Mch sU).contracts d x I)
+    (hIm : I.IsMeasurable) {win : SmallEigOp → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hδ : 0 < x.val.1.δ) (hδ1 : x.val.1.δ ≤ 1) (hφ : 0 < x.val.1.φ) (hφ1 : x.val.1.φ ≤ 1)
+    (hu : u ≤ uDenseEig (d 0) x.val.1.δ x.val.1.φ)
+    {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
+    P.real {ω | ¬ (denseEigSpecification Mch admitted sG).Accepts
+        (denseEigAlgorithm Mch admitted sU sG).program I smallEigResources (ξ ω) d x
+      fun _ m => ((denseEigProblem Mch admitted).initial d x).store.EqOff
+          (eigFp (d 0) (0, 0) (3, 0) (4, 0) (5, 0)) m.store ∧
+        DenseEigOutput (0, 0) (4, 0) (5, 0) x.val.1.matrix x.val.1.δ
+          (denseSchurB (d 0) x.val.1.δ x.val.1.φ) (denseSchurΓ (d 0) x.val.1.δ x.val.1.φ) m} ≤
+      x.val.1.φ := by
+  have := hξ.isProbabilityMeasure
+  refine (measureReal_mono ?_).trans
+    (denseEig_algorithm_measureReal_not_accepts_le hM hU hG hd x hI hIm hloc hδ hδ1 hφ hφ1 hu hξ)
+  intro ω hω hA
+  exact hω (hA.mono fun _ _ h => ⟨h.1, h.2.2.denseEigOutput⟩)
+
+/-- What the certificate states: at every admitted size, for every admitted input, every
+interpretation satisfying the contracts of the model and every tape, the run of the fixed program
+from the supplied buffers succeeds within the scratch, the budget, the work, the span and the
+memory of the specification, and writes only the matrix, the accumulator, the eigenvectors and the
+flag (`NLAlib.Ops.Inputs.Checked`). That it stores an approximate eigendecomposition with
+probability at least $1 - \varphi$ is `NLAlib.Schur.denseEigClaim`. -/
+theorem denseEig_checked (Mch : Machine ℝ) (admitted : ∃ d, EigSizes Mch denseEigSizes d)
+    (sU sG : ℕ) :
+    ((eigSolverInputs Mch denseEigSchurParams denseEigStageParams denseEigSizes admitted).cast
+      (eigSolverRoutine (denseSchur sG) triEigvecStage) rfl rfl).Checked
+      (denseEigAlgorithm Mch admitted sU sG) :=
+  ((eigSolverInputs Mch denseEigSchurParams denseEigStageParams denseEigSizes admitted).cast
+    (eigSolverRoutine (denseSchur sG) triEigvecStage) rfl rfl).checked_all _
+
+/-! ### The randomized claim -/
+
+/-- **The randomized claim of the dense eigensolver certificate** (no printed source:
+[BanksGarzaVargasSrivastava2022, Theorem 1.4] computes eigenvalues only). The entries of the tape
+are independent, uniform on $[0, 1]$ on the stream $s_U$ and standard Gaussian on the stream
+$s_G$. For $0 < \delta \le 1$, $0 < \varphi \le 1$ and $\boldsymbol{u} \le \boldsymbol{u}_E$
+(`NLAlib.Schur.uDenseEig`), and an interpretation that is measurable and reads the tape only in
+its windows, the counted run writes only the matrix, the accumulator, the eigenvectors and the
+flag, and stores the flag $0$ with $\mathbf{V}$ and $\mathbf{D}$ such that
+$\|\mathbf{A}\mathbf{V} - \mathbf{V}\mathbf{D}\|_2 \le \delta\|\mathbf{A}\|_2\|\mathbf{V}\|_2$,
+$\kappa(\mathbf{V}) \le 2\sqrt{n + 1}\,B$,
+$\|\mathbf{V}\mathbf{D}\mathbf{V}^{-1} - \mathbf{A}\|_2 \le \delta\|\mathbf{A}\|_2$ and the
+eigenvalue gaps are at least $(\Gamma/4)\|\mathbf{A}\|_2$ (`NLAlib.Schur.DenseEigOutput`), except
+with probability at most $\varphi$. -/
+noncomputable def denseEigClaim (Mch : Machine ℝ)
+    (admitted : ∃ d, EigSizes Mch denseEigSizes d) (sU sG : ℕ) (hs : sU ≠ sG) {u : ℝ}
+    (hM : StdModel u id Mch) : RandomizedClaim (denseEigAlgorithm Mch admitted sU sG) where
+  law _ _ := TapeModel.streams [(sU, volume.restrict (Set.Icc 0 1)), (sG, gaussianReal 0 1)]
+  admits d x := 0 < x.val.1.δ ∧ x.val.1.δ ≤ 1 ∧ 0 < x.val.1.φ ∧ x.val.1.φ ≤ 1 ∧
+    u ≤ uDenseEig (d 0) x.val.1.δ x.val.1.φ
+  interprets _ _ I := I.IsMeasurable ∧
+    ∃ win : SmallEigOp → List ℕ → ℕ, ∀ o, I.TapeLocal o (win o)
+  event d x _ _ m := ((denseEigProblem Mch admitted).initial d x).store.EqOff
+      (eigFp (d 0) (0, 0) (3, 0) (4, 0) (5, 0)) m.store ∧
+    DenseEigOutput (0, 0) (4, 0) (5, 0) x.val.1.matrix x.val.1.δ
+      (denseSchurB (d 0) x.val.1.δ x.val.1.φ) (denseSchurΓ (d 0) x.val.1.δ x.val.1.φ) m
+  bound _ x := x.val.1.φ
+  realizable _ _ _ _ := TapeModel.realizable_uniform_gaussian hs
+  holds := fun d hd x hx I hI hint Ω _ μ _ tape hlaw => by
+    obtain ⟨-, law, hfix, hξ⟩ := hlaw
+    obtain ⟨hIm, win, hloc⟩ := hint
+    obtain ⟨hδ, hδ1, hφ, hφ1, hu⟩ := hx
+    exact denseEig_algorithm_measureReal_not_decomposition_le hM (hfix _ (List.Mem.head _))
+      (hfix _ (List.Mem.tail _ (List.Mem.head _))) hd x hI hIm hloc hδ hδ1 hφ hφ1 hu hξ
 
 end NLAlib.Schur

@@ -16,6 +16,7 @@ public import NLAlib.Eigensolvers.Schur.Dense
 public import NLAlib.Eigensolvers.Schur.DenseBits
 public import NLAlib.Eigensolvers.Schur.DenseEig
 public import NLAlib.Eigensolvers.Schur.DenseParameters
+public import NLAlib.Eigensolvers.Schur.EigCertification
 public import NLAlib.Eigensolvers.Schur.EigSolver
 public import NLAlib.Eigensolvers.Schur.Eigenvectors
 public import NLAlib.Eigensolvers.Schur.NormEstimate
@@ -23,6 +24,8 @@ public import NLAlib.Eigensolvers.Schur.Pipeline
 public import NLAlib.Eigensolvers.Schur.Regularizer
 public import NLAlib.Eigensolvers.Schur.Residual
 public import NLAlib.Eigensolvers.Schur.ResidualCheck
+public import NLAlib.Eigensolvers.Schur.ShiftedTriSolve
+public import NLAlib.Eigensolvers.Schur.ShiftedTriSolveWrites
 public import NLAlib.Eigensolvers.Schur.Verified
 public import NLAlib.Eigensolvers.Schur.VerifiedCertificate
 public import NLAlib.Eigensolvers.Schur.VerifiedDense
@@ -947,6 +950,7 @@ public import NLAlib.Matrix.FinitePrecision.ProductRounded
 public import NLAlib.Matrix.FinitePrecision.RefinementRun
 public import NLAlib.Matrix.FinitePrecision.ResidualGap
 public import NLAlib.Matrix.FinitePrecision.RootsRounded
+public import NLAlib.Matrix.FinitePrecision.RoundedScaling
 public import NLAlib.Matrix.FinitePrecision.Rounding
 public import NLAlib.Matrix.FinitePrecision.Samples
 public import NLAlib.Matrix.FinitePrecision.SpectralBisection
@@ -965,10 +969,7 @@ public import NLAlib.Matrix.FinitePrecision.StoredDense
 public import NLAlib.Matrix.FinitePrecision.StoredMatrix
 public import NLAlib.Matrix.FinitePrecision.StoredProducts
 public import NLAlib.Matrix.FinitePrecision.TapeRounding
-public import NLAlib.Matrix.FinitePrecision.RoundedScaling
 public import NLAlib.Matrix.FinitePrecision.Traces
-public import NLAlib.Eigensolvers.Schur.ShiftedTriSolve
-public import NLAlib.Eigensolvers.Schur.ShiftedTriSolveWrites
 public import NLAlib.Matrix.FinitePrecision.VectorErrors
 public import NLAlib.Matrix.FinitePrecision.WordRepresentation
 public import NLAlib.Matrix.Functions.AbsoluteValue

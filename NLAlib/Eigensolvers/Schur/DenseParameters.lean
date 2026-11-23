@@ -656,6 +656,114 @@ theorem shqrSmallEigRotationsAt_eq (n : ℕ) (δR δC φ : ℝ) :
 
 /-! ### Closed forms of the class -/
 
+/-- The inverted tail at a scale of at least $\varphi$ is $(\varphi/s)^{2/b}$. -/
+private theorem polyLogTailInverse_eq_rpow {c : PolyLogTail} {N K φ : ℝ} (hb : 0 < c.b)
+    (hφ : 0 < φ) (hs : φ ≤ polyLogTailScale c N K) :
+    polyLogTailInverse c N K φ = (φ / polyLogTailScale c N K) ^ (2 / c.b) := by
+  have hs0 : 0 < polyLogTailScale c N K := hφ.trans_le hs
+  exact min_eq_right (Real.rpow_le_one (by positivity) ((div_le_one hs0).mpr hs) (by positivity))
+
+/-- The inverted condition tail in closed form. -/
+private theorem conditionTailInverse_eq {N K φ : ℝ} (hN : 1 ≤ N) (hK : 1 ≤ K + 1) (hφ : 0 < φ)
+    (hφ1 : φ ≤ 1) : polyLogTailInverse ginibreConditionTail.normalize N K φ =
+      φ / (1152 * Real.exp 1 ^ 2 * N ^ 3 * (K + 1) ^ 2) := by
+  have he : 1 ≤ Real.exp 1 := Real.one_le_exp zero_le_one
+  have hC : max (128 * Real.exp 1) 1 = 128 * Real.exp 1 := max_eq_left (by linarith)
+  have hs : polyLogTailScale ginibreConditionTail.normalize N K =
+      1152 * Real.exp 1 ^ 2 * N ^ 3 * (K + 1) ^ 2 := by
+    have hE2 : Real.exp 2 = Real.exp 1 ^ 2 := by
+      rw [← Real.exp_nat_mul]
+      norm_num
+    simp only [polyLogTailScale, PolyLogTail.normalize, ginibreConditionTail, hC]
+    norm_num
+    ring_nf
+    rw [hE2]
+    ring
+  have h1 : 1 ≤ 1152 * Real.exp 1 ^ 2 * N ^ 3 * (K + 1) ^ 2 := by
+    have h2 : 1 ≤ Real.exp 1 ^ 2 := one_le_pow₀ he
+    have h3 : 1 ≤ N ^ 3 := one_le_pow₀ hN
+    have h4 : 1 ≤ (K + 1) ^ 2 := one_le_pow₀ hK
+    have h5 : 1 ≤ Real.exp 1 ^ 2 * N ^ 3 := one_le_mul_of_one_le_of_one_le h2 h3
+    have h6 := one_le_mul_of_one_le_of_one_le h5 h4
+    nlinarith
+  rw [polyLogTailInverse_eq_rpow (by norm_num [PolyLogTail.normalize, ginibreConditionTail]) hφ
+    (by rw [hs]; linarith), hs]
+  norm_num [PolyLogTail.normalize, ginibreConditionTail]
+
+/-- The inverted gap tail in closed form. -/
+private theorem gapTailInverse_eq {N K φ : ℝ} (hN : 1 ≤ N) (hK : 1 ≤ K + 1) (hφ : 0 < φ)
+    (hφ1 : φ ≤ 1) : polyLogTailInverse ginibreGapTail.normalize N K φ =
+      φ ^ 3 / (2048 ^ 3 * 49 ^ 3 * Real.exp 1 ^ 4 * N ^ 11 * (K + 1) ^ 6) := by
+  have he : 1 ≤ Real.exp 1 := Real.one_le_exp zero_le_one
+  have hC : max (2048 * Real.exp 1) 1 = 2048 * Real.exp 1 := max_eq_left (by linarith)
+  have hN0 : 0 ≤ N := by linarith
+  have hs : polyLogTailScale ginibreGapTail.normalize N K =
+      2048 * Real.exp 1 * N ^ (11 / 3 : ℝ) * (K + 1) ^ 2 * (49 * Real.exp (1 / 3)) := by
+    simp only [polyLogTailScale, PolyLogTail.normalize, ginibreGapTail, hC]
+    norm_num
+  have hNp : (N ^ (11 / 3 : ℝ)) ^ 3 = N ^ 11 := by
+    rw [← Real.rpow_natCast, ← Real.rpow_mul hN0]
+    norm_num
+  have hEp : Real.exp (1 / 3) ^ 3 = Real.exp 1 := by
+    rw [← Real.exp_nat_mul]
+    norm_num
+  have hs3 : polyLogTailScale ginibreGapTail.normalize N K ^ 3 =
+      2048 ^ 3 * 49 ^ 3 * Real.exp 1 ^ 4 * N ^ 11 * (K + 1) ^ 6 := by
+    rw [hs, mul_pow, mul_pow, mul_pow, mul_pow, hNp, mul_pow, hEp]
+    ring
+  have h1 : 1 ≤ polyLogTailScale ginibreGapTail.normalize N K := by
+    rw [hs]
+    have h2 : 1 ≤ N ^ (11 / 3 : ℝ) := Real.one_le_rpow hN (by norm_num)
+    have h3 : 1 ≤ (K + 1) ^ 2 := one_le_pow₀ hK
+    have h4 : 1 ≤ Real.exp (1 / 3) := Real.one_le_exp (by norm_num)
+    have h5 := one_le_mul_of_one_le_of_one_le h2 h3
+    have h6 := one_le_mul_of_one_le_of_one_le he h5
+    have h7 := one_le_mul_of_one_le_of_one_le h6 h4
+    nlinarith
+  rw [polyLogTailInverse_eq_rpow (by norm_num [PolyLogTail.normalize, ginibreGapTail]) hφ
+    (hφ1.trans h1)]
+  have e23 : (2 : ℝ) / ginibreGapTail.normalize.b = ((3 : ℕ) : ℝ) := by
+    norm_num [PolyLogTail.normalize, ginibreGapTail]
+  rw [e23, Real.rpow_natCast, div_pow, hs3]
+
+/-- The perturbation scale and the norm ratio of the regularizer: with
+$X = \sqrt{n + 1}\,W/\delta \ge 3$, the scale is $\gamma/2 = \delta/(128\sqrt{n + 1}\,W)$ and the
+ratio $K$ of the inverted tails satisfies $1 \le K + 1 \le 514X$. -/
+private theorem denseSchur_scale_bounds {n : ℕ} {δ φ : ℝ} (hδ : 0 < δ) (hδ1 : δ ≤ 1) :
+    smallEigScale (denseSchurDelta n δ) (φ / 2) / 2 =
+        δ / (128 * (√((n : ℝ) + 1) * smallEigNoiseLevel (φ / 2))) ∧
+      3 ≤ √((n : ℝ) + 1) * smallEigNoiseLevel (φ / 2) / δ ∧
+      1 ≤ (4 + 4 * (smallEigScale (denseSchurDelta n δ) (φ / 2) / 2)) /
+        (smallEigScale (denseSchurDelta n δ) (φ / 2) / 2) + 1 ∧
+      (4 + 4 * (smallEigScale (denseSchurDelta n δ) (φ / 2) / 2)) /
+        (smallEigScale (denseSchurDelta n δ) (φ / 2) / 2) + 1 ≤
+        514 * (√((n : ℝ) + 1) * smallEigNoiseLevel (φ / 2) / δ) := by
+  have hr : 1 ≤ √((n : ℝ) + 1) := Real.one_le_sqrt.mpr (by
+    have := (Nat.cast_nonneg n : (0 : ℝ) ≤ n)
+    linarith)
+  have hW : 3 ≤ smallEigNoiseLevel (φ / 2) := by
+    unfold smallEigNoiseLevel
+    linarith [Real.sqrt_nonneg (Real.log (4 / (φ / 2)))]
+  have e : smallEigScale (denseSchurDelta n δ) (φ / 2) / 2 =
+      δ / (128 * (√((n : ℝ) + 1) * smallEigNoiseLevel (φ / 2))) := by
+    unfold smallEigScale denseSchurDelta
+    field_simp
+    norm_num
+  rw [e]
+  set r := √((n : ℝ) + 1)
+  set W := smallEigNoiseLevel (φ / 2)
+  have hr0 : 0 < r := by linarith
+  have hW0 : 0 < W := by linarith
+  have hX : 3 ≤ r * W / δ := by
+    rw [le_div_iff₀ hδ]
+    nlinarith
+  have eK : (4 + 4 * (δ / (128 * (r * W)))) / (δ / (128 * (r * W))) + 1 =
+      512 * (r * W / δ) + 5 := by
+    field_simp
+    ring
+  rw [eK]
+  exact ⟨rfl, hX, by linarith, by linarith⟩
+
 /-- **The condition bound in closed form**: for $0 < \delta \le 1$ and $0 < \varphi \le 1$,
 $B \le 2^{36}(n + 1)^4W^2/(\delta^2\varphi)$ with $W = 3 + \sqrt{\log(8/\varphi)}$
 (`NLAlib.SmallEig.smallEigNoiseLevel` at $\varphi/2$), from the inverted condition tail
@@ -663,7 +771,40 @@ $(128e, 3, 2, 2)$. -/
 theorem denseSchurB_le {n : ℕ} {δ φ : ℝ} (hδ : 0 < δ) (hδ1 : δ ≤ 1) (hφ : 0 < φ) (hφ1 : φ ≤ 1) :
     denseSchurB n δ φ ≤
       2 ^ 36 * ((n : ℝ) + 1) ^ 4 * smallEigNoiseLevel (φ / 2) ^ 2 / (δ ^ 2 * φ) := by
-  sorry
+  obtain ⟨-, hX, hK1, hK⟩ := denseSchur_scale_bounds (n := n) (φ := φ) hδ hδ1
+  have hN : (1 : ℝ) ≤ ((n + 1 : ℕ) : ℝ) := by exact_mod_cast Nat.succ_pos n
+  have hNc : ((n + 1 : ℕ) : ℝ) = (n : ℝ) + 1 := by push_cast; rfl
+  have hr2 : √((n : ℝ) + 1) ^ 2 = (n : ℝ) + 1 :=
+    Real.sq_sqrt (by have := (Nat.cast_nonneg n : (0 : ℝ) ≤ n); linarith)
+  unfold denseSchurB smallEigCond ginibreConditionThreshold
+  rw [conditionTailInverse_eq hN hK1 (by positivity) (by linarith), hNc]
+  rw [hNc] at hN
+  set K := (4 + 4 * (smallEigScale (denseSchurDelta n δ) (φ / 2) / 2)) /
+    (smallEigScale (denseSchurDelta n δ) (φ / 2) / 2)
+  set r := √((n : ℝ) + 1)
+  set W := smallEigNoiseLevel (φ / 2)
+  set N := (n : ℝ) + 1
+  have he2 : Real.exp 1 ^ 2 ≤ 7.4 := by
+    have := Real.exp_one_lt_d9
+    have h0 := Real.exp_pos 1
+    nlinarith
+  have hsq : (K + 1) ^ 2 ≤ 514 ^ 2 * (N * W ^ 2 / δ ^ 2) := by
+    calc (K + 1) ^ 2 ≤ (514 * (r * W / δ)) ^ 2 := by gcongr
+      _ = 514 ^ 2 * (N * W ^ 2 / δ ^ 2) := by rw [← hr2]; ring
+  have hQ : 0 ≤ N * W ^ 2 / δ ^ 2 := by positivity
+  have e : 2 / (φ / 2 / 4 / (1152 * Real.exp 1 ^ 2 * N ^ 3 * (K + 1) ^ 2)) =
+      18432 * Real.exp 1 ^ 2 * N ^ 3 * (K + 1) ^ 2 / φ := by
+    field_simp
+    norm_num
+  have e2 : 2 ^ 36 * N ^ 4 * W ^ 2 / (δ ^ 2 * φ) = 2 ^ 36 * N ^ 3 * (N * W ^ 2 / δ ^ 2) / φ := by
+    field_simp
+  rw [e, e2]
+  gcongr ?_ / φ
+  calc 18432 * Real.exp 1 ^ 2 * N ^ 3 * (K + 1) ^ 2
+      ≤ 18432 * 7.4 * N ^ 3 * (514 ^ 2 * (N * W ^ 2 / δ ^ 2)) := by gcongr
+    _ ≤ 2 ^ 36 * N ^ 3 * (N * W ^ 2 / δ ^ 2) := by
+        have : 0 ≤ N ^ 3 * (N * W ^ 2 / δ ^ 2) := by positivity
+        nlinarith
 
 /-- **The separation in closed form**: for $0 < \delta \le 1$ and $0 < \varphi \le 1$,
 $\Gamma \ge \delta^7\varphi^3/(2^{134}(n + 1)^{29/2}W^7)$ with $W = 3 + \sqrt{\log(8/\varphi)}$
@@ -672,6 +813,70 @@ $(2048e, 11/3, 2/3, 2)$. -/
 theorem le_denseSchurΓ {n : ℕ} {δ φ : ℝ} (hδ : 0 < δ) (hδ1 : δ ≤ 1) (hφ : 0 < φ) (hφ1 : φ ≤ 1) :
     δ ^ 7 * φ ^ 3 / (2 ^ 134 * ((n : ℝ) + 1) ^ (29 / 2 : ℝ) * smallEigNoiseLevel (φ / 2) ^ 7) ≤
       denseSchurΓ n δ φ := by
-  sorry
+  obtain ⟨hγ, hX, hK1, hK⟩ := denseSchur_scale_bounds (n := n) (φ := φ) hδ hδ1
+  have hN : (1 : ℝ) ≤ ((n + 1 : ℕ) : ℝ) := by exact_mod_cast Nat.succ_pos n
+  have hNc : ((n + 1 : ℕ) : ℝ) = (n : ℝ) + 1 := by push_cast; rfl
+  have hN0 : (0 : ℝ) ≤ (n : ℝ) + 1 := by have := (Nat.cast_nonneg n : (0 : ℝ) ≤ n); linarith
+  have hr2 : √((n : ℝ) + 1) ^ 2 = (n : ℝ) + 1 := Real.sq_sqrt hN0
+  have hrp : ((n : ℝ) + 1) ^ (29 / 2 : ℝ) = ((n : ℝ) + 1) ^ 14 * √((n : ℝ) + 1) := by
+    rw [Real.sqrt_eq_rpow, ← Real.rpow_natCast, ← Real.rpow_add' hN0 (by norm_num)]
+    norm_num
+  have hnorm : ginibreGapTail.normalize.c = 2 := by
+    norm_num [PolyLogTail.normalize, ginibreGapTail]
+  unfold denseSchurΓ smallEigGap ginibreGapThreshold
+  set K := (4 + 4 * (smallEigScale (denseSchurDelta n δ) (φ / 2) / 2)) /
+    (smallEigScale (denseSchurDelta n δ) (φ / 2) / 2)
+  rw [hnorm, gapTailInverse_eq hN hK1 (by positivity) (by
+    rw [div_le_one (by positivity)]
+    norm_num
+    linarith), hNc, hγ, hrp]
+  rw [hNc] at hN
+  set r := √((n : ℝ) + 1)
+  set W := smallEigNoiseLevel (φ / 2)
+  set N := (n : ℝ) + 1
+  have hr0 : 0 < r := Real.sqrt_pos.mpr (by linarith)
+  have hW0 : 0 < W := by
+    by_contra h
+    have h' : W ≤ 0 := not_lt.mp h
+    have : r * W / δ ≤ 0 := div_nonpos_of_nonpos_of_nonneg
+      (mul_nonpos_of_nonneg_of_nonpos hr0.le h') hδ.le
+    linarith
+  have he4 : Real.exp 1 ^ 4 ≤ 55 := by
+    have h1 := Real.exp_one_lt_d9
+    have h0 := Real.exp_pos 1
+    calc Real.exp 1 ^ 4 ≤ 2.72 ^ 4 := by gcongr; linarith
+      _ ≤ 55 := by norm_num
+  have h6 : (K + 1) ^ 6 ≤ 514 ^ 6 * (N ^ 3 * W ^ 6 / δ ^ 6) := by
+    calc (K + 1) ^ 6 ≤ (514 * (r * W / δ)) ^ 6 := by gcongr
+      _ = 514 ^ 6 * ((r ^ 2) ^ 3 * W ^ 6 / δ ^ 6) := by ring
+      _ = 514 ^ 6 * (N ^ 3 * W ^ 6 / δ ^ 6) := by rw [hr2]
+  have hS : 2048 ^ 3 * 49 ^ 3 * Real.exp 1 ^ 4 * N ^ 11 * (K + 1) ^ 6 ≤
+      2048 ^ 3 * 49 ^ 3 * 55 * 514 ^ 6 * (N ^ 14 * W ^ 6 / δ ^ 6) := by
+    calc 2048 ^ 3 * 49 ^ 3 * Real.exp 1 ^ 4 * N ^ 11 * (K + 1) ^ 6
+        ≤ 2048 ^ 3 * 49 ^ 3 * 55 * N ^ 11 * (514 ^ 6 * (N ^ 3 * W ^ 6 / δ ^ 6)) := by gcongr
+      _ = _ := by ring
+  have hS0 : 0 < 2048 ^ 3 * 49 ^ 3 * Real.exp 1 ^ 4 * N ^ 11 * (K + 1) ^ 6 := by
+    have : 0 < K + 1 := by linarith
+    positivity
+  have e : δ / (128 * (r * W)) * ((φ / 2 / (4 * 2 ^ (2 : ℝ))) ^ 3 /
+      (2048 ^ 3 * 49 ^ 3 * Real.exp 1 ^ 4 * N ^ 11 * (K + 1) ^ 6)) / 2 =
+      δ * φ ^ 3 / (256 * 32 ^ 3 * (r * W)) /
+        (2048 ^ 3 * 49 ^ 3 * Real.exp 1 ^ 4 * N ^ 11 * (K + 1) ^ 6) := by
+    norm_num
+    field_simp
+    norm_num
+  rw [e, le_div_iff₀ hS0]
+  have hA : 0 ≤ δ ^ 7 * φ ^ 3 / (2 ^ 134 * (N ^ 14 * r) * W ^ 7) := by positivity
+  refine (mul_le_mul_of_nonneg_left hS hA).trans ?_
+  have hB : 0 ≤ δ * φ ^ 3 / (r * W) := by positivity
+  have e1 : δ ^ 7 * φ ^ 3 / (2 ^ 134 * (N ^ 14 * r) * W ^ 7) *
+      (2048 ^ 3 * 49 ^ 3 * 55 * 514 ^ 6 * (N ^ 14 * W ^ 6 / δ ^ 6)) =
+      δ * φ ^ 3 / (r * W) * (2048 ^ 3 * 49 ^ 3 * 55 * 514 ^ 6 / 2 ^ 134) := by
+    field_simp
+  have e3 : δ * φ ^ 3 / (256 * 32 ^ 3 * (r * W)) =
+      δ * φ ^ 3 / (r * W) * (1 / (256 * 32 ^ 3)) := by
+    field_simp
+  rw [e1, e3]
+  exact mul_le_mul_of_nonneg_left (by norm_num) hB
 
 end NLAlib.Schur

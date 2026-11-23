@@ -26,6 +26,8 @@ error bounds for the solution of a linear system in terms of the condition numbe
 * `NLAlib.norm_sub_le_specNorm_inv_mul_norm_sub_mulVec`: forward error from the residual.
 * `NLAlib.norm_sub_le_of_add_mulVec_eq`,
   `NLAlib.norm_sub_le_pseudoConditionNumber_mul_of_add_mulVec_eq`: perturbation of a linear system.
+* `NLAlib.norm_inv_mulVec_sub_le_of_add_mulVec_eq`: a backward stable solve has a small relative
+  error.
 -/
 
 @[expose] public section
@@ -280,6 +282,37 @@ theorem norm_sub_le_of_add_mulVec_eq {A E : Matrix n n 𝕜} (hA : IsUnit A)
     _ ≤ specNorm A⁻¹ / (1 - specNorm (A⁻¹ * E)) *
           (‖WithLp.toLp 2 f‖ + specNorm E * ‖WithLp.toLp 2 x‖) :=
         mul_le_mul (specNorm_inv_add_le hA hE) hres (norm_nonneg _) (by positivity)
+
+/-- **A backward stable solve has a small relative error.** If $\mathbf{A}$ is invertible,
+$(\mathbf{A} + \mathbf{E})\mathbf{d} = \mathbf{r}$ and
+$\|\mathbf{A}^{-1}\mathbf{E}\|_2 \le \omega < 1$, then
+$$\|\mathbf{A}^{-1}\mathbf{r} - \mathbf{d}\| \le
+\frac{\omega}{1 - \omega}\,\|\mathbf{A}^{-1}\mathbf{r}\|\,.$$
+With $\|\mathbf{E}\|_2 \le c\,u_f\|\mathbf{A}\|_2$, as for a solve with factors computed at unit
+roundoff $u_f$, one may take $\omega = c\,\kappa(\mathbf{A})u_f$. This is the accuracy of the
+correction solve of iterative refinement.
+[CarsonHigham2018, (2.3)]; the assumption there on the solver of the correction equation,
+obtained here from a backward error. -/
+theorem norm_inv_mulVec_sub_le_of_add_mulVec_eq {A E : Matrix n n 𝕜} (hA : IsUnit A) {ω : ℝ}
+    (hE : specNorm (A⁻¹ * E) ≤ ω) (hω : ω < 1) {d r : n → 𝕜} (hd : (A + E) *ᵥ d = r) :
+    ‖WithLp.toLp 2 (A⁻¹ *ᵥ r - d)‖ ≤ ω / (1 - ω) * ‖WithLp.toLp 2 (A⁻¹ *ᵥ r)‖ := by
+  have hinv : A⁻¹ * A = 1 := inv_mul_of_isUnit hA
+  have h : A⁻¹ *ᵥ r - d = (A⁻¹ * E) *ᵥ d := by
+    rw [← hd, Matrix.add_mulVec, Matrix.mulVec_add, Matrix.mulVec_mulVec, Matrix.mulVec_mulVec,
+      hinv, Matrix.one_mulVec, add_sub_cancel_left]
+  have h₁ : ‖WithLp.toLp 2 (A⁻¹ *ᵥ r - d)‖ ≤ ω * ‖WithLp.toLp 2 d‖ := by
+    rw [h]
+    exact (norm_toLp_mulVec_le _ _).trans (mul_le_mul_of_nonneg_right hE (norm_nonneg _))
+  have h₂ : ‖WithLp.toLp 2 d‖ ≤
+      ‖WithLp.toLp 2 (A⁻¹ *ᵥ r)‖ + ‖WithLp.toLp 2 (A⁻¹ *ᵥ r - d)‖ := by
+    have : WithLp.toLp 2 d = WithLp.toLp 2 (A⁻¹ *ᵥ r) - WithLp.toLp 2 (A⁻¹ *ᵥ r - d) := by
+      rw [← WithLp.toLp_sub, sub_sub_cancel]
+    rw [this]
+    exact norm_sub_le _ _
+  have hω0 : 0 ≤ ω := (specNorm_nonneg _).trans hE
+  have h₃ := h₁.trans (mul_le_mul_of_nonneg_left h₂ hω0)
+  rw [div_mul_eq_mul_div, le_div_iff₀ (by linarith)]
+  linarith
 
 /-- **Relative perturbation of a linear system through the condition number.** If $\mathbf{A}$ is
 invertible, $\mathbf{A}\mathbf{x} = \mathbf{b}$,

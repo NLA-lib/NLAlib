@@ -789,9 +789,9 @@ name = "NLAlib.ginibreGapTail"
 kind = "tail record"
 file = "NLAlib/RandomMatrix/Shattering/GinibreClass.lean"
 args = []
-latex = '(10000e, 5, 1/2, 2)'
-lean_body = 'ginibreGapTail : PolyLogTail := ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩'
-body_hash = "1a989107c7be9763"
+latex = '(2048e, 11/3, 2/3, 2)'
+lean_body = 'ginibreGapTail : PolyLogTail := ⟨2048 * Real.exp 1, 11 / 3, 2 / 3, 2⟩'
+body_hash = "d96571dce88edec5"
 
 [[constant]]
 name = "NLAlib.ginibreConditionTail"

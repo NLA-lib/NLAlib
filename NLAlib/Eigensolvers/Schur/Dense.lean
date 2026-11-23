@@ -313,7 +313,8 @@ scalar machine with the standard model at $\boldsymbol{u}$, $400(n + 1)^2\boldsy
 index literals, exact natural literals up to $n + 1$, exact `toNat` and comparisons, draws that
 store the tape entry and an exact polar disk sampler: the run of `denseSchur` from a memory
 holding $\mathbf{A}$ and the words of `denseSchurParams` writes only $\mathbf{A}$,
-$\widehat{\mathbf{U}}$ and the flag, and stores $\widehat{\mathbf{U}}$ with
+$\widehat{\mathbf{U}}$ and the flag, and stores a matrix in the block of $\mathbf{A}$ and
+$\widehat{\mathbf{U}}$ with
 $\|\widehat{\mathbf{U}}^{\mathsf H}\widehat{\mathbf{U}} - \mathbf{I}\|_2 \le 2\varepsilon +
 \varepsilon^2$, $\varepsilon = (1 + 27(n + 1)^2\boldsymbol{u})(1 + 24\boldsymbol{u})^{R_c} - 1$,
 $R_c$ the rotation count of the core.
@@ -327,7 +328,7 @@ theorem denseSchur_writes_orth {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
     (hin : SchurPipelineInput (denseSchurParams n δ φ) a p uo f A μ) (τ : Tape ℝ) :
     Writes .total I τ (denseSchur (O := O) (Q := Q) sG)
       (Env.frame (denseSchurDims n δ φ) [a, p, a, uo, f]) (schurFp n a uo f)
-      (SchurOrth (n := n) uo
+      (SchurOrth (n := n) a uo
         (2 * ((1 + 27 * ((n : ℝ) + 1) ^ 2 * u) * (1 + 24 * u) ^ shqrSchurRotations n
           (denseSchurDegree n δ φ) (denseSchurShQRParams n δ φ ++ denseSchurLeafParams n δ φ).length
           (denseSchurCap n δ φ) (smallEigLeafRotations (denseSchurDegree n δ φ)
@@ -384,7 +385,8 @@ literals, exact natural literals up to $n + 1$, exact `toNat` and comparisons, d
 the tape entry and an exact polar disk sampler, for $0 < \delta \le 1$, any $\varphi$ and every
 complex $\mathbf{A}$ of order $n + 1$, the run of `denseSchur` from a memory holding $\mathbf{A}$
 and the words of `denseSchurParams` succeeds on every tape, writes only $\mathbf{A}$,
-$\widehat{\mathbf{U}}$ and the flag, and stores $\widehat{\mathbf{U}}$ with
+$\widehat{\mathbf{U}}$ and the flag, and stores a matrix in the block of $\mathbf{A}$ and
+$\widehat{\mathbf{U}}$ with
 $\|\widehat{\mathbf{U}}^{\mathsf H}\widehat{\mathbf{U}} - \mathbf{I}\|_2 \le 58R\boldsymbol{u}$.
 Here $\boldsymbol{u}_0$ is `NLAlib.Schur.uDenseSchur` and $R$ is
 `NLAlib.Schur.denseSchurRotations`. The orthogonality needs no shift to succeed: every replayed
@@ -398,7 +400,7 @@ theorem denseSchur_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hin : SchurPipelineInput (denseSchurParams n δ φ) a p uo f A μ) (τ : Tape ℝ) :
     Writes .total I τ (denseSchur (O := O) (Q := Q) sG)
       (Env.frame (denseSchurDims n δ φ) [a, p, a, uo, f]) (schurFp n a uo f)
-      (SchurOrth (n := n) uo (58 * denseSchurRotations n δ φ * u)) μ := by
+      (SchurOrth (n := n) a uo (58 * denseSchurRotations n δ φ * u)) μ := by
   obtain ⟨-, hu2, -, -, -, -, -, hu8⟩ := le_of_le_uDenseSchurWith (hu.trans (min_le_left _ _))
   obtain ⟨-, -, hR⟩ := mul_denseSchurRotationsWith_le hδ hδ1 (hu.trans (min_le_left _ _))
   have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
@@ -410,7 +412,7 @@ theorem denseSchur_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
   have h400 : 400 * ((n : ℝ) + 1) ^ 2 * u ≤ 1 := by
     rw [le_div_iff₀ (by positivity)] at hu2; nlinarith
   exact (denseSchur_writes_orth hS hM hL hNat hQ hC hSmp hDisk h400 hin τ).mono le_rfl
-    fun μ' _ ⟨U, hU, ho⟩ => ⟨U, hU, ho.trans hεU⟩
+    fun μ' _ ⟨hT, U, hU, ho⟩ => ⟨hT, U, hU, ho.trans hεU⟩
 
 /-- **The dense Schur solver lists the eigenvalues of a nearby matrix.** On the machine and
 streams of `NLAlib.Schur.denseSchur_measureReal_not_schur_le` (the standard model at

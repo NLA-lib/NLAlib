@@ -118,10 +118,12 @@ theorem SchurOutput.isUpperTriangular_of_holdsMatrix {n : ℕ} {a uo f : ℕ × 
   obtain ⟨-, U, T', hT', -, hTu, -⟩ := h
   rwa [hT.eq_storedMatrix, ← hT'.eq_storedMatrix]
 
-/-- The all-tape output: the stored accumulator is within $e_U$ of orthonormal. -/
-def SchurOrth {n : ℕ} (uo : ℕ × ℕ) (eU : ℝ) (μ' : Mem ℝ) : Prop :=
-  ∃ U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix uo U μ'.store ∧
-    specNorm (Uᴴ * U - 1) ≤ eU
+/-- The all-tape output: the block `a` holds a matrix, and the stored accumulator is within
+$e_U$ of orthonormal. -/
+def SchurOrth {n : ℕ} (a uo : ℕ × ℕ) (eU : ℝ) (μ' : Mem ℝ) : Prop :=
+  (∃ T : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a T μ'.store) ∧
+    ∃ U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix uo U μ'.store ∧
+      specNorm (Uᴴ * U - 1) ≤ eU
 
 /-- The blocks the pipeline writes. -/
 def schurFp (n : ℕ) (a uo f : ℕ × ℕ) : Fp :=
@@ -764,7 +766,7 @@ theorem schurPipeline_pos_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
                 [⟨0, .var 6 + .var 11⟩])))))))))
       (schurPipelineEnv n qR.length qC.length k F T a p uo f L)
       (schurFp n a uo f ⊔ Store.inBlock (L + 1) 0 1)
-      (SchurOrth (n := n) uo (2 * ((1 + εHU) * (1 + εCU) - 1) + ((1 + εHU) * (1 + εCU) - 1) ^ 2))
+      (SchurOrth (n := n) a uo (2 * ((1 + εHU) * (1 + εCU) - 1) + ((1 + εHU) * (1 + εCU) - 1) ^ 2))
       m := by
   obtain ⟨hlen, ha, hp, hu, hf, -, -, -, hap, hq⟩ := id hm
   obtain ⟨h1', h2, h3, -, -, h6⟩ := apart_four hap
@@ -814,11 +816,12 @@ theorem schurPipeline_pos_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
     (y := (L, 0)) (r := x) rfl (fun t _ => rfl) (fun t _ => rfl)
     (hm₅.live_of_subset (by simp)) (fun t ht => ⟨_, Store.get_of_readBlock hT₅ ht 0⟩) hx₅
     (by rintro ⟨h, -⟩; omega)).mono hFa ?_
-  rintro m₆ hfr₆ -
+  rintro m₆ hfr₆ ⟨-, hmul⟩
+  obtain ⟨T₆, hT₆, -, -⟩ := hM.exists_holdsMatrix_mul hT₅ hmul
   have h1n : specNorm (U₁ - V₁) ≤ εHU := by
     have := hU₁; rw [Matrix.one_mul] at this
     exact this.trans (mul_le_of_le_one_right hεHU specNorm_one_le)
-  exact ⟨U₂, hU₅.of_eqOff hfr₆ h2,
+  exact ⟨⟨T₆, hT₆⟩, U₂, hU₅.of_eqOff hfr₆ h2,
     specNorm_conjTranspose_mul_self_sub_one_le_of_tracked hεCU hV₁ hV h1n hU₂⟩
 
 /-- The memory of a run after the two scratch cells of the pipeline, from its input. -/
@@ -841,7 +844,8 @@ theorem SchurPipelineInput.mem_of_alloc {n : ℕ} {qs : List ℝ} {a p uo f : �
   · exact hBelow.keep (Store.readsOnly_readBlock _ _ _ _) (fun _ _ h => h.1 ▸ hp) hP
 
 /-- **The pipeline terminates on every tape** with a regularizer that terminates storing some
-matrix, a reducer and a terminating core, and stores an accumulator with
+matrix, a reducer and a terminating core, and stores a matrix in the block of $\mathbf{A}$ and an
+accumulator with
 $\|\widehat{\mathbf{U}}^{\mathsf H}\widehat{\mathbf{U}} - \mathbf{I}\|_2 \le 2\varepsilon +
 \varepsilon^2$, $\varepsilon = (1 + \varepsilon_{H,U})(1 + \varepsilon_{C,U}) - 1$. -/
 theorem schurPipelineWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
@@ -862,7 +866,7 @@ theorem schurPipelineWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
     (τ : Tape ℝ) :
     Writes .total I τ (schurPipelineWith Nm Reg Red Core)
       (Env.frame [n + 1, qR.length, qC.length, k, F, T] [a, p, a, uo, f]) (schurFp n a uo f)
-      (SchurOrth (n := n) uo
+      (SchurOrth (n := n) a uo
         (2 * ((1 + εHU) * (1 + εCU) - 1) + ((1 + εHU) * (1 + εCU) - 1) ^ 2)) μ := by
   have h1 : Mch.lit 1 = 1 := by simpa using hNat 1 (by omega)
   have heU : 0 ≤ 2 * ((1 + εHU) * (1 + εCU) - 1) + ((1 + εHU) * (1 + εCU) - 1) ^ 2 := by
@@ -871,7 +875,8 @@ theorem schurPipelineWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
   have hlt : ∀ z ∈ [a, p, uo, f], z.1 < μ.store.length := hin.1
   change Writes .total I τ (Stmt.allocs [.const 1, .const 1] _) _ _ _ μ
   refine writes_allocs_preserving_post (ns := [1, 1]) rfl
-    (fun hBelow ⟨U, hU, ho⟩ => ⟨U, hU.of_below hBelow (hlt uo (by simp)), ho⟩) ?_
+    (fun hBelow ⟨⟨T, hT⟩, U, hU, ho⟩ => ⟨⟨T, hT.of_below hBelow (hlt a (by simp))⟩, U,
+      hU.of_below hBelow (hlt uo (by simp)), ho⟩) ?_
   intro s₁ hlen hlens hBelow
   obtain ⟨hm, hA⟩ := hin.mem_of_alloc (q := μ.pos) hlen hlens hBelow
   set L := μ.store.length
@@ -896,8 +901,8 @@ theorem schurPipelineWith_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
     obtain rfl := frobNorm_eq_zero_iff.mp hF
     refine (schurPipeline_zero_writes (nr := qR.length) (nq := qC.length) (k := k) (F := F)
       (T := T) (eA := 0) hS hM hL h1 hm' hA' heU).mono le_sup_left ?_
-    rintro m' - ⟨-, U, -, -, hU, -, -, ho⟩
-    exact ⟨U, hU, ho⟩
+    rintro m' - ⟨-, U, T', hT', hU, -, -, ho⟩
+    exact ⟨⟨T', hT'⟩, U, hU, ho⟩
 
 end Steps
 

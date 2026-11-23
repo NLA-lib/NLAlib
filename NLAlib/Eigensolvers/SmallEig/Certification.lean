@@ -565,7 +565,7 @@ theorem smallEig_algorithm_measureReal_not_accepts_le {u : ℝ} (hM : StdModel u
 The unconditional form of `NLAlib.SmallEig.smallEig_algorithm_measureReal_not_accepts_le`
 ([BanksGarzaVargasSrivastava2025, Theorem 1.1]): the eigenvalue-gap and eigenvector-condition tails
 of a complex Ginibre perturbation are proved, at the records
-`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ and
+`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(2048e, 11/3, 2/3, 2)$ and
 `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$.
 Result: small-eig-certificate-accuracy -/
 theorem smallEig_algorithm_measureReal_not_accepts_le_unconditional

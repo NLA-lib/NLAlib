@@ -14,12 +14,13 @@ The parameters of `NLAlib.Schur.denseSchur` as functions of $L = \log_2(4(n + 1)
 the arguments of the stages' bits are polynomial in $2^L$ (`NLAlib.Schur.denseSchur_arg_bounds`),
 the shift degree is $O(L\log L)$ and the caps polylogarithmic
 (`NLAlib.Schur.denseSchur_caps_le`). Hence the precision threshold has $O(L^4\log^2 L)$ bits
-and the static count is $(n + 1)^3$ times a power of $L$.
+and the static count is $O((n + 1)^3L^9\log^6 L)$.
 
 ## Main results
 
 * `NLAlib.Schur.logb_inv_uDenseSchur_le`: the bits of precision.
-* `NLAlib.Schur.denseSchur_work_le_polylog`: the operation count is $n^3$ times a polylogarithm.
+* `NLAlib.Schur.denseSchur_work_le_polylog`: the operation count is $O(n^3L^9\log^6 L)$.
+* `NLAlib.Schur.denseSchur_work_le_pow`: its cruder form $O(n^3L^{15})$.
 -/
 
 @[expose] public section
@@ -737,26 +738,27 @@ section Count
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O]
   [Has CmpTst Q] [Has IdxTst Q]
 
-/-- **The operation count of the dense Schur solver is $n^3$ times a polylogarithm**: there are
-constants $C$ and $p$ such that for every order $n + 1$, $0 < \delta \le 1$ and
-$0 < \varphi \le 1$, the instrumented static count at `NLAlib.Schur.denseSchurDims` and zero
-offsets is at most
-$C(n + 1)^3L^p$, $L = \log_2(4(n + 1)/(\delta\varphi))$. The exponent found by the proof is
-$p = 15$: $(k + 1)^4 \le (KL^2)^4$, $F + 1 \le KL$, $(T + 1)^2 \le (KL^3)^2$ in
+/-- **The operation count of the dense Schur solver is $n^3$ times a polylogarithm**: there is a
+constant $C$ such that for every order $n + 1$, $0 < \delta \le 1$ and $0 < \varphi \le 1$, the
+instrumented static count at `NLAlib.Schur.denseSchurDims` and zero offsets is at most
+$C(n + 1)^3L^9(\log_2 L + 1)^6$, $L = \log_2(4(n + 1)/(\delta\varphi))$: $(k + 1)^4 \le
+(KL(\log_2 L + 1))^4$, $F + 1 \le KL$, $(T + 1)^2 \le (KL^2(\log_2 L + 1))^2$ in
 `NLAlib.Schur.denseSchur_work_le` (`NLAlib.Schur.denseSchur_caps_le`), the words of the stages
-bounded by constants; [BanksGarzaVargasSrivastava2022, Theorem 1.4]'s is $2$ for the eigenvalues
-alone, with a run-time count over the deflation tree. -/
-theorem denseSchur_work_le_polylog (sG : ℕ) : ∃ (C : ℝ) (p : ℕ), ∀ {n : ℕ} {δ φ : ℝ}, 0 < δ →
+bounded by constants. [BanksGarzaVargasSrivastava2022, Theorem 1.4]'s exponent is $2$ for the
+eigenvalues alone, with a run-time count over the deflation tree. -/
+theorem denseSchur_work_le_polylog (sG : ℕ) : ∃ C : ℝ, ∀ {n : ℕ} {δ φ : ℝ}, 0 < δ →
     δ ≤ 1 → 0 < φ → φ ≤ 1 →
     (Count.size (stmtCost (denseSchur (O := O) (Q := Q) sG).instrument
       (denseSchurDims n δ φ ++ [0, 0, 0, 0, 0])) : ℝ) ≤
-      C * ((n : ℝ) + 1) ^ 3 * Real.logb 2 (4 * (n + 1) / (δ * φ)) ^ p := by
+      C * ((n : ℝ) + 1) ^ 3 * Real.logb 2 (4 * (n + 1) / (δ * φ)) ^ 9 *
+        (Real.logb 2 (Real.logb 2 (4 * (n + 1) / (δ * φ))) + 1) ^ 6 := by
   obtain ⟨K, hK0, hK⟩ := denseSchur_caps_le
-  refine ⟨384547 * 426707 * (3 * K + 1) ^ 4 * (K + 1) * (K * (3 * K + 1) + 1) ^ 2, 15,
+  refine ⟨384547 * 426707 * (K + 1) ^ 4 * (K + 1) * (K * (K + 1) + 1) ^ 2,
     fun {n δ φ} hδ hδ1 hφ hφ1 => ?_⟩
   obtain ⟨hL2, hk, hF, hT⟩ := hK (n := n) hδ hδ1 hφ hφ1
   clear hK
   set L := logb 2 (4 * ((n : ℝ) + 1) / (δ * φ)) with hLdef
+  set ℓ := logb 2 L + 1 with hℓdef
   set k := denseSchurDegree n δ φ
   set F := denseSchurCap n δ φ
   set T := denseSchurLeafCap n δ φ
@@ -780,37 +782,60 @@ theorem denseSchur_work_le_polylog (sG : ℕ) : ∃ (C : ℝ) (p : ℕ), ∀ {n 
     push_cast
     linarith
   have hL1 : 1 ≤ L := by linarith
-  have hlL := logb_two_le_two_mul hL1
+  have hℓ1 : 1 ≤ ℓ := by
+    have := logb_nonneg one_lt_two hL1
+    linarith
+  have hLℓ : 1 ≤ L * ℓ := one_le_mul_of_one_le_of_one_le hL1 hℓ1
   have hk0 : (0 : ℝ) ≤ k := k.cast_nonneg
   have hF0 : (0 : ℝ) ≤ F := F.cast_nonneg
   have hT0 : (0 : ℝ) ≤ T := T.cast_nonneg
-  have hLL : 1 ≤ L ^ 2 := one_le_pow₀ hL1
-  have hLsq : L ≤ L ^ 2 := le_self_pow₀ hL1 (by norm_num)
-  have hk1 : (k : ℝ) + 1 ≤ (3 * K + 1) * L ^ 2 := by
-    have : (k : ℝ) ≤ K * L * (2 * L + 1) :=
-      hk.trans (by gcongr)
-    have e : K * L * (2 * L + 1) = 2 * K * L ^ 2 + K * L := by ring
-    have : K * L ≤ K * L ^ 2 := mul_le_mul_of_nonneg_left hLsq hK0
-    have e2 : (3 * K + 1) * L ^ 2 = 3 * K * L ^ 2 + L ^ 2 := by ring
+  have hk1 : (k : ℝ) + 1 ≤ (K + 1) * (L * ℓ) := by
+    have e : (K + 1) * (L * ℓ) = K * L * ℓ + L * ℓ := by ring
     linarith
   have hF1 : (F : ℝ) + 1 ≤ (K + 1) * L := by
     have e : (K + 1) * L = K * L + L := by ring
     linarith
-  have hT1 : (T : ℝ) + 1 ≤ (K * (3 * K + 1) + 1) * L ^ 3 := by
-    have h1 : (T : ℝ) ≤ K * ((3 * K + 1) * L ^ 2) * L :=
+  have hT1 : (T : ℝ) + 1 ≤ (K * (K + 1) + 1) * (L ^ 2 * ℓ) := by
+    have h1 : (T : ℝ) ≤ K * ((K + 1) * (L * ℓ)) * L :=
       hT.trans (by gcongr)
-    have : (1 : ℝ) ≤ L ^ 3 := one_le_pow₀ hL1
-    have e : K * ((3 * K + 1) * L ^ 2) * L = K * (3 * K + 1) * L ^ 3 := by ring
-    have e2 : (K * (3 * K + 1) + 1) * L ^ 3 = K * (3 * K + 1) * L ^ 3 + L ^ 3 := by ring
+    have : (1 : ℝ) ≤ L ^ 2 * ℓ := one_le_mul_of_one_le_of_one_le (one_le_pow₀ hL1) hℓ1
+    have e : K * ((K + 1) * (L * ℓ)) * L = K * (K + 1) * (L ^ 2 * ℓ) := by ring
+    have e2 : (K * (K + 1) + 1) * (L ^ 2 * ℓ) = K * (K + 1) * (L ^ 2 * ℓ) + L ^ 2 * ℓ := by
+      ring
     linarith
   have hq : (nr : ℝ) + nq + 1 ≤ 426707 := by rw [hnr]; linarith
   have hN : (0 : ℝ) ≤ ((n : ℝ) + 1) ^ 3 := by positivity
   calc 384547 * ((n : ℝ) + 1) ^ 3 * ((k : ℝ) + 1) ^ 4 * ((nr : ℝ) + nq + 1) * ((F : ℝ) + 1) *
         ((T : ℝ) + 1) ^ 2
-      ≤ 384547 * ((n : ℝ) + 1) ^ 3 * ((3 * K + 1) * L ^ 2) ^ 4 * 426707 * ((K + 1) * L) *
-        ((K * (3 * K + 1) + 1) * L ^ 3) ^ 2 := by gcongr
-    _ = 384547 * 426707 * (3 * K + 1) ^ 4 * (K + 1) * (K * (3 * K + 1) + 1) ^ 2 *
-        ((n : ℝ) + 1) ^ 3 * L ^ 15 := by ring
+      ≤ 384547 * ((n : ℝ) + 1) ^ 3 * ((K + 1) * (L * ℓ)) ^ 4 * 426707 * ((K + 1) * L) *
+        ((K * (K + 1) + 1) * (L ^ 2 * ℓ)) ^ 2 := by gcongr
+    _ = 384547 * 426707 * (K + 1) ^ 4 * (K + 1) * (K * (K + 1) + 1) ^ 2 *
+        ((n : ℝ) + 1) ^ 3 * L ^ 9 * ℓ ^ 6 := by ring
+
+/-- The operation count of the dense Schur solver is $n^3$ times a power of $L$: there is a
+constant $C$ such that for every order $n + 1$, $0 < \delta \le 1$ and $0 < \varphi \le 1$, the
+instrumented static count at `NLAlib.Schur.denseSchurDims` and zero offsets is at most
+$C(n + 1)^3L^{15}$, $L = \log_2(4(n + 1)/(\delta\varphi))$:
+`NLAlib.Schur.denseSchur_work_le_polylog` with $\log_2 L + 1 \le 3L$. -/
+theorem denseSchur_work_le_pow (sG : ℕ) : ∃ C : ℝ, ∀ {n : ℕ} {δ φ : ℝ}, 0 < δ →
+    δ ≤ 1 → 0 < φ → φ ≤ 1 →
+    (Count.size (stmtCost (denseSchur (O := O) (Q := Q) sG).body.instrument
+      (denseSchurDims n δ φ ++ [0, 0, 0, 0, 0])) : ℝ) ≤
+      C * ((n : ℝ) + 1) ^ 3 * Real.logb 2 (4 * (n + 1) / (δ * φ)) ^ 15 := by
+  obtain ⟨C, hC⟩ := denseSchur_work_le_polylog (O := O) (Q := Q) sG
+  obtain ⟨E, hE⟩ := denseSchur_arg_bounds
+  refine ⟨max C 0 * 3 ^ 6, fun {n δ φ} hδ hδ1 hφ hφ1 => ?_⟩
+  set L := logb 2 (4 * ((n : ℝ) + 1) / (δ * φ)) with hLdef
+  have hL1 : 1 ≤ L := by linarith [two_le_logb_of_four_le (hE (n := n) hδ hδ1 hφ hφ1).1]
+  have hℓ0 : 0 ≤ logb 2 L + 1 := by linarith [logb_nonneg one_lt_two hL1]
+  have hℓ : logb 2 L + 1 ≤ 3 * L := by linarith [logb_two_le_two_mul hL1]
+  have hL0 : 0 ≤ L := by linarith
+  refine (hC hδ hδ1 hφ hφ1).trans ?_
+  calc C * ((n : ℝ) + 1) ^ 3 * L ^ 9 * (logb 2 L + 1) ^ 6
+      ≤ max C 0 * ((n : ℝ) + 1) ^ 3 * L ^ 9 * (logb 2 L + 1) ^ 6 := by
+        gcongr; exact le_max_left _ _
+    _ ≤ max C 0 * ((n : ℝ) + 1) ^ 3 * L ^ 9 * (3 * L) ^ 6 := by gcongr
+    _ = max C 0 * 3 ^ 6 * ((n : ℝ) + 1) ^ 3 * L ^ 15 := by ring
 
 end Count
 

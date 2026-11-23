@@ -17,7 +17,7 @@ of $\mathbf{M} + \mathbf{E}$ for some $\|\mathbf{E}\|_2 \le \delta$, at the unit
 $\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{SmallEig}}$, conditional on the two random-matrix
 theorems (`NLAlib.PolyLogTail.BoundsGinibreGap`, `NLAlib.PolyLogTail.BoundsGinibreCondition`),
 which are hypotheses here and proved at the records
-`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$,
+`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(2048e, 11/3, 2/3, 2)$,
 `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$ (the
 `_unconditional` corollaries). The error is absolute: $\Sigma$ is an input, the paper's relative
 form is the corollary `NLAlib.SmallEig.smallEig_relative`. [BanksGarzaVargasSrivastava2025,
@@ -314,7 +314,7 @@ theorem smallEigProg_randomSchurLeafContract {Mch : Machine ℝ} {I : Interp O Q
 The unconditional form of `NLAlib.SmallEig.smallEig_measureReal_not_spectrum_le`
 ([BanksGarzaVargasSrivastava2025, Theorem 1.1]): the eigenvalue-gap and eigenvector-condition tails
 of a complex Ginibre perturbation are proved, at the records
-`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ and
+`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(2048e, 11/3, 2/3, 2)$ and
 `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$.
 Result: small-eig-backward-error -/
 theorem smallEig_measureReal_not_spectrum_le_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
@@ -344,7 +344,7 @@ theorem smallEig_measureReal_not_spectrum_le_unconditional {Mch : Machine ℝ} {
 The unconditional form of `NLAlib.SmallEig.smallEig_relative` ([BanksGarzaVargasSrivastava2025,
 Theorem 1.1]): the eigenvalue-gap and eigenvector-condition tails of a complex Ginibre perturbation
 are proved, at the records `NLAlib.ginibreGapTail` <!-- value ginibreGapTail -->
-$(10000e, 5, 1/2, 2)$ and `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail -->
+$(2048e, 11/3, 2/3, 2)$ and `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail -->
 $(128e, 3, 2, 2)$.
 Result: small-eig-backward-error -/
 theorem smallEig_relative_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
@@ -375,7 +375,7 @@ theorem smallEig_relative_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ}
 The unconditional form of `NLAlib.SmallEig.smallEig_measureReal_not_forward_le`
 ([BanksGarzaVargasSrivastava2025, Corollary 1.3]): the eigenvalue-gap and eigenvector-condition
 tails of a complex Ginibre perturbation are proved, at the records
-`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ and
+`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(2048e, 11/3, 2/3, 2)$ and
 `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$.
 Result: small-eig-forward-error -/
 theorem smallEig_measureReal_not_forward_le_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :

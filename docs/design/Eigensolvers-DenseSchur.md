@@ -56,7 +56,8 @@ its own contract, and one generic composition theorem covers any components that
 * **Constants that moved (§1, §15, §16).** $\delta' = \delta/(16\sqrt{n+1})$ (design:
   $\delta/(32\sqrt{n+1})$); norm bounds $4$ (regularizer) and $8$ (core) after normalization by an
   estimate with constants $(1/2, 2)$; a nine-term precision threshold; the power of $k + 1$ in the
-  static count is $4$ (design: $5$); the polylog exponent is $p = 15$ (design: about $12$).
+  static count is $4$ (design: $5$); the polylog factor is $L^9(\log_2 L + 1)^6$ (design: about $L^{12}$; $L^{15}$ before
+  `schur-tighten`).
 
 ## 1. The headlines, in Lean
 
@@ -120,9 +121,10 @@ Companions, all in the `NLAlib.Schur` namespace:
   c_1L^4(\log_2L + 1)^2 + c_2$ (the shift degree is $\Theta(L\log L)$).
 * **HD6** `denseSchur_work_le`: the instrumented static count at `[n + 1, nr, nq, k, F, T]` and zero
   offsets is $\le 384547(n+1)^3(k+1)^4(n_r+n_q+1)(F+1)(T+1)^2$; **HD7**
-  `denseSchur_work_le_polylog`: $\exists C, p$ with count $\le C(n+1)^3L^p$; the proof finds $p = 15$
-  ($(k+1)^4 \le (KL^2)^4$, $F + 1 \le KL$, $(T+1)^2 \le (KL^3)^2$; the paper's is $2$ for the
-  eigenvalues alone, with a run-time count over the deflation tree).
+  `denseSchur_work_le_polylog`: $\exists C$ with count $\le C(n+1)^3L^9(\log_2 L + 1)^6$
+  ($(k+1)^4 \le (KL(\log_2 L + 1))^4$, $F + 1 \le KL$, $(T+1)^2 \le (KL^2(\log_2 L + 1))^2$; the
+  paper's exponent is $2$ for the eigenvalues alone, with a run-time count over the deflation
+  tree); `denseSchur_work_le_pow` keeps the cruder $C(n+1)^3L^{15}$.
 * **CT2** `denseSchurAlgorithm`, `denseSchur_algorithm_measureReal_not_accepts_le` (Result:
   dense-schur-certificate-accuracy): one counted run over `SmallEig.smallEigModel`, work and span
   `denseSchurWork` (§6), the Schur output with probability $\ge 1 - \varphi$. The randomized claim of
@@ -520,7 +522,7 @@ hold on every tape.
 The power of $k + 1$ is $4$, that of the eigenvalue solver: the replays on the couplings and on the
 accumulator cost no more than a step (the design expected $5$). No amortization over the deflation
 tree is used; a run-time count (the paper's constant) would need the `Accepts` route and is not
-planned. The polylog form (HD7) has $p = 15$.
+planned. The polylog form (HD7) is $L^9(\log_2 L + 1)^6$.
 
 ## 7. Edge cases and junk values
 

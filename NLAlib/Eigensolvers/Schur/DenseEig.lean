@@ -113,10 +113,102 @@ theorem denseEigCoreDelta_pos_le {n : ℕ} {δ φ : ℝ} (hδ : 0 < δ) (hδ1 : 
 headline is not vacuous. -/
 theorem uDenseEig_pos {n : ℕ} {δ φ : ℝ} (hδ : 0 < δ) (hδ1 : δ ≤ 1) (hφ : 0 < φ) (hφ1 : φ ≤ 1) :
     0 < uDenseEig n δ φ := by
-  obtain ⟨hD0, hD1⟩ := denseEigCoreDelta_pos_le (n := n) hδ hδ1 hφ hφ1
+  obtain ⟨hD0, hD1, -⟩ := denseEigCoreDelta_pos_le (n := n) hδ hδ1 hφ hφ1
   have hR : 0 < (denseEigRotations n δ φ : ℝ) := by
     unfold denseEigRotations denseSchurRotationsAt denseSchurRotationsAtWith; positivity
   exact lt_min (uDenseSchurAt_pos hδ hδ1 hD0 hD1 hφ hφ1) (by positivity)
+
+/-- The monomials of the eigensolver's precision condition: from $N^3Ru \le D/4096$ with
+$N, R \ge 1$ and $u \ge 0$, each smaller monomial is at most $D/4096$. -/
+private theorem denseEig_monomials_le {N R u D : ℝ} (hN1 : 1 ≤ N) (hR1 : 1 ≤ R) (hu0 : 0 ≤ u)
+    (h : N ^ 3 * R * u ≤ D / 4096) :
+    N ^ 3 * u ≤ D / 4096 ∧ N * R * u ≤ D / 4096 ∧ R * u ≤ D / 4096 ∧ N * u ≤ D / 4096 ∧
+      N ^ 2 * u ≤ D / 4096 := by
+  have hN0 : 0 ≤ N := by linarith
+  have hRu : 0 ≤ R * u := mul_nonneg (by linarith) hu0
+  have hNN : N ≤ N ^ 2 := by nlinarith
+  have hN23 : N ^ 2 ≤ N ^ 3 := by nlinarith [sq_nonneg N]
+  have h3 := mul_le_mul_of_nonneg_left hR1 (mul_nonneg (pow_nonneg hN0 3) hu0)
+  have h1 := mul_le_mul_of_nonneg_right (hNN.trans hN23) hRu
+  have h2 := mul_le_mul_of_nonneg_right hN1 hRu
+  have h4 := mul_le_mul_of_nonneg_left hR1 (mul_nonneg hN0 hu0)
+  have h5 := mul_le_mul_of_nonneg_right hN23 hu0
+  refine ⟨by linarith, by linarith, by linarith, by linarith, by linarith⟩
+
+/-- The final inequalities of the eigensolver's constants, in the order $N$, its square root $s$,
+the core tolerance $D$, the class $(B, \Gamma)$ and the errors $e_U$, $e_X$, $\eta$. -/
+private theorem denseEig_final_le {N s u D B Γ δ eU eX η : ℝ} (hN1 : 1 ≤ N) (hsN : s ≤ N)
+    (hu0 : 0 ≤ u) (hD0 : 0 < D) (hD1 : D ≤ 1) (hB : 2 ≤ B) (hΓ : 0 < Γ)
+    (hNu : N * u ≤ D / 4096) (hN2u : N ^ 2 * u ≤ D / 4096) (heU0 : 0 ≤ eU)
+    (heUD : eU ≤ 58 * D / 4096) (heX : eX ≤ D) (hη0 : 0 ≤ η) (hη : η ≤ 3 * D)
+    (hDδ : D * (2 ^ 10 * N ^ 2 * B) ≤ δ) (hDΓ : D * (2 ^ 10 * N ^ 2 * B) ≤ Γ) :
+    δ / 16 + 3 * (s * u) + eX ≤ δ / 2 ∧ eU ≤ 1 / 8 ∧
+      4 * (N + 2) * u + 2 * eU + 2 * N * (8 * (N + 1) * u) ≤ 1 / 8 ∧
+      16 * (4 * (D / (64 * N))) * s < 7 * (1 / 2) * Γ ∧
+      eX + 6 * eU ≤ 1 / 2 * Γ / (16 * N * B) ∧ 8 * s * B * η ≤ 1 / 2 * Γ ∧
+      δ / 16 + 3 * (s * u) + η ≤ δ ∧ δ / 16 + 3 * (s * u) + s * η ≤ δ ∧
+      δ / 16 + 3 * (s * u) + 2 * N * B * η ≤ δ := by
+  have hN0 : 0 < N := by linarith
+  have hB0 : 0 < B := by linarith
+  have hNN : N ≤ N ^ 2 := by nlinarith
+  have hNB := mul_le_mul_of_nonneg_left
+    (mul_le_mul_of_nonneg_right hNN hB0.le) hD0.le
+  have hDNB : D * N * B ≤ δ / 1024 := by linarith
+  have hDNBΓ : D * N * B ≤ Γ / 1024 := by linarith
+  have h2 : (2 : ℝ) ≤ N ^ 2 * B := by nlinarith
+  have h2048 := mul_le_mul_of_nonneg_left h2 hD0.le
+  have hDδ' : D ≤ δ / 2048 := by linarith
+  have hDΓ' : D ≤ Γ / 2048 := by linarith
+  have hsu := mul_le_mul_of_nonneg_right hsN hu0
+  have huN := mul_le_mul_of_nonneg_right hN1 hu0
+  have hND := mul_le_mul_of_nonneg_left (by linarith : (1 : ℝ) ≤ B) (mul_pos hN0 hD0).le
+  have hsη : s * η ≤ N * (3 * D) := mul_le_mul hsN hη hη0 hN0.le
+  refine ⟨by linarith, by linarith, by nlinarith, ?_, ?_, ?_, by linarith, by linarith, ?_⟩
+  · have e : 16 * (4 * (D / (64 * N))) * s = D * s / N := by field_simp; ring
+    rw [e, div_lt_iff₀ hN0]
+    have h3 : D * s ≤ D * N := mul_le_mul_of_nonneg_left hsN hD0.le
+    have h4 := mul_le_mul_of_nonneg_right hDΓ' hN0.le
+    have h5 := mul_pos hΓ hN0
+    linarith
+  · rw [le_div_iff₀ (by positivity)]
+    have h1 : (eX + 6 * eU) * (16 * N * B) ≤ 2 * D * (16 * N * B) :=
+      mul_le_mul_of_nonneg_right (by linarith) (by positivity)
+    linarith
+  · have h3 := mul_le_mul_of_nonneg_left hsη (by positivity : (0 : ℝ) ≤ 8 * B)
+    linarith
+  · have h3 := mul_le_mul_of_nonneg_left hη (by positivity : (0 : ℝ) ≤ 2 * N * B)
+    linarith
+
+/-- The pipeline error of the eigensolver is at most $D$: with $s \le N$, $sd = D/16$,
+$0 \le \varepsilon \le 29Ru$ and the monomials at most $D/4096$. -/
+private theorem denseEig_pipelineError_le {N s u d D ε R : ℝ} (hN1 : 1 ≤ N) (hsN : s ≤ N)
+    (hu0 : 0 ≤ u) (hsd : s * d = D / 16) (hε0 : 0 ≤ ε) (hε29 : ε ≤ 29 * R * u)
+    (hN3 : N ^ 3 * u ≤ D / 4096) (hNR : N * R * u ≤ D / 4096) (hNu : N * u ≤ D / 4096) :
+    2 * 2 * s * (3 * (50 * N ^ 2 * u) / (1 / 2) + d + 8 * ε / (1 / 2)) +
+      (8 + 2 * 2 / (1 / 2)) * N * u ≤ D := by
+  have hN0 : 0 ≤ N := by linarith
+  have e : 2 * 2 * s * (3 * (50 * N ^ 2 * u) / (1 / 2) + d + 8 * ε / (1 / 2)) +
+      (8 + 2 * 2 / (1 / 2)) * N * u = 1200 * (s * (N ^ 2 * u)) + 4 * (s * d) + 64 * (s * ε) +
+        16 * (N * u) := by ring
+  have h1 := mul_le_mul_of_nonneg_right hsN (mul_nonneg (pow_nonneg hN0 2) hu0)
+  have h2 : s * ε ≤ N * (29 * R * u) := mul_le_mul hsN hε29 hε0 hN0
+  rw [e, hsd]
+  linarith
+
+/-- The eigenvector error $\eta$ of the eigensolver is at most $3D$. -/
+private theorem denseEig_eta_le {N s u D eX eU : ℝ} (hN1 : 1 ≤ N) (hs1 : 1 ≤ s) (hsN : s ≤ N)
+    (hu0 : 0 ≤ u) (hD0 : 0 < D) (hN3 : N ^ 3 * u ≤ D / 4096) (heX : eX ≤ D)
+    (heU : eU ≤ 58 * D / 4096) :
+    2 * eX + 3 * eU + 4 * s * (16 * (1 + s) * (N + 1) * u) + 8 * N * (8 * (N + 1) * u) ≤
+      3 * D := by
+  have hN0 : 0 ≤ N := by linarith
+  have h1 : s * (1 + s) ≤ N * (2 * N) := mul_le_mul hsN (by linarith) (by linarith) hN0
+  have h2 : s * (1 + s) * (N + 1) ≤ N * (2 * N) * (2 * N) :=
+    mul_le_mul h1 (by linarith) (by linarith) (by positivity)
+  have h3 := mul_le_mul_of_nonneg_right h2 (by positivity : (0 : ℝ) ≤ 64 * u)
+  have h4 : N * (N + 1) ≤ 2 * N ^ 3 := by nlinarith [mul_nonneg hN0 hN0, sq_nonneg (N - 1)]
+  have h5 := mul_le_mul_of_nonneg_right h4 (by positivity : (0 : ℝ) ≤ 64 * u)
+  linarith
 
 /-- **The errors of the dense eigensolver**: for $0 < \delta \le 1$, $0 < \varphi \le 1$,
 $0 \le \boldsymbol{u} \le \boldsymbol{u}_E$ and the core rotation count $R_c$ with
@@ -169,31 +261,16 @@ theorem denseEig_errors_le {n Rc : ℕ} {δ φ u eR eX eU cR₀ cV cN : ℝ} (h�
   have hu9 : u ≤ D / (4096 * N ^ 3 * R) := hu.trans (min_le_right _ _)
   have hN3R : N ^ 3 * R * u ≤ D / 4096 := by
     rw [le_div_iff₀ (by positivity)] at hu9 ⊢; linarith
-  have hN3 : N ^ 3 * u ≤ D / 4096 := by
-    have := mul_le_mul_of_nonneg_left hR1 (by positivity : (0 : ℝ) ≤ N ^ 3 * u); nlinarith
-  have hNR : N * R * u ≤ D / 4096 := by
-    have : N * R * u ≤ N ^ 3 * R * u := by
-      have h1 : N ≤ N ^ 3 := by nlinarith
-      have := mul_le_mul_of_nonneg_right h1 (by positivity : (0 : ℝ) ≤ R * u); nlinarith
-    linarith
-  have hRu : R * u ≤ D / 4096 := by
-    have := mul_le_mul_of_nonneg_right hN1 (by positivity : (0 : ℝ) ≤ R * u); nlinarith
-  have hNu : N * u ≤ D / 4096 := by
-    have := mul_le_mul_of_nonneg_left hR1 (by positivity : (0 : ℝ) ≤ N * u); nlinarith
-  have hN2u : N ^ 2 * u ≤ D / 4096 := by
-    have : N ^ 2 * u ≤ N ^ 3 * u := by
-      have : N ^ 2 ≤ N ^ 3 := by nlinarith
-      exact mul_le_mul_of_nonneg_right this hu0
-    linarith
+  obtain ⟨hN3, hNR, hRu, hNu, hN2u⟩ := denseEig_monomials_le hN1 hR1 hu0 hN3R
   have hsu : s * u ≤ D / 4096 := by
     have := mul_le_mul_of_nonneg_right hsN hu0; linarith
   obtain ⟨hε0, -, hεU, -⟩ := denseSchur_errors_le (Rc := Rc) hD0 hu0
     (by rw [← hR]; exact h4096) hu2 hu8 hD1
-  rw [← hR] at hεU
+  rw [← hR, ← hRdef] at hεU
   set ε := (1 + 27 * N ^ 2 * u) * (1 + 24 * u) ^ Rc - 1 with hεdef
   set eU := 2 * ε + ε ^ 2 with heUdef
-  have hε29 : ε ≤ 29 * R * u := by nlinarith
-  have heU0 : 0 ≤ eU := by positivity
+  have hε29 : ε ≤ 29 * R * u := by have := sq_nonneg ε; linarith
+  have heU0 : 0 ≤ eU := add_nonneg (by linarith) (sq_nonneg ε)
   have heUD : eU ≤ 58 * D / 4096 := by linarith
   -- the error against the regularized matrix
   have hsδ : s * denseSchurDelta n D = D / 16 := by
@@ -201,87 +278,33 @@ theorem denseEig_errors_le {n Rc : ℕ} {δ φ u eR eX eU cR₀ cV cN : ℝ} (h�
   have heX : schurPipelineEX n (1 / 2) 2 u (50 * N ^ 2 * u) (denseSchurDelta n D) ε ≤ D := by
     unfold schurPipelineEX
     rw [← hNdef, ← hs]
-    have e : 2 * 2 * s * (3 * (50 * N ^ 2 * u) / (1 / 2) + denseSchurDelta n D + 8 * ε / (1 / 2)) +
-        (8 + 2 * 2 / (1 / 2)) * N * u = 1200 * (s * (N ^ 2 * u)) +
-          4 * (s * denseSchurDelta n D) + 64 * (s * ε) + 16 * (N * u) := by ring
-    rw [e, hsδ]
-    have h1 : s * (N ^ 2 * u) ≤ N ^ 3 * u := by
-      have := mul_le_mul_of_nonneg_right hsN (by positivity : (0 : ℝ) ≤ N ^ 2 * u); nlinarith
-    have h2 : s * ε ≤ 29 * (N * R * u) := by
-      have := mul_le_mul hsN hε29 hε0 (by linarith); nlinarith
-    linarith
+    exact denseEig_pipelineError_le hN1 hsN hu0 hsδ hε0 hε29 hN3 hNR hNu
   set eX := schurPipelineEX n (1 / 2) 2 u (50 * N ^ 2 * u) (denseSchurDelta n D) ε with heXdef
   have heX0 : 0 ≤ eX := by
     unfold schurPipelineEX at heXdef; rw [heXdef]
     have : 0 ≤ denseSchurDelta n D := by unfold denseSchurDelta; positivity
     positivity
   have heR : 2 * s * (denseSchurDelta n δ / 2) + 3 * s * u = δ / 16 + 3 * (s * u) := by
-    unfold denseSchurDelta; rw [← hNdef, ← hs]; field_simp; ring
+    unfold denseSchurDelta; rw [← hNdef, ← hs]; field_simp
   -- the stage constants
-  have hcR : 4 * s * (16 * (1 + s) * ((n : ℝ) + 2) * u) ≤ 256 * (N ^ 3 * u) := by
-    have e2 : (n : ℝ) + 2 = N + 1 := by rw [hNdef]; ring
-    rw [e2]
-    have h1 : s * (1 + s) ≤ N * (2 * N) := mul_le_mul hsN (by linarith) (by linarith) (by linarith)
-    have h2 : s * (1 + s) * (N + 1) ≤ N * (2 * N) * (2 * N) :=
-      mul_le_mul h1 (by linarith) (by linarith) (by positivity)
-    have := mul_le_mul_of_nonneg_right h2 (by positivity : (0 : ℝ) ≤ 64 * u)
-    nlinarith
-  have hcV : 8 * N * (8 * ((n : ℝ) + 2) * u) ≤ 128 * (N ^ 3 * u) := by
-    have e2 : (n : ℝ) + 2 = N + 1 := by rw [hNdef]; ring
-    rw [e2]
-    have : N * (N + 1) ≤ 2 * N ^ 3 := by nlinarith
-    nlinarith
+  have e2 : (n : ℝ) + 2 = N + 1 := by rw [hNdef]; ring
   set η := eigEta n eX eU (16 * (1 + s) * ((n : ℝ) + 2) * u) (8 * ((n : ℝ) + 2) * u) with hηdef
   have hη : η ≤ 3 * D := by
-    rw [hηdef]; unfold eigEta; rw [← hNdef, ← hs]
-    linarith
+    rw [hηdef]; unfold eigEta; rw [← hNdef, ← hs, e2]
+    exact denseEig_eta_le hN1 hs1 hsN hu0 hD0 hN3 heX heUD
   have hη0 : 0 ≤ η := by
     rw [hηdef]; unfold eigEta; rw [← hNdef, ← hs]; positivity
-  have hD1024 : D * (1024 * N ^ 2 * B) ≤ δ := by rw [← hNdef] at hDδ; linarith
-  have hDΓ' : D * (1024 * N ^ 2 * B) ≤ Γ := by rw [← hNdef] at hDΓ; linarith
-  have hDNB : D * N * B ≤ δ / 1024 := by
-    have : D * N * B ≤ D * (N ^ 2 * B) := by
-      have := mul_le_mul_of_nonneg_left (by nlinarith : N ≤ N ^ 2) (by positivity : (0 : ℝ) ≤ D)
-      nlinarith [mul_le_mul_of_nonneg_right this (by linarith : (0 : ℝ) ≤ B)]
-    linarith
-  have hDNBΓ : D * N * B ≤ Γ / 1024 := by
-    have : D * N * B ≤ D * (N ^ 2 * B) := by
-      have := mul_le_mul_of_nonneg_left (by nlinarith : N ≤ N ^ 2) (by positivity : (0 : ℝ) ≤ D)
-      nlinarith [mul_le_mul_of_nonneg_right this (by linarith : (0 : ℝ) ≤ B)]
-    linarith
-  have hDδ' : D ≤ δ / 2048 := by
-    have : D * 2048 ≤ D * (1024 * N ^ 2 * B) := mul_le_mul_of_nonneg_left (by nlinarith) hD0.le
-    linarith
-  have hDΓ'' : D ≤ Γ / 2048 := by
-    have : D * 2048 ≤ D * (1024 * N ^ 2 * B) := mul_le_mul_of_nonneg_left (by nlinarith) hD0.le
-    linarith
+  obtain ⟨c1, c3, c4, c5, c6, c7, c8, c9, c10⟩ :=
+    denseEig_final_le hN1 hsN hu0 hD0 hD1 hB hΓ hNu hN2u heU0 heUD heX hη0 hη hDδ hDΓ
   rw [heR]
-  refine ⟨by linarith, by rw [hRdef] at hεU; exact hεU, by linarith, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-  · unfold eigColTol; rw [← hNdef]
-    have e3 : (n : ℝ) + 3 = N + 2 := by rw [hNdef]; ring
-    rw [e3]
-    nlinarith
-  · unfold denseEigFloor; rw [← hDdef, ← hNdef, ← hs]
-    have e : 16 * (4 * (D / (64 * N))) * s = D * s / N := by field_simp; ring
-    rw [e, div_lt_iff₀ (by linarith)]
-    have : D * s ≤ D * N := mul_le_mul_of_nonneg_left hsN hD0.le
-    nlinarith
-  · rw [le_div_iff₀ (by positivity)]
-    have h1 : (eX + 6 * eU) * (16 * N * B) ≤ 2 * D * (16 * N * B) :=
-      mul_le_mul_of_nonneg_right (by linarith) (by positivity)
-    nlinarith
-  · have : 8 * s * B * η ≤ 8 * N * B * (3 * D) := by
-      have := mul_le_mul hsN hη hη0 (by linarith)
-      have hB0 : (0 : ℝ) ≤ 8 * B := by linarith
-      nlinarith [mul_le_mul_of_nonneg_left this hB0]
-    nlinarith
-  · linarith
-  · have : s * η ≤ N * (3 * D) := mul_le_mul hsN hη hη0 (by linarith)
-    have : N * D ≤ D * N * B := by nlinarith
-    linarith
-  · have : 2 * N * B * η ≤ 2 * N * B * (3 * D) :=
-      mul_le_mul_of_nonneg_left hη (by positivity)
-    nlinarith
+  refine ⟨c1, hεU, c3, ?_, ?_, c6, c7, c8, c9, c10⟩
+  · have e3 : (n : ℝ) + 3 = N + 2 := by rw [hNdef]; ring
+    unfold eigColTol
+    rw [← hNdef, e3, e2]
+    exact c4
+  · unfold denseEigFloor
+    rw [← hDdef, ← hNdef]
+    exact c5
 
 /-! ### The program -/
 
@@ -321,6 +344,8 @@ section Theorems
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has DiskSampleOp O]
   [Has CmpTst Q] [Has IdxTst Q]
 
+-- The stage contracts at their long parameters make the elaboration heavy.
+set_option maxHeartbeats 1000000 in
 /-- **The dense eigendecomposition theorem.** Let the machine have the standard model at
 $\boldsymbol{u} \le \boldsymbol{u}_E$, index literals, exact natural literals up to $n + 1$, exact
 `toNat` and comparisons, a measurable interpretation reading the tape only in its windows whose
@@ -399,16 +424,19 @@ theorem denseEig_measureReal_not_eig_le {Mch : Machine ℝ} {I : Interp O Q ℝ}
     push_cast
     have : ((n : ℝ) + 1 + 1) ^ 2 ≤ 4 * ((n : ℝ) + 1) ^ 3 := by nlinarith
     nlinarith
-  have hEv := triEigvecStage_eigenvectorStageContract (O := O) (Q := Q) hS hM hL
-    (hNat.mono (by omega)) hC hρ h64
+  have hEv : EigenvectorStageContract _ _ _ _ _ _ _ (triEigvecStage (O := O) (Q := Q)) I :=
+    triEigvecStage_eigenvectorStageContract (O := O) (Q := Q) hS hM hL
+      (hNat.mono (by omega)) hC hρ h64
   have e2 : ((n + 1 : ℕ) : ℝ) + 1 = (n : ℝ) + 2 := by push_cast; ring
   have e3 : ((n + 1 : ℕ) : ℝ) + 2 = (n : ℝ) + 3 := by push_cast; ring
   have e1 : ((n + 1 : ℕ) : ℝ) = (n : ℝ) + 1 := by push_cast; ring
   rw [e2, e3, e1] at hEv
-  have hw := eigSolverWith_pwrites hS hM hL hNat hC hI hloc hSolve hEv hΓ (by linarith)
+  have hw := eigSolverWith_pwrites (pe := pe) (v := v) hS hM hL hNat hC hI hloc hSolve hEv hΓ
+    (by linarith)
     (by norm_num : (0 : ℝ) < 1 / 2) (by linarith) heU hc hfloor hsep hκ
-  refine (measureReal_mono fun ω hω hs => hω (hs.mono le_rfl fun μ' _ hout => ?_)).trans
-    (hw.measureReal_not_writes_le hin hξ)
+  have := hξ.isProbabilityMeasure
+  refine (measureReal_mono (fun ω (hω : ¬ _) (hs : Writes _ _ _ _ _ _ _ _) =>
+    hω (hs.mono le_rfl fun μ' _ hout => ?_))).trans (hw.measureReal_not_writes_le hin hξ)
   obtain ⟨hso, heo⟩ := hout
   refine ⟨hso.mono (by linarith) heU58, heo.mono h1 h2 (by linarith) h3 le_rfl ?_⟩
   linarith

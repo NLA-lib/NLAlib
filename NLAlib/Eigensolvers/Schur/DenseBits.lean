@@ -744,7 +744,22 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has SampleOp O] [Has Dis
 and $0 < \varphi \le 1$. -/
 theorem uDenseSchurAt_pos {n : ℕ} {δR δC φ : ℝ} (hδR : 0 < δR) (hδR1 : δR ≤ 1) (hδC : 0 < δC)
     (hδC1 : δC ≤ 1) (hφ : 0 < φ) (hφ1 : φ ≤ 1) : 0 < uDenseSchurAt n δR δC φ := by
-  sorry
+  obtain ⟨-, -, -, -, -, hB, hΓ⟩ := denseSchur_params_basic (n := n) hδR hδR1 hφ hφ1
+  obtain ⟨hd0, hd1, -⟩ := denseSchur_params_basic (n := n) hδC hδC1 hφ hφ1
+  have hk := denseSchurDegree_pos n δR φ
+  have hB1 : (1 : ℝ) ≤ 2 * denseSchurB n δR φ := by linarith
+  have hβ := shqrSmallEigAccuracy_pos (n := n) hB1 (half_pos hΓ) hd0 (by norm_num : (0 : ℝ) < 8)
+  have hβS := shqrSmallEigAccuracy_le (n := n) hB1 (half_pos hΓ) hd0
+    (by linarith : denseSchurDelta n δC ≤ 8)
+  obtain ⟨hf0, hfS, -⟩ := forwardBackwardError_spec (kmax := denseSchurDegree n δR φ)
+    hβ (by linarith : _ ≤ (32 : ℝ))
+  have hφL := shqrSmallEigFailure_pos (n := n) (B := 2 * denseSchurB n δR φ)
+    (Γ := denseSchurΓ n δR φ / 2) (S := 8) (δ := denseSchurDelta n δC) (half_pos hφ)
+  have hφL1 := shqrSmallEigFailure_le (n := n) (B := 2 * denseSchurB n δR φ)
+    (Γ := denseSchurΓ n δR φ / 2) (S := 8) (δ := denseSchurDelta n δC) (half_pos hφ).le
+  refine lt_min (uDenseSchurAtWith_pos _ _ hδR hδR1 hδC hδC1 hφ hφ1) ?_
+  exact (uSmallEig_spec ginibreGapTail_b_pos ginibreConditionTail_b_pos hk hf0 hfS hφL
+    (by linarith)).1
 
 /-- **The bits of precision of the dense Schur solver at two tolerances**: there are constants
 $c_1, c_2$ such that for every order $n + 1$, $0 < \delta_R, \delta_C \le 1$ and

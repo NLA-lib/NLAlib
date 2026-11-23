@@ -381,6 +381,257 @@ theorem denseSchur_writes_orth {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ
   rw [hN, show (1 : ℝ) + ((1 + 24 * u) ^ Rc - 1) = (1 + 24 * u) ^ Rc by ring] at hw
   exact hw
 
+/-- **The dense Schur solver at two tolerances terminates on every tape**, at any $\delta_R$, $\delta_C$ and $\varphi$, on a
+scalar machine with the standard model at $\boldsymbol{u}$, $400(n + 1)^2\boldsymbol{u} \le 1$,
+index literals, exact natural literals up to $n + 1$, exact `toNat` and comparisons, draws that
+store the tape entry and an exact polar disk sampler: the run of `denseSchur` from a memory
+holding $\mathbf{A}$ and the words of `denseSchurParamsAt` writes only $\mathbf{A}$,
+$\widehat{\mathbf{U}}$ and the flag, and stores a matrix in the block of $\mathbf{A}$ and
+$\widehat{\mathbf{U}}$ with
+$\|\widehat{\mathbf{U}}^{\mathsf H}\widehat{\mathbf{U}} - \mathbf{I}\|_2 \le 2\varepsilon +
+\varepsilon^2$, $\varepsilon = (1 + 27(n + 1)^2\boldsymbol{u})(1 + 24\boldsymbol{u})^{R_c} - 1$,
+$R_c$ the rotation count of the core. -/
+theorem denseSchurAt_writes_orth {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} {n : ℕ}
+    (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
+    (hSmp : IsSample I) {sU sG : ℕ} (hDisk : IsPolarDiskSampler sU I)
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {δR δC φ : ℝ}
+    (hu : 400 * ((n : ℝ) + 1) ^ 2 * u ≤ 1) {a p uo f : ℕ × ℕ} {μ : Mem ℝ}
+    (hin : SchurPipelineInput (denseSchurParamsAt n δR δC φ) a p uo f A μ) (τ : Tape ℝ) :
+    Writes .total I τ (denseSchur (O := O) (Q := Q) sG).body
+      (Env.frame (denseSchurDimsAt n δR δC φ) [a, p, a, uo, f]) (schurFp n a uo f)
+      (SchurOrth (n := n) a uo
+        (2 * ((1 + 27 * ((n : ℝ) + 1) ^ 2 * u) * (1 + 24 * u) ^ shqrSchurRotations n
+          (denseSchurDegree n δR φ) (denseSchurShQRParamsAt n δR δC φ ++ denseSchurLeafParamsAt n δR δC φ).length
+          (denseSchurCapAt n δR δC φ) (smallEigLeafRotations (denseSchurDegree n δR φ)
+            (denseSchurLeafCapAt n δR δC φ)) - 1) +
+         ((1 + 27 * ((n : ℝ) + 1) ^ 2 * u) * (1 + 24 * u) ^ shqrSchurRotations n
+          (denseSchurDegree n δR φ) (denseSchurShQRParamsAt n δR δC φ ++ denseSchurLeafParamsAt n δR δC φ).length
+          (denseSchurCapAt n δR δC φ) (smallEigLeafRotations (denseSchurDegree n δR φ)
+            (denseSchurLeafCapAt n δR δC φ)) - 1) ^ 2)) μ := by
+  have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
+  set Rc := shqrSchurRotations n (denseSchurDegree n δR φ)
+    (denseSchurShQRParamsAt n δR δC φ ++ denseSchurLeafParamsAt n δR δC φ).length (denseSchurCapAt n δR δC φ)
+    (smallEigLeafRotations (denseSchurDegree n δR φ) (denseSchurLeafCapAt n δR δC φ))
+  have hN : (((n + 1 : ℕ)) : ℝ) = (n : ℝ) + 1 := by push_cast; ring
+  have hN2 : ((n : ℝ) + 1) ^ 2 * u ≤ 1 / 400 := by linarith
+  have hn1 : (1 : ℝ) ≤ ((n : ℝ) + 1) ^ 2 := by
+    have := (Nat.cast_nonneg n : (0 : ℝ) ≤ n); nlinarith
+  have hNm : FrobNormEstimateContract (1 / 2) 2 (n + 1) (frobNormStage (O := O) (Q := Q)) I :=
+    frobNormStage_frobNormEstimateContract_half hS hM (by rw [hN]; nlinarith)
+  have hRed : HessenbergReducerContract (27 * (((n + 1 : ℕ)) : ℝ) ^ 2 * u)
+      (50 * (((n + 1 : ℕ)) : ℝ) ^ 2 * u) (n + 1) (hessenbergReduceQ (O := O) (Q := Q)) I :=
+    hessenbergReduceQ_hessenbergReducerContract hS hM hC hQ hL hNat (by omega)
+      (by rw [hN]; nlinarith)
+  have hCore : TerminatingSchurCore ((1 + 24 * u) ^ Rc - 1) (denseSchurDegree n δR φ)
+      (denseSchurCapAt n δR δC φ) (denseSchurLeafCapAt n δR δC φ) (n + 1)
+      (denseSchurThresholdAt n δR δC φ :: (denseSchurShQRParamsAt n δR δC φ ++ denseSchurLeafParamsAt n δR δC φ))
+      (roundedShQRSchur (O := O) (Q := Q) sG) I := by
+    rw [← shqrSchurParamsAt_eq, show Rc = _ from (shqrSmallEigRotationsAt_eq n δR δC φ).symm]
+    exact roundedShQRSchur_terminatingSchurCore hS hM (by nlinarith) hL hNat hQ hC hSmp hDisk rfl
+  have hReg : ∀ {τ : Tape ℝ} {μ : Mem ℝ} {a q : ℕ × ℕ}
+      (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), HoldsMatrix a A μ.store →
+      μ.store.readBlock q.1 q.2 (denseSchurRegParams n δR φ).length =
+        some (denseSchurRegParams n δR φ) → μ.Live [a, q] →
+      Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+        (Store.inBlock q.1 q.2 (denseSchurRegParams n δR φ).length) →
+      Writes .total I τ (ginibrePerturb (O := O) (Q := Q) sG).body
+        (Env.frame [n + 1, (denseSchurRegParams n δR φ).length] [a, q, a])
+        (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+        (fun μ' => ∃ A' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A' μ'.store) μ :=
+    fun A hA hq hl _ => (SmallEig.ginibrePerturb_writes_word hS hL hSmp hl hA
+      (Store.get_of_readBlock hq (j := 0) (by simp [denseSchurRegParams,
+        SmallEig.length_smallEigParams]) 0)).mono le_rfl fun _ _ h => ⟨_, h.2⟩
+  have hw := schurPipelineWith_terminates (c₁ := 1 / 2) (c₂ := 2) (Nm := frobNormStage)
+    (Reg := ginibrePerturb (O := O) (Q := Q) sG) (Red := hessenbergReduceQ)
+    (Core := roundedShQRSchur (O := O) (Q := Q) sG) hS hM hL hNat hC
+    (by nlinarith) hNm hReg hRed hCore (by norm_num) (by positivity)
+    (by have := one_le_pow₀ (M₀ := ℝ) (n := Rc) (by linarith : (1 : ℝ) ≤ 1 + 24 * u); linarith)
+    hin τ
+  rw [hN, show (1 : ℝ) + ((1 + 24 * u) ^ Rc - 1) = (1 + 24 * u) ^ Rc by ring] at hw
+  exact hw
+
+/-- **The class of conditioned diagonalizable matrices is σ-compact**: it is the projection of the
+closed set of $(\mathbf{X}, \mathbf{V}, \mathbf{W}, d)$ with $\mathbf{V}\mathbf{W} = \mathbf{I}$,
+$\mathbf{X}\mathbf{V} = \mathbf{V}\operatorname{diag}(d)$, $\|\mathbf{V}\|_2\|\mathbf{W}\|_2 \le B$
+and the gaps of $d$ at least $\Gamma$. -/
+theorem isSigmaCompact_setOf_isConditionedDiagonalizable {N : ℕ} (B Γ : ℝ) :
+    IsSigmaCompact {X : Matrix (Fin N) (Fin N) ℂ | IsConditionedDiagonalizable B Γ X} := by
+  set M := Matrix (Fin N) (Fin N) ℂ
+  set Z : Set (M × M × M × (Fin N → ℂ)) := {q | q.2.1 * q.2.2.1 = 1 ∧
+    q.1 * q.2.1 = q.2.1 * Matrix.diagonal q.2.2.2 ∧ specNorm q.2.1 * specNorm q.2.2.1 ≤ B ∧
+    ∀ i j, i ≠ j → Γ ≤ ‖q.2.2.2 i - q.2.2.2 j‖}
+  have hZ : IsClosed Z := by
+    have hX : Continuous fun q : M × M × M × (Fin N → ℂ) => q.1 := by fun_prop
+    have hV : Continuous fun q : M × M × M × (Fin N → ℂ) => q.2.1 := by fun_prop
+    have hW : Continuous fun q : M × M × M × (Fin N → ℂ) => q.2.2.1 := by fun_prop
+    have hd : Continuous fun q : M × M × M × (Fin N → ℂ) => q.2.2.2 := by fun_prop
+    refine (isClosed_eq (hV.matrix_mul hW) continuous_const).inter
+      ((isClosed_eq (hX.matrix_mul hV)
+        (hV.matrix_mul (continuous_id.matrix_diagonal.comp hd))).inter
+      ((isClosed_le ((continuous_specNorm.comp hV).mul (continuous_specNorm.comp hW))
+        continuous_const).inter ?_))
+    simp only [Set.setOf_forall]
+    exact isClosed_iInter fun i => isClosed_iInter fun j => isClosed_iInter fun _ =>
+      isClosed_le continuous_const
+        ((((continuous_apply i).comp hd).sub ((continuous_apply j).comp hd)).norm)
+  have e : {X : M | IsConditionedDiagonalizable B Γ X} = Prod.fst '' Z := by
+    ext X
+    simp only [Set.mem_ofPred_eq, Set.mem_image, Z, IsConditionedDiagonalizable]
+    constructor
+    · rintro ⟨V, d, hV, hXV, hκ, hg⟩
+      refine ⟨(X, V, V⁻¹, d), ⟨Matrix.mul_nonsing_inv V ((Matrix.isUnit_iff_isUnit_det V).mp hV),
+        hXV, ?_, hg⟩, rfl⟩
+      rwa [← pseudoConditionNumber_of_isUnit hV]
+    · rintro ⟨⟨X', V, W, d⟩, ⟨hVW, hXV, hκ, hg⟩, rfl⟩
+      have hV : IsUnit V := Matrix.isUnit_of_right_inverse hVW
+      have hW : V⁻¹ = W := Matrix.inv_eq_right_inv hVW
+      refine ⟨V, d, hV, hXV, ?_, hg⟩
+      rwa [pseudoConditionNumber_of_isUnit hV, hW]
+  rw [e]
+  have : SigmaCompactSpace M := inferInstanceAs (SigmaCompactSpace (Fin N → Fin N → ℂ))
+  exact (isSigmaCompact_univ.of_isClosed_subset hZ (Set.subset_univ _)).image continuous_fst
+
+-- The four stage contracts at their long parameters make the elaboration heavy.
+set_option maxHeartbeats 1000000 in
+-- (heavy elaboration, see above)
+/-- **The dense Schur solver at two tolerances, with the regularized matrix exposed, as a
+probabilistic step**: the form of `NLAlib.Schur.denseSchurAt_measureReal_not_regularizedSchur_le`
+from every input memory (`NLAlib.Ops.PWrites`). No printed source. -/
+theorem denseSchurAt_pwrites_regularizedSchur {Mch : Machine ℝ} {I : Interp O Q ℝ}
+    {u : ℝ} {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
+    (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
+    (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
+    (hSmp : IsSample I) {law : ℕ → Measure ℝ} {sU sG : ℕ}
+    (hDisk : IsPolarDiskSampler sU I) (hU : law sU = volume.restrict (Set.Icc 0 1))
+    (hG : law sG = gaussianReal 0 1) {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {δR δC φ : ℝ}
+    (hδR : 0 < δR) (hδR1 : δR ≤ 1) (hδC : 0 < δC) (hδC1 : δC ≤ 1) (hφ : 0 < φ) (hφ1 : φ ≤ 1)
+    (hu : u ≤ uDenseSchurAt n δR δC φ) {a p uo f : ℕ × ℕ} :
+    PWrites law I (denseSchur (O := O) (Q := Q) sG).body
+      (Env.frame (denseSchurDimsAt n δR δC φ) [a, p, a, uo, f]) (schurFp n a uo f)
+      (SchurPipelineInput (denseSchurParamsAt n δR δC φ) a p uo f A)
+      (RegularizedSchurOutput (IsConditionedDiagonalizable (denseSchurB n δR φ)
+          (denseSchurΓ n δR φ)) a uo f A (1 / 2) 2
+        (2 * √((n : ℝ) + 1) * (denseSchurDelta n δR / 2) + 3 * √((n : ℝ) + 1) * u)
+        (schurPipelineEX n (1 / 2) 2 u (50 * ((n : ℝ) + 1) ^ 2 * u) (denseSchurDelta n δC)
+          ((1 + 27 * ((n : ℝ) + 1) ^ 2 * u) * (1 + 24 * u) ^ shqrSchurRotations n (denseSchurDegree n δR φ)
+            (denseSchurShQRParamsAt n δR δC φ ++ denseSchurLeafParamsAt n δR δC φ).length
+            (denseSchurCapAt n δR δC φ)
+            (smallEigLeafRotations (denseSchurDegree n δR φ) (denseSchurLeafCapAt n δR δC φ)) - 1))
+        (2 * ((1 + 27 * ((n : ℝ) + 1) ^ 2 * u) * (1 + 24 * u) ^ shqrSchurRotations n (denseSchurDegree n δR φ)
+            (denseSchurShQRParamsAt n δR δC φ ++ denseSchurLeafParamsAt n δR δC φ).length
+            (denseSchurCapAt n δR δC φ)
+            (smallEigLeafRotations (denseSchurDegree n δR φ) (denseSchurLeafCapAt n δR δC φ)) - 1) +
+          ((1 + 27 * ((n : ℝ) + 1) ^ 2 * u) * (1 + 24 * u) ^ shqrSchurRotations n (denseSchurDegree n δR φ)
+            (denseSchurShQRParamsAt n δR δC φ ++ denseSchurLeafParamsAt n δR δC φ).length
+            (denseSchurCapAt n δR δC φ)
+            (smallEigLeafRotations (denseSchurDegree n δR φ) (denseSchurLeafCapAt n δR δC φ)) - 1) ^ 2)) φ := by
+  obtain ⟨hdR0, hdR1, hg, hc, hc1, hB, hΓ⟩ := denseSchur_params_basic (n := n) hδR hδR1 hφ hφ1
+  obtain ⟨hdC0, hdC1, -⟩ := denseSchur_params_basic (n := n) hδC hδC1 hφ hφ1
+  have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
+  set k := denseSchurDegree n δR φ
+  set B2 := 2 * denseSchurB n δR φ
+  set Γ2 := denseSchurΓ n δR φ / 2
+  set δ'C := denseSchurDelta n δC
+  have hB1 : (1 : ℝ) ≤ B2 := by linarith
+  -- the leaf
+  have hβ := shqrSmallEigAccuracy_pos (n := n) hB1 (half_pos hΓ) hdC0 (by norm_num : (0 : ℝ) < 8)
+  have hβS := shqrSmallEigAccuracy_le (n := n) hB1 (half_pos hΓ) hdC0
+    (by linarith : δ'C ≤ 8)
+  have hφL := shqrSmallEigFailure_pos (n := n) (B := B2) (Γ := Γ2) (S := 8) (δ := δ'C)
+    (half_pos hφ)
+  have hφL1 := shqrSmallEigFailure_le (n := n) (B := B2) (Γ := Γ2) (S := 8) (δ := δ'C)
+    (half_pos hφ).le
+  set T := denseSchurLeafCapAt n δR δC φ
+  set RL := smallEigLeafRotations k T
+  set qs := denseSchurLeafParamsAt n δR δC φ
+  set np := (denseSchurShQRParamsAt n δR δC φ ++ qs).length
+  have hu' : u ≤ uDenseSchurAtWith n δR δC φ np RL := hu.trans (min_le_left _ _)
+  obtain ⟨hu1, hu2, hu3, hu4, -, hu6, -, hu8⟩ := le_of_le_uDenseSchurAtWith hu'
+  obtain ⟨-, hR⟩ := mul_denseSchurRotationsAtWith_le hδC hu'
+  have hLeaf : RandomSchurLeafContract law ((1 + 24 * u) ^ RL - 1)
+      (forwardBackwardError k 32 (shqrSmallEigAccuracy n B2 Γ2 8 δ'C))
+      (denseSchurLeafFailureAt n δR δC φ) (min k (n + 1)) (4 * 8) qs T
+      (smallEigProg (O := O) (Q := Q) sG) I := by
+    have h := SmallEig.smallEigProg_randomSchurLeafContract (O := O) (Q := Q) hS hM hL
+      (dmax := min k (n + 1)) (min_le_left _ _)
+      (hNat.mono (min_le_right _ _)) hQ hC hI hloc hSmp hDisk hU hG
+      boundsGinibreGap_ginibreGapTail boundsGinibreCondition_ginibreConditionTail
+      ginibreGapTail_b_pos ginibreConditionTail_b_pos hβ (by linarith : _ ≤ (32 : ℝ)) hφL
+      (by linarith) (hu.trans (min_le_right _ _))
+    rw [← denseSchurLeafCapAt_eq] at h
+    rw [show (4 : ℝ) * 8 = 32 by norm_num]
+    exact h
+  have hR0 : 0 ≤ (1 + 24 * u) ^ RL - 1 := by
+    have := one_le_pow₀ (M₀ := ℝ) (n := RL) (by linarith : (1 : ℝ) ≤ 1 + 24 * u)
+    linarith
+  obtain ⟨hb0, -, -⟩ := forwardBackwardError_spec (kmax := k) hβ (by linarith : _ ≤ (32 : ℝ))
+  set Rc := shqrSchurRotations n k np (denseSchurCapAt n δR δC φ) RL
+  have hRe : denseSchurRotationsAt n δR δC φ = (n + 1) ^ 2 + Rc := rfl
+  obtain ⟨hε0, hε16, hεU, -⟩ := denseSchur_errors_le (Rc := Rc) hδC hu0
+    (by rw [← hRe]; exact hR) hu2 hu8 hδC1
+  have hN : (((n + 1 : ℕ) : ℝ)) = (n : ℝ) + 1 := by push_cast; ring
+  have hN2 : ((n : ℝ) + 1) ^ 2 * u ≤ 1 / 51200 := by
+    rw [le_div_iff₀ (by positivity)] at hu2
+    have : δ'C ≤ 1 / 16 := hdC1
+    nlinarith
+  -- the four contracts
+  have hNm : FrobNormEstimateContract (1 / 2) 2 (n + 1) (frobNormStage (O := O) (Q := Q)) I :=
+    frobNormStage_frobNormEstimateContract_half hS hM (by rw [hN]; nlinarith)
+  have hReg : RandomRegularizerContract law (denseSchurDelta n δR / 2) (3 * (φ / 2) / 4)
+      (fun A => IsConditionedDiagonalizable (denseSchurB n δR φ) (denseSchurΓ n δR φ) A) (n + 1)
+      (2 / (1 / 2)) (denseSchurRegParams n δR φ) (ginibrePerturb (O := O) (Q := Q) sG) I := by
+    rw [show (2 : ℝ) / (1 / 2) = 4 by norm_num]
+    exact ginibrePerturb_randomRegularizerContract hS hM hL hSmp hG
+      boundsGinibreGap_ginibreGapTail boundsGinibreCondition_ginibreConditionTail
+      ginibreGapTail_b_pos ginibreConditionTail_b_pos hdR0 (by linarith) (half_pos hφ)
+      (by linarith) hu1
+  have hRed : HessenbergReducerContract (27 * (((n + 1 : ℕ)) : ℝ) ^ 2 * u)
+      (50 * (((n + 1 : ℕ)) : ℝ) ^ 2 * u) (n + 1) (hessenbergReduceQ (O := O) (Q := Q)) I :=
+    hessenbergReduceQ_hessenbergReducerContract hS hM hC hQ hL hNat (by omega)
+      (by rw [hN]; nlinarith)
+  have hCore : RandomSchurCoreContract law ((1 + 24 * u) ^ Rc - 1) δ'C (φ / 2)
+      (fun H => IsConditionedDiagonalizable B2 Γ2 H) k (denseSchurCapAt n δR δC φ) T (n + 1)
+      (4 / (1 / 2)) (denseSchurThresholdAt n δR δC φ :: (denseSchurShQRParamsAt n δR δC φ ++ qs))
+      (roundedShQRSchurWith (smallEigProg (O := O) (Q := Q) sG)) I := by
+    rw [show (4 : ℝ) / (1 / 2) = 8 by norm_num]
+    exact roundedShQRSchurWith_randomSchurCoreContract hS hM hL hNat hQ hC hI hloc hDisk hU
+      hB1 (half_pos hΓ) hdC0 (by linarith) (half_pos hφ) (by linarith) rfl hLeaf
+      (SmallEig.length_smallEigParams _ _ _ _ _ _) hR0 le_rfl hb0.le
+      (by rw [show (4 : ℝ) * 8 = 32 by norm_num]) hφL.le le_rfl hu4 hu6
+  have hCC' : ∀ (A H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
+      IsConditionedDiagonalizable (denseSchurB n δR φ) (denseSchurΓ n δR φ) A →
+      IsPerturbedUnitarySimilarBy V A H
+        (50 * (((n + 1 : ℕ) : ℝ)) ^ 2 * u * (2 / (1 / 2) + denseSchurDelta n δR / 2)) →
+      IsConditionedDiagonalizable B2 Γ2 H :=
+    fun A H V hA hV => hA.of_isPerturbedUnitarySimilarBy hΓ hV (by
+      rw [hN]
+      set g := smallEigGap (n + 1) 4 (denseSchurDelta n δR) (φ / 2) ginibreGapTail
+      set c := smallEigCond (n + 1) 4 (denseSchurDelta n δR) (φ / 2) ginibreConditionTail
+      set N : ℝ := (n : ℝ) + 1 with hNdef
+      have hN1 : 1 ≤ N := by have := (Nat.cast_nonneg n : (0 : ℝ) ≤ n); linarith
+      have hu3' : u * (28800 * N ^ 3) ≤ g * c := (le_div_iff₀ (by positivity)).mp hu3
+      have e : denseSchurΓ n δR φ / (16 * N * denseSchurB n δR φ) = g * c / (64 * N) := by
+        unfold denseSchurΓ denseSchurB; field_simp; ring
+      rw [e, le_div_iff₀ (by positivity)]
+      have hN3 : N ^ 3 * u * (4 + denseSchurDelta n δR / 2) ≤ N ^ 3 * u * (4 + 1 / 32) :=
+        mul_le_mul_of_nonneg_left (by linarith) (by positivity)
+      nlinarith)
+  have hCm : MeasurableSet {X : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ |
+      IsConditionedDiagonalizable (denseSchurB n δR φ) (denseSchurΓ n δR φ) X} :=
+    measurableSet_of_isSigmaCompact (isSigmaCompact_setOf_isConditionedDiagonalizable _ _)
+  have h := schurPipelineWith_pwrites_regularizedSchur (c₁ := 1 / 2) (c₂ := 2) (a := a) (p := p)
+    (uo := uo) (f := f) (A := A) hS hM hL hNat hC hI hloc hNm hReg hRed hCore hCC' hCm
+    (by norm_num) hu0
+    (by rw [le_div_iff₀ (by positivity)] at hu8; nlinarith) (by linarith) (by positivity)
+    (by rw [hN]; nlinarith) (by positivity)
+    (by have := one_le_pow₀ (n := Rc) (by linarith : (1 : ℝ) ≤ 1 + 24 * u); linarith)
+    (by rw [hN, show (1 : ℝ) + ((1 + 24 * u) ^ Rc - 1) = (1 + 24 * u) ^ Rc by ring]; exact hε16)
+    (by positivity) (by positivity)
+  have e1 : (1 : ℝ) + ((1 + 24 * u) ^ Rc - 1) = (1 + 24 * u) ^ Rc := by ring
+  rw [hN, e1] at h
+  exact h.mono (fun _ h => h) le_rfl (fun _ h => h) (by linarith)
+
 /-- **The dense Schur solver at two tolerances, with the regularized matrix exposed.** On the
 machine and streams of `NLAlib.Schur.denseSchur_measureReal_not_schur_le` (the standard model at
 $\boldsymbol{u}$, index literals, exact natural literals up to $n + 1$, exact `toNat` and
@@ -419,7 +670,27 @@ theorem denseSchurAt_measureReal_not_regularizedSchur_le {Mch : Machine ℝ} {I 
         (schurPipelineEX n (1 / 2) 2 u (50 * ((n : ℝ) + 1) ^ 2 * u) (denseSchurDelta n δC)
           (29 * denseSchurRotationsAt n δR δC φ * u))
         (58 * denseSchurRotationsAt n δR δC φ * u)) μ} ≤ φ := by
-  sorry
+  obtain ⟨hdC0, -⟩ := denseSchur_params_basic (n := n) hδC hδC1 hφ hφ1
+  have hu0 : 0 ≤ u := by simpa using (abs_nonneg _).trans (hM.lit 1)
+  set Rc := shqrSchurRotations n (denseSchurDegree n δR φ)
+    (denseSchurShQRParamsAt n δR δC φ ++ denseSchurLeafParamsAt n δR δC φ).length
+    (denseSchurCapAt n δR δC φ)
+    (smallEigLeafRotations (denseSchurDegree n δR φ) (denseSchurLeafCapAt n δR δC φ))
+  have hRe : denseSchurRotationsAt n δR δC φ = (n + 1) ^ 2 + Rc := rfl
+  have hu' := hu.trans (min_le_left _ _)
+  obtain ⟨-, hu2, -, -, -, -, -, hu8⟩ := le_of_le_uDenseSchurAtWith hu'
+  obtain ⟨-, hR⟩ := mul_denseSchurRotationsAtWith_le hδC hu'
+  obtain ⟨hε0, -, hεU, -⟩ := denseSchur_errors_le (Rc := Rc) hδC hu0
+    (by rw [← hRe]; exact hR) hu2 hu8 hδC1
+  rw [← hRe] at hεU
+  have hε29 : (1 + 27 * ((n : ℝ) + 1) ^ 2 * u) * (1 + 24 * u) ^ Rc - 1 ≤
+      29 * (denseSchurRotationsAt n δR δC φ : ℝ) * u := by nlinarith
+  refine (measureReal_mono fun ω hω hs => hω (hs.mono le_rfl fun μ' _ hout =>
+    hout.mono le_rfl ?_ hεU)).trans ((denseSchurAt_pwrites_regularizedSchur hS hM hL hNat hQ hC
+      hI hloc hSmp hDisk hU hG hδR hδR1 hδC hδC1 hφ hφ1 hu).measureReal_not_writes_le hin hξ)
+  unfold schurPipelineEX
+  have : 0 ≤ 2 * 2 * √((n : ℝ) + 1) := by positivity
+  gcongr
 
 /-- **The dense Schur solver terminates, with a near-orthonormal accumulator, on every tape**: on
 a scalar machine with the standard model at $\boldsymbol{u} \le \boldsymbol{u}_0$, index

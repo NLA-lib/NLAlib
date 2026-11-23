@@ -225,6 +225,60 @@ theorem schurPipeline_budget {a F s c₁ c₂ x u δR εHT εCT ε t₁ t₂ : �
   have p₅ : 0 ≤ x * x * u * a := by positivity
   linarith
 
+/-- The scaled regularized norm in the split budget: from the bounds on $st_1$ and
+$t_2 \le t_1 + \delta_R$, $st_2 \le 2.1K/c_1$ and $st_2 \le a + 3wa + K\delta_R$. -/
+private theorem schurPipeline_budget_scaled {a F s c₁ u w K δR t₁ t₂ : ℝ} (hc₁ : 0 < c₁)
+    (hs : 0 < s) (hu : 0 ≤ u) (hu32 : u ≤ 1 / 32) (hK0 : 0 ≤ K) (hsK : s ≤ K) (hFK : F * c₁ ≤ K)
+    (hδR0 : 0 ≤ δR) (hδR : δR ≤ 1 / c₁) (ht₁a : s * t₁ ≤ a + 3 * u * F)
+    (ht₁F : s * t₁ ≤ (1 + 3 * u) * F) (ht₂ : t₂ ≤ t₁ + δR) (huF : u * F ≤ w * a) :
+    s * t₂ ≤ 21 / 10 * K / c₁ ∧ s * t₂ ≤ a + 3 * (w * a) + K * δR := by
+  have hsδ : s * δR ≤ K * δR := mul_le_mul_of_nonneg_right hsK hδR0
+  have hYst : s * t₂ ≤ s * t₁ + s * δR := by
+    rw [← mul_add]; exact mul_le_mul_of_nonneg_left ht₂ hs.le
+  refine ⟨?_, by linarith⟩
+  rw [le_div_iff₀ hc₁]
+  have hKδ : K * δR * c₁ ≤ K := by
+    have := mul_le_mul_of_nonneg_left hδR hK0
+    rw [mul_one_div, le_div_iff₀ hc₁] at this; linarith
+  have h1 : s * t₂ * c₁ ≤ s * t₁ * c₁ + s * δR * c₁ := by
+    rw [← add_mul]; exact mul_le_mul_of_nonneg_right hYst hc₁.le
+  have h2 : s * t₁ * c₁ ≤ (1 + 3 * u) * (F * c₁) := by
+    rw [← mul_assoc]; exact mul_le_mul_of_nonneg_right ht₁F hc₁.le
+  have h3 : (1 + 3 * u) * (F * c₁) ≤ (1 + 3 * u) * K :=
+    mul_le_mul_of_nonneg_left hFK (by linarith)
+  have h4 : s * δR * c₁ ≤ K * δR * c₁ := mul_le_mul_of_nonneg_right hsδ hc₁.le
+  have h5 : u * K ≤ 1 / 32 * K := mul_le_mul_of_nonneg_right hu32 hK0
+  linarith [mul_comm u K, show (1 + 3 * u) * K = K + 3 * (u * K) by ring]
+
+/-- The rounding of the scaling back in the split budget: for $0 \le \varepsilon \le 1/16$,
+$(1 + \varepsilon)^2$ is at most $289/256$ on the nonnegative product. -/
+private theorem schurPipeline_budget_rounding {ε u s x T : ℝ} (hε0 : 0 ≤ ε) (hε : ε ≤ 1 / 16)
+    (hw : 0 ≤ u * x) (hX : 0 ≤ s * T) :
+    (1 + ε) ^ 2 * u * s * x * T ≤ 289 / 256 * (u * x) * (s * T) := by
+  have hq : (1 + ε) ^ 2 ≤ 289 / 256 := by
+    have := pow_le_pow_left₀ (by linarith : (0 : ℝ) ≤ 1 + ε)
+      (by linarith : 1 + ε ≤ 17 / 16) 2
+    norm_num at this ⊢; linarith
+  have e : (1 + ε) ^ 2 * u * s * x * T = (1 + ε) ^ 2 * (u * x * (s * T)) := by ring
+  rw [e, show 289 / 256 * (u * x) * (s * T) = 289 / 256 * (u * x * (s * T)) by ring]
+  exact mul_le_mul_of_nonneg_right hq (mul_nonneg hw hX)
+
+/-- The two $\boldsymbol{u}$-terms of the split budget, with $K = c_2xa$ and $w = \boldsymbol{u}x$:
+$wa \le x^2\boldsymbol{u}a$ and $wK\delta_R \le (c_2/c_1)x^2\boldsymbol{u}a$. -/
+private theorem schurPipeline_budget_uTerms {a K c₁ c₂ x u δR : ℝ} (hK : K = c₂ * x * a)
+    (ha : 0 ≤ a) (hu : 0 ≤ u) (hx : 1 ≤ x) (hc₂ : 0 ≤ c₂) (hδR : δR ≤ 1 / c₁) :
+    u * x * a ≤ x * x * u * a ∧ u * x * (K * δR) ≤ c₂ / c₁ * (x * x) * u * a := by
+  have hx0 : 0 ≤ x := by linarith
+  refine ⟨?_, ?_⟩
+  · have : u * x * a * 1 ≤ u * x * a * x := mul_le_mul_of_nonneg_left hx (by positivity)
+    linarith [show u * x * a * x = x * x * u * a by ring]
+  · have e : u * x * (K * δR) = c₂ * (x * x) * u * a * δR := by rw [hK]; ring
+    rw [e]
+    have h0 : 0 ≤ c₂ * (x * x) * u * a := by positivity
+    calc c₂ * (x * x) * u * a * δR ≤ c₂ * (x * x) * u * a * (1 / c₁) :=
+          mul_le_mul_of_nonneg_left hδR h0
+      _ = c₂ / c₁ * (x * x) * u * a := by ring
+
 /-- **The split budget of the pipeline residual**: let $a, F \ge 0$, $F \le xa$, $x \ge 1$,
 $x^2\boldsymbol{u} \le 1/32$, $\boldsymbol{u} \ge 0$, $c_1 > 0$, $s > 0$ with
 $c_1F \le s \le c_2F$, $st_1 \le a + 3\boldsymbol{u}F$, $st_1 \le (1 + 3\boldsymbol{u})F$,
@@ -271,26 +325,9 @@ theorem schurPipeline_budget_split {a F s c₁ c₂ x u δR εHT εCT ε t₁ t�
     nlinarith
   set Y := s * t₂ with hY
   have hY0 : 0 ≤ Y := mul_nonneg hs.le ht₂0
-  have hYst : Y ≤ s * t₁ + s * δR := by
-    rw [hY, ← mul_add]; exact mul_le_mul_of_nonneg_left ht₂ hs.le
-  have hYc : Y * c₁ ≤ 21 / 10 * K := by
-    have hKδ : K * δR * c₁ ≤ K := by
-      have := mul_le_mul_of_nonneg_left hδR hK0
-      rw [mul_one_div, le_div_iff₀ hc₁] at this; linarith
-    have h1 : Y * c₁ ≤ s * t₁ * c₁ + s * δR * c₁ := by
-      rw [← add_mul]; exact mul_le_mul_of_nonneg_right hYst hc₁.le
-    have h2 : s * t₁ * c₁ ≤ (1 + 3 * u) * (F * c₁) := by
-      rw [← mul_assoc]; exact mul_le_mul_of_nonneg_right ht₁F hc₁.le
-    have h3 : (1 + 3 * u) * (F * c₁) ≤ (1 + 3 * u) * K :=
-      mul_le_mul_of_nonneg_left hFK (by linarith)
-    have h4 : s * δR * c₁ ≤ K * δR * c₁ := mul_le_mul_of_nonneg_right hsδ hc₁.le
-    have h5 : u * K ≤ 1 / 32 * K := mul_le_mul_of_nonneg_right hu32 hK0
-    linarith [mul_comm u K, show (1 + 3 * u) * K = K + 3 * (u * K) by ring]
-  have hYK : Y ≤ 21 / 10 * K / c₁ := by rw [le_div_iff₀ hc₁]; exact hYc
-  have hYa : Y ≤ a + 3 * (w * a) + K * δR := by
-    have : u * F ≤ w * a := by
-      rw [hw, mul_assoc]; exact mul_le_mul_of_nonneg_left hFa hu
-    linarith
+  obtain ⟨hYK, hYa⟩ : Y ≤ 21 / 10 * K / c₁ ∧ Y ≤ a + 3 * (w * a) + K * δR :=
+    schurPipeline_budget_scaled hc₁ hs hu hu32 hK0 hsK hFK hδR0 hδR ht₁a ht₁F ht₂
+      (by rw [hw, mul_assoc]; exact mul_le_mul_of_nonneg_left hFa hu)
   set X := s * (t₂ + (εHT * t₂ + εCT)) with hXdef
   have hX : X ≤ 9 / 8 * Y + K * εCT := by
     have h1 : X = Y + εHT * Y + s * εCT := by rw [hXdef, hY]; ring
@@ -310,32 +347,16 @@ theorem schurPipeline_budget_split {a F s c₁ c₂ x u δR εHT εCT ε t₁ t�
   have b₃ : s * εCT ≤ K * εCT := mul_le_mul_of_nonneg_right hsK hεCT
   have b₄ := schurPipeline_budget_acc hε0 hε hX0 hX hYK hc₁ hK0 hεCT
   -- the rounding of the scaling back, the regularizer's part as a `u`-term
-  have hq : (1 + ε) ^ 2 ≤ 289 / 256 := by
-    have := pow_le_pow_left₀ (by linarith : (0 : ℝ) ≤ 1 + ε)
-      (by linarith : 1 + ε ≤ 17 / 16) 2
-    norm_num at this ⊢; linarith
-  have hγ : (1 + ε) ^ 2 * u * s * x * (t₂ + (εHT * t₂ + εCT)) ≤ 289 / 256 * w * X := by
-    have e : (1 + ε) ^ 2 * u * s * x * (t₂ + (εHT * t₂ + εCT)) = (1 + ε) ^ 2 * (w * X) := by
-      rw [hw, hXdef]; ring
-    rw [e, show 289 / 256 * w * X = 289 / 256 * (w * X) by ring]
-    exact mul_le_mul_of_nonneg_right hq (mul_nonneg hw0 hX0)
+  have hγ : (1 + ε) ^ 2 * u * s * x * (t₂ + (εHT * t₂ + εCT)) ≤ 289 / 256 * w * X :=
+    schurPipeline_budget_rounding hε0 hε hw0 hX0
   have hwa : 0 ≤ w * a := mul_nonneg hw0 ha
   have hwX : w * X ≤ w * (9 / 8 * (a + 3 * (w * a) + K * δR) + K * εCT) :=
     mul_le_mul_of_nonneg_left (hX.trans (by linarith)) hw0
   have r₁ : w * (w * a) ≤ 1 / 32 * (w * a) := mul_le_mul_of_nonneg_right hw32 hwa
   have r₂ : w * (K * εCT) ≤ 1 / 32 * (K * εCT) :=
     mul_le_mul_of_nonneg_right hw32 (mul_nonneg hK0 hεCT)
-  have r₃ : w * a ≤ x * x * u * a := by
-    rw [hw]
-    have : u * x * a * 1 ≤ u * x * a * x := mul_le_mul_of_nonneg_left hx (by positivity)
-    linarith [show u * x * a * x = x * x * u * a by ring]
-  have r₄ : w * (K * δR) ≤ c₂ / c₁ * (x * x) * u * a := by
-    have e : w * (K * δR) = c₂ * (x * x) * u * a * δR := by rw [hw, hK]; ring
-    rw [e]
-    have h0 : 0 ≤ c₂ * (x * x) * u * a := by positivity
-    calc c₂ * (x * x) * u * a * δR ≤ c₂ * (x * x) * u * a * (1 / c₁) :=
-          mul_le_mul_of_nonneg_left hδR h0
-      _ = c₂ / c₁ * (x * x) * u * a := by ring
+  obtain ⟨r₃, r₄⟩ : w * a ≤ x * x * u * a ∧ w * (K * δR) ≤ c₂ / c₁ * (x * x) * u * a :=
+    schurPipeline_budget_uTerms hK ha hu hx hc₂ hδR
   have hcc : 0 ≤ c₂ / c₁ * (x * x) * u * a := by
     have := div_nonneg hc₂ hc₁.le; positivity
   have eL : s * ((εHT * t₂ + εCT) + (2 * ε + ε ^ 2) * (t₂ + (εHT * t₂ + εCT))) =

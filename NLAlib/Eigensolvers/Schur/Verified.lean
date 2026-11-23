@@ -228,7 +228,9 @@ $\widehat{\mathbf{U}}$ and the flag, stores the flag $0$ or $1$, and if the flag
 $\widehat{\mathbf{T}}$ is upper triangular,
 $\|\mathbf{A} - \widehat{\mathbf{U}}\widehat{\mathbf{T}}\widehat{\mathbf{U}}^{\mathsf H}\|_2 \le
 \delta\|\mathbf{A}\|_2$ and $\|\widehat{\mathbf{U}}^{\mathsf H}\widehat{\mathbf{U}} -
-\mathbf{I}\|_2 \le e_U$. No probability and no hypothesis on $\mathbf{A}$. No printed source. -/
+\mathbf{I}\|_2 \le e_U$. No probability and no hypothesis on $\mathbf{A}$. No printed source.
+A statement of the tree `NLAlib.Schur.verifiedSchurWith` for any stage `Solve`, given by its stage
+contract; the routine at the dense solver is `NLAlib.Schur.verifiedSchurRoutine`. -/
 theorem verifiedSchurWith_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {n nr nq k F T : ℕ} {qs : List ℝ} {Solve : Stmt O Q} {eU δ θ κ : ℝ}
@@ -352,7 +354,8 @@ $0 \le \kappa \le 64(n + 2)^2\boldsymbol{u}$, $\theta \le 1$,
 $4096(n + 2)^3\boldsymbol{u} \le \theta$, $e_U \le 1/2$ and $\sqrt{n + 1}\,\delta' \le \theta/8$,
 from a memory holding a Schur output of $\mathbf{A}$ with the errors $\delta', e_U$, a copy of
 $\mathbf{A}$ at `a0`, the words $\theta, \kappa$ at `p` and room for the flag, pairwise apart, the
-check writes the flag $0$ and changes no other cell. -/
+check writes the flag $0$ and changes no other cell. A step in the proof of
+`NLAlib.Schur.verifiedSchurWith_measureReal_not_flag_le`. -/
 theorem schurResidualCheck_writes_of_schurOutput {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I) {n : ℕ}
     {θ κ δ' eU : ℝ} (hu : 64 * ((n : ℝ) + 2) ^ 3 * u ≤ 1) (hκ0 : 0 ≤ κ)

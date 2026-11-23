@@ -45,7 +45,8 @@ section Program
 variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 
 /-- **Zero the strict lower triangle** of a stored square matrix: the literal $0$ in both words
-of every entry $(i, j)$ with $i > j$. The interface is `[N] (T) → (T)`. -/
+of every entry $(i, j)$ with $i > j$, by the fill routine. The interface is `[N] (T) → (T)`.
+A fragment of the tree of `NLAlib.Schur.schurResidualCheck`. -/
 def zeroStrictLower : Stmt O Q := ops% [N] (T) → (T) {
   for j < N {
     for i < N - (j + 1) {
@@ -58,7 +59,8 @@ def zeroStrictLower : Stmt O Q := ops% [N] (T) → (T) {
 /-- **The stored residual** $\mathbf{D} = \mathrm{fl}(\mathbf{A}_0 -
 \mathrm{fl}(\mathrm{fl}(\mathbf{U}\mathbf{T})\mathbf{U}^{\mathsf H}))$ of square matrices of
 order $N$: two products (`NLAlib.matMulOn`), the conjugate transpose of $\mathbf{U}$ into scratch,
-and an entrywise rounded subtraction. The interface is `[N] (A0, U, T) → (D)`. -/
+and an entrywise rounded subtraction. The interface is `[N] (A0, U, T) → (D)`.
+A fragment of the tree of `NLAlib.Schur.schurResidualCheck`. -/
 def residualWords : Stmt O Q := ops% [N] (A0, U, T) → (D) {
   let W ← alloc (2 * (N * N));
   let V ← alloc (2 * (N * N));
@@ -70,7 +72,8 @@ def residualWords : Stmt O Q := ops% [N] (A0, U, T) → (D) {
 
 /-- **The four norms of the check**: the rounded Frobenius norms (`NLAlib.Schur.frobNormStage`)
 of $\mathbf{D}$, $\mathbf{A}_0$, $\mathbf{U}$ and $\mathbf{T}$ into `S[0]`, …, `S[3]`. The
-interface is `[N] (A0, U, T, D) → (S)`. -/
+interface is `[N] (A0, U, T, D) → (S)`. A fragment of the tree of
+`NLAlib.Schur.schurResidualCheck`. -/
 def checkNorms : Stmt O Q := ops% [N] (A0, U, T, D) → (S) {
   run (frobNormStage (O := O) (Q := Q)) [N] (D, S);
   run (frobNormStage (O := O) (Q := Q)) [N] (A0, S[1]);
@@ -84,7 +87,7 @@ w)\hat t)\kappa)$ into `S[2]`, $\mathrm{fl}(\hat r + \hat g)$ into `S[0]`,
 $\mathrm{fl}(\hat a\theta)$ into `S[1]`, and the flag: the literal $0$ if the first is at most
 the second (an exact
 comparison of the two cells), the literal $1$ otherwise. The interface is
-`[] (S, P) → (S, Fl)`. -/
+`[] (S, P) → (S, Fl)`. A fragment of the tree of `NLAlib.Schur.schurResidualCheck`. -/
 def checkDecide : Stmt O Q := ops% [] (S, P) → (S, Fl) {
   call (Has.inj ScalarOp.mul) [] (S[2], S[2]) → (S[2]);
   call (Has.inj ScalarOp.mul) [] (S[2], S[3]) → (S[2]);
@@ -149,7 +152,8 @@ theorem upperPart_eq_self {N : ℕ} {T : Matrix (Fin N) (Fin N) ℂ} (h : T.IsUp
 
 omit [Has IndexOp O] [Has CmpTst Q] in
 /-- **Zeroing the strict lower triangle**, on every tape, when the literal $0$ is exact: the run
-writes only the block and stores the upper part of $\mathbf{T}$. -/
+writes only the block and stores the upper part of $\mathbf{T}$. A step in the proof of
+`NLAlib.Schur.schurResidualCheck_meets`. -/
 theorem zeroStrictLower_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (h0 : M.lit 0 = 0) {τ : Tape ℝ} {μ : Mem ℝ} {N : ℕ} {t : ℕ × ℕ}
     {T : Matrix (Fin N) (Fin N) ℂ} (hT : HoldsMatrix t T μ.store) :
@@ -237,7 +241,8 @@ theorem zeroStrictLower_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSc
 omit [Has IndexOp O] [Has CmpTst Q] in
 /-- **The stored conjugate transpose**: `NLAlib.Ops.PairMatrix.conjTranspose` of a stored square
 $\mathbf{U}$ into a block apart from it stores $\mathbf{U}^{\mathsf H}$ under the standard model
-(negation is exact), on every tape. -/
+(negation is exact), on every tape. A step in the proof of
+`NLAlib.Schur.schurResidualCheck_meets`. -/
 theorem conjTranspose_writes_holdsMatrix {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) {τ : Tape ℝ} {μ : Mem ℝ} {N : ℕ}
     {x y : ℕ × ℕ} {U : Matrix (Fin N) (Fin N) ℂ} (hU : HoldsMatrix x U μ.store)
@@ -266,7 +271,8 @@ theorem conjTranspose_writes_holdsMatrix {M : Machine ℝ} {I : Interp O Q ℝ} 
 omit [Has IndexOp O] [Has CmpTst Q] in
 /-- **An in-place subtraction loop**: the loop of $N$ rounds whose round $t$ replaces the cell
 $o + t$ of the buffer $b$ by the machine difference of the cell $o' + t$ of $b'$ (a block apart)
-and its old word; it writes only the block and keeps the tape position. -/
+and its old word; it writes only the block and keeps the tape position. A step in the proof of
+`NLAlib.Schur.schurResidualCheck_meets`. -/
 theorem writes_loop_sub_cells {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {ρ : Env} {m : Mem ℝ} {n : IExp} {N b o b' o' : ℕ} {X Y : Operand}
     (hn : n.eval ρ.idx = some N)
@@ -387,7 +393,8 @@ omit [Has IndexOp O] in
 /-- **The decision of the check**, on every tape: from the norms $\hat r, \hat a, \hat w, \hat t$
 in the four cells of `S` and the words $\theta, \kappa$ in `P` (another buffer), the run writes
 only `S` and the flag (another buffer), and stores the literal $0$ in the flag if
-$\mathrm{fl}(\hat r + \hat g) \le \mathrm{fl}(\hat a\theta)$, the literal $1$ otherwise. -/
+$\mathrm{fl}(\hat r + \hat g) \le \mathrm{fl}(\hat a\theta)$, the literal $1$ otherwise. A step in
+the proof of `NLAlib.Schur.schurResidualCheck_meets`. -/
 theorem checkDecide_writes [Has IndexOp O] {M : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp id I) {τ : Tape ℝ} {μ : Mem ℝ}
     {s p f : ℕ × ℕ} {r a w x θ κ : ℝ} (hr : μ.store.get s.1 s.2 = some r)
@@ -518,7 +525,7 @@ omit [Has IndexOp O] [Has CmpTst Q] in
 $\mathbf{T}$ and an output block apart from them, `NLAlib.Schur.residualWords` writes only the
 output and stores the entrywise machine difference of $\mathbf{A}_0$ and the stored product
 $\mathrm{fl}(\mathrm{fl}(\mathbf{U}\mathbf{T})\mathbf{U}^{\mathsf H})$ (standard model:
-negation exact). -/
+negation exact). A step in the proof of `NLAlib.Schur.schurResidualCheck_meets`. -/
 theorem residualWords_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) {τ : Tape ℝ} {μ : Mem ℝ} {N : ℕ} {a0 uo t d : ℕ × ℕ}
     {A₀ U T : Matrix (Fin N) (Fin N) ℂ} (hA : HoldsMatrix a0 A₀ μ.store)

@@ -38,7 +38,7 @@ theorem measureReal_not_exists_isEigenvalueListing_le_le_log_sq_of_hasLaw_comple
     μ.real {ω | ¬ ∃ d : n → ℂ,
       IsEigenvalueListing (M + (γ / √(Fintype.card n : ℝ)) • G ω) d ∧
         ∀ i j, i ≠ j → t < ‖d i - d j‖} ≤
-      (10000 * Real.exp 1) * (Fintype.card n : ℝ) ^ 5 * √(t / γ) *
+      (2048 * Real.exp 1) * (Fintype.card n : ℝ) ^ (11 / 3 : ℝ) * (t / γ) ^ (2 / 3 : ℝ) *
         (specNorm M / γ + Real.log (γ / t)) ^ 2
 ```
 

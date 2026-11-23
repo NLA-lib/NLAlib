@@ -550,7 +550,7 @@ noncomputable def shqrSmallEigClaim (admitted : ∃ d, ShQRSmallEigSizes Mch c�
 
 /-- The randomized claim of rounded shifted QR with the small-eigenvalue leaf, with the proved
 Ginibre tails, at the records `NLAlib.ginibreGapTail` <!-- value ginibreGapTail -->
-$(10000e, 5, 1/2, 2)$ and `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail -->
+$(2048e, 11/3, 2/3, 2)$ and `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail -->
 $(128e, 3, 2, 2)$. -/
 noncomputable def shqrSmallEigGinibreClaim
     (admitted : ∃ d, ShQRSmallEigSizes Mch ginibreGapTail ginibreConditionTail d)

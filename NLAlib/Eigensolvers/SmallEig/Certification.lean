@@ -631,7 +631,7 @@ noncomputable def smallEigClaim (admitted : ∃ d, SmallEigSizes Mch nmax c₁ c
       hφ hφ1 hu hξ
 
 /-- The randomized claim of the small-eigenvalue certificate with the proved Ginibre tails, at
-the records `NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ and
+the records `NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(2048e, 11/3, 2/3, 2)$ and
 `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$:
 `NLAlib.SmallEig.smallEigClaim` with no hypothesis on a random matrix. -/
 noncomputable def smallEigGinibreClaim

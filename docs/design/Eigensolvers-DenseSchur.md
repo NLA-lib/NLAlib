@@ -40,7 +40,7 @@ its own contract, and one generic composition theorem covers any components that
   (and rotation-equivalents) accumulated on $\widehat{\mathbf{U}}$. **On every tape** the run
   terminates and the orthogonality bound holds. There is no hypothesis on $\mathbf{A}$; exact
   naturals are needed only up to $n + 1$. Static count
-  $384547(n+1)^3(k+1)^4(n_r+n_q+1)(F+1)(T+1)^2 \le C(n+1)^3L^{15}$.
+  $384547(n+1)^3(k+1)^4(n_r+n_q+1)(F+1)(T+1)^2 \le C(n+1)^3L^9(\log_2 L + 1)^6$.
 * **Modular (§2).** Four pipeline stages (norm estimate, regularizer, Hessenberg reducer, Schur
   core), each a routine parameter with a contract, and one generic composition theorem (backward
   errors add, accumulator errors compose as $(1 + a)(1 + b) - 1$, failures and static counts add).

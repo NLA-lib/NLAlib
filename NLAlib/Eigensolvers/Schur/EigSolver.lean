@@ -77,17 +77,124 @@ def EigOutput {n : ℕ} (a v f : ℕ × ℕ) (A : Matrix (Fin (n + 1)) (Fin (n +
   μ'.store.get f.1 f.2 = some 0 ∧ ∃ T V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
     HoldsMatrix a T μ'.store ∧ HoldsMatrix v V μ'.store ∧ EigDecompOf A T V eC eM c eE K g
 
+/-- The columns of a matrix are continuous in it. -/
+private theorem continuous_toLp_col {n : ℕ} (j : Fin (n + 1)) :
+    Continuous fun V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ => WithLp.toLp 2 (V.col j) :=
+  (PiLp.continuous_toLp 2 _).comp (continuous_pi fun i => continuous_apply_apply i j)
+
+/-- The pairs $(\mathbf{T}, \mathbf{V})$ with the residual part of an eigendecomposition of
+$\mathbf{A}$ form a measurable set. -/
+private theorem measurableSet_eigResidualOf {n : ℕ} (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+    (eC eM c : ℝ) :
+    MeasurableSet {p : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ × Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ |
+      EigResidualOf A p.1 p.2 eC eM c} := by
+  simp only [EigResidualOf, Set.setOf_and, Set.setOf_forall]
+  refine (MeasurableSet.iInter fun j => ?_).inter ((MeasurableSet.iInter fun j => ?_).inter ?_)
+  · exact measurableSet_le (((continuous_toLp_col j).comp continuous_snd).norm.sub
+      continuous_const).abs.measurable measurable_const
+  · refine measurableSet_le ?_ ?_
+    · exact ((PiLp.continuous_toLp 2 _).comp ((continuous_const.sub
+        (((continuous_apply_apply j j).comp continuous_fst).smul continuous_const)).matrix_mulVec
+        (continuous_pi fun i => (continuous_apply_apply i j).comp continuous_snd))).norm.measurable
+    · exact (continuous_const.mul ((continuous_toLp_col j).comp continuous_snd).norm).measurable
+  · refine measurableSet_le ?_ ?_
+    · exact (continuous_specNorm.comp ((continuous_const.matrix_mul continuous_snd).sub
+        (continuous_snd.matrix_mul (continuous_matrix_diagonal (continuous_pi fun i =>
+          (continuous_apply_apply i i).comp continuous_fst))))).measurable
+    · exact (continuous_const.mul (continuous_specNorm.comp continuous_snd)).measurable
+
+/-- The pairs $(\mathbf{T}, \mathbf{V})$ with an eigendecomposition of $\mathbf{A}$ form a
+measurable set. -/
+private theorem measurableSet_eigDecompOf {n : ℕ} (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+    (eC eM c eE K g : ℝ) :
+    MeasurableSet {p : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ × Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ |
+      EigDecompOf A p.1 p.2 eC eM c eE K g} := by
+  simp only [EigDecompOf, Set.setOf_and]
+  refine (measurableSet_eigResidualOf A eC eM c).inter (MeasurableSet.inter ?_
+    (MeasurableSet.inter ?_ (MeasurableSet.inter ?_ ?_)))
+  · have e : {p : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ × Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ |
+        IsUnit p.2} = {p | p.2.det = 0}ᶜ := by
+      ext p
+      simp only [Set.mem_setOf_eq, Set.mem_compl_iff, Matrix.isUnit_iff_isUnit_det,
+        isUnit_iff_ne_zero]
+    rw [e]
+    exact (measurableSet_eq_fun (continuous_snd.matrix_det).measurable measurable_const).compl
+  · refine measurableSet_le ?_ measurable_const
+    simp only [pseudoConditionNumber]
+    exact (continuous_specNorm.comp continuous_snd).measurable.mul
+      (continuous_specNorm.measurable.comp (measurable_pinv.comp measurable_snd))
+  · refine measurableSet_le ?_ measurable_const
+    exact continuous_specNorm.measurable.comp (((measurable_snd.matrix_mul
+      (continuous_matrix_diagonal (continuous_pi fun i =>
+        (continuous_apply_apply i i).comp continuous_fst)).measurable).matrix_mul
+      measurable_snd.matrix_inv).matrix_sub measurable_const)
+  · simp only [Set.setOf_forall]
+    refine MeasurableSet.iInter fun i => MeasurableSet.iInter fun j => ?_
+    by_cases hij : i = j
+    · simp [hij]
+    · simp only [hij, ne_eq, not_false_eq_true, forall_const]
+      exact measurableSet_le measurable_const (((continuous_apply_apply i i).comp
+        continuous_fst).sub ((continuous_apply_apply j j).comp continuous_fst)).norm.measurable
+
+/-- A stored matrix: the words are initialised and the matrix is the one read. -/
+private theorem holdsMatrix_iff {n : ℕ} (b : ℕ × ℕ) (X : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
+    (s : Store ℝ) :
+    HoldsMatrix b X s ↔ (∀ j < 2 * ((n + 1) * (n + 1)), (s.get b.1 (b.2 + j)).isSome) ∧
+      X = storedMatrix b (n + 1) (n + 1) s := by
+  constructor
+  · intro h
+    refine ⟨fun j hj => ?_, h.eq_storedMatrix⟩
+    rw [Store.get_of_readBlock h hj 0]; rfl
+  · rintro ⟨h, rfl⟩
+    exact holdsMatrix_storedMatrix h
+
 /-- **The memories holding an eigendecomposition output form a measurable set.** -/
 theorem measurableSet_eigOutput {n : ℕ} (a v f : ℕ × ℕ)
     (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (eC eM c eE K g : ℝ) :
     MeasurableSet {μ' : Mem ℝ | EigOutput a v f A eC eM c eE K g μ'} := by
-  sorry
+  set Tm := fun μ' : Mem ℝ => storedMatrix a (n + 1) (n + 1) μ'.store
+  set Vm := fun μ' : Mem ℝ => storedMatrix v (n + 1) (n + 1) μ'.store
+  have e : {μ' : Mem ℝ | EigOutput a v f A eC eM c eE K g μ'} =
+      {μ' | μ'.store.get f.1 f.2 = some 0} ∩
+        ({μ' | ∀ j < 2 * ((n + 1) * (n + 1)), (μ'.store.get a.1 (a.2 + j)).isSome} ∩
+        ({μ' | ∀ j < 2 * ((n + 1) * (n + 1)), (μ'.store.get v.1 (v.2 + j)).isSome} ∩
+          (fun μ' => (Tm μ', Vm μ')) ⁻¹' {p | EigDecompOf A p.1 p.2 eC eM c eE K g})) := by
+    ext μ'
+    simp only [EigOutput, Set.mem_ofPred_eq, Set.mem_inter_iff, Set.mem_preimage, holdsMatrix_iff]
+    constructor
+    · rintro ⟨hf, T, V, ⟨ha, rfl⟩, ⟨hv, rfl⟩, h⟩
+      exact ⟨hf, ha, hv, h⟩
+    · rintro ⟨hf, ha, hv, h⟩
+      exact ⟨hf, _, _, ⟨ha, rfl⟩, ⟨hv, rfl⟩, h⟩
+  rw [e]
+  exact (Mem.measurableSet_get_eq f 0).inter ((ShiftedQR.measurableSet_forall_isSome a _).inter
+    ((ShiftedQR.measurableSet_forall_isSome v _).inter
+      (((ShiftedQR.measurable_storedMatrix a _ _).prodMk
+        (ShiftedQR.measurable_storedMatrix v _ _)) (measurableSet_eigDecompOf A eC eM c eE K g))))
 
 /-- **The memories holding the residual part of an eigendecomposition form a measurable set.** -/
 theorem measurableSet_eigResidual {n : ℕ} (a v : ℕ × ℕ)
     (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (eC eM c : ℝ) :
     MeasurableSet {μ' : Mem ℝ | EigResidual a v A eC eM c μ'} := by
-  sorry
+  set Tm := fun μ' : Mem ℝ => storedMatrix a (n + 1) (n + 1) μ'.store
+  set Vm := fun μ' : Mem ℝ => storedMatrix v (n + 1) (n + 1) μ'.store
+  have e : {μ' : Mem ℝ | EigResidual a v A eC eM c μ'} =
+      {μ' | ∀ j < 2 * ((n + 1) * (n + 1)), (μ'.store.get a.1 (a.2 + j)).isSome} ∩
+        ({μ' | ∀ j < 2 * ((n + 1) * (n + 1)), (μ'.store.get v.1 (v.2 + j)).isSome} ∩
+          (fun μ' => (Tm μ', Vm μ')) ⁻¹' {p | EigResidualOf A p.1 p.2 eC eM c}) := by
+    ext μ'
+    simp only [EigResidual, Set.mem_ofPred_eq, Set.mem_inter_iff, Set.mem_preimage,
+      holdsMatrix_iff]
+    constructor
+    · rintro ⟨T, V, ⟨ha, rfl⟩, ⟨hv, rfl⟩, h⟩
+      exact ⟨ha, hv, h⟩
+    · rintro ⟨ha, hv, h⟩
+      exact ⟨_, _, ⟨ha, rfl⟩, ⟨hv, rfl⟩, h⟩
+  rw [e]
+  exact (ShiftedQR.measurableSet_forall_isSome a _).inter
+    ((ShiftedQR.measurableSet_forall_isSome v _).inter
+      (((ShiftedQR.measurable_storedMatrix a _ _).prodMk
+        (ShiftedQR.measurable_storedMatrix v _ _)) (measurableSet_eigResidualOf A eC eM c)))
 
 /-! ### The program -/
 
@@ -111,6 +218,87 @@ def eigSolverWith (Solve Ev : Impl O Q) : Impl O Q :=
   }
 
 end Program
+
+/-! ### The norm of the triangular factor -/
+
+/-- A factor with $\|\mathbf{U}^{\mathsf H}\mathbf{U} - \mathbf{I}\|_2 \le e < 1$ is bounded
+below on products: $\sqrt{1 - e}\,\|\mathbf{M}\|_2 \le \|\mathbf{U}\mathbf{M}\|_2$. -/
+private theorem sqrt_mul_specNorm_le_specNorm_mul {n : ℕ}
+    {U M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e : ℝ} (hU : specNorm (Uᴴ * U - 1) ≤ e)
+    (he : e < 1) : √(1 - e) * specNorm M ≤ specNorm (U * M) := by
+  have hs : 0 < √(1 - e) := Real.sqrt_pos.mpr (by linarith)
+  rw [← le_div_iff₀' hs]
+  refine (specNorm_le_iff (div_nonneg (specNorm_nonneg _) hs.le)).mpr fun x => ?_
+  have h1 := sqrt_one_sub_mul_norm_le_norm_mulVec hU he.le (M *ᵥ x)
+  have h2 := norm_toLp_mulVec_le (U * M) x
+  rw [← Matrix.mulVec_mulVec] at h2
+  rw [div_mul_eq_mul_div, le_div_iff₀ hs]
+  linarith
+
+/-- $(1 - e)\|\mathbf{T}\|_2 \le \|\mathbf{U}\mathbf{T}\mathbf{U}^{\mathsf H}\|_2$ for
+$\|\mathbf{U}^{\mathsf H}\mathbf{U} - \mathbf{I}\|_2 \le e < 1$. -/
+private theorem one_sub_mul_specNorm_le {n : ℕ} {U T : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {e : ℝ} (hU : specNorm (Uᴴ * U - 1) ≤ e) (he : e < 1) :
+    (1 - e) * specNorm T ≤ specNorm (U * T * Uᴴ) := by
+  have h1 := sqrt_mul_specNorm_le_specNorm_mul (M := T * Uᴴ) hU he
+  have h2 := sqrt_mul_specNorm_le_specNorm_mul (M := Tᴴ) hU he
+  have e1 : specNorm (T * Uᴴ) = specNorm (U * Tᴴ) := by
+    rw [← specNorm_conjTranspose (T * Uᴴ), Matrix.conjTranspose_mul,
+      Matrix.conjTranspose_conjTranspose]
+  rw [specNorm_conjTranspose] at h2
+  rw [e1, ← mul_assoc] at h1
+  have hs := Real.mul_self_sqrt (show 0 ≤ 1 - e by linarith)
+  have hs0 := Real.sqrt_nonneg (1 - e)
+  calc (1 - e) * specNorm T = √(1 - e) * (√(1 - e) * specNorm T) := by rw [← mul_assoc, hs]
+    _ ≤ √(1 - e) * specNorm (U * Tᴴ) := mul_le_mul_of_nonneg_left h2 hs0
+    _ ≤ _ := h1
+
+/-- **The diagonal gaps exceed the floor gap**: from a Schur output of a regularized matrix with
+$e_R + e_X \le 1/2$, $e_U \le 1/8$, gaps $\lvert t_{ii} - t_{jj}\rvert \ge
+\tfrac78c_1\Gamma\|\mathbf{A}\|_2$, $\mathbf{A} \ne 0$ and $16g_0\sqrt{n + 1} < 7c_1\Gamma$, the
+gaps exceed $g_0\|\mathbf{T}\|_{\mathsf F}$. -/
+private theorem gap_lt_of_schur {n : ℕ} {A X U T : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
+    {eR eX eU c₁ Γ g₀ : ℝ} (hU : specNorm (Uᴴ * U - 1) ≤ eU)
+    (hAX : specNorm (A - X) ≤ eR * specNorm A)
+    (hXT : specNorm (X - U * T * Uᴴ) ≤ eX * specNorm A) (he : eR + eX ≤ 1 / 2)
+    (heU : eU ≤ 1 / 8) (hA : A ≠ 0) (hc₁ : 0 < c₁) (hΓ : 0 < Γ)
+    (hfloor : 16 * g₀ * √((n : ℝ) + 1) < 7 * c₁ * Γ)
+    (hgap : ∀ i j, i ≠ j → 7 / 8 * c₁ * Γ * specNorm A ≤ ‖T i i - T j j‖) :
+    ∀ i j, i ≠ j → g₀ * frobNorm T < ‖T i i - T j j‖ := by
+  intro i j hij
+  have hA0 : 0 < specNorm A := by
+    rcases (specNorm_nonneg A).lt_or_eq with h | h
+    · exact h
+    · exact absurd (specNorm_eq_zero_iff.mp h.symm) hA
+  have hUTU : specNorm (U * T * Uᴴ) ≤ 3 / 2 * specNorm A := by
+    have h1 := specNorm_sub_le (A - X) (U * T * Uᴴ - X)
+    have h2 : specNorm (U * T * Uᴴ - X) = specNorm (X - U * T * Uᴴ) := by
+      rw [← specNorm_neg, neg_sub]
+    have h3 := specNorm_add_le A (U * T * Uᴴ - A)
+    rw [add_sub_cancel] at h3
+    have h4 : specNorm (U * T * Uᴴ - A) ≤ specNorm (A - X) + specNorm (X - U * T * Uᴴ) := by
+      rw [show U * T * Uᴴ - A = -((A - X) + (X - U * T * Uᴴ)) by abel, specNorm_neg]
+      exact specNorm_add_le _ _
+    nlinarith
+  have hT := one_sub_mul_specNorm_le (T := T) hU (by linarith)
+  have hTn : specNorm T ≤ 12 / 7 * specNorm A := by nlinarith [specNorm_nonneg T]
+  have hF : frobNorm T ≤ √((n : ℝ) + 1) * specNorm T := by
+    simpa using frobNorm_le_sqrt_card_mul_specNorm T
+  have hsq := Real.sqrt_nonneg ((n : ℝ) + 1)
+  have hg := hgap i j hij
+  rcases le_or_lt g₀ 0 with hg0 | hg0
+  · have : g₀ * frobNorm T ≤ 0 := mul_nonpos_of_nonpos_of_nonneg hg0 (frobNorm_nonneg T)
+    have : 0 < 7 / 8 * c₁ * Γ * specNorm A := by positivity
+    linarith
+  · have h1 : g₀ * frobNorm T ≤ g₀ * √((n : ℝ) + 1) * (12 / 7 * specNorm A) := by
+      calc g₀ * frobNorm T ≤ g₀ * (√((n : ℝ) + 1) * specNorm T) :=
+            mul_le_mul_of_nonneg_left hF hg0.le
+        _ ≤ g₀ * (√((n : ℝ) + 1) * (12 / 7 * specNorm A)) :=
+            mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left hTn hsq) hg0.le
+        _ = _ := by ring
+    have h2 : g₀ * √((n : ℝ) + 1) * (12 / 7 * specNorm A) <
+        7 / 8 * c₁ * Γ * specNorm A := by nlinarith
+    linarith
 
 /-! ### The compositions -/
 

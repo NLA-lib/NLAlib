@@ -112,6 +112,83 @@ def triEigvecStage : Impl O Q := opsImpl% [N, ne] (T, U, Pe) → (V, G) {
 
 end Program
 
+/-! ### Scaling a backward solution -/
+
+section Scaling
+
+variable {n : Type*} [Fintype n] [DecidableEq n]
+
+/-- **A rounded scaling of a componentwise backward solution**: if $\mathbf{y}$ is a
+componentwise backward solution of $\mathbf{M}\mathbf{y} = \mathbf{0}$ with $(\varepsilon,
+\sigma)$ and every $z_k$ is within $\delta\lvert cy_k\rvert$ of $cy_k$, $0 \le \delta < 1$, then
+$\mathbf{z}$ is one with $((\varepsilon + \delta)/(1 - \delta), \sigma/(1 - \delta))$. -/
+private theorem isComponentwiseBackwardSolution_of_norm_sub_smul_le {ε σ δ : ℝ}
+    {M : Matrix n n ℂ} {y z : n → ℂ} {c : ℂ} (h : IsComponentwiseBackwardSolution ε σ M 0 y)
+    (hδ0 : 0 ≤ δ) (hδ : δ < 1) (hz : ∀ k, ‖z k - c * y k‖ ≤ δ * ‖c * y k‖) :
+    IsComponentwiseBackwardSolution ((ε + δ) / (1 - δ)) (σ / (1 - δ)) M 0 z := by
+  obtain ⟨Δ, hΔ, hsol⟩ := h
+  have h1δ : 0 < 1 - δ := by linarith
+  have hzlo : ∀ k, (1 - δ) * ‖c * y k‖ ≤ ‖z k‖ := fun k => by
+    have := norm_sub_norm_le (c * y k) (z k)
+    rw [norm_sub_rev] at this
+    linarith [hz k]
+  have hz0 : ∀ k, c * y k = 0 → z k = 0 := fun k h0 => by
+    have := hz k; rw [h0, norm_zero, mul_zero, sub_zero] at this
+    exact norm_le_zero_iff.mp this
+  have hzne : ∀ k, c * y k ≠ 0 → z k ≠ 0 := fun k hne h0 => by
+    have := hzlo k
+    rw [h0, norm_zero] at this
+    have : 0 < (1 - δ) * ‖c * y k‖ := mul_pos h1δ (norm_pos_iff.mpr hne)
+    linarith
+  refine ⟨fun i k => if c * y k = 0 then 0 else (M i k + Δ i k) * (c * y k) / z k - M i k,
+    fun i k => ?_, ?_⟩
+  · have hb := hΔ i k
+    have hRHS : (ε + δ) / (1 - δ) * ‖M i k‖ + (if i = k then σ / (1 - δ) else 0) =
+        ((ε * ‖M i k‖ + (if i = k then σ else 0)) + δ * ‖M i k‖) / (1 - δ) := by
+      split_ifs <;> field_simp <;> ring
+    rw [hRHS]
+    have hM := norm_nonneg (M i k)
+    split_ifs with h0
+    · rw [norm_zero]
+      exact div_nonneg (by nlinarith [norm_nonneg (Δ i k)]) h1δ.le
+    · have hzk := hzne k h0
+      have e : (M i k + Δ i k) * (c * y k) / z k - M i k =
+          (Δ i k * (c * y k) + M i k * (c * y k - z k)) / z k := by
+        field_simp; ring
+      rw [e, norm_div, div_le_div_iff₀ (norm_pos_iff.mpr hzk) h1δ]
+      have hcy := norm_pos_iff.mpr h0
+      have h2 : ‖Δ i k * (c * y k) + M i k * (c * y k - z k)‖ ≤
+          (‖Δ i k‖ + δ * ‖M i k‖) * ‖c * y k‖ := by
+        refine (norm_add_le _ _).trans ?_
+        rw [norm_mul, norm_mul, norm_sub_rev]
+        nlinarith [hz k, norm_nonneg (Δ i k)]
+      calc ‖Δ i k * (c * y k) + M i k * (c * y k - z k)‖ * (1 - δ)
+          ≤ (‖Δ i k‖ + δ * ‖M i k‖) * ‖c * y k‖ * (1 - δ) :=
+            mul_le_mul_of_nonneg_right h2 h1δ.le
+        _ = (‖Δ i k‖ + δ * ‖M i k‖) * ((1 - δ) * ‖c * y k‖) := by ring
+        _ ≤ (‖Δ i k‖ + δ * ‖M i k‖) * ‖z k‖ :=
+            mul_le_mul_of_nonneg_left (hzlo k) (by positivity)
+        _ ≤ (ε * ‖M i k‖ + (if i = k then σ else 0) + δ * ‖M i k‖) * ‖z k‖ :=
+            mul_le_mul_of_nonneg_right (by linarith) (norm_nonneg _)
+  · funext i
+    have hi := congrFun hsol i
+    simp only [Matrix.mulVec, dotProduct, Matrix.add_apply, Pi.zero_apply] at hi ⊢
+    have e : ∀ k, (M i k + (if c * y k = 0 then 0 else
+        (M i k + Δ i k) * (c * y k) / z k - M i k)) * z k = c * ((M i k + Δ i k) * y k) := by
+      intro k
+      split_ifs with h0
+      · rw [hz0 k h0, mul_zero]
+        have : c = 0 ∨ y k = 0 := mul_eq_zero.mp h0
+        rcases this with hc | hy
+        · rw [hc, zero_mul]
+        · rw [hy, mul_zero, mul_zero]
+      · have hzk := hzne k h0
+        field_simp
+        ring
+    rw [Finset.sum_congr rfl fun k _ => e k, ← Finset.mul_sum, hi, mul_zero]
+
+end Scaling
+
 /-! ### The columns -/
 
 section Columns

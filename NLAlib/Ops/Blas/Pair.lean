@@ -504,6 +504,85 @@ def divideWords (M : Machine K) (x y : K × K) : K × K :=
 
 end NLAlib.Ops.Pair
 
+/-- A rounded sum of two rounded products: from relative errors $\boldsymbol{u}$ in $p$, $q$
+and their rounded sum $r$, $r$ is within
+$(2\boldsymbol{u} + \boldsymbol{u}^2)(\lvert P\rvert + \lvert Q\rvert)$ of $P + Q$. -/
+private theorem NLAlib.Ops.abs_roundSum_sub_le {u p q r P Q : ℝ} (hu : 0 ≤ u)
+    (hp : |p - P| ≤ u * |P|) (hq : |q - Q| ≤ u * |Q|) (hr : |r - (p + q)| ≤ u * |p + q|) :
+    |r - (P + Q)| ≤ (2 * u + u ^ 2) * (|P| + |Q|) := by
+  have hp' := abs_le_of_abs_sub_le hp
+  have hq' := abs_le_of_abs_sub_le hq
+  have hpq : |p + q| ≤ (1 + u) * (|P| + |Q|) := by
+    have := abs_add_le p q
+    linarith
+  have h1 : u * |p + q| ≤ u * ((1 + u) * (|P| + |Q|)) := mul_le_mul_of_nonneg_left hpq hu
+  have htri : |r - (P + Q)| ≤ |r - (p + q)| + |p - P| + |q - Q| := by
+    have e : r - (P + Q) = (r - (p + q)) + (p - P) + (q - Q) := by ring
+    rw [e]
+    exact (abs_add_le _ _).trans (by gcongr; exact abs_add_le _ _)
+  nlinarith [abs_nonneg P, abs_nonneg Q]
+
+/-- A rounded quotient of perturbed numbers: with $\lvert d - D\rvert \le eD$,
+$\lvert n - N\rvert \le eP$, $\lvert N\rvert \le P$, $e \le \tfrac{65}{32}\boldsymbol{u}$ and
+$\boldsymbol{u} \le 1/32$, the rounded quotient $q$ of $n/d$ is within $5.6\boldsymbol{u}P/D$ of
+$N/D$. -/
+private theorem NLAlib.Ops.abs_roundQuot_sub_le {u e n d N D P q : ℝ} (hu : 0 ≤ u)
+    (hu32 : u ≤ 1 / 32) (he : e ≤ 65 / 32 * u) (hD : 0 < D) (hd : |d - D| ≤ e * D)
+    (hn : |n - N| ≤ e * P) (hN : |N| ≤ P) (hq : |q - n / d| ≤ u * |n / d|) :
+    |q - N / D| ≤ 28 / 5 * u * (P / D) := by
+  have he0 : 0 ≤ e := by
+    have := abs_nonneg (d - D)
+    by_contra h
+    push_neg at h
+    nlinarith
+  have hP : 0 ≤ P := (abs_nonneg N).trans hN
+  have hdlo : 959 / 1024 * D ≤ d := by
+    have := (abs_le.mp hd).1
+    nlinarith
+  have hdpos : 0 < d := by linarith
+  -- the unrounded quotient
+  have hq1 : |n / d - N / D| ≤ 22 / 5 * u * (P / D) := by
+    rw [div_sub_div _ _ hdpos.ne' hD.ne', abs_div, abs_mul, abs_of_pos hdpos, abs_of_pos hD]
+    have hnum : |n * D - d * N| ≤ 2 * e * P * D := by
+      have e1 : n * D - d * N = (n - N) * D - (d - D) * N := by ring
+      rw [e1]
+      refine (abs_sub _ _).trans ?_
+      rw [abs_mul, abs_mul, abs_of_pos hD]
+      have := mul_le_mul_of_nonneg_right hn hD.le
+      have := mul_le_mul hd hN (abs_nonneg _) (by positivity)
+      nlinarith
+    rw [div_le_iff₀ (by positivity)]
+    have : 2 * e * P * D ≤ 22 / 5 * u * (P / D) * (d * D) := by
+      rw [show 22 / 5 * u * (P / D) * (d * D) = 22 / 5 * u * P * d by field_simp]
+      have h2 : 2 * e ≤ 22 / 5 * u * (959 / 1024) := by nlinarith
+      have := mul_le_mul_of_nonneg_left hdlo (show 0 ≤ 22 / 5 * u * P by positivity)
+      nlinarith [mul_nonneg hP hD.le]
+    linarith
+  have hnd : |n / d| ≤ |N / D| + 22 / 5 * u * (P / D) := by
+    have := abs_sub_abs_le_abs_sub (n / d) (N / D)
+    linarith
+  have hND : |N / D| ≤ P / D := by
+    rw [abs_div, abs_of_pos hD]; exact div_le_div_of_nonneg_right hN hD.le
+  have hr : 0 ≤ P / D := by positivity
+  have htri : |q - N / D| ≤ |q - n / d| + |n / d - N / D| := abs_sub_le _ _ _
+  have : u * |n / d| ≤ u * ((1 + 22 / 5 * u) * (P / D)) :=
+    mul_le_mul_of_nonneg_left (by nlinarith) hu
+  nlinarith [mul_le_mul_of_nonneg_right hu32 (mul_nonneg hu hr)]
+
+/-- Cauchy–Schwarz for two pairs: $\lvert pr\rvert + \lvert qs\rvert \le
+\sqrt{p^2 + q^2}\sqrt{r^2 + s^2}$. -/
+private theorem NLAlib.Ops.abs_mul_add_abs_mul_le (p q r s : ℝ) :
+    |p * r| + |q * s| ≤ √(p * p + q * q) * √(r * r + s * s) := by
+  rw [← Real.sqrt_mul (by nlinarith [mul_self_nonneg p, mul_self_nonneg q])]
+  apply Real.le_sqrt_of_sq_le
+  rw [abs_mul, abs_mul]
+  have h1 := abs_mul_abs_self p
+  have h2 := abs_mul_abs_self q
+  have h3 := abs_mul_abs_self r
+  have h4 := abs_mul_abs_self s
+  nlinarith [sq_nonneg (|p| * |s| - |q| * |r|), abs_nonneg p, abs_nonneg q, abs_nonneg r,
+    abs_nonneg s]
+
 /-- **The rounded complex quotient is relatively accurate**: under the standard model at
 $\boldsymbol{u} \le 1/32$, for $y \ne 0$ the words of `NLAlib.Ops.Pair.divideWords` are within
 $8\boldsymbol{u}\lvert x\rvert/\lvert y\rvert$ of $x/y$ (cancellation in the numerators is allowed:
@@ -514,4 +593,78 @@ theorem NLAlib.Ops.StdModel.norm_complexDivide_sub_le {M : NLAlib.Ops.Machine �
     ‖(⟨(NLAlib.Ops.Pair.divideWords M (x.re, x.im) (y.re, y.im)).1,
         (NLAlib.Ops.Pair.divideWords M (x.re, x.im) (y.re, y.im)).2⟩ : ℂ) - x / y‖ ≤
       8 * u * (‖x‖ / ‖y‖) := by
-  sorry
+  have hu0 : 0 ≤ u := by
+    have := hM.lit 1
+    simp only [Rat.cast_one, abs_one, mul_one, id] at this
+    exact (abs_nonneg _).trans this
+  set a := x.re
+  set b := x.im
+  set c := y.re
+  set d := y.im
+  have hD : 0 < c * c + d * d := by
+    have := Complex.normSq_pos.mpr hy
+    rwa [Complex.normSq_apply] at this
+  have hny : ‖y‖ = √(c * c + d * d) := by rw [Complex.norm_def, Complex.normSq_apply]
+  have hnx : ‖x‖ = √(a * a + b * b) := by rw [Complex.norm_def, Complex.normSq_apply]
+  set P := ‖x‖ * ‖y‖ with hPdef
+  have hPD : P / (c * c + d * d) = ‖x‖ / ‖y‖ := by
+    have hy0 : 0 < ‖y‖ := norm_pos_iff.mpr hy
+    have : c * c + d * d = ‖y‖ ^ 2 := by
+      rw [hny, Real.sq_sqrt hD.le]
+    rw [this, hPdef]; field_simp
+  have hCS := abs_mul_add_abs_mul_le
+  have he : 2 * u + u ^ 2 ≤ 65 / 32 * u := by nlinarith
+  -- the denominator
+  have hden := abs_roundSum_sub_le (r := M.add (M.mul c c) (M.mul d d)) hu0 (hM.mul c c)
+    (hM.mul d d) (hM.add (M.mul c c) (M.mul d d))
+  simp only [id, abs_mul_self] at hden
+  -- the numerators
+  have hn1 := abs_roundSum_sub_le (r := M.add (M.mul a c) (M.mul b d)) hu0 (hM.mul a c)
+    (hM.mul b d) (hM.add (M.mul a c) (M.mul b d))
+  simp only [id] at hn1
+  have hn2 := abs_roundSum_sub_le (P := b * c) (Q := -(a * d)) hu0 (hM.mul b c)
+    (p := M.mul b c) (q := -M.mul a d) (by
+      have := hM.mul a d
+      simp only [id] at this ⊢
+      rw [show -M.mul a d - -(a * d) = -(M.mul a d - a * d) by ring, abs_neg, abs_neg]
+      exact this)
+    (by simpa [sub_eq_add_neg] using hM.sub (M.mul b c) (M.mul a d))
+  rw [abs_neg] at hn2
+  have hP1 : |a * c| + |b * d| ≤ P := by rw [hPdef, hnx, hny]; exact hCS a b c d
+  have hP2 : |b * c| + |a * d| ≤ P := by
+    rw [hPdef, hnx, hny, show a * a + b * b = b * b + a * a by ring]
+    have := hCS b a c d
+    rwa [add_comm (|b * c|)] at this ⊢
+  have hP0 : 0 ≤ 2 * u + u ^ 2 := by positivity
+  have hdenD : (c * c + d * d) ≠ 0 := hD.ne'
+  set den := M.add (M.mul c c) (M.mul d d)
+  have hden' : |den - (c * c + d * d)| ≤ (2 * u + u ^ 2) * (c * c + d * d) := by
+    simpa using hden
+  have hdenne : den ≠ 0 := by
+    intro h0
+    rw [h0, zero_sub, abs_neg, abs_of_pos hD] at hden'
+    nlinarith
+  have hq1 := abs_roundQuot_sub_le (P := P) hu0 hu he hD hden'
+    (hn1.trans (mul_le_mul_of_nonneg_left hP1 hP0)) ((abs_add_le _ _).trans hP1)
+    (by simpa using hM.div (M.add (M.mul a c) (M.mul b d)) den hdenne)
+  have hq2 := abs_roundQuot_sub_le (P := P) hu0 hu he hD hden'
+    (hn2.trans (mul_le_mul_of_nonneg_left hP2 hP0))
+    ((abs_add_le _ _).trans (by rw [abs_neg]; exact hP2))
+    (by simpa [sub_eq_add_neg] using hM.div (M.sub (M.mul b c) (M.mul a d)) den hdenne)
+  rw [hPD] at hq1 hq2
+  have hre : (x / y).re = (a * c + b * d) / (c * c + d * d) := by
+    rw [Complex.div_re, Complex.normSq_apply]; ring
+  have him : (x / y).im = (b * c + -(a * d)) / (c * c + d * d) := by
+    rw [Complex.div_im, Complex.normSq_apply]; ring
+  refine (Complex.norm_le_sqrt_two_mul_max _).trans ?_
+  simp only [Complex.sub_re, Complex.sub_im, hre, him]
+  have hm : max |(Pair.divideWords M (a, b) (c, d)).1 - (a * c + b * d) / (c * c + d * d)|
+      |(Pair.divideWords M (a, b) (c, d)).2 - (b * c + -(a * d)) / (c * c + d * d)| ≤
+      28 / 5 * u * (‖x‖ / ‖y‖) := max_le (by simpa [Pair.divideWords] using hq1)
+        (by simpa [Pair.divideWords, sub_eq_add_neg] using hq2)
+  have hs : √2 ≤ 99 / 70 := by
+    rw [Real.sqrt_le_left (by norm_num)]; norm_num
+  have hr : 0 ≤ 28 / 5 * u * (‖x‖ / ‖y‖) := by positivity
+  calc √2 * _ ≤ 99 / 70 * (28 / 5 * u * (‖x‖ / ‖y‖)) :=
+        mul_le_mul hs hm (le_max_of_le_left (abs_nonneg _)) (by norm_num)
+    _ ≤ 8 * u * (‖x‖ / ‖y‖) := by nlinarith [div_nonneg (norm_nonneg x) (norm_nonneg y)]

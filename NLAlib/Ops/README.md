@@ -232,20 +232,56 @@ is a fragment: a plain `Stmt` written with `ops%`, with one statement of its run
 (`X_writes`), used only inside the proof of the routine that contains it. Its docstring names
 that routine.
 
-The library does not yet follow this rule everywhere. Kernels that several routines run, each on
-operands of its own, are by the rule routines. The fill (`fillRoutine`), the batch of draws
-(`sampleRoutine`) and the matrix copy, identity and real trace (`PairMatrix.copyRoutine`,
-`PairMatrix.identityRoutine`, `PairMatrix.traceReRoutine`) are, and their callers run them by
-interface. The others are still plain trees with operand-form statements, from before routines
-existed: the row and column rotations and the Givens coefficient kernels of shifted QR, the
-small-eigenvalue solver and Hessenberg reduction, and these kernels of `Blas/`: `unaryMap`,
-the `Hermitian` family, `scalarBroadcast`, `normSq`, `Pair.multiply`,
-`Pair.linearCombination`, `copyStrided`, `clamp`. They address sub-blocks of
-one matrix buffer at computed offsets, and several have a word-level and a decoded statement;
-they are to become routines, separated by block, with one judgment each. Until then every
-statement in operand form says in its docstring what it is: a fragment of one named tree, shared
-by the named trees, a step in the proof of a named theorem, or an end statement that nothing is
-proved from. The Krylov families, Hutch++, MGS and the level-1 leaves follow the rule.
+Kernels that several routines run, each on operands of its own, are by the rule routines:
+
+- the fill and the batch of draws (`fillRoutine`, `sampleRoutine`);
+- the matrix copy, identity and real trace (`PairMatrix.copyRoutine`,
+  `PairMatrix.identityRoutine`, `PairMatrix.traceReRoutine`);
+- the entrywise maps, each with its output apart and in place (`unaryMapRoutine`,
+  `unaryMapInPlaceRoutine`, `scalarBroadcastRoutine`, `scalarBroadcastInPlaceRoutine`);
+- the pair kernels (`PairScalar.normSqRoutine`, `Pair.multiplyRoutine`,
+  `Pair.linearCombinationRoutine`) and the clamp in place (`clampRoutine`);
+- the Hermitian completions (`Hermitian.shiftRoutine`, `Hermitian.scaleRoutine`,
+  `Hermitian.averageRoutine`);
+- the scoped Givens kernels (`rotateRowsRoutine`, `rotateColumnsRoutine`,
+  `coefficientsRoutine`).
+
+A caller proved with `call` runs them by interface (`run clampRoutine [] (t[2], t[3], t[6])`).
+Most callers of the pair, Hermitian and Givens kernels are older proofs written with the loop
+and block-sequence rules on facts about cells, entries or a named matrix. They keep the kernel's
+statement in that form, and its docstring says how it relates to the judgment: a corollary of
+the judgment read at cells (`normSq_writes_word`, `Pair.multiply_writes`,
+`Pair.linearCombination_writes`), or the step from which the judgment is proved
+(`Hermitian.shift_writes`, `rotateRows_writes_word`, `coefficients_writes_word`). Moving those
+callers to `call` is possible (the tactic finds the reads, the liveness and the separation) and
+changes no tree; it is not done.
+
+These shared trees are not routines, each for a reason:
+
+- **`copyStrided`.** Its statement is on the pair entries of a rectangular view of a matrix
+  (`Store.HoldsEntries`, `EntryCodec.regionFp`). A routine over a strided operand states its
+  blocks as views (`Store.readView`, `Fp.inView`), and the lemmas relating the two are not in
+  the library.
+- **The Givens kernels with caller scratch** (`rotateRowsWithScratch`, `rotateColumnsWithScratch`,
+  `rotateRowsOn`, `rotateColumnsOn`, `coefficientsWithScratch` and the pair rotations they
+  run). The scratch is in another buffer, while the matrix and the coefficients are apart by
+  block: two separation rules in one statement, which one interface cannot state. The scoped
+  forms above allocate the scratch and are routines.
+- **`coefficients` with an output on an input.** The tree is correct when an output pair
+  overlaps an input pair; `coefficients_writes_word` states that, and `coefficientsRoutine` is
+  the layout with the outputs apart.
+- **`hessenbergReduceLast`**, for the third reason below, and **`hessenbergReduceQ`**, whose
+  statement is the stage contract `Schur.HessenbergReducerContract` of the Schur pipeline: the
+  pipeline takes its stages as trees.
+- **`binaryMap`** and the entry kernels of `Blas/HermitianEntry.lean` are fragments: each is
+  run only inside the trees its docstring names.
+- **The shared fragments of shifted QR and the small-eigenvalue solver** that work on the
+  scratch of the routine that runs them (their docstrings end "on their scratch").
+
+Every statement in operand form says in its docstring what it is: a fragment of one named tree,
+shared by the named trees, a step in the proof of a named theorem, a judgment read at cells, or
+an end statement that nothing is proved from. The Krylov families, Hutch++, MGS and the level-1
+leaves follow the rule.
 
 **One statement per routine.** A routine has one correctness statement, `XRoutine_meets`. A
 caller uses it with `call`; it is not restated in operand form, and no lemma lists which

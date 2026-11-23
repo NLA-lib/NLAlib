@@ -159,7 +159,7 @@ def nodeSplitIndex : Stmt Op Tst := ops% [k] (Pp, c) → (t) {
   call (Has.inj ScalarOp.add) [] (t[5], c[2]) → (t[6]);
   call (Has.inj IndexOp.lit) [0] () → (t[2]);
   call (Has.inj IndexOp.lit) [k] () → (t[3]);
-  run clamp [] (t[2], t[3], t[6], t[6])
+  run clampRoutine [] (t[2], t[3], t[6])
 }
 
 /-- Prepare both projectors and the retained signed shifts in caller-owned workspace. -/

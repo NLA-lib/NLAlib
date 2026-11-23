@@ -85,9 +85,10 @@ theorem nodeSplitIndex_writes {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarO
   intro μ₃ hfr₃ ⟨hp₃, hzero⟩
   refine (writes_indexLit hL rfl rfl (by room)).seq_le (by fp_sub [indexCells]) ?_
   intro μ₄ hfr₄ ⟨hp₄, hsize⟩
-  refine (writes_frame rfl rfl (by room) (clamp_writes hS hC
-    (by kept) (by kept) (by kept) (by room))).mono (by fp_sub [indexCells]) ?_
-  intro μ₅ _ ⟨hp₅, hword⟩
-  exact ⟨hp₅.trans (hp₄.trans (hp₃.trans (hp₂.trans hp₁))), hword⟩
+  call (clampRoutine_meets hS hC) [] ((t.1, t.2 + 2), (t.1, t.2 + 3), (t.1, t.2 + 6))
+    as μ₅ hfr₅ hp₅ (zs) hpost
+  obtain rfl : zs = _ := hpost
+  exact ⟨hp₅.trans (hp₄.trans (hp₃.trans (hp₂.trans hp₁))),
+    by simpa using Store.get_of_readBlock hzs (j := 0) (by omega) half⟩
 
 end NLAlib.SpectralBisection

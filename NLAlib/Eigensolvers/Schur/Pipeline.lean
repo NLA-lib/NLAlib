@@ -238,6 +238,108 @@ theorem _root_.NLAlib.measurableSet_of_isSigmaCompact {X : Type*} [TopologicalSp
   obtain ⟨K, hK, rfl⟩ := h
   exact MeasurableSet.iUnion fun n => (hK n).measurableSet
 
+/-- The pairs $(\mathbf{U}, \mathbf{T})$ with a matrix $\mathbf{X}$ within $e_R\|\mathbf{A}\|_2$ of
+$\mathbf{A}$ and $e_X\|\mathbf{A}\|_2$ of $\mathbf{U}\mathbf{T}\mathbf{U}^{\mathsf H}$ and, unless
+$\mathbf{A} = 0$, with $s^{-1}\mathbf{X}$ in the class `C` for some
+$c_1\|\mathbf{A}\|_{\mathsf F} \le s \le c_2\|\mathbf{A}\|_{\mathsf F}$. -/
+private def regularizedSchurPairs {n : ℕ}
+    (C : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop)
+    (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (c₁ c₂ eR eX : ℝ) :
+    Set ((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) × (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) :=
+  {p | ∃ X : (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), specNorm (A - X) ≤ eR * specNorm A ∧
+    specNorm (X - p.1 * p.2 * p.1ᴴ) ≤ eX * specNorm A ∧
+    (A = 0 ∨ ∃ s : ℝ, c₁ * frobNorm A ≤ s ∧ s ≤ c₂ * frobNorm A ∧ C (s⁻¹ • X))}
+
+/-- The pairs of `regularizedSchurPairs` form a measurable set at $\mathbf{A} = 0$. -/
+private theorem measurableSet_regularizedSchurPairs_of_eq_zero {n : ℕ}
+    (C : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop)
+    (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (c₁ c₂ eR eX : ℝ) (hA : A = 0) :
+    MeasurableSet (regularizedSchurPairs C A c₁ c₂ eR eX) := by
+  have : SigmaCompactSpace (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) :=
+    inferInstanceAs (SigmaCompactSpace (Fin (n + 1) → Fin (n + 1) → ℂ))
+  set S := regularizedSchurPairs C A c₁ c₂ eR eX with hSdef
+  set Z₀ : Set (((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) ×
+      (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) ×
+      (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) :=
+    {q | specNorm (A - q.2) ≤ eR * specNorm A ∧
+    specNorm (q.2 - q.1.1 * q.1.2 * q.1.1ᴴ) ≤ eX * specNorm A}
+  have hZ₀ : IsClosed Z₀ :=
+    (isClosed_le (continuous_specNorm.comp (continuous_const.sub continuous_snd))
+      continuous_const).inter (isClosed_le (continuous_specNorm.comp (continuous_snd.sub
+        ((continuous_fst.fst.matrix_mul continuous_fst.snd).matrix_mul
+          continuous_fst.fst.matrix_conjTranspose))) continuous_const)
+  have e : S = Prod.fst '' Z₀ := by
+    ext p
+    simp only [hSdef, regularizedSchurPairs, Z₀, Set.mem_ofPred_eq, Set.mem_image]
+    constructor
+    · rintro ⟨X, h1, h2, -⟩; exact ⟨(p, X), ⟨h1, h2⟩, rfl⟩
+    · rintro ⟨⟨p', X⟩, ⟨h1, h2⟩, rfl⟩; exact ⟨X, h1, h2, Or.inl hA⟩
+  rw [e]
+  exact measurableSet_of_isSigmaCompact
+    ((isSigmaCompact_univ.of_isClosed_subset hZ₀ (Set.subset_univ _)).image continuous_fst)
+
+/-- The pairs of `regularizedSchurPairs` form a measurable set at $\mathbf{A} \ne 0$, for a
+σ-compact class and $c_1 > 0$. -/
+private theorem measurableSet_regularizedSchurPairs_of_ne_zero {n : ℕ}
+    (C : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop)
+    (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (c₁ c₂ eR eX : ℝ) (hc₁ : 0 < c₁)
+    (hC : IsSigmaCompact {X : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ | C X}) (hA : A ≠ 0) :
+    MeasurableSet (regularizedSchurPairs C A c₁ c₂ eR eX) := by
+  have : SigmaCompactSpace (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) :=
+    inferInstanceAs (SigmaCompactSpace (Fin (n + 1) → Fin (n + 1) → ℂ))
+  set S := regularizedSchurPairs C A c₁ c₂ eR eX with hSdef
+  have hF : 0 < frobNorm A :=
+    lt_of_le_of_ne (frobNorm_nonneg A) (fun h => hA (frobNorm_eq_zero_iff.mp h.symm))
+  obtain ⟨K, hK, hKC⟩ := hC
+  set Z : ℕ → Set (((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) ×
+      (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) ×
+      (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) × ℝ ×
+      (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) := fun k => {q |
+    specNorm (A - q.2.1) ≤ eR * specNorm A ∧
+    specNorm (q.2.1 - q.1.1 * q.1.2 * q.1.1ᴴ) ≤ eX * specNorm A ∧
+    c₁ * frobNorm A ≤ q.2.2.1 ∧ q.2.2.1 ≤ c₂ * frobNorm A ∧ q.2.1 = q.2.2.1 • q.2.2.2 ∧
+    q.2.2.2 ∈ K k}
+  have hZ : ∀ k, IsClosed (Z k) := fun k => by
+    have hX : Continuous fun q : ((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) ×
+        (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) ×
+        (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) × ℝ ×
+        (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) => q.2.1 := by fun_prop
+    have hs : Continuous fun q : ((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) ×
+        (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) ×
+        (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) × ℝ ×
+        (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) => q.2.2.1 := by fun_prop
+    have hY : Continuous fun q : ((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) ×
+        (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) ×
+        (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) × ℝ ×
+        (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) => q.2.2.2 := by fun_prop
+    exact (isClosed_le (continuous_specNorm.comp (continuous_const.sub hX))
+      continuous_const).inter ((isClosed_le (continuous_specNorm.comp (hX.sub
+        ((continuous_fst.fst.matrix_mul continuous_fst.snd).matrix_mul
+          continuous_fst.fst.matrix_conjTranspose))) continuous_const).inter
+      ((isClosed_le continuous_const hs).inter ((isClosed_le hs continuous_const).inter
+      ((isClosed_eq hX (hs.smul hY)).inter ((hK k).isClosed.preimage hY)))))
+  have e : S = ⋃ k, Prod.fst '' Z k := by
+    ext p
+    simp only [hSdef, regularizedSchurPairs, Z, Set.mem_ofPred_eq, Set.mem_iUnion, Set.mem_image,
+      hA, false_or]
+    constructor
+    · rintro ⟨X, h1, h2, s, hsl, hsu, hCs⟩
+      have hYC : s⁻¹ • X ∈ ⋃ k, K k := by rw [hKC]; exact hCs
+      obtain ⟨k, hk⟩ := Set.mem_iUnion.mp hYC
+      have hs0 : s ≠ 0 := (lt_of_lt_of_le (mul_pos hc₁ hF) hsl).ne'
+      exact ⟨k, (p, X, s, s⁻¹ • X), ⟨h1, h2, hsl, hsu, by rw [smul_smul,
+        mul_inv_cancel₀ hs0, one_smul], hk⟩, rfl⟩
+    · rintro ⟨k, ⟨p', X, s, Y⟩, ⟨h1, h2, hsl, hsu, hXY, hk⟩, rfl⟩
+      have hs0 : s ≠ 0 := (lt_of_lt_of_le (mul_pos hc₁ hF) hsl).ne'
+      refine ⟨X, h1, h2, s, hsl, hsu, ?_⟩
+      have hYC : Y ∈ ⋃ k, K k := Set.mem_iUnion.mpr ⟨k, hk⟩
+      rw [hKC] at hYC
+      simp only at hXY
+      rwa [hXY, smul_smul, inv_mul_cancel₀ hs0, one_smul]
+  rw [e]
+  exact .iUnion fun k => measurableSet_of_isSigmaCompact
+    ((isSigmaCompact_univ.of_isClosed_subset (hZ k) (Set.subset_univ _)).image continuous_fst)
+
 /-- **The memories holding a Schur output with its regularized matrix form a measurable set**,
 for a σ-compact class `C` and $c_1 > 0$. Neither hypothesis can be dropped: for a class that is
 not Borel, the set of memories is not measurable (at order $1$, $e_X = 0$ and
@@ -248,86 +350,13 @@ theorem measurableSet_regularizedSchurOutput {n : ℕ}
     (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (c₁ c₂ eR eX eU : ℝ) (hc₁ : 0 < c₁)
     (hC : IsSigmaCompact {X : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ | C X}) :
     MeasurableSet {μ' : Mem ℝ | RegularizedSchurOutput C a uo f A c₁ c₂ eR eX eU μ'} := by
-  have : SigmaCompactSpace (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) :=
-    inferInstanceAs (SigmaCompactSpace (Fin (n + 1) → Fin (n + 1) → ℂ))
   set T := fun μ' : Mem ℝ => storedMatrix a (n + 1) (n + 1) μ'.store
   set U := fun μ' : Mem ℝ => storedMatrix uo (n + 1) (n + 1) μ'.store
-  set S : Set ((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) ×
-      (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) :=
-    {p | ∃ X : (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), specNorm (A - X) ≤ eR * specNorm A ∧
-    specNorm (X - p.1 * p.2 * p.1ᴴ) ≤ eX * specNorm A ∧
-    (A = 0 ∨ ∃ s : ℝ, c₁ * frobNorm A ≤ s ∧ s ≤ c₂ * frobNorm A ∧ C (s⁻¹ • X))}
+  set S := regularizedSchurPairs C A c₁ c₂ eR eX with hSdef
   have hS : MeasurableSet S := by
     by_cases hA : A = 0
-    · set Z₀ : Set (((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) ×
-          (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) ×
-          (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) :=
-        {q | specNorm (A - q.2) ≤ eR * specNorm A ∧
-        specNorm (q.2 - q.1.1 * q.1.2 * q.1.1ᴴ) ≤ eX * specNorm A}
-      have hZ₀ : IsClosed Z₀ :=
-        (isClosed_le (continuous_specNorm.comp (continuous_const.sub continuous_snd))
-          continuous_const).inter (isClosed_le (continuous_specNorm.comp (continuous_snd.sub
-            ((continuous_fst.fst.matrix_mul continuous_fst.snd).matrix_mul
-              continuous_fst.fst.matrix_conjTranspose))) continuous_const)
-      have e : S = Prod.fst '' Z₀ := by
-        ext p
-        simp only [S, Z₀, Set.mem_ofPred_eq, Set.mem_image]
-        constructor
-        · rintro ⟨X, h1, h2, -⟩; exact ⟨(p, X), ⟨h1, h2⟩, rfl⟩
-        · rintro ⟨⟨p', X⟩, ⟨h1, h2⟩, rfl⟩; exact ⟨X, h1, h2, Or.inl hA⟩
-      rw [e]
-      exact measurableSet_of_isSigmaCompact
-        ((isSigmaCompact_univ.of_isClosed_subset hZ₀ (Set.subset_univ _)).image continuous_fst)
-    · have hF : 0 < frobNorm A :=
-        lt_of_le_of_ne (frobNorm_nonneg A) (fun h => hA (frobNorm_eq_zero_iff.mp h.symm))
-      obtain ⟨K, hK, hKC⟩ := hC
-      set Z : ℕ → Set (((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) ×
-          (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) ×
-          (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) × ℝ ×
-          (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) := fun k => {q |
-        specNorm (A - q.2.1) ≤ eR * specNorm A ∧
-        specNorm (q.2.1 - q.1.1 * q.1.2 * q.1.1ᴴ) ≤ eX * specNorm A ∧
-        c₁ * frobNorm A ≤ q.2.2.1 ∧ q.2.2.1 ≤ c₂ * frobNorm A ∧ q.2.1 = q.2.2.1 • q.2.2.2 ∧
-        q.2.2.2 ∈ K k}
-      have hZ : ∀ k, IsClosed (Z k) := fun k => by
-        have hX : Continuous fun q : ((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) ×
-            (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) ×
-            (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) × ℝ ×
-            (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) => q.2.1 := by fun_prop
-        have hs : Continuous fun q : ((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) ×
-            (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) ×
-            (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) × ℝ ×
-            (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) => q.2.2.1 := by fun_prop
-        have hY : Continuous fun q : ((Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) ×
-            (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)) ×
-            (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) × ℝ ×
-            (Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) => q.2.2.2 := by fun_prop
-        exact (isClosed_le (continuous_specNorm.comp (continuous_const.sub hX))
-          continuous_const).inter ((isClosed_le (continuous_specNorm.comp (hX.sub
-            ((continuous_fst.fst.matrix_mul continuous_fst.snd).matrix_mul
-              continuous_fst.fst.matrix_conjTranspose))) continuous_const).inter
-          ((isClosed_le continuous_const hs).inter ((isClosed_le hs continuous_const).inter
-          ((isClosed_eq hX (hs.smul hY)).inter ((hK k).isClosed.preimage hY)))))
-      have e : S = ⋃ k, Prod.fst '' Z k := by
-        ext p
-        simp only [S, Z, Set.mem_ofPred_eq, Set.mem_iUnion, Set.mem_image, hA, false_or]
-        constructor
-        · rintro ⟨X, h1, h2, s, hsl, hsu, hCs⟩
-          have hYC : s⁻¹ • X ∈ ⋃ k, K k := by rw [hKC]; exact hCs
-          obtain ⟨k, hk⟩ := Set.mem_iUnion.mp hYC
-          have hs0 : s ≠ 0 := (lt_of_lt_of_le (mul_pos hc₁ hF) hsl).ne'
-          exact ⟨k, (p, X, s, s⁻¹ • X), ⟨h1, h2, hsl, hsu, by rw [smul_smul,
-            mul_inv_cancel₀ hs0, one_smul], hk⟩, rfl⟩
-        · rintro ⟨k, ⟨p', X, s, Y⟩, ⟨h1, h2, hsl, hsu, hXY, hk⟩, rfl⟩
-          have hs0 : s ≠ 0 := (lt_of_lt_of_le (mul_pos hc₁ hF) hsl).ne'
-          refine ⟨X, h1, h2, s, hsl, hsu, ?_⟩
-          have hYC : Y ∈ ⋃ k, K k := Set.mem_iUnion.mpr ⟨k, hk⟩
-          rw [hKC] at hYC
-          simp only at hXY
-          rwa [hXY, smul_smul, inv_mul_cancel₀ hs0, one_smul]
-      rw [e]
-      exact .iUnion fun k => measurableSet_of_isSigmaCompact
-        ((isSigmaCompact_univ.of_isClosed_subset (hZ k) (Set.subset_univ _)).image continuous_fst)
+    · exact measurableSet_regularizedSchurPairs_of_eq_zero C A c₁ c₂ eR eX hA
+    · exact measurableSet_regularizedSchurPairs_of_ne_zero C A c₁ c₂ eR eX hc₁ hC hA
   have e : {μ' : Mem ℝ | RegularizedSchurOutput C a uo f A c₁ c₂ eR eX eU μ'} =
       {μ' | μ'.store.get f.1 f.2 = some 0} ∩
         ({μ' | ∀ j < 2 * ((n + 1) * (n + 1)), (μ'.store.get a.1 (a.2 + j)).isSome} ∩
@@ -336,7 +365,8 @@ theorem measurableSet_regularizedSchurOutput {n : ℕ}
         ({μ' | specNorm ((U μ')ᴴ * U μ' - 1) ≤ eU} ∩
           (fun μ' => (U μ', T μ')) ⁻¹' S)))) := by
     ext μ'
-    simp only [Set.mem_ofPred_eq, Set.mem_inter_iff, Set.mem_preimage, RegularizedSchurOutput, S]
+    simp only [Set.mem_ofPred_eq, Set.mem_inter_iff, Set.mem_preimage, RegularizedSchurOutput,
+      hSdef, regularizedSchurPairs]
     constructor
     · rintro ⟨hf, U', T', X, hT, hU, hTu, ho, hr, hx, hc⟩
       obtain rfl := hT.eq_storedMatrix

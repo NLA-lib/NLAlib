@@ -224,6 +224,95 @@ theorem regularizedSchurOutput_of_tail {n : ℕ}
     rw [e]
     exact hC
 
+/-- The memories of the pipeline after the scaling: the norm estimate $x$ and a stored
+$\mathbf{A}_1$ with
+$\|x\mathbf{A}_1 - \mathbf{A}\|_2 \le 3\boldsymbol{u}\|\mathbf{A}\|_{\mathsf F}$. -/
+private abbrev SchurScaledMem (n : ℕ) (qs : List ℝ) (a p uo f : ℕ × ℕ) (L : ℕ) (c₁ c₂ u : ℝ)
+    (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (m' : Mem ℝ) : Prop :=
+  SchurPipelineMem n qs a p uo f L m' ∧
+    ∃ x : ℝ, m'.store.get L 0 = some x ∧ 0 < x ∧ c₁ * frobNorm A ≤ x ∧ x ≤ c₂ * frobNorm A ∧
+      ∃ A₁ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A₁ m'.store ∧
+        specNorm ((x : ℂ) • A₁ - A) ≤ 3 * u * frobNorm A
+
+/-- The memories of the pipeline after the regularizer: a stored $\mathbf{A}_2$ of the class `C`
+within $\delta_R$ of the scaled $\mathbf{A}_1$. -/
+private abbrev SchurRegularizedMem (C : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop)
+    (n : ℕ) (qs : List ℝ) (a p uo f : ℕ × ℕ) (L : ℕ) (c₁ c₂ u δR : ℝ)
+    (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (m' : Mem ℝ) : Prop :=
+  SchurPipelineMem n qs a p uo f L m' ∧
+    ∃ x : ℝ, m'.store.get L 0 = some x ∧ 0 < x ∧ c₁ * frobNorm A ≤ x ∧ x ≤ c₂ * frobNorm A ∧
+      ∃ A₁ A₂ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
+        specNorm ((x : ℂ) • A₁ - A) ≤ 3 * u * frobNorm A ∧ HoldsMatrix a A₂ m'.store ∧
+          specNorm (A₂ - A₁) ≤ δR ∧ C A₂
+
+/-- The regularizer on the scaled memories, glued over them through the class `C`: except with
+probability $\varphi_R$ it stores a matrix of `C` within $\delta_R$ of the scaled matrix. -/
+private theorem schurPipeline_regularizer_pwrites {I : Interp O Q ℝ} (hI : I.IsMeasurable)
+    {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) {law : ℕ → Measure ℝ}
+    {Reg : Stmt O Q} {n k F T L : ℕ} {c₁ c₂ δR φR u : ℝ} {qR qC : List ℝ}
+    {C : ∀ {m : ℕ}, Matrix (Fin (m + 1)) (Fin (m + 1)) ℂ → Prop}
+    (hReg : RandomRegularizerContract law δR φR C (n + 1) (2 / c₁) qR Reg I)
+    (hCm : MeasurableSet {X : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ | C X})
+    (hc₁ : 0 < c₁) (hu3 : u ≤ 1 / 3) {a p uo f : ℕ × ℕ}
+    {A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} :
+    PWrites law I (Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg)
+      (schurPipelineEnv n qR.length qC.length k F T a p uo f L)
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
+      (SchurScaledMem n (qR ++ qC) a p uo f L c₁ c₂ u A)
+      (SchurRegularizedMem C n (qR ++ qC) a p uo f L c₁ c₂ u δR A) φR := by
+  have hFa : Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ≤ schurFp n a uo f :=
+    fun _ _ h => Or.inl (Or.inl h)
+  set g : Mem ℝ → Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ :=
+    fun m => storedMatrix a (n + 1) (n + 1) m.store with hg
+  have hgm : Measurable g := ShiftedQR.measurable_storedMatrix a (n + 1) (n + 1)
+  set Mid₁ := SchurScaledMem n (qR ++ qC) a p uo f L c₁ c₂ u A with hMid₁
+  set Mid₂ := SchurRegularizedMem C n (qR ++ qC) a p uo f L c₁ c₂ u δR A with hMid₂
+  -- the regularizer, glued over the scaled memories through the class
+  have hfam : ∀ y : {m // Mid₁ m}, PWrites law I
+      (Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg)
+      (schurPipelineEnv n qR.length qC.length k F T a p uo f L)
+      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (fun m => m = y.1)
+      (fun m' => (∀ j < 2 * ((n + 1) * (n + 1)), (m'.store.get a.1 (a.2 + j)).isSome) ∧
+        C (g m') ∧ specNorm (g m' - g y.1) ≤ δR) φR := by
+    rintro ⟨m, hm, x, hx, hx0, hxl, hxu, A₁, hA₁, hn⟩
+    obtain ⟨-, -, -, -, -, -, -, -, hap, hq⟩ := id hm
+    obtain ⟨h1', -, -, -, -, -⟩ := apart_four hap
+    have hA₁b := specNorm_le_two_div_of_scaled hc₁ hx0 hxl hu3 hn
+    refine ((hReg A₁ le_rfl hA₁b (a := a) (q := p)).in_frame
+      (ρ := schurPipelineEnv n qR.length qC.length k F T a p uo f L) (ds := [.var 0, .var 1])
+      (args := [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩]) rfl rfl
+      fun m' hm' z hz => hm'.2.2.1 z (by
+        simp only [List.mem_cons, List.mem_nil_iff] at hz ⊢; tauto)).mono_eqOff
+      (Pre' := fun m' => m' = m) (fun m' hm' => ?_) (fun m₀ m' hm₀ hfr ⟨E, hE, hEn, hCE⟩ => ?_)
+    · subst hm'
+      exact ⟨hA₁, Store.readBlock_append_left hq, hm.live_of_subset (by simp),
+        h1'.mono le_rfl (Fp.inBlock_le_inBlock le_rfl (by simp))⟩
+    · subst hm₀
+      have e₁ : g m' = A₁ + E := hE.eq_storedMatrix.symm
+      have e₂ : g m₀ = A₁ := hA₁.eq_storedMatrix.symm
+      refine ⟨fun j hj => ?_, by rw [e₁]; exact hCE, by rw [e₁, e₂]; simpa using hEn⟩
+      rw [Store.get_of_readBlock hE hj 0]; rfl
+  have hTR : MeasurableSet {y : Mem ℝ × Mem ℝ |
+      y.1.store.EqOff (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) y.2.store ∧
+      ((∀ j < 2 * ((n + 1) * (n + 1)), (y.2.store.get a.1 (a.2 + j)).isSome) ∧
+        C (g y.2) ∧ specNorm (g y.2 - g y.1) ≤ δR)} :=
+    (Mem.measurableSet_eqOff _).inter ((measurable_snd
+      (ShiftedQR.measurableSet_forall_isSome a _)).inter (((hgm.comp measurable_snd) hCm).inter
+      (measurableSet_le
+        ((continuous_specNorm.comp (continuous_fst.sub continuous_snd)).measurable.comp
+        ((hgm.comp measurable_snd).prodMk (hgm.comp measurable_fst))) measurable_const)))
+  refine PStep.mono (PWrites.pstep_of_forall hI hloc (ι := {m // Mid₁ m})
+    (P := fun y m => m = y.1) hfam hTR
+    fun y m m' hm hfr hq => ⟨hfr, hm ▸ hq⟩) (fun m hm => ⟨⟨m, hm⟩, rfl⟩)
+    (fun m m' hm ⟨hfr, hsome, hCg, hδ⟩ => ⟨hfr, ?_⟩) le_rfl
+  obtain ⟨hm', x, hx, hx0, hxl, hxu, A₁, hA₁, hn⟩ := hm
+  have haL : a.1 < L := hm'.2.1
+  have e₂ : g m = A₁ := hA₁.eq_storedMatrix.symm
+  rw [e₂] at hδ
+  exact ⟨hm'.of_eqOff hfr (hm'.disj_words.mono (fun _ _ h => Or.inl (Or.inl (hFa _ _ h)))
+    le_rfl), x, by rw [hfr.2 L 0 (fun h => by obtain ⟨h, -⟩ := h; omega), hx], hx0, hxl, hxu,
+    A₁, g m', hn, holdsMatrix_storedMatrix hsome, hδ, hCg⟩
+
 /-- **The positive branch of the pipeline with the regularized matrix exposed**: from the run
 memories holding $\mathbf{A}$ and a norm estimate $c_1\|\mathbf{A}\|_{\mathsf F} \le x \le
 c_2\|\mathbf{A}\|_{\mathsf F}$, $x > 0$, for a measurable class `C`, the run of the scaling, the
@@ -280,18 +369,8 @@ theorem schurPipeline_pos_pwrites_regularizedSchur [Has ScalarOp O] {Mch : Machi
   have hε0 : 0 ≤ (1 + εHU) * (1 + εCU) - 1 := by nlinarith
   have hFa : Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ≤ schurFp n a uo f :=
     fun _ _ h => Or.inl (Or.inl h)
-  set g : Mem ℝ → Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ :=
-    fun m => storedMatrix a (n + 1) (n + 1) m.store with hg
-  have hgm : Measurable g := ShiftedQR.measurable_storedMatrix a (n + 1) (n + 1)
-  set Mid₁ : Mem ℝ → Prop := fun m' => SchurPipelineMem n (qR ++ qC) a p uo f L m' ∧
-    ∃ x : ℝ, m'.store.get L 0 = some x ∧ 0 < x ∧ c₁ * frobNorm A ≤ x ∧ x ≤ c₂ * frobNorm A ∧
-      ∃ A₁ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A₁ m'.store ∧
-        specNorm ((x : ℂ) • A₁ - A) ≤ 3 * u * frobNorm A with hMid₁
-  set Mid₂ : Mem ℝ → Prop := fun m' => SchurPipelineMem n (qR ++ qC) a p uo f L m' ∧
-    ∃ x : ℝ, m'.store.get L 0 = some x ∧ 0 < x ∧ c₁ * frobNorm A ≤ x ∧ x ≤ c₂ * frobNorm A ∧
-      ∃ A₁ A₂ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
-        specNorm ((x : ℂ) • A₁ - A) ≤ 3 * u * frobNorm A ∧ HoldsMatrix a A₂ m'.store ∧
-          specNorm (A₂ - A₁) ≤ δR ∧ C A₂ with hMid₂
+  set Mid₁ := SchurScaledMem n (qR ++ qC) a p uo f L c₁ c₂ u A with hMid₁
+  set Mid₂ := SchurRegularizedMem C n (qR ++ qC) a p uo f L c₁ c₂ u δR A with hMid₂
   -- the scaling
   have hscale : ∀ (m : Mem ℝ) (τ : Tape ℝ), (SchurPipelineMem n (qR ++ qC) a p uo f L m ∧
       HoldsMatrix a A m.store ∧ ∃ x : ℝ, m.store.get L 0 = some x ∧ 0 < x ∧
@@ -306,55 +385,8 @@ theorem schurPipeline_pos_pwrites_regularizedSchur [Has ScalarOp O] {Mch : Machi
     rintro m τ ⟨hm, hA, x, hx, hx0, hxl, hxu⟩
     exact (schurPipeline_scale_writes hS hM h1 hu1 hm hA hx hx0).mono le_rfl
       fun m' _ ⟨hm', hx', A₁, hA₁, hn⟩ => ⟨hm', x, hx', hx0, hxl, hxu, A₁, hA₁, hn⟩
-  -- the regularizer, glued over the scaled memories through the class
-  have hfam : ∀ y : {m // Mid₁ m}, PWrites law I
-      (Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg)
-      (schurPipelineEnv n qR.length qC.length k F T a p uo f L)
-      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) (fun m => m = y.1)
-      (fun m' => (∀ j < 2 * ((n + 1) * (n + 1)), (m'.store.get a.1 (a.2 + j)).isSome) ∧
-        C (g m') ∧ specNorm (g m' - g y.1) ≤ δR) φR := by
-    rintro ⟨m, hm, x, hx, hx0, hxl, hxu, A₁, hA₁, hn⟩
-    obtain ⟨-, -, -, -, -, -, -, -, hap, hq⟩ := id hm
-    obtain ⟨h1', -, -, -, -, -⟩ := apart_four hap
-    have hA₁b := specNorm_le_two_div_of_scaled hc₁ hx0 hxl hu3 hn
-    refine ((hReg A₁ le_rfl hA₁b (a := a) (q := p)).in_frame
-      (ρ := schurPipelineEnv n qR.length qC.length k F T a p uo f L) (ds := [.var 0, .var 1])
-      (args := [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩]) rfl rfl
-      fun m' hm' z hz => hm'.2.2.1 z (by
-        simp only [List.mem_cons, List.mem_nil_iff] at hz ⊢; tauto)).mono_eqOff
-      (Pre' := fun m' => m' = m) (fun m' hm' => ?_) (fun m₀ m' hm₀ hfr ⟨E, hE, hEn, hCE⟩ => ?_)
-    · subst hm'
-      exact ⟨hA₁, Store.readBlock_append_left hq, hm.live_of_subset (by simp),
-        h1'.mono le_rfl (Fp.inBlock_le_inBlock le_rfl (by simp))⟩
-    · subst hm₀
-      have e₁ : g m' = A₁ + E := hE.eq_storedMatrix.symm
-      have e₂ : g m₀ = A₁ := hA₁.eq_storedMatrix.symm
-      refine ⟨fun j hj => ?_, by rw [e₁]; exact hCE, by rw [e₁, e₂]; simpa using hEn⟩
-      rw [Store.get_of_readBlock hE hj 0]; rfl
-  have hTR : MeasurableSet {y : Mem ℝ × Mem ℝ |
-      y.1.store.EqOff (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) y.2.store ∧
-      ((∀ j < 2 * ((n + 1) * (n + 1)), (y.2.store.get a.1 (a.2 + j)).isSome) ∧
-        C (g y.2) ∧ specNorm (g y.2 - g y.1) ≤ δR)} :=
-    (Mem.measurableSet_eqOff _).inter ((measurable_snd
-      (ShiftedQR.measurableSet_forall_isSome a _)).inter (((hgm.comp measurable_snd) hCm).inter
-      (measurableSet_le
-        ((continuous_specNorm.comp (continuous_fst.sub continuous_snd)).measurable.comp
-        ((hgm.comp measurable_snd).prodMk (hgm.comp measurable_fst))) measurable_const)))
-  have hreg : PWrites law I
-      (Stmt.frame [.var 0, .var 1] [⟨0, .var 6⟩, ⟨1, .var 7⟩, ⟨0, .var 6⟩] Reg)
-      (schurPipelineEnv n qR.length qC.length k F T a p uo f L)
-      (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))) Mid₁ Mid₂ φR := by
-    refine PStep.mono (PWrites.pstep_of_forall hI hloc (ι := {m // Mid₁ m})
-      (P := fun y m => m = y.1) hfam hTR
-      fun y m m' hm hfr hq => ⟨hfr, hm ▸ hq⟩) (fun m hm => ⟨⟨m, hm⟩, rfl⟩)
-      (fun m m' hm ⟨hfr, hsome, hCg, hδ⟩ => ⟨hfr, ?_⟩) le_rfl
-    obtain ⟨hm', x, hx, hx0, hxl, hxu, A₁, hA₁, hn⟩ := hm
-    have haL : a.1 < L := hm'.2.1
-    have e₂ : g m = A₁ := hA₁.eq_storedMatrix.symm
-    rw [e₂] at hδ
-    exact ⟨hm'.of_eqOff hfr (hm'.disj_words.mono (fun _ _ h => Or.inl (Or.inl (hFa _ _ h)))
-      le_rfl), x, by rw [hfr.2 L 0 (fun h => by obtain ⟨h, -⟩ := h; omega), hx], hx0, hxl, hxu,
-      A₁, g m', hn, holdsMatrix_storedMatrix hsome, hδ, hCg⟩
+  have hreg := schurPipeline_regularizer_pwrites (k := k) (F := F) (T := T) (L := L) (a := a)
+    (p := p) (uo := uo) (f := f) (A := A) (qC := qC) (u := u) (c₂ := c₂) hI hloc hReg hCm hc₁ hu3
   -- the tail
   have htail := schurPipeline_tail_pwrites (Mid₂ := Mid₂)
     (Post := RegularizedSchurOutput C a uo f A c₁ c₂

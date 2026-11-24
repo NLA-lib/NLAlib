@@ -99,15 +99,16 @@ the two block Krylov matrices of $\mathbf{A}\mathbf{A}^{\mathsf{H}}$ side by sid
 theorem rbkiSum_eq_rangeProjector (A : Matrix m n 𝕜) (Ω₁ : Matrix n l₁ 𝕜) (Ω₂ : Matrix n l₂ 𝕜)
     (q₁ q₂ : ℕ) :
     rbkiSum A Ω₁ Ω₂ q₁ q₂ = rangeProjector (Matrix.fromCols
-      (blockKrylovMatrix (A * Aᴴ) (A * Ω₁) q₁) (blockKrylovMatrix (A * Aᴴ) (A * Ω₂) q₂)) * A :=
-  sorry
+      (blockKrylovMatrix (A * Aᴴ) (A * Ω₁) q₁) (blockKrylovMatrix (A * Aᴴ) (A * Ω₂) q₂)) * A := by
+  rw [rbkiSum, rsvd, Matrix.mul_fromCols, blockKrylovMatrix_mul_mul, blockKrylovMatrix_mul_mul]
 
 omit [DecidableEq m] in
 /-- Block Krylov iteration on the sum of two block Krylov spaces,
 $(\mathbf{\Omega}_1, \mathbf{\Omega}_2) \mapsto \mathsf{rbkiSum}(\mathbf{A}, \mathbf{\Omega}_1,
 \mathbf{\Omega}_2, q_1, q_2)$, is a measurable function of the two test matrices. -/
 theorem measurable_rbkiSum (A : Matrix m n 𝕜) (q₁ q₂ : ℕ) :
-    Measurable fun Ω : Matrix n l₁ 𝕜 × Matrix n l₂ 𝕜 => rbkiSum A Ω.1 Ω.2 q₁ q₂ := sorry
+    Measurable fun Ω : Matrix n l₁ 𝕜 × Matrix n l₂ 𝕜 => rbkiSum A Ω.1 Ω.2 q₁ q₂ :=
+  (measurable_rsvd A).comp (measurable_fromCols_blockKrylovMatrix (Aᴴ * A) q₁ q₂)
 
 /-! ### The sum contains each run -/
 

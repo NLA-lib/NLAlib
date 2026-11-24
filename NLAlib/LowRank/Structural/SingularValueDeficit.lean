@@ -47,6 +47,8 @@ $k\gamma\kappa^p/(j + 1)$.
   `IsStarProjection.schattenNorm_sub_mul_le_of_sq_singularValues_sub_le`,
   `IsStarProjection.schattenNorm_sub_mul_le_mul_of_singularValues_le_mul`: the head split and
   the tail-count form for $2 \le p < \infty$, one-sided.
+* `IsStarProjection.frobNorm_truncatedSVD_sub_mul_le_sqrt_mul`: head capture from small head
+  deficits and a gap.
 -/
 
 @[expose] public section
@@ -57,6 +59,30 @@ namespace NLAlib
 
 variable {𝕜 : Type*} [RCLike 𝕜] {m n : Type*} [Fintype m] [Fintype n] [DecidableEq m]
   [DecidableEq n]
+
+/-! ### The Schatten tail -/
+
+omit [DecidableEq m] [DecidableEq n] in
+/-- The Schatten tail splits at a later index: for $0 < p < \infty$ and $L \le k$,
+$$\|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_L\|_{S_p}^p =
+\|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_k\|_{S_p}^p +
+\sum_{L \le i < k} \sigma_i(\mathbf{A})^p\,.$$ -/
+theorem schattenNorm_sub_truncatedSVD_rpow_eq_add_sum {p : ℝ≥0∞} (hp0 : p ≠ 0) (hp : p ≠ ⊤)
+    (A : Matrix m n 𝕜) {L k : ℕ} (hLk : L ≤ k) :
+    schattenNorm p (A - truncatedSVD A L) ^ p.toReal =
+      schattenNorm p (A - truncatedSVD A k) ^ p.toReal +
+        ∑ i ∈ Finset.Ico L k, singularValues A i ^ p.toReal := by
+  obtain ⟨d, rfl⟩ := Nat.exists_eq_add_of_le hLk
+  have hL : (A - truncatedSVD A L).rank ≤ d + (Fintype.card n + L) := by
+    have := (A - truncatedSVD A L).rank_le_card_width
+    omega
+  have hk : (A - truncatedSVD A (L + d)).rank ≤ Fintype.card n + L := by
+    have := (A - truncatedSVD A (L + d)).rank_le_card_width
+    omega
+  rw [schattenNorm_rpow hp0 hp _ hL, schattenNorm_rpow hp0 hp _ hk, Finset.sum_range_add,
+    Finset.sum_Ico_eq_sum_range, Nat.add_sub_cancel_left, add_comm]
+  congr 1 <;> refine Finset.sum_congr rfl fun i _ => ?_ <;>
+    simp only [singularValues_sub_truncatedSVD, add_assoc]
 
 /-! ### The two-sided output, $1 \le p < \infty$ -/
 
@@ -101,7 +127,20 @@ theorem _root_.IsStarProjection.schattenNorm_sub_mul_rpow_le_add_sum {p : ℝ≥
     (hQ : IsStarProjection Q) {A : Matrix m n 𝕜} (hPAQ : P * A * Q = P * A) (k : ℕ) :
     schattenNorm p (A - A * Q) ^ p.toReal ≤ schattenNorm p (A - truncatedSVD A k) ^ p.toReal +
       ∑ i ∈ Finset.range k,
-        (singularValues A i ^ p.toReal - singularValues (P * A) i ^ p.toReal) := sorry
+        (singularValues A i ^ p.toReal - singularValues (P * A) i ^ p.toReal) := by
+  have hp0 : p ≠ 0 := (lt_of_lt_of_le zero_lt_one hp1).ne'
+  have h := hP.schattenNorm_sub_mul_rpow_add_le hp1 hp hQ hPAQ
+  have hA := schattenNorm_sub_truncatedSVD_rpow_eq_add_sum hp0 hp A (Nat.zero_le k)
+  rw [truncatedSVD_zero, sub_zero, ← Finset.range_eq_Ico] at hA
+  -- the energy of `PA` is at least that of its first `k` singular values
+  have hPA : ∑ i ∈ Finset.range k, singularValues (P * A) i ^ p.toReal ≤
+      schattenNorm p (P * A) ^ p.toReal := by
+    rw [schattenNorm_rpow hp0 hp _ (N := k + Fintype.card n)
+      ((P * A).rank_le_card_width.trans (Nat.le_add_left _ _)), Finset.sum_range_add]
+    exact le_add_of_nonneg_right
+      (Finset.sum_nonneg fun i _ => Real.rpow_nonneg (singularValues_nonneg _ _) _)
+  rw [Finset.sum_sub_distrib]
+  linarith
 
 omit [DecidableEq m] [DecidableEq n] in
 /-- **The two-sided error from the deficits in squares**: for $1 \le p < \infty$, orthogonal
@@ -262,28 +301,6 @@ theorem min_schattenNorm_sub_mul_rpow_le_of_singularValues_le_mul
 /-! ### The one-sided output, $2 \le p < \infty$ -/
 
 omit [DecidableEq m] [DecidableEq n] in
-/-- The Schatten tail splits at a later index: for $0 < p < \infty$ and $L \le k$,
-$$\|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_L\|_{S_p}^p =
-\|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_k\|_{S_p}^p +
-\sum_{L \le i < k} \sigma_i(\mathbf{A})^p\,.$$ -/
-theorem schattenNorm_sub_truncatedSVD_rpow_eq_add_sum {p : ℝ≥0∞} (hp0 : p ≠ 0) (hp : p ≠ ⊤)
-    (A : Matrix m n 𝕜) {L k : ℕ} (hLk : L ≤ k) :
-    schattenNorm p (A - truncatedSVD A L) ^ p.toReal =
-      schattenNorm p (A - truncatedSVD A k) ^ p.toReal +
-        ∑ i ∈ Finset.Ico L k, singularValues A i ^ p.toReal := by
-  obtain ⟨d, rfl⟩ := Nat.exists_eq_add_of_le hLk
-  have hL : (A - truncatedSVD A L).rank ≤ d + (Fintype.card n + L) := by
-    have := (A - truncatedSVD A L).rank_le_card_width
-    omega
-  have hk : (A - truncatedSVD A (L + d)).rank ≤ Fintype.card n + L := by
-    have := (A - truncatedSVD A (L + d)).rank_le_card_width
-    omega
-  rw [schattenNorm_rpow hp0 hp _ hL, schattenNorm_rpow hp0 hp _ hk, Finset.sum_range_add,
-    Finset.sum_Ico_eq_sum_range, Nat.add_sub_cancel_left, add_comm]
-  congr 1 <;> refine Finset.sum_congr rfl fun i _ => ?_ <;>
-    simp only [singularValues_sub_truncatedSVD, add_assoc]
-
-omit [DecidableEq m] [DecidableEq n] in
 /-- **The head split of the one-sided error, $2 \le p < \infty$**: for an orthogonal projector
 $\mathbf{P}$ and $L \le k$,
 $$\|\mathbf{A} - \mathbf{P}\mathbf{A}\|_{S_p} \le
@@ -348,8 +365,87 @@ theorem _root_.IsStarProjection.schattenNorm_sub_mul_le_add_rpow {p : ℝ≥0∞
     _ ≤ _ := Real.rpow_le_rpow (by positivity) hX (inv_nonneg.mpr hr.le)
 
 omit [DecidableEq m] [DecidableEq n] in
+/-- Head capture from small head deficits: for an orthogonal projector $\mathbf{P}$,
+$\delta, c \ge 0$ and $0 < \theta \le 1$, if there is a gap before $L$,
+$\sigma_L^2 \le (1 - \theta)\,\sigma_h^2$ when $L = h + 1$, and the head deficits satisfy
+$\sigma_i(\mathbf{A})^2 - \delta c^2 \le \sigma_i(\mathbf{P}\mathbf{A})^2$ for $i < L$, then
+$$\|\llbracket\mathbf{A}\rrbracket_L - \mathbf{P}\llbracket\mathbf{A}\rrbracket_L
+\|_{\mathsf{F}} \le \sqrt{\frac{L\delta}{\theta}}\;c\,.$$
+`IsStarProjection.mul_frobNorm_truncatedSVD_sub_mul_sq_le` with the deficits summed. -/
+theorem _root_.IsStarProjection.frobNorm_truncatedSVD_sub_mul_le_sqrt_mul {P : Matrix m m 𝕜}
+    (hP : IsStarProjection P) (A : Matrix m n 𝕜) {L : ℕ} {δ θ c : ℝ} (hδ : 0 ≤ δ)
+    (hc : 0 ≤ c) (hθ : 0 < θ) (hθ1 : θ ≤ 1)
+    (hgap : ∀ h, h + 1 = L → singularValues A L ^ 2 ≤ (1 - θ) * singularValues A h ^ 2)
+    (hhead : ∀ i < L, singularValues A i ^ 2 - δ * c ^ 2 ≤ singularValues (P * A) i ^ 2) :
+    frobNorm (truncatedSVD A L - P * truncatedSVD A L) ≤ Real.sqrt (L * δ / θ) * c := by
+  rcases Nat.eq_zero_or_eq_succ_pred L with hL | hL
+  · subst hL
+    rw [truncatedSVD_zero, Matrix.mul_zero, sub_zero, frobNorm_zero]
+    positivity
+  have h := hP.mul_frobNorm_truncatedSVD_sub_mul_sq_le A hL.symm hθ1 (hgap _ hL.symm)
+  have hsum : ∑ i ∈ Finset.range L,
+      (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) ≤ L * (δ * c ^ 2) := by
+    have h' := Finset.sum_le_sum fun i (hi : i ∈ Finset.range L) =>
+      (show singularValues A i ^ 2 - singularValues (P * A) i ^ 2 ≤ δ * c ^ 2 by
+        linarith [hhead i (Finset.mem_range.mp hi)])
+    rwa [Finset.sum_const, Finset.card_range, nsmul_eq_mul] at h'
+  refine (pow_le_pow_iff_left₀ (frobNorm_nonneg _) (by positivity) two_ne_zero).mp ?_
+  rw [mul_pow, Real.sq_sqrt (by positivity), div_mul_eq_mul_div, le_div_iff₀ hθ]
+  linarith
+
+omit [DecidableEq m] [DecidableEq n] in
+/-- The middle deficits in $p$-th powers, $p \ge 2$: if
+$\sigma_i(\mathbf{A})^2 - \gamma\,\sigma_k^2 \le \sigma_i(\mathbf{P}\mathbf{A})^2$ for
+$L \le i < k$ and $\sigma_L \le \kappa\,\sigma_k$, then
+$\sum_{L \le i < k} (\sigma_i^p - \sigma_i(\mathbf{P}\mathbf{A})^p) \le
+(p/2)\,\kappa^{p-2}(k - L)\,\gamma\,\sigma_k^p$, termwise by `Real.rpow_sub_rpow_le_max_mul`. -/
+private theorem sum_Ico_rpow_sub_rpow_le {p : ℝ} (hp2 : 2 ≤ p) {P : Matrix m m 𝕜}
+    (hP : IsStarProjection P) {A : Matrix m n 𝕜} {L k : ℕ} (hLk : L ≤ k) {γ κ : ℝ}
+    (hκ : 0 ≤ κ) (hflat : singularValues A L ≤ κ * singularValues A k)
+    (hmid : ∀ i, L ≤ i → i < k → singularValues A i ^ 2 - γ * singularValues A k ^ 2 ≤
+      singularValues (P * A) i ^ 2) :
+    ∑ i ∈ Finset.Ico L k, (singularValues A i ^ p - singularValues (P * A) i ^ p) ≤
+      p / 2 * κ ^ (p - 2) * ((k : ℝ) - L) * γ * singularValues A k ^ p := by
+  have hk0 := singularValues_nonneg A k
+  -- `(x²)^(r) = x^(2r)` for `x ≥ 0`
+  have hsq (x r : ℝ) (hx : 0 ≤ x) : (x ^ 2) ^ r = x ^ (2 * r) := by
+    rw [← Real.rpow_two, ← Real.rpow_mul hx]
+  have hσk : singularValues A k ^ (p - 2) * singularValues A k ^ 2 = singularValues A k ^ p := by
+    rw [← Real.rpow_two, ← Real.rpow_add' hk0 (by linarith), sub_add_cancel]
+  have hterm (i : ℕ) (hi : i ∈ Finset.Ico L k) :
+      singularValues A i ^ p - singularValues (P * A) i ^ p ≤
+        p / 2 * κ ^ (p - 2) * γ * singularValues A k ^ p := by
+    obtain ⟨hLi, hik⟩ := Finset.mem_Ico.mp hi
+    have hi0 := singularValues_nonneg A i
+    have hPi : singularValues (P * A) i ≤ singularValues A i := hP.singularValues_mul_le A i
+    have h := Real.rpow_sub_rpow_le_max_mul (sq_nonneg (singularValues (P * A) i))
+      (pow_le_pow_left₀ (singularValues_nonneg _ _) hPi 2) (show 0 < p / 2 by linarith)
+    rw [max_eq_right (by linarith), hsq _ _ hi0, hsq _ _ (singularValues_nonneg _ _),
+      hsq _ _ hi0] at h
+    have e1 : 2 * (p / 2) = p := by ring
+    have e2 : 2 * (p / 2 - 1) = p - 2 := by ring
+    rw [e1, e2] at h
+    -- `σ_i^(p-2) ≤ κ^(p-2) σ_k^(p-2)`, since `σ_i ≤ σ_L ≤ κ σ_k`
+    have hpow : singularValues A i ^ (p - 2) ≤ κ ^ (p - 2) * singularValues A k ^ (p - 2) := by
+      rw [← Real.mul_rpow hκ hk0]
+      exact Real.rpow_le_rpow hi0 ((singularValues_antitone A hLi).trans hflat) (by linarith)
+    have hd : singularValues A i ^ 2 - singularValues (P * A) i ^ 2 ≤
+        γ * singularValues A k ^ 2 := by linarith [hmid i hLi hik]
+    calc singularValues A i ^ p - singularValues (P * A) i ^ p
+        ≤ p / 2 * singularValues A i ^ (p - 2) *
+          (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) := h
+      _ ≤ p / 2 * (κ ^ (p - 2) * singularValues A k ^ (p - 2)) * (γ * singularValues A k ^ 2) :=
+          mul_le_mul (mul_le_mul_of_nonneg_left hpow (by linarith)) hd
+            (sub_nonneg.mpr (pow_le_pow_left₀ (singularValues_nonneg _ _) hPi 2))
+            (mul_nonneg (by linarith) (by positivity))
+      _ = p / 2 * κ ^ (p - 2) * γ * singularValues A k ^ p := by rw [← hσk]; ring
+  refine (Finset.sum_le_sum hterm).trans_eq ?_
+  rw [Finset.sum_const, Nat.card_Ico, nsmul_eq_mul, Nat.cast_sub hLk]
+  ring
+
+omit [DecidableEq m] [DecidableEq n] in
 /-- **The head split with deficits, $2 \le p < \infty$**: let $\mathbf{P}$ be an orthogonal
-projector, $L \le k$, $\delta, \gamma \ge 0$, $0 < \theta \le 1$ and $\kappa \ge 1$. Suppose
+projector, $L \le k$, $\delta \ge 0$, $0 < \theta \le 1$ and $\kappa \ge 1$. Suppose
 there is a gap before $L$, $\sigma_L^2 \le (1 - \theta)\,\sigma_h^2$ when $L = h + 1$; the
 spectrum is flat from $L$ to $k$, $\sigma_L \le \kappa\,\sigma_k$; the head deficits satisfy
 $\sigma_i(\mathbf{A})^2 - \delta\,\sigma_k(\mathbf{A})^2 \le \sigma_i(\mathbf{P}\mathbf{A})^2$
@@ -367,8 +463,8 @@ singular values, with accuracies that are unspecified polynomials in $\varepsilo
 explicit $\delta$, $\gamma$, $\theta$, $\kappa$. -/
 theorem _root_.IsStarProjection.schattenNorm_sub_mul_le_of_sq_singularValues_sub_le
     {p : ℝ≥0∞} (hp2 : 2 ≤ p) (hp : p ≠ ⊤) {P : Matrix m m 𝕜} (hP : IsStarProjection P)
-    {A : Matrix m n 𝕜} {L k : ℕ} (hLk : L ≤ k) {δ γ θ κ : ℝ} (hδ : 0 ≤ δ) (hγ : 0 ≤ γ)
-    (hθ : 0 < θ) (hθ1 : θ ≤ 1) (hκ : 1 ≤ κ)
+    {A : Matrix m n 𝕜} {L k : ℕ} (hLk : L ≤ k) {δ γ θ κ : ℝ} (hδ : 0 ≤ δ) (hθ : 0 < θ)
+    (hθ1 : θ ≤ 1) (hκ : 1 ≤ κ)
     (hgap : ∀ h, h + 1 = L → singularValues A L ^ 2 ≤ (1 - θ) * singularValues A h ^ 2)
     (hflat : singularValues A L ≤ κ * singularValues A k)
     (hhead : ∀ i < L, singularValues A i ^ 2 - δ * singularValues A k ^ 2 ≤
@@ -379,7 +475,22 @@ theorem _root_.IsStarProjection.schattenNorm_sub_mul_le_of_sq_singularValues_sub
       Real.sqrt (L * δ / θ) * singularValues A k +
         (schattenNorm p (A - truncatedSVD A k) ^ p.toReal +
           p.toReal / 2 * κ ^ (p.toReal - 2) * ((k : ℝ) - L) * γ *
-            singularValues A k ^ p.toReal) ^ p.toReal⁻¹ := sorry
+            singularValues A k ^ p.toReal) ^ p.toReal⁻¹ := by
+  have hr2 : 2 ≤ p.toReal := by
+    simpa only [ENNReal.toReal_ofNat] using ENNReal.toReal_mono hp hp2
+  refine (hP.schattenNorm_sub_mul_le_add_rpow hp2 hp A hLk).trans (add_le_add ?_ ?_)
+  · -- the head: the Schatten norm is at most the Frobenius norm
+    refine ((schattenNorm_anti two_ne_zero hp2 _).trans_eq (schattenNorm_two _)).trans ?_
+    exact hP.frobNorm_truncatedSVD_sub_mul_le_sqrt_mul A hδ (singularValues_nonneg A k) hθ hθ1
+      hgap hhead
+  · -- the middle deficits
+    have hS : 0 ≤ ∑ i ∈ Finset.Ico L k,
+        (singularValues A i ^ p.toReal - singularValues (P * A) i ^ p.toReal) :=
+      Finset.sum_nonneg fun i _ => sub_nonneg.mpr (Real.rpow_le_rpow (singularValues_nonneg _ _)
+        (hP.singularValues_mul_le A i) (by linarith))
+    refine Real.rpow_le_rpow (by positivity) (add_le_add le_rfl ?_)
+      (inv_nonneg.mpr (by linarith))
+    exact sum_Ico_rpow_sub_rpow_le hr2 hP hLk (by linarith) hflat hmid
 
 omit [DecidableEq m] [DecidableEq n] in
 /-- **The tail-count form of the one-sided error, $2 \le p < \infty$**: let $\mathbf{P}$ be an

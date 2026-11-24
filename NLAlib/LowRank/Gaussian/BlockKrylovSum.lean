@@ -818,6 +818,16 @@ private theorem schattenNorm_sub_truncatedSVD_rbkiSum_le_of_specNorm_sq_le {s₁
       (h.trans (pow_le_pow_left₀ (singularValues_nonneg _ _)
         (singularValues_rbki_le_singularValues_rbkiSum_right A Ω₁ Ω₂ q₁ q₂ i) 2))
 
+omit [DecidableEq m] [DecidableEq n] in
+/-- A matrix with no rows or no columns has Schatten norm $0$. -/
+private theorem schattenNorm_eq_zero_of_min_card_eq_zero {p : ℝ≥0∞}
+    (h : min (Fintype.card m) (Fintype.card n) = 0) (B : Matrix m n ℝ) : schattenNorm p B = 0 := by
+  rw [schattenNorm_eq_zero_iff]
+  ext i i'
+  rcases (by omega : Fintype.card m = 0 ∨ Fintype.card n = 0) with h | h
+  · exact (Fintype.card_eq_zero_iff.1 h).elim i
+  · exact (Fintype.card_eq_zero_iff.1 h).elim i'
+
 /-- Two events of measure at most $a$ and $b$ that almost surely cover $S$ bound the measure of
 $S$ by $a + b$. -/
 private theorem measureReal_le_add_of_ae_imp [IsFiniteMeasure μ] {S E₁ E₂ : Set Ω} {a b : ℝ}
@@ -877,13 +887,8 @@ theorem measureReal_schattenNorm_sub_truncatedSVD_rbkiSum_gt_le_of_hasLaw_gaussi
   · exact measureReal_le_one.trans hδ1
   rcases Nat.eq_zero_or_pos (min (Fintype.card m) (Fintype.card n)) with hN | hN
   · -- an empty matrix: the event is empty
-    have h0 : ∀ B : Matrix m n ℝ, schattenNorm p B = 0 := fun B => by
-      rw [schattenNorm_eq_zero_iff]
-      ext i i'
-      rcases (by omega : Fintype.card m = 0 ∨ Fintype.card n = 0) with h | h
-      · exact (Fintype.card_eq_zero_iff.1 h).elim i
-      · exact (Fintype.card_eq_zero_iff.1 h).elim i'
-    simp only [h0, mul_zero, lt_self_iff_false, Set.ofPred_false, measureReal_empty]
+    simp only [schattenNorm_eq_zero_of_min_card_eq_zero hN, mul_zero, lt_self_iff_false,
+      Set.ofPred_false, measureReal_empty]
     exact hδ.le
   obtain ⟨Z₁, hZ₁, hAZ₁, hrk₁, -, -⟩ := exists_frame_residual A hX₁ hl₁
   obtain ⟨Z₂, hZ₂, hAZ₂, hrk₂, -, -⟩ := exists_frame_residual A hX₂ (k := k + j) hl₂
@@ -934,7 +939,7 @@ theorem schattenNorm_sub_mul_rangeProjector_le_schattenNorm_sub_truncatedSVD_rsv
     [RCLike 𝕜] {p : ℝ≥0∞} (hp1 : 1 ≤ p) (A : Matrix m n 𝕜) (Y : Matrix n l 𝕜) (k : ℕ) :
     schattenNorm p (A - A * rangeProjector (truncatedSVD (rsvd A Y) k)ᴴ) ≤
       schattenNorm p (A - truncatedSVD (rsvd A Y) k) := by
-  haveI : Fact (1 ≤ p) := ⟨hp1⟩
+  have : Fact (1 ≤ p) := ⟨hp1⟩
   set T := truncatedSVD (rsvd A Y) k
   have hT : T = rangeProjector T * A := truncatedSVD_rsvd_eq_rangeProjector_mul A Y k
   have hTQ : T * rangeProjector Tᴴ = T := by
@@ -1280,6 +1285,35 @@ theorem
           (truncatedSVD (rbkiSum A (X₁ ω) (X₂ ω) q₁ q₂) k)ᴴ) ^ p.toReal ∂μ ≤
         (1 + ε) * schattenNorm p (A - truncatedSVD A k) ^ p.toReal := sorry
 
+/-- The logarithms of the depth thresholds of the tail bound are at most nine times the
+logarithm of the asymptotic form: for $1 \le k, T \le \ell$, $\ell \ge 3$, $p \ge 2$,
+$1 \le N \le M$ and $\varepsilon, \delta \in (0, 1]$,
+$\log(256k^2T(p + 1)N/(\varepsilon^2\delta)) \le 9\log(\ell pM/(\varepsilon\delta))$. -/
+private theorem log_le_nine_mul_log {k T X P M N ε δ : ℝ} (hk : 1 ≤ k) (hkX : k ≤ X)
+    (hT : 1 ≤ T) (hTX : T ≤ X) (hX : 3 ≤ X) (hP : 2 ≤ P) (hN : 1 ≤ N) (hNM : N ≤ M)
+    (hε : 0 < ε) (hε1 : ε ≤ 1) (hδ : 0 < δ) (hδ1 : δ ≤ 1) :
+    Real.log (256 * k ^ 2 * T * (P + 1) * N / (ε ^ 2 * δ)) ≤
+      9 * Real.log (X * P * M / (ε * δ)) := by
+  have hM : 1 ≤ M := hN.trans hNM
+  have h9 : (9 : ℝ) = ((9 : ℕ) : ℝ) := by norm_num
+  rw [h9, ← Real.log_pow]
+  refine Real.log_le_log (by positivity) ?_
+  rw [div_pow, div_le_div_iff₀ (by positivity) (by positivity)]
+  have h256 : (256 : ℝ) ≤ X ^ 6 := by nlinarith [pow_le_pow_left₀ (by norm_num) hX 6]
+  have hP9 : P + 1 ≤ P ^ 9 := by
+    have : P ^ 2 ≤ P ^ 9 := pow_le_pow_right₀ (by linarith) (by norm_num)
+    nlinarith
+  have hM9 : N ≤ M ^ 9 := hNM.trans (by simpa using pow_le_pow_right₀ hM (by norm_num : 1 ≤ 9))
+  have hA : 256 * k ^ 2 * T * (P + 1) * N ≤ (X * P * M) ^ 9 :=
+    calc 256 * k ^ 2 * T * (P + 1) * N ≤ X ^ 6 * X ^ 2 * X * P ^ 9 * M ^ 9 := by gcongr
+      _ = (X * P * M) ^ 9 := by ring
+  have hB : (ε * δ) ^ 9 ≤ ε ^ 2 * δ := by
+    rw [mul_pow]
+    exact mul_le_mul (pow_le_pow_of_le_one hε.le hε1 (by norm_num))
+      (by simpa using pow_le_pow_of_le_one hδ.le hδ1 (by norm_num : 1 ≤ 9)) (by positivity)
+      (by positivity)
+  exact mul_le_mul hA hB (by positivity) (by positivity)
+
 /-- **$O(k(p^{1/6}\varepsilon^{-1/3} + \sqrt{p})\log(\ell_2 p\lvert n \rvert/
 (\varepsilon\delta)))$ products suffice for a $(1 + \varepsilon)$ rank-$k$ approximation in
 Schatten norms with $2 \le p < \infty$**: there are absolute constants
@@ -1319,6 +1353,81 @@ theorem
       C * (Real.sqrt p.toReal *
         Real.log (Fintype.card l₂ * p.toReal * Fintype.card n / (ε * δ))) ≤ q₂ →
       μ.real {ω | (1 + ε) * schattenNorm p (A - truncatedSVD A k) <
-        schattenNorm p (A - truncatedSVD (rbkiSum A (X₁ ω) (X₂ ω) q₁ q₂) k)} ≤ δ := sorry
+        schattenNorm p (A - truncatedSVD (rbkiSum A (X₁ ω) (X₂ ω) q₁ q₂) k)} ≤ δ := by
+  refine ⟨10, 1, by norm_num, by norm_num, ?_⟩
+  intro Ω m n l₁ l₂ _ _ _ _ _ _ _ μ A X₁ X₂ k q₁ q₂ ε δ p hX₁ hX₂ hp2 hp hk hε hε1 hδ hl₁ hl₂
+    hq₁ hq₂
+  have := hX₁.isProbabilityMeasure
+  rcases le_or_gt 1 δ with hδ1 | hδ1
+  · exact measureReal_le_one.trans hδ1
+  rcases Nat.eq_zero_or_pos (min (Fintype.card m) (Fintype.card n)) with hN | hN
+  · simp only [schattenNorm_eq_zero_of_min_card_eq_zero hN, mul_zero, lt_self_iff_false,
+      Set.ofPred_false, measureReal_empty]
+    exact hδ.le
+  have hr2 : 2 ≤ p.toReal := by simpa only [ENNReal.toReal_ofNat] using ENNReal.toReal_mono hp hp2
+  have hkR : (1 : ℝ) ≤ k := by exact_mod_cast hk
+  have hu0 : 0 ≤ k / (ε * p.toReal) ^ (3 : ℝ)⁻¹ := by positivity
+  have hc : (k : ℝ) + 2 ≤ Fintype.card l₂ := by linarith
+  have hcN : k + 2 ≤ Fintype.card l₂ := by exact_mod_cast hc
+  have hjR : ((Fintype.card l₂ - k - 2 : ℕ) : ℝ) + 1 = Fintype.card l₂ - k - 1 := by
+    rw [Nat.cast_sub (by omega), Nat.cast_sub (by omega)]
+    push_cast
+    ring
+  -- the logarithms
+  have hN1 : (1 : ℝ) ≤ (min (Fintype.card m) (Fintype.card n) : ℕ) := by exact_mod_cast hN
+  have hNM : ((min (Fintype.card m) (Fintype.card n) : ℕ) : ℝ) ≤ Fintype.card n :=
+    by exact_mod_cast min_le_right _ _
+  set L := Real.log (Fintype.card l₂ * p.toReal * Fintype.card n / (ε * δ))
+  have h6 : (6 : ℝ) ≤ Fintype.card l₂ * p.toReal * Fintype.card n := by
+    have h1 : (1 : ℝ) ≤ Fintype.card n := hN1.trans hNM
+    calc (6 : ℝ) = 3 * 2 * 1 := by norm_num
+      _ ≤ _ := by gcongr; linarith
+  have hL1 : 1 ≤ L := by
+    have hed : ε * δ ≤ 1 := mul_le_one₀ hε1 hδ.le hδ1.le
+    have hed0 : 0 < ε * δ := mul_pos hε hδ
+    rw [Real.le_log_iff_exp_le (div_pos (by linarith) hed0), le_div_iff₀ hed0]
+    have he3 : Real.exp 1 < 3 := Real.exp_one_lt_d9.trans (by norm_num)
+    nlinarith [Real.exp_pos 1]
+  have hΛ₁ := log_le_nine_mul_log (X := (Fintype.card l₂ : ℝ)) hkR (by linarith) hkR
+    (by linarith) (by linarith) hr2 hN1 hNM hε hε1 hδ hδ1.le
+  rw [show (256 : ℝ) * k ^ 2 * k = 256 * k ^ 3 by ring] at hΛ₁
+  have hΛ₂ := log_le_nine_mul_log (T := (k : ℝ) + (Fintype.card l₂ - k - 2 : ℕ))
+    (X := (Fintype.card l₂ : ℝ)) hkR
+    (by linarith) (by linarith [(Nat.cast_nonneg _ : (0 : ℝ) ≤ (Fintype.card l₂ - k - 2 : ℕ))])
+    (by linarith) (by linarith) hr2 hN1 hNM hε hε1 hδ hδ1.le
+  -- `√(4p + 1) ≤ 3√p` and `1 ≤ √p`
+  have hs3 : Real.sqrt (4 * p.toReal + 1) ≤ 3 * Real.sqrt p.toReal := by
+    have h9 : Real.sqrt (9 * p.toReal) = 3 * Real.sqrt p.toReal := by
+      rw [Real.sqrt_mul (by norm_num), show (9 : ℝ) = 3 ^ 2 by norm_num,
+        Real.sqrt_sq (by norm_num)]
+    rw [← h9]
+    exact Real.sqrt_le_sqrt (by linarith)
+  have hsp : 1 ≤ Real.sqrt p.toReal := by simpa using Real.sqrt_le_sqrt (by linarith : 1 ≤ p.toReal)
+  have hLs := one_le_mul_of_one_le_of_one_le hL1 hsp
+  have hu : 0 ≤ p.toReal ^ (6 : ℝ)⁻¹ / ε ^ (3 : ℝ)⁻¹ := by positivity
+  refine measureReal_schattenNorm_sub_truncatedSVD_rbkiSum_gt_le_of_hasLaw_gaussianMatrix hp2 hp A
+    hX₁ hX₂ (j := Fintype.card l₂ - k - 2) hk hl₁ (by omega) hε hε1 hδ ?_ ?_ ?_
+  · rw [hjR, mul_div_assoc]
+    have he2 : Real.exp 2 ≤ 9 := by
+      rw [show (2 : ℝ) = 1 + 1 by norm_num, Real.exp_add]
+      have he3 : Real.exp 1 < 3 := Real.exp_one_lt_d9.trans (by norm_num)
+      nlinarith [Real.exp_pos 1]
+    nlinarith
+  · have hK : 0 ≤ p.toReal ^ (6 : ℝ)⁻¹ / (2 * ε ^ (3 : ℝ)⁻¹) + Real.sqrt (4 * p.toReal + 1) / 8 :=
+      by positivity
+    have hh : p.toReal ^ (6 : ℝ)⁻¹ / (2 * ε ^ (3 : ℝ)⁻¹) =
+        p.toReal ^ (6 : ℝ)⁻¹ / ε ^ (3 : ℝ)⁻¹ / 2 := by ring
+    calc _ ≤ 1 + (p.toReal ^ (6 : ℝ)⁻¹ / (2 * ε ^ (3 : ℝ)⁻¹) + Real.sqrt (4 * p.toReal + 1) / 8) *
+          (9 * L) := by gcongr
+      _ ≤ 1 + (p.toReal ^ (6 : ℝ)⁻¹ / ε ^ (3 : ℝ)⁻¹ / 2 + 3 * Real.sqrt p.toReal / 8) *
+          (9 * L) := by rw [hh]; gcongr
+      _ ≤ 10 * ((p.toReal ^ (6 : ℝ)⁻¹ / ε ^ (3 : ℝ)⁻¹ + Real.sqrt p.toReal) * L) := by
+          nlinarith [mul_nonneg hu (by linarith : (0 : ℝ) ≤ L)]
+      _ ≤ q₁ := hq₁
+  · push_cast at hΛ₂ ⊢
+    calc _ ≤ 1 + Real.sqrt (4 * p.toReal + 1) / 8 * (9 * L) := by gcongr
+      _ ≤ 1 + 3 * Real.sqrt p.toReal / 8 * (9 * L) := by gcongr
+      _ ≤ 10 * (Real.sqrt p.toReal * L) := by nlinarith
+      _ ≤ q₂ := hq₂
 
 end NLAlib

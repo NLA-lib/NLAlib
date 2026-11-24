@@ -158,7 +158,12 @@ theorem _root_.IsStarProjection.schattenNorm_sub_mul_rpow_le_add_sum_mul {p : �
     (hQ : IsStarProjection Q) {A : Matrix m n 𝕜} (hPAQ : P * A * Q = P * A) (k : ℕ) :
     schattenNorm p (A - A * Q) ^ p.toReal ≤ schattenNorm p (A - truncatedSVD A k) ^ p.toReal +
       ∑ i ∈ Finset.range k, max 1 (p.toReal / 2) * singularValues A i ^ (p.toReal - 2) *
-        (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) := sorry
+        (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) := by
+  have hr : 0 < p.toReal := ENNReal.toReal_pos (lt_of_lt_of_le zero_lt_one hp1).ne' hp
+  refine (hP.schattenNorm_sub_mul_rpow_le_add_sum hp1 hp hQ hPAQ k).trans
+    (add_le_add le_rfl (Finset.sum_le_sum fun i _ => ?_))
+  exact Real.rpow_sub_rpow_le_max_mul_sq (singularValues_nonneg _ _)
+    (hP.singularValues_mul_le A i) hr
 
 omit [DecidableEq m] [DecidableEq n] in
 /-- The two-sided error is at most the one-sided error: for a matrix $\mathbf{P}$, an orthogonal
@@ -407,9 +412,6 @@ private theorem sum_Ico_rpow_sub_rpow_le {p : ℝ} (hp2 : 2 ≤ p) {P : Matrix m
     ∑ i ∈ Finset.Ico L k, (singularValues A i ^ p - singularValues (P * A) i ^ p) ≤
       p / 2 * κ ^ (p - 2) * ((k : ℝ) - L) * γ * singularValues A k ^ p := by
   have hk0 := singularValues_nonneg A k
-  -- `(x²)^(r) = x^(2r)` for `x ≥ 0`
-  have hsq (x r : ℝ) (hx : 0 ≤ x) : (x ^ 2) ^ r = x ^ (2 * r) := by
-    rw [← Real.rpow_two, ← Real.rpow_mul hx]
   have hσk : singularValues A k ^ (p - 2) * singularValues A k ^ 2 = singularValues A k ^ p := by
     rw [← Real.rpow_two, ← Real.rpow_add' hk0 (by linarith), sub_add_cancel]
   have hterm (i : ℕ) (hi : i ∈ Finset.Ico L k) :
@@ -418,13 +420,9 @@ private theorem sum_Ico_rpow_sub_rpow_le {p : ℝ} (hp2 : 2 ≤ p) {P : Matrix m
     obtain ⟨hLi, hik⟩ := Finset.mem_Ico.mp hi
     have hi0 := singularValues_nonneg A i
     have hPi : singularValues (P * A) i ≤ singularValues A i := hP.singularValues_mul_le A i
-    have h := Real.rpow_sub_rpow_le_max_mul (sq_nonneg (singularValues (P * A) i))
-      (pow_le_pow_left₀ (singularValues_nonneg _ _) hPi 2) (show 0 < p / 2 by linarith)
-    rw [max_eq_right (by linarith), hsq _ _ hi0, hsq _ _ (singularValues_nonneg _ _),
-      hsq _ _ hi0] at h
-    have e1 : 2 * (p / 2) = p := by ring
-    have e2 : 2 * (p / 2 - 1) = p - 2 := by ring
-    rw [e1, e2] at h
+    have h := Real.rpow_sub_rpow_le_max_mul_sq (singularValues_nonneg _ _) hPi
+      (show 0 < p by linarith)
+    rw [max_eq_right (by linarith)] at h
     -- `σ_i^(p-2) ≤ κ^(p-2) σ_k^(p-2)`, since `σ_i ≤ σ_L ≤ κ σ_k`
     have hpow : singularValues A i ^ (p - 2) ≤ κ ^ (p - 2) * singularValues A k ^ (p - 2) := by
       rw [← Real.mul_rpow hκ hk0]
@@ -493,6 +491,66 @@ theorem _root_.IsStarProjection.schattenNorm_sub_mul_le_of_sq_singularValues_sub
     exact sum_Ico_rpow_sub_rpow_le hr2 hP hLk (by linarith) hflat hmid
 
 omit [DecidableEq m] [DecidableEq n] in
+/-- The head index of `NLAlib.exists_le_singularValues_le_and_gap` with its gap parameter: for
+$p \ge 1$ and $\delta \ge 0$ there are $L \le k$ and $0 < \theta \le 1$ with
+$\sigma_L \le (1 + 1/p)\,\sigma_k$, the gap $\sigma_L^2 \le (1 - \theta)\,\sigma_h^2$ when
+$L = h + 1$, $(1 + 1/(2p))\,\sigma_k < \sigma_i$ for $i < L$, and
+$\sqrt{L\delta/\theta} \le k\sqrt{2(p + 1)\delta}$: $\theta = 1/(2k(p + 1))$ if $L > 0$ and
+$\theta = 1$ if $L = 0$. -/
+private theorem exists_head_index_sqrt_le (A : Matrix m n 𝕜) (k : ℕ) {p δ : ℝ} (hp : 1 ≤ p)
+    (hδ : 0 ≤ δ) :
+    ∃ L ≤ k, ∃ θ : ℝ, 0 < θ ∧ θ ≤ 1 ∧
+      singularValues A L ≤ (1 + 1 / p) * singularValues A k ∧
+      (∀ h, h + 1 = L → singularValues A L ^ 2 ≤ (1 - θ) * singularValues A h ^ 2) ∧
+      (∀ i < L, (1 + 1 / (2 * p)) * singularValues A k < singularValues A i) ∧
+      Real.sqrt (L * δ / θ) ≤ k * Real.sqrt (2 * (p + 1) * δ) := by
+  obtain ⟨L, hLk, hflat, hgap⟩ := exists_le_singularValues_le_and_gap A k hp
+  rcases Nat.eq_zero_or_eq_succ_pred L with hL | hL
+  · subst hL
+    refine ⟨0, hLk, 1, one_pos, le_rfl, hflat, fun h hh => absurd hh (Nat.succ_ne_zero h),
+      fun i hi => absurd hi (Nat.not_lt_zero i), ?_⟩
+    rw [Nat.cast_zero, zero_mul, zero_div, Real.sqrt_zero]
+    positivity
+  set h := L.pred
+  have hk1 : (1 : ℝ) ≤ k := Nat.one_le_cast.mpr (by omega)
+  have hX : 0 < 2 * (k : ℝ) * (p + 1) := by positivity
+  refine ⟨L, hLk, 1 / (2 * k * (p + 1)), by positivity, ?_, hflat,
+    fun h' hh => (hgap h' hh).2, fun i hi => ?_, ?_⟩
+  · rw [div_le_one hX]; nlinarith
+  · exact (hgap h hL.symm).1.trans_le (singularValues_antitone A (by omega))
+  · have hLk' : (L : ℝ) ≤ k := Nat.cast_le.mpr hLk
+    rw [show (k : ℝ) * Real.sqrt (2 * (p + 1) * δ) = Real.sqrt (k ^ 2 * (2 * (p + 1) * δ)) by
+      rw [Real.sqrt_mul (sq_nonneg _), Real.sqrt_sq (Nat.cast_nonneg _)]]
+    refine Real.sqrt_le_sqrt ?_
+    rw [div_div_eq_mul_div, div_one]
+    have : 0 ≤ ((k : ℝ) - L) * k * (2 * (p + 1) * δ) :=
+      mul_nonneg (mul_nonneg (by linarith) (Nat.cast_nonneg k)) (by positivity)
+    nlinarith
+
+/-- The middle deficits against the tail count: for $p \ge 2$, $L \le k$, $\gamma, s \ge 0$
+and $s \le \kappa^p/(j + 1)\cdot O$,
+$$\frac{p}{2}\Bigl(1 + \frac1p\Bigr)^{p-2}(k - L)\,\gamma\,s \le
+\frac{e\,p\,k\gamma\kappa^p}{2(j + 1)}\,O\,,$$
+with $(1 + 1/p)^{p-2} \le (1 + 1/p)^p \le e$. -/
+private theorem mul_rpow_mul_le_exp_mul {p κ γ s O : ℝ} {k L j : ℕ} (hp : 2 ≤ p) (hLk : L ≤ k)
+    (hγ : 0 ≤ γ) (hs0 : 0 ≤ s) (hs : s ≤ κ ^ p / ((j : ℝ) + 1) * O) :
+    p / 2 * (1 + 1 / p) ^ (p - 2) * ((k : ℝ) - L) * γ * s ≤
+      Real.exp 1 * (p / 2) * k * γ * κ ^ p / ((j : ℝ) + 1) * O := by
+  have hp0 : 0 < p := by linarith
+  have h1 : 1 ≤ 1 + 1 / p := le_add_of_nonneg_right (by positivity)
+  have he : (1 + 1 / p) ^ (p - 2) ≤ Real.exp 1 :=
+    (Real.rpow_le_rpow_of_exponent_le h1 (by linarith)).trans
+      (Real.one_add_one_div_rpow_le_exp_one hp0)
+  have hLk' : (L : ℝ) ≤ k := Nat.cast_le.mpr hLk
+  calc p / 2 * (1 + 1 / p) ^ (p - 2) * ((k : ℝ) - L) * γ * s
+      ≤ p / 2 * Real.exp 1 * k * γ * s := by
+        have : 0 ≤ (k : ℝ) - L := by linarith
+        gcongr
+        linarith
+    _ ≤ p / 2 * Real.exp 1 * k * γ * (κ ^ p / ((j : ℝ) + 1) * O) := by gcongr
+    _ = _ := by ring
+
+omit [DecidableEq m] [DecidableEq n] in
 /-- **The tail-count form of the one-sided error, $2 \le p < \infty$**: let $\mathbf{P}$ be an
 orthogonal projector and $\delta, \gamma, \kappa \ge 0$. Suppose the tail is flat,
 $\sigma_k \le \kappa\,\sigma_{k+j}$; every $i < k$ has the deficit
@@ -520,6 +578,51 @@ theorem _root_.IsStarProjection.schattenNorm_sub_mul_le_mul_of_singularValues_le
     schattenNorm p (A - P * A) ≤
       (k * Real.sqrt (2 * (p.toReal + 1) * δ) +
         (1 + Real.exp 1 * (p.toReal / 2) * k * γ * κ ^ p.toReal / ((j : ℝ) + 1)) ^ p.toReal⁻¹) *
-        schattenNorm p (A - truncatedSVD A k) := sorry
+        schattenNorm p (A - truncatedSVD A k) := by
+  have hr2 : 2 ≤ p.toReal := by
+    simpa only [ENNReal.toReal_ofNat] using ENNReal.toReal_mono hp hp2
+  have hr : 0 < p.toReal := by linarith
+  have hp0 : p ≠ 0 := (lt_of_lt_of_le (by norm_num) hp2).ne'
+  set O := schattenNorm p (A - truncatedSVD A k)
+  have hO : 0 ≤ O := schattenNorm_nonneg _ _
+  have hk0 := singularValues_nonneg A k
+  -- the tail count: `σ_k ≤ OPT` and `σ_k^p ≤ κ^p/(j + 1) OPT^p`
+  have hσO : singularValues A k ≤ O := by
+    have h := mul_singularValues_rpow_le_schattenNorm_sub_truncatedSVD_rpow hp0 hp A k 0
+    rw [Nat.cast_zero, zero_add, one_mul, add_zero] at h
+    exact (Real.rpow_le_rpow_iff hk0 hO hr).mp h
+  have hσr : singularValues A k ^ p.toReal ≤ κ ^ p.toReal / ((j : ℝ) + 1) * O ^ p.toReal := by
+    have h := mul_singularValues_rpow_le_schattenNorm_sub_truncatedSVD_rpow hp0 hp A k j
+    have hj : (0 : ℝ) < j + 1 := by positivity
+    calc singularValues A k ^ p.toReal ≤ κ ^ p.toReal * singularValues A (k + j) ^ p.toReal := by
+          rw [← Real.mul_rpow hκ (singularValues_nonneg _ _)]
+          exact Real.rpow_le_rpow hk0 htail hr.le
+      _ ≤ κ ^ p.toReal * (O ^ p.toReal / ((j : ℝ) + 1)) := by
+          gcongr
+          rw [le_div_iff₀ hj, mul_comm]
+          exact h
+      _ = _ := by ring
+  -- the head index, with the flatness `1 + 1/p` of `NLAlib.exists_le_singularValues_le_and_gap`
+  obtain ⟨L, hLk, θ, hθ, hθ1, hflat, hgap, hbig, hsqrt⟩ :=
+    exists_head_index_sqrt_le A k (show 1 ≤ p.toReal by linarith) hδ
+  have h := hP.schattenNorm_sub_mul_le_of_sq_singularValues_sub_le hp2 hp hLk hδ hθ hθ1
+    (le_add_of_nonneg_right (by positivity)) hgap hflat
+    (fun i hi => hhead i (hi.trans_le hLk) (hbig i hi)) (fun i _ hik => hritz i hik)
+  refine h.trans ?_
+  rw [add_mul]
+  refine add_le_add (mul_le_mul hsqrt hσO hk0 (by positivity)) ?_
+  -- the middle deficits, paid for by the tail count
+  have hM := mul_rpow_mul_le_exp_mul hr2 hLk hγ (Real.rpow_nonneg hk0 _) hσr
+  set c := Real.exp 1 * (p.toReal / 2) * k * γ * κ ^ p.toReal / ((j : ℝ) + 1)
+  have hc : 0 ≤ c := by positivity
+  have hLk' : (L : ℝ) ≤ k := Nat.cast_le.mpr hLk
+  calc (O ^ p.toReal + p.toReal / 2 * (1 + 1 / p.toReal) ^ (p.toReal - 2) * ((k : ℝ) - L) * γ *
+          singularValues A k ^ p.toReal) ^ p.toReal⁻¹
+      ≤ ((1 + c) * O ^ p.toReal) ^ p.toReal⁻¹ := by
+        refine Real.rpow_le_rpow ?_ (by linarith) (inv_nonneg.mpr hr.le)
+        have : 0 ≤ (k : ℝ) - L := by linarith
+        positivity
+    _ = (1 + c) ^ p.toReal⁻¹ * O := by
+        rw [Real.mul_rpow (by linarith) (Real.rpow_nonneg hO _), Real.rpow_rpow_inv hO hr.ne']
 
 end NLAlib

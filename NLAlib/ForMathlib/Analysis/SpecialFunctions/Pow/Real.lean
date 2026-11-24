@@ -29,7 +29,8 @@ powers against the difference of the bases. Upstream candidates for
 * `Real.rpow_one_div_two_mul_add_one_le_one_add`: $R^{1/(2p+1)} \le 1 + \varepsilon$ for
   $p \ge 2\log(N + 1)/\varepsilon$ and $1 \le R \le 1 + N^2$.
 * `Real.rpow_sub_rpow_le_max_mul`: $a^r - b^r \le \max(1, r)\,a^{r-1}(a - b)$ for
-  $0 \le b \le a$ and $r > 0$.
+  $0 \le b \le a$ and $r > 0$; `Real.rpow_sub_rpow_le_max_mul_sq`, the same on the squares.
+* `Real.one_add_one_div_rpow_le_exp_one`: $(1 + 1/p)^p \le e$ for real $p > 0$.
 -/
 
 @[expose] public section
@@ -148,5 +149,24 @@ theorem rpow_sub_rpow_le_max_mul {a b r : ℝ} (hb : 0 ≤ b) (hab : b ≤ a) (h
       have h2 : b ^ (r - 1) * b = b ^ r := by
         rw [rpow_sub_one hb'.ne', div_mul_cancel₀ _ hb'.ne']
       nlinarith
+
+/-- `Real.rpow_sub_rpow_le_max_mul` on the squares: for $0 \le b \le a$ and $p > 0$,
+$$a^p - b^p \le \max\Bigl(1, \frac{p}{2}\Bigr)\,a^{p-2}\,(a^2 - b^2)\,.$$ -/
+theorem rpow_sub_rpow_le_max_mul_sq {a b p : ℝ} (hb : 0 ≤ b) (hab : b ≤ a) (hp : 0 < p) :
+    a ^ p - b ^ p ≤ max 1 (p / 2) * a ^ (p - 2) * (a ^ 2 - b ^ 2) := by
+  have hsq (x r : ℝ) (hx : 0 ≤ x) : (x ^ 2) ^ r = x ^ (2 * r) := by
+    rw [← rpow_two, ← rpow_mul hx]
+  have h := rpow_sub_rpow_le_max_mul (sq_nonneg b) (pow_le_pow_left₀ hb hab 2)
+    (show 0 < p / 2 by linarith)
+  rwa [hsq _ _ (hb.trans hab), hsq _ _ hb, hsq _ _ (hb.trans hab),
+    show 2 * (p / 2) = p by ring, show 2 * (p / 2 - 1) = p - 2 by ring] at h
+
+/-- The real power $(1 + 1/p)^p$ is at most $e$ for $p > 0$; for natural $p$ this is
+`Real.one_add_inv_pow_le_exp`. -/
+theorem one_add_one_div_rpow_le_exp_one {p : ℝ} (hp : 0 < p) : (1 + 1 / p) ^ p ≤ exp 1 := by
+  calc (1 + 1 / p) ^ p ≤ exp (1 / p) ^ p := by
+        refine rpow_le_rpow (by positivity) ?_ hp.le
+        linarith [add_one_le_exp (1 / p)]
+    _ = exp 1 := by rw [← exp_mul, one_div_mul_cancel hp.ne']
 
 end Real

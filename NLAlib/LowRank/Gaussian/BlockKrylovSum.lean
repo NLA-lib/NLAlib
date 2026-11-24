@@ -327,7 +327,57 @@ theorem
           ((k : ℝ) / ((Fintype.card l₁ : ℝ) - k - 1)) +
         4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) *
           (((k : ℝ) + j) / ((Fintype.card l₂ : ℝ) - k - j - 1))) *
-        schattenNorm p (A - truncatedSVD A k) ^ p.toReal := sorry
+        schattenNorm p (A - truncatedSVD A k) ^ p.toReal := by
+  have := hX₁.isProbabilityMeasure
+  obtain ⟨Z₁, hZ₁, hAZ₁, hrk₁, hRi₁, hR₁⟩ := exists_frame_residual A hX₁ hl₁
+  obtain ⟨Z₂, hZ₂, hAZ₂, hrk₂, hRi₂, hR₂⟩ := exists_frame_residual A hX₂ (k := k + j) hl₂
+  set c₁ := 4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * Real.sqrt γ)
+  set c₂ := 4 * Real.exp (-3 * ((q₂ : ℝ) - 1))
+  set s := singularValues A k ^ (p.toReal - 2)
+  set S := schattenNorm p (A - truncatedSVD A k) ^ p.toReal
+  have hc₁ : 0 ≤ c₁ := by positivity
+  have hc₂ : 0 ≤ c₂ := by positivity
+  have hs : 0 ≤ s := Real.rpow_nonneg (singularValues_nonneg A k) _
+  have hI₁ : Integrable (fun ω => (1 + 2 * k * γ / ((j : ℝ) + 1)) * S +
+      s * c₁ * frobNorm ((A - truncatedSVD A k) * X₁ ω * pinv (Z₁ᴴ * X₁ ω)) ^ 2) μ :=
+    (integrable_const _).add (hRi₁.const_mul (s * c₁))
+  have hI : Integrable (fun ω => (1 + 2 * k * γ / ((j : ℝ) + 1)) * S +
+      s * c₁ * frobNorm ((A - truncatedSVD A k) * X₁ ω * pinv (Z₁ᴴ * X₁ ω)) ^ 2 +
+      s * c₂ * frobNorm ((A - truncatedSVD A (k + j)) * X₂ ω * pinv (Z₂ᴴ * X₂ ω)) ^ 2) μ :=
+    hI₁.add (hRi₂.const_mul (s * c₂))
+  refine (integral_mono_ae
+    (integrable_schattenNorm_sub_mul_rangeProjector_rsvd_rpow p A hY k) hI ?_).trans ?_
+  · filter_upwards [hrk₁, hrk₂] with ω hω₁ hω₂
+    have h := hZ₁.schattenNorm_sub_mul_rangeProjector_rsvd_rpow_le_of_range_le hp1 hp2 hZ₂ hω₁
+      hω₂ hAZ₁ hAZ₂ hq₁ hq₂ hγ hγ1 (h₁ ω) (h₂ ω)
+    have h2 := mul_le_mul_of_nonneg_left (pow_le_pow_left₀ (specNorm_nonneg _)
+      (specNorm_le_frobNorm ((A - truncatedSVD A k) * X₁ ω * pinv (Z₁ᴴ * X₁ ω))) 2)
+      (mul_nonneg hs hc₁)
+    linarith
+  · rw [integral_add hI₁ (hRi₂.const_mul (s * c₂)),
+      integral_add (integrable_const _) (hRi₁.const_mul (s * c₁)), integral_const, probReal_univ,
+      one_smul, integral_const_mul, integral_const_mul]
+    have hl : (k : ℝ) + j + 2 ≤ Fintype.card l₂ := by exact_mod_cast hl₂
+    have hl' : (k : ℝ) + 2 ≤ Fintype.card l₁ := by exact_mod_cast hl₁
+    have hr₁ : 0 ≤ (k : ℝ) / ((Fintype.card l₁ : ℝ) - k - 1) :=
+      div_nonneg (by positivity) (by linarith)
+    have hr₂ : 0 ≤ ((k : ℝ) + j) / ((Fintype.card l₂ : ℝ) - k - j - 1) :=
+      div_nonneg (by positivity) (by linarith)
+    have hopt : frobNorm (A - truncatedSVD A (k + j)) ^ 2 ≤ frobNorm (A - truncatedSVD A k) ^ 2 :=
+      pow_le_pow_left₀ (frobNorm_nonneg _) (frobNorm_sub_truncatedSVD_le_of_rank_le A
+        ((rank_truncatedSVD_le A k).trans (Nat.le_add_right k j))) 2
+    have hSV : s * frobNorm (A - truncatedSVD A k) ^ 2 ≤ S :=
+      singularValues_rpow_mul_frobNorm_sub_truncatedSVD_sq_le hp1 hp2 A k
+    have e₁ := mul_le_mul_of_nonneg_left hR₁ (mul_nonneg hs hc₁)
+    have hR₂' : ∫ ω, frobNorm ((A - truncatedSVD A (k + j)) * X₂ ω * pinv (Z₂ᴴ * X₂ ω)) ^ 2 ∂μ ≤
+        ((k : ℝ) + j) / ((Fintype.card l₂ : ℝ) - k - j - 1) *
+          frobNorm (A - truncatedSVD A (k + j)) ^ 2 :=
+      hR₂.trans_eq (by push_cast; ring)
+    have e₂ := mul_le_mul_of_nonneg_left hR₂' (mul_nonneg hs hc₂)
+    have e₃ := mul_le_mul_of_nonneg_left hopt (mul_nonneg (mul_nonneg hs hc₂) hr₂)
+    have e₄ := mul_le_mul_of_nonneg_left hSV (mul_nonneg hc₁ hr₁)
+    have e₅ := mul_le_mul_of_nonneg_left hSV (mul_nonneg hc₂ hr₂)
+    linarith
 
 -- A declaration name in the docstring exceeds 100 characters.
 set_option linter.style.longLine false in

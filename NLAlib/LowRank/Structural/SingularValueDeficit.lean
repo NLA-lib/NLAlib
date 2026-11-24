@@ -41,6 +41,8 @@ $k\gamma\kappa^p/(j + 1)$.
   `IsStarProjection.frobNorm_sub_truncatedSVD_mul_sq_le_of_singularValues_le_mul`,
   `NLAlib.min_schattenNorm_sub_mul_rpow_le_of_singularValues_le_mul`: the tail-count forms for
   $1 \le p \le 2$, for the Frobenius norm, and for the better of two candidates.
+* `NLAlib.schattenNorm_sub_truncatedSVD_rpow_eq_add_sum`: the Schatten tail split at a later
+  index.
 * `IsStarProjection.schattenNorm_sub_mul_le_add_rpow`,
   `IsStarProjection.schattenNorm_sub_mul_le_of_sq_singularValues_sub_le`,
   `IsStarProjection.schattenNorm_sub_mul_le_mul_of_singularValues_le_mul`: the head split and

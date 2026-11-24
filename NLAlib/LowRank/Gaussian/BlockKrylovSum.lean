@@ -273,7 +273,16 @@ theorem integral_frobNorm_sub_truncatedSVD_rbkiSum_sq_le_of_hasLaw_gaussianMatri
           ((k : ℝ) / ((Fintype.card l₁ : ℝ) - k - 1)) +
         4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) *
           (((k : ℝ) + j) / ((Fintype.card l₂ : ℝ) - k - j - 1))) *
-        frobNorm (A - truncatedSVD A k) ^ 2 := sorry
+        frobNorm (A - truncatedSVD A k) ^ 2 := by
+  have hm : Measurable fun B : Matrix n l₁ ℝ × Matrix n l₂ ℝ =>
+      Matrix.fromCols (blockKrylovMatrix (Aᴴ * A) B.1 q₁) (blockKrylovMatrix (Aᴴ * A) B.2 q₂) :=
+    measurable_fromCols_blockKrylovMatrix (Aᴴ * A) q₁ q₂
+  have hY := Measurable.comp_aemeasurable hm (hX₁.aemeasurable.prodMk hX₂.aemeasurable)
+  simp only [rbkiSum_def]
+  exact integral_frobNorm_sub_truncatedSVD_rsvd_sq_le_of_range_le_of_hasLaw_gaussianMatrix A hX₁
+    hX₂ hl₁ hl₂ hq₁ hq₂ hγ hγ1 hY
+    (fun ω => range_mul_blockKrylovMatrix_le_range_mul_fromCols_left A (X₁ ω) (X₂ ω) q₁ q₂)
+    (fun ω => range_mul_blockKrylovMatrix_le_range_mul_fromCols_right A (X₁ ω) (X₂ ω) q₁ q₂)
 
 /-! ### Schatten norms, $1 \le p \le 2$, in expectation -/
 
@@ -488,7 +497,60 @@ theorem integral_frobNorm_sub_truncatedSVD_rbkiSum_sq_le_one_add_mul_of_hasLaw_g
     (hq₁ : 1 + Real.log (12 * k / ε) / (2 * Real.sqrt 2 * ε ^ (3 : ℝ)⁻¹) ≤ q₁)
     (hq₂ : 1 + Real.log (12 / ε) / 3 ≤ q₂) :
     ∫ ω, frobNorm (A - truncatedSVD (rbkiSum A (X₁ ω) (X₂ ω) q₁ q₂) k) ^ 2 ∂μ ≤
-      (1 + ε) * frobNorm (A - truncatedSVD A k) ^ 2 := sorry
+      (1 + ε) * frobNorm (A - truncatedSVD A k) ^ 2 := by
+  set t := ε ^ (3 : ℝ)⁻¹ with ht
+  have ht0 : 0 < t := Real.rpow_pos_of_pos hε _
+  have ht1 : t ≤ 1 := Real.rpow_le_one hε.le hε1 (by norm_num)
+  have ht3 : t ^ 3 = ε := by
+    rw [ht, ← Real.rpow_natCast, ← Real.rpow_mul hε.le]
+    norm_num
+  have hkR : (1 : ℝ) ≤ k := by exact_mod_cast hk
+  have hL₁ : (1 : ℝ) ≤ 12 * k / ε := (one_le_div hε).2 (by linarith)
+  have hL₂ : (1 : ℝ) ≤ 12 / ε := (one_le_div hε).2 (by linarith)
+  have hq₁' : 1 ≤ q₁ := by
+    have : 0 ≤ Real.log (12 * k / ε) / (2 * Real.sqrt 2 * t) :=
+      div_nonneg (Real.log_nonneg hL₁) (by positivity)
+    exact_mod_cast (show (1 : ℝ) ≤ q₁ by linarith)
+  have hq₂' : 1 ≤ q₂ := by
+    have : 0 ≤ Real.log (12 / ε) / 3 := div_nonneg (Real.log_nonneg hL₂) (by norm_num)
+    exact_mod_cast (show (1 : ℝ) ≤ q₂ by linarith)
+  have h := integral_frobNorm_sub_truncatedSVD_rbkiSum_sq_le_of_hasLaw_gaussianMatrix A hX₁ hX₂
+    (k := k) (j := j) (by simp; omega) (by simp; omega) hq₁' hq₂' (γ := t ^ 2) (by positivity)
+    (pow_le_one₀ ht0.le ht1)
+  refine h.trans (mul_le_mul_of_nonneg_right ?_ (sq_nonneg _))
+  simp only [Fintype.card_fin, Real.sqrt_sq ht0.le]
+  push_cast
+  have hj0 : (0 : ℝ) < j + 1 := by positivity
+  -- the first term: `2kγ/(j + 1) ≤ ε/3`
+  have e₁ : 2 * k * t ^ 2 / ((j : ℝ) + 1) ≤ ε / 3 := by
+    rw [div_le_iff₀ hj0]
+    have : 6 * k ≤ ((j : ℝ) + 1) * t := (div_le_iff₀ ht0).1 hj
+    nlinarith [sq_nonneg t]
+  -- the second term: `e^{-2√2 (q₁-1) √γ} ≤ ε/(12k)`
+  have e₂ : Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * t) ≤ ε / (12 * k) := by
+    have hlog : Real.log (12 * k / ε) ≤ 2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * t := by
+      have := (div_le_iff₀ (by positivity : (0 : ℝ) < 2 * Real.sqrt 2 * t)).1
+        (by linarith : Real.log (12 * k / ε) / (2 * Real.sqrt 2 * t) ≤ (q₁ : ℝ) - 1)
+      linarith
+    calc Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * t)
+        ≤ Real.exp (-Real.log (12 * k / ε)) := Real.exp_le_exp.2 (by linarith)
+      _ = ε / (12 * k) := by
+        rw [Real.exp_neg, Real.exp_log (by positivity), inv_div]
+  -- the third term: `e^{-3(q₂-1)} ≤ ε/12`
+  have e₃ : Real.exp (-3 * ((q₂ : ℝ) - 1)) ≤ ε / 12 := by
+    calc Real.exp (-3 * ((q₂ : ℝ) - 1))
+        ≤ Real.exp (-Real.log (12 / ε)) := Real.exp_le_exp.2 (by linarith)
+      _ = ε / 12 := by rw [Real.exp_neg, Real.exp_log (by positivity), inv_div]
+  have hr₁ : (k : ℝ) / (2 * k + 1 - k - 1) = 1 := by
+    rw [show (2 : ℝ) * k + 1 - k - 1 = k by ring, div_self (by positivity)]
+  have hr₂ : ((k : ℝ) + j) / (2 * (k + j) + 1 - k - j - 1) = 1 := by
+    rw [show (2 : ℝ) * (k + j) + 1 - k - j - 1 = k + j by ring, div_self (by positivity)]
+  rw [hr₁, hr₂, mul_one, mul_one]
+  have e₂' : 4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * t) ≤ ε / 3 := by
+    calc 4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * t)
+        ≤ 4 * k * (ε / (12 * k)) := by gcongr
+      _ = ε / 3 := by field_simp; ring
+  linarith
 
 -- The declaration name alone exceeds 100 characters.
 set_option linter.style.longLine false in

@@ -919,7 +919,7 @@ statement was weakened and no constant changed):
 * CB1 `IsStarProjection.schattenNorm_sub_mul_rpow_le_of_singularValues_le_mul`: loses
   `hβ : ∀ i < k, 0 ≤ β i` (`hβ0` stays).
 * CB2 `min_schattenNorm_sub_mul_rpow_le_of_singularValues_le_mul`: loses `hβ₁`, `hβ₂`.
-* ST4 `IsStarProjection.schattenNorm_sub_mul_le_of_sq_singularValues_sub_le`: loses `hγ : 0 ≤ γ`.
+* ST4 `IsStarProjection.schattenNorm_sub_mul_le_of_singularValues_sq_sub_le`: loses `hγ : 0 ≤ γ`.
 
 **Change to a merged statement** (decision CHEB-GENERAL, recorded in the rename map's
 `statementChanged`): `exists_degree_lt_div_sq_le_exp_singularGapRatio` takes
@@ -942,14 +942,27 @@ private `exp_div_two_le_abs_eval_T_comp` (a copy of
 | `HasOrthonormalCols.sq_singularValues_sub_le_sq_singularValues_rbki` (RZ3) | `HasOrthonormalCols.singularValues_sq_sub_le_singularValues_rbki_sq` |
 | `HasOrthonormalCols.sq_singularValues_sub_le_sq_singularValues_rbki_singularGapRatio` (RZ4) | `HasOrthonormalCols.singularValues_sq_sub_le_singularValues_rbki_sq_singularGapRatio` |
 | `HasOrthonormalCols.sum_sq_singularValues_sub_sq_singularValues_rbki_le` (RZ4F) | `HasOrthonormalCols.sum_singularValues_sq_sub_singularValues_rbki_sq_le` |
+| `IsStarProjection.schattenNorm_sub_mul_le_of_sq_singularValues_sub_le` (ST4) | `IsStarProjection.schattenNorm_sub_mul_le_of_singularValues_sq_sub_le` |
 
-(all in `NLAlib` except the `IsStarProjection` ones). ST4's name keeps `sq_singularValues` in its
-hypothesis part, which N6 does not check. The private frame lemma of GA0–GA3 became the public
+(all in `NLAlib` except the `IsStarProjection` ones). ST4 is renamed in its hypothesis part too
+(stage review S-3), for consistency with its siblings, although N6 checks only the conclusion
+part. The private frame lemma of GA0–GA3 became the public
 `exists_integral_frobNorm_sub_truncatedSVD_mul_mul_pinv_sq_le_of_hasLaw_gaussianMatrix` in
 `LowRank/Gaussian/RangeFinder.lean`, so that both Gaussian files use it (rule 10).
 
 **Moves in the cleanup** (no statement change): the six helpers listed in §5 under "Additions"
-that carried a `TODO(move)`, and the file split of §5.
+that carried a `TODO(move)`, and the file split of §5. After the stage review (S-2),
+`schattenNorm_sub_truncatedSVD_rpow_eq_add_sum` (the Schatten tail split at a later index, pure
+matrix analysis) moves from `LowRank/Structural/SingularValueDeficit.lean` to
+`Matrix/Spectral/SingularValueDecay.lean`, next to the tail count.
+
+**Additions after the stage review** (S-1): the integrability companions
+`integrable_frobNorm_sub_truncatedSVD_rbkiSum_sq` and
+`integrable_schattenNorm_sub_mul_rangeProjector_rbkiSum_rpow` in
+`LowRank/Gaussian/BlockKrylovSum.lean`, instances of the `rsvd` lemmas at the two block Krylov
+test matrices side by side (measurability of that test matrix from
+`measurable_fromCols_blockKrylovMatrix`, the lemma behind `measurable_rbkiSum`); GA1c and GA1pc
+state that measurability in one line, as the companions do, instead of re-deriving it.
 
 **Duplication audit** (harness `reports/Audit-Duplicates-LowRank.md`; no statement changes):
 `IsStarProjection.hasOrthonormalCols_two_smul_sub_one` is now a two-line proof from Mathlib's
@@ -1012,7 +1025,7 @@ proofs (scratch file, not committed); that text is in the history of this note (
 | RZ4F | `NLAlib.HasOrthonormalCols.sum_singularValues_sq_sub_singularValues_rbki_sq_le` | `LowRank/Structural/RitzValues.lean` |
 | TS1 | `NLAlib.range_mul_blockKrylovMatrix_le_range_mul_fromCols_left`, `NLAlib.range_mul_blockKrylovMatrix_le_range_mul_fromCols_right`, `NLAlib.singularValues_rbki_le_singularValues_rbkiSum_left`, `NLAlib.singularValues_rbki_le_singularValues_rbkiSum_right` | `LowRank/Structural/BlockKrylovSum.lean` |
 | ST2 | `IsStarProjection.schattenNorm_sub_mul_rpow_le_add_sum` | `LowRank/Structural/SingularValueDeficit.lean` |
-| ST4 | `IsStarProjection.schattenNorm_sub_mul_le_of_sq_singularValues_sub_le` | `LowRank/Structural/SingularValueDeficit.lean` |
+| ST4 | `IsStarProjection.schattenNorm_sub_mul_le_of_singularValues_sq_sub_le` | `LowRank/Structural/SingularValueDeficit.lean` |
 | RZ5 | `NLAlib.HasOrthonormalCols.frobNorm_sub_truncatedSVD_rbki_sq_le_add_mul` | `LowRank/Structural/RitzValues.lean` |
 | TS2 | `NLAlib.HasOrthonormalCols.frobNorm_sub_truncatedSVD_rsvd_sq_le_of_range_le` | `LowRank/Structural/BlockKrylovSum.lean` |
 | TS2m | `NLAlib.HasOrthonormalCols.min_frobNorm_sub_truncatedSVD_rbki_sq_le` | `LowRank/Structural/BlockKrylovSum.lean` |

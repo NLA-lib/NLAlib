@@ -40,6 +40,9 @@ content is in `NLAlib.LowRank.Structural.BlockKrylovSum`.
 
 * `NLAlib.integral_frobNorm_sub_truncatedSVD_rbki_sq_le_add_mul_of_hasLaw_gaussianMatrix`: one
   run, Frobenius norm, per-rank form.
+* `NLAlib.integrable_frobNorm_sub_truncatedSVD_rbkiSum_sq`,
+  `NLAlib.integrable_schattenNorm_sub_mul_rangeProjector_rbkiSum_rpow`: the integrability
+  companions of the bounds in expectation.
 * `NLAlib.integral_frobNorm_sub_truncatedSVD_rsvd_sq_le_of_range_le_of_hasLaw_gaussianMatrix`,
   `NLAlib.integral_frobNorm_sub_truncatedSVD_rbkiSum_sq_le_of_hasLaw_gaussianMatrix`: the
   Frobenius error in expectation.
@@ -113,6 +116,38 @@ theorem integral_frobNorm_sub_truncatedSVD_rbki_sq_le_add_mul_of_hasLaw_gaussian
       one_smul, integral_const_mul]
     have h := mul_le_mul_of_nonneg_left hR hc
     linarith
+
+/-! ### Integrability -/
+
+omit [DecidableEq m] in
+/-- The squared Frobenius error
+$\|\mathbf{A} - \llbracket\mathsf{rbkiSum}(\mathbf{A}, \mathbf{X}_1, \mathbf{X}_2, q_1, q_2)
+\rrbracket_k\|_{\mathsf{F}}^2$ of block Krylov iteration on the sum of two block Krylov spaces
+is integrable, for any almost everywhere measurable test matrices and finite measure: the
+instance of `NLAlib.integrable_frobNorm_sub_truncatedSVD_rsvd_sq` at the two block Krylov test
+matrices side by side. -/
+theorem integrable_frobNorm_sub_truncatedSVD_rbkiSum_sq [IsFiniteMeasure μ] (A : Matrix m n ℝ)
+    (hX₁ : AEMeasurable X₁ μ) (hX₂ : AEMeasurable X₂ μ) (q₁ q₂ k : ℕ) :
+    Integrable (fun ω => frobNorm (A - truncatedSVD (rbkiSum A (X₁ ω) (X₂ ω) q₁ q₂) k) ^ 2) μ :=
+  integrable_frobNorm_sub_truncatedSVD_rsvd_sq A
+    ((measurable_fromCols_blockKrylovMatrix (Aᴴ * A) q₁ q₂).comp_aemeasurable (hX₁.prodMk hX₂)) k
+
+omit [DecidableEq m] in
+/-- The $p$-th power of the Schatten error of the two-sided output of block Krylov iteration on
+the sum of two block Krylov spaces is integrable: with
+$\mathbf{B} = \llbracket\mathsf{rbkiSum}(\mathbf{A}, \mathbf{X}_1, \mathbf{X}_2, q_1, q_2)
+\rrbracket_k$ and $\mathbf{P}_{\mathbf{B}^{\mathsf{H}}}$ the projector onto its row space,
+$\|\mathbf{A} - \mathbf{A}\mathbf{P}_{\mathbf{B}^{\mathsf{H}}}\|_{S_p}^p$ is integrable, for any
+almost everywhere measurable test matrices and finite measure: the instance of
+`NLAlib.integrable_schattenNorm_sub_mul_rangeProjector_rsvd_rpow` at the two block Krylov test
+matrices side by side. -/
+theorem integrable_schattenNorm_sub_mul_rangeProjector_rbkiSum_rpow [IsFiniteMeasure μ]
+    (p : ℝ≥0∞) (A : Matrix m n ℝ) (hX₁ : AEMeasurable X₁ μ) (hX₂ : AEMeasurable X₂ μ)
+    (q₁ q₂ k : ℕ) :
+    Integrable (fun ω => schattenNorm p (A - A * rangeProjector
+      (truncatedSVD (rbkiSum A (X₁ ω) (X₂ ω) q₁ q₂) k)ᴴ) ^ p.toReal) μ :=
+  integrable_schattenNorm_sub_mul_rangeProjector_rsvd_rpow p A
+    ((measurable_fromCols_blockKrylovMatrix (Aᴴ * A) q₁ q₂).comp_aemeasurable (hX₁.prodMk hX₂)) k
 
 /-! ### Frobenius norm, in expectation -/
 
@@ -231,10 +266,8 @@ theorem integral_frobNorm_sub_truncatedSVD_rbkiSum_sq_le_of_hasLaw_gaussianMatri
         4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) *
           (((k : ℝ) + j) / ((Fintype.card l₂ : ℝ) - k - j - 1))) *
         frobNorm (A - truncatedSVD A k) ^ 2 := by
-  have hm : Measurable fun B : Matrix n l₁ ℝ × Matrix n l₂ ℝ =>
-      Matrix.fromCols (blockKrylovMatrix (Aᴴ * A) B.1 q₁) (blockKrylovMatrix (Aᴴ * A) B.2 q₂) :=
-    measurable_fromCols_blockKrylovMatrix (Aᴴ * A) q₁ q₂
-  have hY := Measurable.comp_aemeasurable hm (hX₁.aemeasurable.prodMk hX₂.aemeasurable)
+  have hY := (measurable_fromCols_blockKrylovMatrix (Aᴴ * A) q₁ q₂).comp_aemeasurable
+    (hX₁.aemeasurable.prodMk hX₂.aemeasurable)
   simp only [rbkiSum_def]
   exact integral_frobNorm_sub_truncatedSVD_rsvd_sq_le_of_range_le_of_hasLaw_gaussianMatrix A hX₁
     hX₂ hl₁ hl₂ hq₁ hq₂ hγ hγ1 hY
@@ -376,10 +409,8 @@ theorem integral_schattenNorm_sub_mul_rangeProjector_rbkiSum_rpow_le_of_hasLaw_g
         4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) *
           (((k : ℝ) + j) / ((Fintype.card l₂ : ℝ) - k - j - 1))) *
         schattenNorm p (A - truncatedSVD A k) ^ p.toReal := by
-  have hm : Measurable fun B : Matrix n l₁ ℝ × Matrix n l₂ ℝ =>
-      Matrix.fromCols (blockKrylovMatrix (Aᴴ * A) B.1 q₁) (blockKrylovMatrix (Aᴴ * A) B.2 q₂) :=
-    measurable_fromCols_blockKrylovMatrix (Aᴴ * A) q₁ q₂
-  have hY := Measurable.comp_aemeasurable hm (hX₁.aemeasurable.prodMk hX₂.aemeasurable)
+  have hY := (measurable_fromCols_blockKrylovMatrix (Aᴴ * A) q₁ q₂).comp_aemeasurable
+    (hX₁.aemeasurable.prodMk hX₂.aemeasurable)
   simp only [rbkiSum_def]
   exact
     integral_schattenNorm_sub_mul_rangeProjector_rsvd_rpow_le_of_range_le_of_hasLaw_gaussianMatrix

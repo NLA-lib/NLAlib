@@ -563,11 +563,11 @@ $$\mathbb{P}\Bigl[\|\mathbf{A} - \mathbf{A}\mathbf{P}_{\mathbf{B}^{\mathsf{H}}}\
 The two-sided error is at most the one-sided error
 (`IsStarProjection.matrixNorm_sub_mul_le_matrixNorm_sub_mul`), so this follows from
 `NLAlib.measureReal_schattenNorm_sub_truncatedSVD_rbkiSum_gt_le_of_hasLaw_gaussianMatrix`.
-[BakshiClarksonWoodruff2022, Theorem 3.1]; the output $\mathbf{A}(\mathbf{I} -
-\mathbf{Z}\mathbf{Z}^{\mathsf{T}})$ of the theorem there, for an algorithm that selects one of
-the two runs, with blocks of $k$ and $s$ columns, probability $9/10$ and unspecified constants;
-here for $2 \le p < \infty$ and the projection onto the sum of the two spaces, a tail bound for
-every $\delta$ with oversampled blocks and explicit constants.
+[BakshiClarksonWoodruff2022, Theorem 3.1]; there the error
+$\mathbf{A} - \mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}}$ of the two-sided output, for an
+algorithm that selects one of the two runs, with blocks of $k$ and $s$ columns, probability
+$9/10$ and unspecified constants; here for $2 \le p < \infty$ and the projection onto the sum of
+the two spaces, a tail bound for every $\delta$ with oversampled blocks and explicit constants.
 Result: rbki-sum-schatten-tail -/
 theorem measureReal_schattenNorm_sub_mul_rangeProjector_rbkiSum_gt_le_of_hasLaw_gaussianMatrix
     {p : ℝ≥0∞} (hp2 : 2 ≤ p) (hp : p ≠ ⊤)

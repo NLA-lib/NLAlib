@@ -207,7 +207,34 @@ theorem measureReal_frobNorm_sub_mul_mul_pinv_sq_gt_le_of_hasLaw_gaussianMatrix 
     {τ : ℝ} (hτ : 0 < τ) :
     μ.real {ω | τ * (frobNorm (A - A * Z * Zᴴ) ^ 2 * Fintype.card s /
         ((Fintype.card l : ℝ) - Fintype.card s - 1)) <
-      frobNorm ((A - A * Z * Zᴴ) * X ω * pinv (Zᴴ * X ω)) ^ 2} ≤ τ⁻¹ := sorry
+      frobNorm ((A - A * Z * Zᴴ) * X ω * pinv (Zᴴ * X ω)) ^ 2} ≤ τ⁻¹ := by
+  have : IsProbabilityMeasure μ := hX.isProbabilityMeasure_iff.2 inferInstance
+  set f := fun ω => frobNorm ((A - A * Z * Zᴴ) * X ω * pinv (Zᴴ * X ω)) ^ 2
+  set E := frobNorm (A - A * Z * Zᴴ) ^ 2 * Fintype.card s /
+    ((Fintype.card l : ℝ) - Fintype.card s - 1)
+  have hint : Integrable f μ :=
+    integrable_frobNorm_sub_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix A hX hZ hs
+  have hE : ∫ ω, f ω ∂μ = E :=
+    integral_frobNorm_sub_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix A hX hZ hs
+  have hden : (0 : ℝ) < (Fintype.card l : ℝ) - Fintype.card s - 1 := by
+    have : ((Fintype.card s + 2 : ℕ) : ℝ) ≤ Fintype.card l := by exact_mod_cast hs
+    push_cast at this
+    linarith
+  have hf0 : 0 ≤ᵐ[μ] f := Filter.Eventually.of_forall fun ω => sq_nonneg _
+  rcases (show 0 ≤ E by positivity).eq_or_lt with h0 | hpos
+  · have hae : f =ᵐ[μ] 0 := (integral_eq_zero_iff_of_nonneg (fun ω => sq_nonneg _) hint).1
+      (hE.trans h0.symm)
+    have hnull : μ {ω | τ * E < f ω} = 0 := by
+      refine measure_mono_null (fun ω (hω : τ * E < f ω) => ?_) hae
+      change f ω ≠ 0
+      rw [← h0, mul_zero] at hω
+      exact hω.ne'
+    rw [measureReal_def, hnull, ENNReal.toReal_zero]
+    exact (inv_pos.mpr hτ).le
+  · refine (measureReal_mono fun ω (hω : τ * E < f ω) => hω.le).trans ?_
+    refine (measureReal_ge_le_integral_div hf0 hint (mul_pos hτ hpos)).trans_eq ?_
+    rw [hE]
+    field_simp
 
 /-! ### The Gram form and its corollaries -/
 

@@ -152,7 +152,23 @@ of the column space of $\llbracket\mathbf{P}\mathbf{A}\rrbracket_k$. -/
 theorem _root_.IsStarProjection.frobNorm_sub_truncatedSVD_mul_sq {P : Matrix m m 𝕜}
     (hP : IsStarProjection P) (A : Matrix m n 𝕜) (k : ℕ) :
     frobNorm (A - truncatedSVD (P * A) k) ^ 2 = frobNorm (A - truncatedSVD A k) ^ 2 +
-      ∑ i ∈ Finset.range k, (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) := sorry
+      ∑ i ∈ Finset.range k, (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) := by
+  classical
+  set Y := truncatedSVD (P * A) k
+  have hYP : LinearMap.range Y.mulVecLin ≤ LinearMap.range P.mulVecLin :=
+    (range_truncatedSVD_le (P * A) k).trans
+      (range_le_iff_exists_mul.mpr ⟨A, rfl⟩)
+  have hRP : rangeProjector Y * P = rangeProjector Y := by
+    simpa only [hP.rangeProjector_eq] using rangeProjector_mul_rangeProjector_of_range_le' hYP
+  have hRA : rangeProjector Y * A = Y := by
+    rw [← hRP, Matrix.mul_assoc, rangeProjector_truncatedSVD_mul]
+  have h := (isStarProjection_rangeProjector Y).frobNorm_sub_mul_sq_eq_add_sum A
+    ((rank_rangeProjector Y).trans_le (rank_truncatedSVD_le _ k))
+  rw [hRA] at h
+  rw [h]
+  congr 1
+  refine Finset.sum_congr rfl fun i hi => ?_
+  rw [singularValues_truncatedSVD, if_pos (Finset.mem_range.mp hi)]
 
 omit [DecidableEq m] [DecidableEq n] in
 /-- The energy of a block splits between the head and the tail: for every $k$ and

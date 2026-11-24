@@ -145,7 +145,24 @@ theorem _root_.IsStarProjection.schattenNorm_mul_mul_rpow_add_le {p : ℝ≥0∞
     (hp : p ≠ ⊤) {P : Matrix m m 𝕜} {Q : Matrix n n 𝕜} (hP : IsStarProjection P)
     (hQ : IsStarProjection Q) (A : Matrix m n 𝕜) :
     schattenNorm p (P * A * Q) ^ p.toReal + schattenNorm p ((1 - P) * A * (1 - Q)) ^ p.toReal ≤
-      schattenNorm p A ^ p.toReal := sorry
+      schattenNorm p A ^ p.toReal := by
+  have : Fact (1 ≤ p) := ⟨hp1⟩
+  have hp0 : p ≠ 0 := (lt_of_lt_of_le zero_lt_one hp1).ne'
+  have h₁ : (P * A * Q)ᴴ * ((1 - P) * A * (1 - Q)) = 0 := by
+    rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, hP.conjTranspose_eq,
+      show Qᴴ * (Aᴴ * P) * ((1 - P) * A * (1 - Q)) = Qᴴ * Aᴴ * (P * (1 - P)) * A * (1 - Q) by
+        simp only [Matrix.mul_assoc], hP.mul_one_sub_self]
+    simp
+  have h₂ : P * A * Q * ((1 - P) * A * (1 - Q))ᴴ = 0 := by
+    rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, hQ.one_sub.conjTranspose_eq,
+      show P * A * Q * ((1 - Q) * (Aᴴ * (1 - P)ᴴ)) = P * A * (Q * (1 - Q)) * Aᴴ * (1 - P)ᴴ by
+        simp only [Matrix.mul_assoc], hQ.mul_one_sub_self]
+    simp
+  rw [← schattenNorm_add_rpow_of_conjTranspose_mul_eq_zero_of_mul_conjTranspose_eq_zero hp0 hp
+    h₁ h₂]
+  have h := SymmetricGauge.matrixNorm_mul_mul_add_one_sub_mul_mul_one_sub_le (lpGauge p) hP hQ A
+  rw [lpGauge_matrixNorm, lpGauge_matrixNorm] at h
+  exact Real.rpow_le_rpow (schattenNorm_nonneg _ _) h ENNReal.toReal_nonneg
 
 open scoped ComplexOrder in
 omit [DecidableEq n] in

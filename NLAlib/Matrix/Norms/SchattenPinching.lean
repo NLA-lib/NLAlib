@@ -44,19 +44,6 @@ namespace NLAlib
 variable {𝕜 : Type*} [RCLike 𝕜] {m n : Type*} [Fintype m] [Fintype n] [DecidableEq m]
   [DecidableEq n]
 
--- TODO(move): NLAlib/Matrix/Basic/Projector.lean
-/-- The reflection $2\mathbf{P} - \mathbf{I}$ through the range of an orthogonal projector is
-unitary. -/
-theorem _root_.IsStarProjection.hasOrthonormalCols_two_smul_sub_one {P : Matrix m m 𝕜}
-    (hP : IsStarProjection P) : HasOrthonormalCols ((2 : 𝕜) • P - 1) := by
-  have h : ((2 : 𝕜) • P - 1)ᴴ = (2 : 𝕜) • P - 1 := by
-    rw [Matrix.conjTranspose_sub, Matrix.conjTranspose_smul, hP.conjTranspose_eq,
-      Matrix.conjTranspose_one, star_ofNat]
-  rw [HasOrthonormalCols, h, sub_mul, mul_sub, mul_sub, smul_mul_smul_comm, hP.mul_self,
-    mul_one, one_mul, one_mul]
-  rw [show (2 : 𝕜) * 2 = 2 + 2 by norm_num, add_smul]
-  abel
-
 /-- **Pinching by a pair of projectors**: for orthogonal projectors $\mathbf{P}$ ($m \times m$)
 and $\mathbf{Q}$ ($n \times n$), an $m \times n$ matrix $\mathbf{A}$ and every unitarily
 invariant norm $\|\cdot\|_{\Phi}$,

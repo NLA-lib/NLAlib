@@ -61,7 +61,8 @@ $a\mathbf{I} \preceq \mathbf{A} \preceq b\mathbf{I}$ for an interval.
 * `Matrix.IsHermitian.specNorm_cfc_le`: $\|f(\mathbf{A})\|_2 \le \max \lvert f \rvert$ on the
   spectrum.
 * `NLAlib.HasOrthonormalCols.re_quadForm_cfc_eq_sum`: the quadratic form of $f(\mathbf{A})$ as a
-  weighted sum.
+  weighted sum; `Matrix.IsHermitian.re_quadForm_cfc_eq_sum_add_sum`, the same through two
+  complementary invariant frames.
 * `Matrix.IsHermitian.norm_toLp_cfc_mulVec_sq`,
   `Matrix.IsHermitian.norm_star_dotProduct_cfc_mulVec_le`: the norm of
   $\psi(\mathbf{A})\mathbf{x}$ as a quadratic form, and a Cauchy–Schwarz inequality for
@@ -743,6 +744,34 @@ theorem _root_.Matrix.IsHermitian.cfc_mul_eq_mul_diagonal_of_mul_eq {r : Type*} 
           rw [hAW, Matrix.mul_assoc]
   rw [hcfc, Matrix.mul_assoc, Matrix.mul_assoc, diagonal_mul_eq_mul_diagonal_of_eq hZ f,
     ← Matrix.mul_assoc, ← Matrix.mul_assoc, hUU, Matrix.one_mul]
+
+omit [DecidableEq m] in
+/-- The quadratic form of a function of a Hermitian matrix through two complementary invariant
+frames: if $\mathbf{T}\mathbf{T}^{\mathsf{H}} + \mathbf{V}\mathbf{V}^{\mathsf{H}} = \mathbf{I}$,
+$\mathbf{H}\mathbf{T} = \mathbf{T}\operatorname{diag}(\mathbf{d})$ and
+$\mathbf{H}\mathbf{V} = \mathbf{V}\operatorname{diag}(\mathbf{e})$, then for every real
+$\varphi$ and every $\mathbf{x}$,
+$$\operatorname{Re}\bigl(\mathbf{x}^{\mathsf{H}}\varphi(\mathbf{H})\mathbf{x}\bigr) =
+\sum_j \varphi(d_j)\,\lvert(\mathbf{T}^{\mathsf{H}}\mathbf{x})_j\rvert^2 +
+\sum_j \varphi(e_j)\,\lvert(\mathbf{V}^{\mathsf{H}}\mathbf{x})_j\rvert^2\,.$$
+The two-frame form of `NLAlib.HasOrthonormalCols.re_quadForm_cfc_eq_sum`: a head frame and its
+complement, with no relabelling into one square frame. -/
+theorem _root_.Matrix.IsHermitian.re_quadForm_cfc_eq_sum_add_sum {p q : Type*} [Fintype p]
+    [Fintype q] [DecidableEq p] [DecidableEq q] {H : Matrix n n 𝕜} (hH : H.IsHermitian)
+    {T : Matrix n p 𝕜} {V : Matrix n q 𝕜} (h1 : T * Tᴴ + V * Vᴴ = 1) {d : p → ℝ} {e : q → ℝ}
+    (hHT : H * T = T * Matrix.diagonal fun j => (d j : 𝕜))
+    (hHV : H * V = V * Matrix.diagonal fun j => (e j : 𝕜)) (φ : ℝ → ℝ) (x : n → 𝕜) :
+    RCLike.re (quadForm (cfc φ H) x) =
+      ∑ j, φ (d j) * ‖(Tᴴ *ᵥ x) j‖ ^ 2 + ∑ j, φ (e j) * ‖(Vᴴ *ᵥ x) j‖ ^ 2 := by
+  have hsplit : cfc φ H =
+      Tᴴᴴ * (Matrix.diagonal fun j => (φ (d j) : 𝕜)) * Tᴴ +
+        Vᴴᴴ * (Matrix.diagonal fun j => (φ (e j) : 𝕜)) * Vᴴ := by
+    rw [Matrix.conjTranspose_conjTranspose, Matrix.conjTranspose_conjTranspose,
+      ← hH.cfc_mul_eq_mul_diagonal_of_mul_eq hHT φ, ← hH.cfc_mul_eq_mul_diagonal_of_mul_eq hHV φ,
+      Matrix.mul_assoc, Matrix.mul_assoc, ← Matrix.mul_add, h1, Matrix.mul_one]
+  rw [hsplit, quadForm_add_left, quadForm_conjTranspose_mul_mul, quadForm_conjTranspose_mul_mul,
+    quadForm_diagonal, quadForm_diagonal, map_add, map_sum, map_sum]
+  congr 1 <;> exact Finset.sum_congr rfl fun j _ => by rw [← RCLike.ofReal_mul, RCLike.ofReal_re]
 
 /-! ### Lipschitz functions in the Frobenius norm -/
 

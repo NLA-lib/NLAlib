@@ -187,7 +187,7 @@ private theorem frobNorm_sub_truncatedSVD_mul_sq_le_of_heavy {P : Matrix m m �
   set E := 4 * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * Real.sqrt γ) *
     specNorm ((A - truncatedSVD A k) * Ω₁ * pinv (Z₁ᴴ * Ω₁)) ^ 2
   have h := hP.frobNorm_sub_truncatedSVD_mul_sq_le_of_singularValues_le_mul (β := fun _ => E)
-    hγ.le htail fun i hi => (hZ₁.sq_singularValues_sub_le_sq_singularValues_rbki hΩ₁ hAZ₁ hq₁
+    hγ.le htail fun i hi => (hZ₁.singularValues_sq_sub_le_singularValues_rbki_sq hΩ₁ hAZ₁ hq₁
       hγ hγ1 hi).trans (pow_le_pow_left₀ (singularValues_nonneg _ _) (hdom i) 2)
   rw [Real.sq_sqrt zero_le_two, Finset.sum_const, Finset.card_range, nsmul_eq_mul] at h
   have e : 4 * (k : ℝ) * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * Real.sqrt γ) *
@@ -204,7 +204,7 @@ summed gapped bound of the second run gives
 $\sum_{i<k} (\sigma_i(\mathbf{A})^2 - \sigma_i(\mathbf{P}\mathbf{A})^2) \le
 4e^{-3(q_2-1)}\|\mathbf{M}_{k+j}\|_{\mathsf{F}}^2$, at the gap ratio
 $(\sigma_{k-1} - \sigma_{k+j})/(\sigma_{k-1} + \sigma_{k+j}) \ge 9/64$. -/
-private theorem sum_sq_singularValues_sub_sq_singularValues_le_of_gap {P : Matrix m m 𝕜}
+private theorem sum_singularValues_sq_sub_singularValues_sq_le_of_gap {P : Matrix m m 𝕜}
     {A : Matrix m n 𝕜} {Ω₂ : Matrix n l₂ 𝕜} {Z₂ : Matrix n s₂ 𝕜}
     (hZ₂ : HasOrthonormalCols Z₂) (hΩ₂ : (Ω₂ᴴ * Z₂).rank = Z₂.rank) {k j : ℕ}
     (hAZ₂ : A * Z₂ * Z₂ᴴ = truncatedSVD A (k + j)) {q₂ : ℕ} (hq₂ : 1 ≤ q₂)
@@ -223,7 +223,7 @@ private theorem sum_sq_singularValues_sub_sq_singularValues_le_of_gap {P : Matri
       ∑ i ∈ Finset.range k, (singularValues A i ^ 2 - singularValues (rbki A Ω₂ q₂) i ^ 2) :=
     Finset.sum_le_sum fun i _ =>
       sub_le_sub_left (pow_le_pow_left₀ (singularValues_nonneg _ _) (hdom i) 2) _
-  have hRZ := hZ₂.sum_sq_singularValues_sub_sq_singularValues_rbki_le hΩ₂ hk.symm
+  have hRZ := hZ₂.sum_singularValues_sq_sub_singularValues_rbki_sq_le hΩ₂ hk.symm
     (Nat.le_add_right k j) hAZ₂ hq₂
   -- the gap ratio is at least `(3/8)²`
   have hratio : 3 / 8 ≤ Real.sqrt (singularGapRatio A h (k + j)) := by
@@ -262,7 +262,7 @@ private theorem frobNorm_sub_truncatedSVD_mul_sq_le_of_gap {P : Matrix m m 𝕜}
       4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) *
         frobNorm ((A - truncatedSVD A (k + j)) * Ω₂ * pinv (Z₂ᴴ * Ω₂)) ^ 2 := by
   rw [hP.frobNorm_sub_truncatedSVD_mul_sq A k]
-  linarith [sum_sq_singularValues_sub_sq_singularValues_le_of_gap hZ₂ hΩ₂ hAZ₂ hq₂ hdom hgap]
+  linarith [sum_singularValues_sq_sub_singularValues_sq_le_of_gap hZ₂ hΩ₂ hAZ₂ hq₂ hdom hgap]
 
 omit [DecidableEq m] in
 /-- **The Frobenius error of a sketch containing two block Krylov sketches**: let
@@ -491,7 +491,7 @@ private theorem schattenNorm_sub_mul_rangeProjector_rpow_le_of_heavy {p : ℝ≥
     (β := fun _ => E) (fun h0 _ _ => hE0 h0) htail
     fun i hi => by
       rw [singularValues_rangeProjector_truncatedSVD_mul hP A hi]
-      exact (hZ₁.sq_singularValues_sub_le_sq_singularValues_rbki hΩ₁ hAZ₁ hq₁ hγ hγ1 hi).trans
+      exact (hZ₁.singularValues_sq_sub_le_singularValues_rbki_sq hΩ₁ hAZ₁ hq₁ hγ hγ1 hi).trans
         (pow_le_pow_left₀ (singularValues_nonneg _ _) (hdom i) 2)
   rw [Finset.sum_const, Finset.card_range, nsmul_eq_mul] at h
   -- `√2^p ≤ 2` for `p ≤ 2`
@@ -545,7 +545,7 @@ private theorem schattenNorm_sub_mul_rangeProjector_rpow_le_of_gap {p : ℝ≥0�
       linarith
   rw [mul_zero, zero_mul, zero_div, add_zero, one_mul] at h
   exact h.trans (add_le_add le_rfl (mul_le_mul_of_nonneg_left
-    (sum_sq_singularValues_sub_sq_singularValues_le_of_gap hZ₂ hΩ₂ hAZ₂ hq₂ hdom hgap)
+    (sum_singularValues_sq_sub_singularValues_sq_le_of_gap hZ₂ hΩ₂ hAZ₂ hq₂ hdom hgap)
     (Real.rpow_nonneg (singularValues_nonneg _ _) _)))
 
 omit [DecidableEq m] in

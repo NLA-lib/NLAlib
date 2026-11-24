@@ -22,7 +22,7 @@ the range of $\mathbf{P}$ to capture $\llbracket\mathbf{A}\rrbracket_L$.
 
 ## Main results
 
-* `IsStarProjection.sq_singularValues_sub_sq_specNorm_le`: $\sigma_i(\mathbf{P}\mathbf{A})^2 \ge
+* `IsStarProjection.singularValues_sq_sub_specNorm_sq_le`: $\sigma_i(\mathbf{P}\mathbf{A})^2 \ge
   \sigma_i(\mathbf{A})^2 - \|(\mathbf{I} - \mathbf{P})\llbracket\mathbf{A}\rrbracket_{i+1}\|_2^2$.
 * `NLAlib.singularValues_rangeProjector_mul_le_of_range_le`: a larger range gives larger singular
   values of the compression.
@@ -52,32 +52,29 @@ omit [DecidableEq n] in
 $\mathbf{P}$, a matrix $\mathbf{B}$ and every index $i$ (from $0$),
 $$\sigma_i(\mathbf{B})^2 - \|(\mathbf{I} - \mathbf{P})\mathbf{B}\|_2^2 \le
 \sigma_i(\mathbf{P}\mathbf{B})^2\,.$$
-On the leading right singular subspace of $\mathbf{B}$ (dimension $i + 1$) Pythagoras gives
-$\|\mathbf{P}\mathbf{B}\mathbf{x}\|^2 \ge (\sigma_i^2 -
-\|(\mathbf{I} - \mathbf{P})\mathbf{B}\|_2^2)\|\mathbf{x}\|^2$, and the min–max
-characterization `NLAlib.le_singularValues_of_forall_mem` applies. -/
-theorem _root_.IsStarProjection.sq_singularValues_sub_sq_specNorm_one_sub_mul_le
+Weyl's inequality (`Matrix.IsHermitian.eigenvalue_add_le_add_eigenvalue_zero`) for the split
+$\mathbf{B}^{\mathsf{H}}\mathbf{B} = (\mathbf{P}\mathbf{B})^{\mathsf{H}}\mathbf{P}\mathbf{B} +
+((\mathbf{I} - \mathbf{P})\mathbf{B})^{\mathsf{H}}(\mathbf{I} - \mathbf{P})\mathbf{B}$. -/
+theorem _root_.IsStarProjection.singularValues_sq_sub_specNorm_one_sub_mul_sq_le
     {P : Matrix m m 𝕜} (hP : IsStarProjection P) (B : Matrix m n 𝕜) (i : ℕ) :
     singularValues B i ^ 2 - specNorm ((1 - P) * B) ^ 2 ≤ singularValues (P * B) i ^ 2 := by
+  classical
   by_cases hi : i < Fintype.card n
-  · obtain ⟨S, hS, hSB⟩ := exists_submodule_singularValues_mul_norm_le B hi
-    rcases le_or_gt (singularValues B i ^ 2 - specNorm ((1 - P) * B) ^ 2) 0 with hd | hd
-    · exact hd.trans (sq_nonneg _)
-    have key : Real.sqrt (singularValues B i ^ 2 - specNorm ((1 - P) * B) ^ 2) ≤
-        singularValues (P * B) i := by
-      refine le_singularValues_of_forall_mem (P * B) S hS.ge fun x hx => ?_
-      refine (sq_le_sq₀ (by positivity) (norm_nonneg _)).mp ?_
-      have h1 := pow_le_pow_left₀ (mul_nonneg (singularValues_nonneg B i) (norm_nonneg _))
-        (hSB x hx) 2
-      have h2 := pow_le_pow_left₀ (norm_nonneg _) (norm_toLp_mulVec_le ((1 - P) * B) x) 2
-      rw [← Matrix.mulVec_mulVec] at h2 ⊢
-      rw [mul_pow, Real.sq_sqrt hd.le]
-      rw [mul_pow] at h1 h2
-      nlinarith [hP.norm_toLp_sq_eq_add (B *ᵥ x)]
-    calc singularValues B i ^ 2 - specNorm ((1 - P) * B) ^ 2
-        = Real.sqrt (singularValues B i ^ 2 - specNorm ((1 - P) * B) ^ 2) ^ 2 :=
-          (Real.sq_sqrt hd.le).symm
-      _ ≤ singularValues (P * B) i ^ 2 := pow_le_pow_left₀ (Real.sqrt_nonneg _) key 2
+  · have hPP : P * P = P := hP.mul_self
+    have h1 : (1 - P) * (1 - P) = 1 - P := by
+      rw [Matrix.sub_mul, Matrix.mul_sub, Matrix.mul_sub, hPP, Matrix.one_mul, Matrix.mul_one,
+        Matrix.one_mul, sub_self, sub_zero]
+    have hsplit : (P * B)ᴴ * (P * B) + ((1 - P) * B)ᴴ * ((1 - P) * B) = Bᴴ * B := by
+      rw [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, Matrix.conjTranspose_sub,
+        Matrix.conjTranspose_one, hP.conjTranspose_eq, Matrix.mul_assoc Bᴴ P,
+        ← Matrix.mul_assoc P P, hPP, Matrix.mul_assoc Bᴴ (1 - P), ← Matrix.mul_assoc (1 - P),
+        h1, ← Matrix.mul_add, ← Matrix.add_mul, add_sub_cancel, Matrix.one_mul]
+    have hw := Matrix.IsHermitian.eigenvalue_add_le_add_eigenvalue_zero
+      (Matrix.isHermitian_conjTranspose_mul_self (P * B))
+      (Matrix.isHermitian_conjTranspose_mul_self ((1 - P) * B)) hi
+    rw [hsplit, ← singularValues_sq, ← singularValues_sq, ← singularValues_sq,
+      singularValues_zero_eq_specNorm] at hw
+    linarith
   · rw [singularValues_of_card_cols_le B (not_lt.mp hi)]
     nlinarith [sq_nonneg (specNorm ((1 - P) * B)), sq_nonneg (singularValues (P * B) i)]
 
@@ -92,11 +89,11 @@ $\sigma_i > 0$, the compression loses at most the second term (Pythagoras), and 
 characterization `NLAlib.le_singularValues_of_forall_mem` applies.
 [MuscoMusco2015, Theorem 12]; used there in the proof of the per-vector guarantee, for the
 projector of a Krylov space. -/
-theorem _root_.IsStarProjection.sq_singularValues_sub_sq_specNorm_le {P : Matrix m m 𝕜}
+theorem _root_.IsStarProjection.singularValues_sq_sub_specNorm_sq_le {P : Matrix m m 𝕜}
     (hP : IsStarProjection P) (A : Matrix m n 𝕜) (i : ℕ) :
     singularValues A i ^ 2 - specNorm ((1 - P) * truncatedSVD A (i + 1)) ^ 2 ≤
       singularValues (P * A) i ^ 2 := by
-  have h := hP.sq_singularValues_sub_sq_specNorm_one_sub_mul_le (truncatedSVD A (i + 1)) i
+  have h := hP.singularValues_sq_sub_specNorm_one_sub_mul_sq_le (truncatedSVD A (i + 1)) i
   rw [singularValues_truncatedSVD, if_pos (Nat.lt_succ_self i)] at h
   have hPB : singularValues (P * truncatedSVD A (i + 1)) i ≤ singularValues (P * A) i := by
     rw [← mul_rangeProjector_conjTranspose_truncatedSVD A (i + 1), ← Matrix.mul_assoc]

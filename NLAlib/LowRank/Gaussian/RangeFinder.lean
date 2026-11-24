@@ -52,7 +52,8 @@ companions are law-free, in `NLAlib.LowRank.Random.RangeFinder`.
   `NLAlib.measureReal_frobNorm_sub_mul_mul_pinv_sq_gt_le_of_hasLaw_gaussianMatrix`: the sketch
   residual $(\mathbf{A} - \mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}})\mathbf{X}
   (\mathbf{Z}^{\mathsf{H}}\mathbf{X})^{+}$ against a frame $\mathbf{Z}$: integrable, its second
-  moment, and its Markov tail.
+  moment, and its Markov tail; at a frame of top right singular vectors,
+  `NLAlib.exists_integral_frobNorm_sub_truncatedSVD_mul_mul_pinv_sq_le_of_hasLaw_gaussianMatrix`.
 * the Gram form, every quadratic unitarily invariant norm, in the `NLAlib.SymmetricGauge`
   namespace:
   `integral_matrixNorm_conjTranspose_mul_self_sub_rsvd_le_of_hasLaw_gaussianMatrix`.
@@ -235,6 +236,57 @@ theorem measureReal_frobNorm_sub_mul_mul_pinv_sq_gt_le_of_hasLaw_gaussianMatrix 
     refine (measureReal_ge_le_integral_div hf0 hint (mul_pos hτ hpos)).trans_eq ?_
     rw [hE]
     field_simp
+
+/-- A frame of top right singular vectors against a Gaussian block: for a real matrix
+$\mathbf{A}$, a standard Gaussian $n \times \ell$ test matrix $\mathbf{X}$ (independent standard
+normal entries) and $k + 2 \le \ell$, there is a frame $\mathbf{Z}$ of $\min(k, \lvert n \rvert)$
+orthonormal columns with $\mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}} =
+\llbracket\mathbf{A}\rrbracket_k$ such that almost surely
+$\operatorname{rank}(\mathbf{X}^{\mathsf{H}}\mathbf{Z}) = \operatorname{rank}\mathbf{Z}$, and the
+sketch residual
+$(\mathbf{A} - \llbracket\mathbf{A}\rrbracket_k)\mathbf{X}(\mathbf{Z}^{\mathsf{H}}\mathbf{X})^{+}$
+is square integrable with
+$$\mathbb{E}\|(\mathbf{A} - \llbracket\mathbf{A}\rrbracket_k)\mathbf{X}
+(\mathbf{Z}^{\mathsf{H}}\mathbf{X})^{+}\|_{\mathsf{F}}^2 \le \frac{k}{\ell - k - 1}
+\|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_k\|_{\mathsf{F}}^2\,.$$
+The frame of the structural bounds for a sketch, with everything they need of the Gaussian
+block; `NLAlib.integral_frobNorm_sub_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix` at the frame of
+`NLAlib.exists_hasOrthonormalCols_conjTranspose_mul_self_mul_eq_mul_diagonal`. -/
+theorem exists_integral_frobNorm_sub_truncatedSVD_mul_mul_pinv_sq_le_of_hasLaw_gaussianMatrix
+    (A : Matrix m n ℝ) (hX : HasLaw X (gaussianMatrix n l) μ) {k : ℕ}
+    (hk : k + 2 ≤ Fintype.card l) :
+    ∃ Z : Matrix n (Fin (min k (Fintype.card n))) ℝ, HasOrthonormalCols Z ∧
+      A * Z * Zᴴ = truncatedSVD A k ∧ (∀ᵐ ω ∂μ, ((X ω)ᴴ * Z).rank = Z.rank) ∧
+      Integrable (fun ω => frobNorm ((A - truncatedSVD A k) * X ω * pinv (Zᴴ * X ω)) ^ 2) μ ∧
+      ∫ ω, frobNorm ((A - truncatedSVD A k) * X ω * pinv (Zᴴ * X ω)) ^ 2 ∂μ ≤
+        (k : ℝ) / ((Fintype.card l : ℝ) - k - 1) * frobNorm (A - truncatedSVD A k) ^ 2 := by
+  classical
+  obtain ⟨Z, -, hZ, -, -, -, -, -, hpre⟩ :=
+    exists_hasOrthonormalCols_conjTranspose_mul_self_mul_eq_mul_diagonal A
+      (min_le_right k (Fintype.card n))
+  have hT : truncatedSVD A (min k (Fintype.card n)) = truncatedSVD A k := by
+    rcases le_total k (Fintype.card n) with h | h
+    · rw [min_eq_left h]
+    · rw [min_eq_right h, truncatedSVD_of_rank_le A A.rank_le_card_width,
+        truncatedSVD_of_rank_le A (A.rank_le_card_width.trans h)]
+  have hAZ : A * Z * Zᴴ = truncatedSVD A k := by
+    have h := hpre _ le_rfl
+    rw [Fin.castLE_rfl, Matrix.submatrix_id_id] at h
+    rw [h, hT]
+  have hs : Fintype.card (Fin (min k (Fintype.card n))) + 2 ≤ Fintype.card l := by
+    rw [Fintype.card_fin]
+    omega
+  have hE : A - truncatedSVD A k = A - A * Z * Zᴴ := by rw [hAZ]
+  refine ⟨Z, hZ, hAZ, ae_rank_conjTranspose_mul_eq_of_hasLaw_gaussianMatrix Z hX
+      (by rw [hZ.rank_eq, Fintype.card_fin]; omega), ?_, ?_⟩
+  · rw [hE]
+    exact integrable_frobNorm_sub_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix A hX hZ hs
+  · rw [hE, integral_frobNorm_sub_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix A hX hZ hs,
+      Fintype.card_fin, mul_div_assoc, mul_comm]
+    refine mul_le_mul_of_nonneg_right ?_ (sq_nonneg _)
+    have hkl : (k : ℝ) + 2 ≤ Fintype.card l := by exact_mod_cast hk
+    have htk : ((min k (Fintype.card n) : ℕ) : ℝ) ≤ k := Nat.cast_le.mpr (min_le_left _ _)
+    exact div_le_div₀ (Nat.cast_nonneg _) htk (by linarith) (by linarith)
 
 /-! ### The Gram form and its corollaries -/
 
@@ -835,7 +887,8 @@ $\mathbb{R}$), with $\lvert n \rvert$ the number of columns,
 $$\frac{t}{\ell - t - 1}\|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_t\|_{\mathsf{F}}^2 \le
 \lvert n \rvert^2\sigma_r(\mathbf{A})^2\,,$$
 from $t/(\ell - t - 1) \le t$ and $\|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_t\|_{\mathsf{F}}^2
-\le (\min(\lvert m \rvert, \lvert n \rvert) - t)\,\sigma_r(\mathbf{A})^2$. It turns the gapped and
+\le \min(\lvert m \rvert, \lvert n \rvert)\,\sigma_r(\mathbf{A})^2$
+(`NLAlib.frobNorm_sub_truncatedSVD_sq_le_min_card_mul_sq`). It turns the gapped and
 gapless spectral bounds of randomized block Krylov and subspace iteration into relative errors, for
 their asymptotic forms. -/
 theorem
@@ -844,32 +897,26 @@ natCast_div_sub_sub_one_mul_frobNorm_sub_truncatedSVD_sq_le_card_sq_mul_singular
     (t : ℝ) / ((l : ℝ) - t - 1) * frobNorm (A - truncatedSVD A t) ^ 2 ≤
       (Fintype.card n : ℝ) ^ 2 * singularValues A r ^ 2 := by
   set N := min (Fintype.card m) (Fintype.card n) with hN
+  rcases le_or_gt N t with h | h
+  · rw [frobNorm_sub_truncatedSVD_sq, Finset.Ico_eq_empty_of_le h, Finset.sum_empty, mul_zero]
+    positivity
   have hκ : (t : ℝ) / ((l : ℝ) - t - 1) ≤ t := div_le_self (Nat.cast_nonneg _) (by
     have : (t : ℝ) + 2 ≤ l := by exact_mod_cast hl
     linarith)
-  have hF : frobNorm (A - truncatedSVD A t) ^ 2 ≤ ((N - t : ℕ) : ℝ) * singularValues A r ^ 2 := by
-    rw [frobNorm_sub_truncatedSVD_sq]
-    calc ∑ i ∈ Finset.Ico t N, singularValues A i ^ 2
-        ≤ ∑ _i ∈ Finset.Ico t N, singularValues A r ^ 2 :=
-          Finset.sum_le_sum fun i hi => pow_le_pow_left₀ (singularValues_nonneg _ _)
-            (singularValues_antitone A (hrt.trans (Finset.mem_Ico.1 hi).1)) 2
-      _ = _ := by rw [Finset.sum_const, Nat.card_Ico, nsmul_eq_mul]
-  have htN : t * (N - t) ≤ Fintype.card n * Fintype.card n := by
-    have := min_le_right (Fintype.card m) (Fintype.card n)
-    rcases le_or_gt N t with h | h
-    · rw [Nat.sub_eq_zero_of_le h, mul_zero]
-      exact Nat.zero_le _
-    · exact Nat.mul_le_mul (by omega) (by omega)
-  have htNR : (t : ℝ) * ((N - t : ℕ) : ℝ) ≤ (Fintype.card n : ℝ) ^ 2 := by
-    rw [sq]
-    exact_mod_cast htN
+  have hNn : (N : ℝ) ≤ Fintype.card n := by exact_mod_cast min_le_right _ _
+  have htn : (t : ℝ) ≤ Fintype.card n := by
+    exact_mod_cast (show t ≤ N by omega).trans (min_le_right _ _)
+  have hσ : singularValues A t ^ 2 ≤ singularValues A r ^ 2 :=
+    pow_le_pow_left₀ (singularValues_nonneg A t) (singularValues_antitone A hrt) 2
+  have hF := frobNorm_sub_truncatedSVD_sq_le_min_card_mul_sq A t
   calc (t : ℝ) / ((l : ℝ) - t - 1) * frobNorm (A - truncatedSVD A t) ^ 2
-      ≤ t * frobNorm (A - truncatedSVD A t) ^ 2 := mul_le_mul_of_nonneg_right hκ (sq_nonneg _)
-    _ ≤ t * (((N - t : ℕ) : ℝ) * singularValues A r ^ 2) :=
-        mul_le_mul_of_nonneg_left hF (Nat.cast_nonneg _)
-    _ ≤ (Fintype.card n : ℝ) ^ 2 * singularValues A r ^ 2 := by
-        rw [← mul_assoc]
-        exact mul_le_mul_of_nonneg_right htNR (sq_nonneg _)
+      ≤ t * ((N : ℝ) * singularValues A r ^ 2) :=
+        mul_le_mul hκ (hF.trans (mul_le_mul_of_nonneg_left hσ (Nat.cast_nonneg _)))
+          (sq_nonneg _) (Nat.cast_nonneg _)
+    _ ≤ (Fintype.card n : ℝ) * ((Fintype.card n : ℝ) * singularValues A r ^ 2) :=
+        mul_le_mul htn (mul_le_mul_of_nonneg_right hNn (sq_nonneg _)) (by positivity)
+          (Nat.cast_nonneg _)
+    _ = (Fintype.card n : ℝ) ^ 2 * singularValues A r ^ 2 := by ring
 
 /-- The tail term of the Gaussian range-finder bounds is at most $\lvert n \rvert$ times the best
 squared Frobenius error at a smaller rank: for $r \le t$ and $t + 2 \le \ell$ (casts to

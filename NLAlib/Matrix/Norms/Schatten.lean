@@ -180,6 +180,16 @@ theorem schattenNorm_eq_zero_iff (q : ℝ≥0∞) {A : Matrix m n 𝕜} : schatt
   · exact specNorm_eq_zero_iff.mp (le_antisymm
       ((specNorm_le_schattenNorm_of_ne_top hq0 hq A).trans_eq h) (specNorm_nonneg A))
 
+/-- A matrix with no rows or no columns has Schatten norm $0$: if
+$\min(\lvert m \rvert, \lvert n \rvert) = 0$ then $\|\mathbf{B}\|_{S_q} = 0$. -/
+theorem schattenNorm_eq_zero_of_min_card_eq_zero (q : ℝ≥0∞)
+    (h : min (Fintype.card m) (Fintype.card n) = 0) (B : Matrix m n 𝕜) : schattenNorm q B = 0 := by
+  rw [schattenNorm_eq_zero_iff]
+  ext i i'
+  rcases (by omega : Fintype.card m = 0 ∨ Fintype.card n = 0) with h | h
+  · exact (Fintype.card_eq_zero_iff.1 h).elim i
+  · exact (Fintype.card_eq_zero_iff.1 h).elim i'
+
 /-- A termwise bound $\sigma_i(\mathbf{A}) \le c \, \sigma_i(\mathbf{B})$ on the singular values,
 $c \ge 0$, gives $\|\mathbf{A}\|_{S_q} \le c \, \|\mathbf{B}\|_{S_q}$, for $q \ne 0$. The
 shapes may differ. -/

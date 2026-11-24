@@ -796,6 +796,7 @@ public import NLAlib.LowRank.BlockKrylov.Samples
 public import NLAlib.LowRank.Gaussian.BlockKrylov
 public import NLAlib.LowRank.Gaussian.BlockKrylovGapless
 public import NLAlib.LowRank.Gaussian.BlockKrylovSum
+public import NLAlib.LowRank.Gaussian.BlockKrylovSumTail
 public import NLAlib.LowRank.Gaussian.EarlyTruncation
 public import NLAlib.LowRank.Gaussian.EarlyTruncationHaar
 public import NLAlib.LowRank.Gaussian.EarlyTruncationRSVD

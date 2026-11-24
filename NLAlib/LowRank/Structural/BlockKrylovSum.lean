@@ -170,6 +170,83 @@ theorem singularValues_rbki_le_singularValues_rbkiSum_right (A : Matrix m n 𝕜
 
 /-! ### Frobenius norm -/
 
+omit [DecidableEq m] [DecidableEq s₂] in
+/-- The heavy-tail case: if the compression $\mathbf{P}\mathbf{A}$ dominates the first run
+singular value by singular value and $\sigma_k \le \sqrt{2}\,\sigma_{k+j}$, then the per-index
+bound of the first run, no gap, pays its relative part through the tail count. -/
+private theorem frobNorm_sub_truncatedSVD_mul_sq_le_of_heavy {P : Matrix m m 𝕜}
+    (hP : IsStarProjection P) {A : Matrix m n 𝕜} {Ω₁ : Matrix n l₁ 𝕜} {Z₁ : Matrix n s₁ 𝕜}
+    (hZ₁ : HasOrthonormalCols Z₁) (hΩ₁ : (Ω₁ᴴ * Z₁).rank = Z₁.rank) {k j : ℕ}
+    (hAZ₁ : A * Z₁ * Z₁ᴴ = truncatedSVD A k) {q₁ : ℕ} (hq₁ : 1 ≤ q₁) {γ : ℝ} (hγ : 0 < γ)
+    (hγ1 : γ ≤ 1) (hdom : ∀ i, singularValues (rbki A Ω₁ q₁) i ≤ singularValues (P * A) i)
+    (htail : singularValues A k ≤ Real.sqrt 2 * singularValues A (k + j)) :
+    frobNorm (A - truncatedSVD (P * A) k) ^ 2 ≤
+      (1 + 2 * k * γ / ((j : ℝ) + 1)) * frobNorm (A - truncatedSVD A k) ^ 2 +
+        4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * Real.sqrt γ) *
+          specNorm ((A - truncatedSVD A k) * Ω₁ * pinv (Z₁ᴴ * Ω₁)) ^ 2 := by
+  set E := 4 * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * Real.sqrt γ) *
+    specNorm ((A - truncatedSVD A k) * Ω₁ * pinv (Z₁ᴴ * Ω₁)) ^ 2
+  have h := hP.frobNorm_sub_truncatedSVD_mul_sq_le_of_singularValues_le_mul (β := fun _ => E)
+    hγ.le htail fun i hi => (hZ₁.sq_singularValues_sub_le_sq_singularValues_rbki hΩ₁ hAZ₁ hq₁
+      hγ hγ1 hi).trans (pow_le_pow_left₀ (singularValues_nonneg _ _) (hdom i) 2)
+  rw [Real.sq_sqrt zero_le_two, Finset.sum_const, Finset.card_range, nsmul_eq_mul] at h
+  have e : 4 * (k : ℝ) * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * Real.sqrt γ) *
+      specNorm ((A - truncatedSVD A k) * Ω₁ * pinv (Z₁ᴴ * Ω₁)) ^ 2 = k * E := by
+    simp only [E]
+    ring
+  rw [e, mul_comm 2 (k : ℝ), mul_assoc (k : ℝ) 2 γ, mul_comm 2 γ, ← mul_assoc]
+  exact h
+
+omit [DecidableEq m] [DecidableEq s₁] in
+/-- The gap case: if the compression $\mathbf{P}\mathbf{A}$ dominates the second run singular
+value by singular value and $\sqrt{2}\,\sigma_{k+j} < \sigma_k$, then the summed gapped bound of
+the second run gives the deficits, at the gap ratio
+$(\sigma_{k-1} - \sigma_{k+j})/(\sigma_{k-1} + \sigma_{k+j}) \ge 9/64$. -/
+private theorem frobNorm_sub_truncatedSVD_mul_sq_le_of_gap {P : Matrix m m 𝕜}
+    (hP : IsStarProjection P) {A : Matrix m n 𝕜} {Ω₂ : Matrix n l₂ 𝕜} {Z₂ : Matrix n s₂ 𝕜}
+    (hZ₂ : HasOrthonormalCols Z₂) (hΩ₂ : (Ω₂ᴴ * Z₂).rank = Z₂.rank) {k j : ℕ}
+    (hAZ₂ : A * Z₂ * Z₂ᴴ = truncatedSVD A (k + j)) {q₂ : ℕ} (hq₂ : 1 ≤ q₂)
+    (hdom : ∀ i, singularValues (rbki A Ω₂ q₂) i ≤ singularValues (P * A) i)
+    (hgap : Real.sqrt 2 * singularValues A (k + j) < singularValues A k) :
+    frobNorm (A - truncatedSVD (P * A) k) ^ 2 ≤ frobNorm (A - truncatedSVD A k) ^ 2 +
+      4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) *
+        frobNorm ((A - truncatedSVD A (k + j)) * Ω₂ * pinv (Z₂ᴴ * Ω₂)) ^ 2 := by
+  set F := frobNorm ((A - truncatedSVD A (k + j)) * Ω₂ * pinv (Z₂ᴴ * Ω₂)) ^ 2
+  have hF : 0 ≤ 4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) * F := by positivity
+  rw [hP.frobNorm_sub_truncatedSVD_mul_sq A k]
+  rcases Nat.eq_zero_or_eq_succ_pred k with hk | hk
+  · rw [hk, Finset.sum_range_zero]
+    linarith
+  set h := k.pred
+  have hdef : ∑ i ∈ Finset.range k, (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) ≤
+      ∑ i ∈ Finset.range k, (singularValues A i ^ 2 - singularValues (rbki A Ω₂ q₂) i ^ 2) :=
+    Finset.sum_le_sum fun i _ =>
+      sub_le_sub_left (pow_le_pow_left₀ (singularValues_nonneg _ _) (hdom i) 2) _
+  have hRZ := hZ₂.sum_sq_singularValues_sub_sq_singularValues_rbki_le hΩ₂ hk.symm
+    (Nat.le_add_right k j) hAZ₂ hq₂
+  -- the gap ratio is at least `(3/8)²`
+  have hratio : 3 / 8 ≤ Real.sqrt (singularGapRatio A h (k + j)) := by
+    have hhk : singularValues A k ≤ singularValues A h :=
+      singularValues_antitone A (by omega)
+    have ht0 := singularValues_nonneg A (k + j)
+    have hsq : 2 * singularValues A (k + j) ^ 2 < singularValues A h ^ 2 := by
+      have h2 := pow_lt_pow_left₀ (hgap.trans_le hhk)
+        (mul_nonneg (Real.sqrt_nonneg 2) ht0) two_ne_zero
+      rwa [mul_pow, Real.sq_sqrt zero_le_two] at h2
+    have hpos : 0 < singularValues A h + singularValues A (k + j) := by
+      nlinarith [singularValues_nonneg A h]
+    rw [Real.le_sqrt' (by norm_num), singularGapRatio, le_div_iff₀ hpos]
+    nlinarith [singularValues_nonneg A h]
+  have hexp : Real.exp (-8 * ((q₂ : ℝ) - 1) * Real.sqrt (singularGapRatio A h (k + j))) ≤
+      Real.exp (-3 * ((q₂ : ℝ) - 1)) := by
+    have hq : (0 : ℝ) ≤ (q₂ : ℝ) - 1 := by
+      have : (1 : ℝ) ≤ q₂ := by exact_mod_cast hq₂
+      linarith
+    exact Real.exp_le_exp.mpr (by nlinarith)
+  have := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hexp (by norm_num : (0 : ℝ) ≤ 4))
+    (sq_nonneg (frobNorm ((A - truncatedSVD A (k + j)) * Ω₂ * pinv (Z₂ᴴ * Ω₂))))
+  linarith
+
 omit [DecidableEq m] in
 /-- **The Frobenius error of a sketch containing two block Krylov sketches**: let
 $\mathbf{Z}_1$, $\mathbf{Z}_2$ be frames (orthonormal columns) with
@@ -213,7 +290,24 @@ theorem HasOrthonormalCols.frobNorm_sub_truncatedSVD_rsvd_sq_le_of_range_le
         4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * Real.sqrt γ) *
           specNorm ((A - truncatedSVD A k) * Ω₁ * pinv (Z₁ᴴ * Ω₁)) ^ 2 +
         4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) *
-          frobNorm ((A - truncatedSVD A (k + j)) * Ω₂ * pinv (Z₂ᴴ * Ω₂)) ^ 2 := sorry
+          frobNorm ((A - truncatedSVD A (k + j)) * Ω₂ * pinv (Z₂ᴴ * Ω₂)) ^ 2 := by
+  classical
+  have hP := isStarProjection_rangeProjector (A * Y)
+  have hdom₁ (i : ℕ) :
+      singularValues (rbki A Ω₁ q₁) i ≤ singularValues (rangeProjector (A * Y) * A) i :=
+    singularValues_rangeProjector_mul_le_of_range_le h₁ A i
+  have hdom₂ (i : ℕ) :
+      singularValues (rbki A Ω₂ q₂) i ≤ singularValues (rangeProjector (A * Y) * A) i :=
+    singularValues_rangeProjector_mul_le_of_range_le h₂ A i
+  have hO : 0 ≤ 2 * k * γ / ((j : ℝ) + 1) * frobNorm (A - truncatedSVD A k) ^ 2 := by positivity
+  have hR₁ : 0 ≤ 4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * Real.sqrt γ) *
+      specNorm ((A - truncatedSVD A k) * Ω₁ * pinv (Z₁ᴴ * Ω₁)) ^ 2 := by positivity
+  have hR₂ : 0 ≤ 4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) *
+      frobNorm ((A - truncatedSVD A (k + j)) * Ω₂ * pinv (Z₂ᴴ * Ω₂)) ^ 2 := by positivity
+  rw [rsvd]
+  rcases le_or_gt (singularValues A k) (Real.sqrt 2 * singularValues A (k + j)) with ht | ht
+  · linarith [frobNorm_sub_truncatedSVD_mul_sq_le_of_heavy hP hZ₁ hΩ₁ hAZ₁ hq₁ hγ hγ1 hdom₁ ht]
+  · linarith [frobNorm_sub_truncatedSVD_mul_sq_le_of_gap hP hZ₂ hΩ₂ hAZ₂ hq₂ hdom₂ ht]
 
 omit [DecidableEq m] in
 /-- **The Frobenius error of block Krylov iteration on the sum of two block Krylov spaces**: let
@@ -294,7 +388,21 @@ theorem HasOrthonormalCols.min_frobNorm_sub_truncatedSVD_rbki_sq_le
         4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * Real.sqrt γ) *
           specNorm ((A - truncatedSVD A k) * Ω₁ * pinv (Z₁ᴴ * Ω₁)) ^ 2 +
         4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) *
-          frobNorm ((A - truncatedSVD A (k + j)) * Ω₂ * pinv (Z₂ᴴ * Ω₂)) ^ 2 := sorry
+          frobNorm ((A - truncatedSVD A (k + j)) * Ω₂ * pinv (Z₂ᴴ * Ω₂)) ^ 2 := by
+  classical
+  have hO : 0 ≤ 2 * k * γ / ((j : ℝ) + 1) * frobNorm (A - truncatedSVD A k) ^ 2 := by positivity
+  have hR₁ : 0 ≤ 4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * Real.sqrt γ) *
+      specNorm ((A - truncatedSVD A k) * Ω₁ * pinv (Z₁ᴴ * Ω₁)) ^ 2 := by positivity
+  have hR₂ : 0 ≤ 4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) *
+      frobNorm ((A - truncatedSVD A (k + j)) * Ω₂ * pinv (Z₂ᴴ * Ω₂)) ^ 2 := by positivity
+  rw [rbki_def, rbki_def, rsvd, rsvd]
+  rcases le_or_gt (singularValues A k) (Real.sqrt 2 * singularValues A (k + j)) with ht | ht
+  · refine (min_le_left _ _).trans ?_
+    linarith [frobNorm_sub_truncatedSVD_mul_sq_le_of_heavy (isStarProjection_rangeProjector _)
+      hZ₁ hΩ₁ hAZ₁ hq₁ hγ hγ1 (fun i => le_rfl) ht]
+  · refine (min_le_right _ _).trans ?_
+    linarith [frobNorm_sub_truncatedSVD_mul_sq_le_of_gap (isStarProjection_rangeProjector _)
+      hZ₂ hΩ₂ hAZ₂ hq₂ (fun i => le_rfl) ht]
 
 /-! ### Schatten norms, $1 \le p \le 2$ -/
 

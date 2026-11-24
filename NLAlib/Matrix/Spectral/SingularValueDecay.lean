@@ -22,6 +22,8 @@ spectrum after it.
 
 * `NLAlib.mul_singularValues_rpow_le_schattenNorm_sub_truncatedSVD_rpow`:
   $(j + 1)\,\sigma_{k+j}^p \le \|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_k\|_{S_p}^p$.
+* `NLAlib.schattenNorm_sub_truncatedSVD_rpow_eq_add_sum`: the Schatten tail split at a later
+  index.
 * `NLAlib.singularValues_rpow_mul_frobNorm_sub_truncatedSVD_sq_le`:
   $\sigma_k^{p-2}\,\|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_k\|_{\mathsf{F}}^2 \le
   \|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_k\|_{S_p}^p$ for $1 \le p \le 2$.
@@ -65,6 +67,28 @@ theorem mul_singularValues_rpow_le_schattenNorm_sub_truncatedSVD_rpow {p : ℝ�
     _ ≤ ∑ i ∈ Finset.range (j + 1 + Fintype.card n), singularValues E i ^ p.toReal :=
         Finset.sum_le_sum_of_subset_of_nonneg (Finset.range_subset_range.2 (by omega))
           fun i _ _ => Real.rpow_nonneg (singularValues_nonneg _ _) _
+
+omit [DecidableEq m] [DecidableEq n] in
+/-- The Schatten tail splits at a later index: for $0 < p < \infty$ and $L \le k$,
+$$\|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_L\|_{S_p}^p =
+\|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_k\|_{S_p}^p +
+\sum_{L \le i < k} \sigma_i(\mathbf{A})^p\,.$$ -/
+theorem schattenNorm_sub_truncatedSVD_rpow_eq_add_sum {p : ℝ≥0∞} (hp0 : p ≠ 0) (hp : p ≠ ⊤)
+    (A : Matrix m n 𝕜) {L k : ℕ} (hLk : L ≤ k) :
+    schattenNorm p (A - truncatedSVD A L) ^ p.toReal =
+      schattenNorm p (A - truncatedSVD A k) ^ p.toReal +
+        ∑ i ∈ Finset.Ico L k, singularValues A i ^ p.toReal := by
+  obtain ⟨d, rfl⟩ := Nat.exists_eq_add_of_le hLk
+  have hL : (A - truncatedSVD A L).rank ≤ d + (Fintype.card n + L) := by
+    have := (A - truncatedSVD A L).rank_le_card_width
+    omega
+  have hk : (A - truncatedSVD A (L + d)).rank ≤ Fintype.card n + L := by
+    have := (A - truncatedSVD A (L + d)).rank_le_card_width
+    omega
+  rw [schattenNorm_rpow hp0 hp _ hL, schattenNorm_rpow hp0 hp _ hk, Finset.sum_range_add,
+    Finset.sum_Ico_eq_sum_range, Nat.add_sub_cancel_left, add_comm]
+  congr 1 <;> refine Finset.sum_congr rfl fun i _ => ?_ <;>
+    simp only [singularValues_sub_truncatedSVD, add_assoc]
 
 omit [DecidableEq m] [DecidableEq n] in
 /-- The Frobenius tail against the Schatten tail: for $1 \le p \le 2$ and every $k$,

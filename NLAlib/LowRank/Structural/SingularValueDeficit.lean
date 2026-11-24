@@ -42,10 +42,8 @@ $k\gamma\kappa^p/(j + 1)$.
   `IsStarProjection.frobNorm_sub_truncatedSVD_mul_sq_le_of_singularValues_le_mul`,
   `NLAlib.min_schattenNorm_sub_mul_rpow_le_of_singularValues_le_mul`: the tail-count forms for
   $1 \le p \le 2$, for the Frobenius norm, and for the better of two candidates.
-* `NLAlib.schattenNorm_sub_truncatedSVD_rpow_eq_add_sum`: the Schatten tail split at a later
-  index.
 * `IsStarProjection.schattenNorm_sub_mul_le_add_rpow`,
-  `IsStarProjection.schattenNorm_sub_mul_le_of_sq_singularValues_sub_le`,
+  `IsStarProjection.schattenNorm_sub_mul_le_of_singularValues_sq_sub_le`,
   `IsStarProjection.schattenNorm_sub_mul_le_mul_of_singularValues_le_mul`: the head split and
   the tail-count form for $2 \le p < \infty$, one-sided.
 * `IsStarProjection.frobNorm_truncatedSVD_sub_mul_le_sqrt_mul`: head capture from small head
@@ -64,30 +62,6 @@ namespace NLAlib
 
 variable {𝕜 : Type*} [RCLike 𝕜] {m n : Type*} [Fintype m] [Fintype n] [DecidableEq m]
   [DecidableEq n]
-
-/-! ### The Schatten tail -/
-
-omit [DecidableEq m] [DecidableEq n] in
-/-- The Schatten tail splits at a later index: for $0 < p < \infty$ and $L \le k$,
-$$\|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_L\|_{S_p}^p =
-\|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_k\|_{S_p}^p +
-\sum_{L \le i < k} \sigma_i(\mathbf{A})^p\,.$$ -/
-theorem schattenNorm_sub_truncatedSVD_rpow_eq_add_sum {p : ℝ≥0∞} (hp0 : p ≠ 0) (hp : p ≠ ⊤)
-    (A : Matrix m n 𝕜) {L k : ℕ} (hLk : L ≤ k) :
-    schattenNorm p (A - truncatedSVD A L) ^ p.toReal =
-      schattenNorm p (A - truncatedSVD A k) ^ p.toReal +
-        ∑ i ∈ Finset.Ico L k, singularValues A i ^ p.toReal := by
-  obtain ⟨d, rfl⟩ := Nat.exists_eq_add_of_le hLk
-  have hL : (A - truncatedSVD A L).rank ≤ d + (Fintype.card n + L) := by
-    have := (A - truncatedSVD A L).rank_le_card_width
-    omega
-  have hk : (A - truncatedSVD A (L + d)).rank ≤ Fintype.card n + L := by
-    have := (A - truncatedSVD A (L + d)).rank_le_card_width
-    omega
-  rw [schattenNorm_rpow hp0 hp _ hL, schattenNorm_rpow hp0 hp _ hk, Finset.sum_range_add,
-    Finset.sum_Ico_eq_sum_range, Nat.add_sub_cancel_left, add_comm]
-  congr 1 <;> refine Finset.sum_congr rfl fun i _ => ?_ <;>
-    simp only [singularValues_sub_truncatedSVD, add_assoc]
 
 /-! ### The two-sided output, $1 \le p < \infty$ -/
 
@@ -550,7 +524,7 @@ The first term is the head capture
 Frobenius norm. [BakshiClarksonWoodruff2022, proof of Theorem 3.1]; there the case of large
 singular values, with accuracies that are unspecified polynomials in $\varepsilon/d$, here with
 explicit $\delta$, $\gamma$, $\theta$, $\kappa$. -/
-theorem _root_.IsStarProjection.schattenNorm_sub_mul_le_of_sq_singularValues_sub_le
+theorem _root_.IsStarProjection.schattenNorm_sub_mul_le_of_singularValues_sq_sub_le
     {p : ℝ≥0∞} (hp2 : 2 ≤ p) (hp : p ≠ ⊤) {P : Matrix m m 𝕜} (hP : IsStarProjection P)
     {A : Matrix m n 𝕜} {L k : ℕ} (hLk : L ≤ k) {δ γ θ κ : ℝ} (hδ : 0 ≤ δ) (hθ : 0 < θ)
     (hθ1 : θ ≤ 1) (hκ : 1 ≤ κ)
@@ -696,7 +670,7 @@ theorem _root_.IsStarProjection.schattenNorm_sub_mul_le_mul_of_singularValues_le
   -- the head index, with the flatness `1 + 1/p` of `NLAlib.exists_le_singularValues_le_and_gap`
   obtain ⟨L, hLk, θ, hθ, hθ1, hflat, hgap, hbig, hsqrt⟩ :=
     exists_head_index_sqrt_le A k (show 1 ≤ p.toReal by linarith) hδ
-  have h := hP.schattenNorm_sub_mul_le_of_sq_singularValues_sub_le hp2 hp hLk hδ hθ hθ1
+  have h := hP.schattenNorm_sub_mul_le_of_singularValues_sq_sub_le hp2 hp hLk hδ hθ hθ1
     (le_add_of_nonneg_right (by positivity)) hgap hflat
     (fun i hi => hhead i (hi.trans_le hLk) (hbig i hi)) (fun i _ hik => hritz i hik)
   refine h.trans ?_

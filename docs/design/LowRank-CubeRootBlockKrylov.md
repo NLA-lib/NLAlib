@@ -1,12 +1,16 @@
 # Low-rank approximation with $\varepsilon^{-1/3}$ products: two block Krylov spaces
 
-2026-11-20. Design note; **status: design only, revised after one independent review (§11),
-awaiting the maintainer's decisions (§9). Nothing is proved and there is no skeleton.** Branch `design/lra-cube-root` from `origin/main` @
-`edb7e0ee`. Stage LRA-CUBE-ROOT, board card T150. Targets: harness
-`pilot/lra-cube-root-targets.json`. Decision sheet: harness `state/decisions/LRA-CUBE-ROOT.json`
-(ids below); review: harness `reports/Review-Fable-LRA-CUBE-ROOT-Design.md`. Every Lean
-statement in Appendix A elaborated, with `sorry` proofs, against the
-library at `edb7e0ee` (scratch file outside `NLAlib/`, not committed; §A.0).
+2026-11-20 (design), 2026-11-24 (as proved). **Status: proved.** All 55 targets of harness
+`pilot/lra-cube-root-targets.json` (the 52 of §6 plus CH1g, GA3t and the measurability lemma
+`measurable_fromCols_blockKrylovMatrix`, TS0k) are proved, with no `sorry`, and the stage is
+merged with `origin/main` (new core). The note was written as a design (branch
+`design/lra-cube-root` from `origin/main` @ `edb7e0ee`, stage LRA-CUBE-ROOT, board card T150),
+revised after one independent review (§11); it now records the stage as proved: §5 is the file
+list as it is, §12 records every statement change, rename and move made while proving and in the
+cleanup, and Appendix A points at the final statements. Decision sheet: harness
+`state/decisions/LRA-CUBE-ROOT.json`; reviews: harness `reports/Review-Fable-LRA-CUBE-ROOT-Design.md`,
+`reports/Review-LRA-CUBE-ROOT-Design-2.md`; stage report: harness
+`reports/Stage-LRA-CUBE-ROOT.md`. Rename map: `docs/renames/2026-11-lra-cube-root.json`.
 
 The maintainer asked: "I want to work on formalizing the eps^{1/3} LRA results. as with RBKI, we
 can begin with the mathematical theorems for mathematical objects first, and then put it in to
@@ -101,7 +105,7 @@ $\sigma_k$ here.
 | RBKI as a projection | `rbki A Ω q = rsvd A (blockKrylovMatrix (Aᴴ * A) Ω q)`, `rbki_eq_rangeProjector`, `rsvd A Y = rangeProjector (A * Y) * A` |
 | RBKI contains every filtered sketch | `range_mul_aeval_mul_le_range_mul_blockKrylovMatrix`, `singularValues_sub_rbki_le_of_degree_lt` |
 | Head capture by a filtered sketch | `HasOrthonormalCols.singularValues_one_sub_rangeProjector_mul_mul_le` (TW Lemma 9.5, MM Lemma 9 property 1) |
-| Chebyshev filter with $(a/c)^2\le4e^{-8d\sqrt\gamma}$ | `exists_degree_lt_div_sq_le_exp_singularGapRatio` (indexed by singular values of a real matrix), `Polynomial.Chebyshev.abs_eval_T_comp_C_mul_X_sub_one_le` |
+| Chebyshev filter with $(a/c)^2\le4e^{-8d\sqrt\gamma}$ | `exists_degree_lt_div_sq_le_exp_singularGapRatio` (indexed by singular values of a real matrix; generalized to `𝕜` by this stage, §12), `Polynomial.Chebyshev.abs_eval_T_comp_C_mul_X_sub_one_le` |
 | Gapped RBKI, Gaussian block $\ell\ge t+2$, expectation, spectral/Frobenius/quadratic gauges, truncated outputs | `LowRank/Gaussian/BlockKrylov.lean` |
 | Gapless RBKI, spectral norm only | `LowRank/Gaussian/BlockKrylovGapless.lean` ((1+ε) form and TW form) |
 | Small blocks | `LowRank/Structural/SmallBlock.lean`, `LowRank/Gaussian/SmallBlock.lean` (one vector, gap hypothesis on the head) |
@@ -562,6 +566,10 @@ GA2p), asymptotic forms (GA4, GA4p, GA3a), tail form for $p>2$ (GA3).
 
 ## 5. Files and placement (item 5)
 
+As proved (planned split in the design: one file `LowRank/Gaussian/BlockKrylovSum.lean` for
+GA0–GA4; split by the cleanup at the $p\ge2$ tail family, rule F10). Line counts at the end of
+the cleanup.
+
 New files:
 
 * `NLAlib/Matrix/Norms/SchattenPinching.lean`: PN1, PN2, PN3, PN4.
@@ -570,33 +578,56 @@ New files:
 * `NLAlib/Matrix/Spectral/SingularValueDecay.lean`: SV3, SV4, SP1 (statements about the spectrum
   alone).
 * `NLAlib/LowRank/Structural/SingularValueDeficit.lean`: ST1, ST2, ST2s, SO1, CB1, CB1F, CB2,
-  ST3, ST4, CB3.
+  ST3, ST4, CB3, and the two truncated-`rsvd` forms used by GA3 and GA3t
+  (`schattenNorm_sub_truncatedSVD_rsvd_le_mul_of_singularValues_le_mul`,
+  `schattenNorm_sub_mul_rangeProjector_le_schattenNorm_sub_truncatedSVD_rsvd`).
 * `NLAlib/LowRank/Structural/RitzValues.lean`: RZ1–RZ5, RZ4F.
 * `NLAlib/LowRank/Structural/BlockKrylovSum.lean`: `rbkiSum`, TS0–TS3, TS2c, TS2m, TS3c.
-* `NLAlib/LowRank/Gaussian/BlockKrylovSum.lean`: GA0–GA4.
+* `NLAlib/LowRank/Gaussian/BlockKrylovSum.lean`: GA0, GA1, GA1c, GA1p, GA1pc, GA2, GA2p, GA4,
+  GA4p (expectation, Frobenius and $1\le p\le2$).
+* `NLAlib/LowRank/Gaussian/BlockKrylovSumTail.lean`: GA3, GA3t, GA3a (tail bounds,
+  $2\le p<\infty$).
 
 Additions to existing files, each with its reason:
 
-* SC1 `Real.rpow_sub_rpow_le_max_mul` → `NLAlib/ForMathlib/Analysis/SpecialFunctions/Pow/Real.lean`
-  (a fact about real powers; Mathlib candidate).
+* SC1 `Real.rpow_sub_rpow_le_max_mul` (with `_sq` and `Real.one_add_one_div_rpow_le_exp_one`) →
+  `NLAlib/ForMathlib/Analysis/SpecialFunctions/Pow/Real.lean` (facts about real powers; Mathlib
+  candidates).
 * CH1 `exists_degree_lt_div_sq_le_exp_of_le` →
   `NLAlib/ForMathlib/Analysis/SpecialFunctions/Trigonometric/Chebyshev/Growth.lean` (a statement
-  about Chebyshev polynomials and two real numbers; today its content is private inside
-  `LowRank/Gaussian/BlockKrylov.lean`).
-* GR1, GR2 → `NLAlib/LowRank/Gaussian/RangeFinder.lean` (the Gaussian range finder's residual;
-  a probabilistic statement, so not in `Structural/`).
-* GI1 → `NLAlib/LowRank/Random/RangeFinder.lean` (next to
-  `integrable_frobNorm_sub_truncatedSVD_rsvd_sq`, which already covers the Frobenius errors for
-  any measurable sketch); `measurable_rbkiSum` → `NLAlib/Probability/Measurability/Krylov.lean`.
-* vocabulary row for `rbkiSum`; `docs/constants.toml` unchanged (no named bound).
+  about Chebyshev polynomials and two real numbers).
+* CH1g `exists_degree_lt_div_sq_le_exp_singularGapRatio` (over `𝕜`) →
+  `NLAlib/Matrix/Spectral/SingularValueInequalities.lean`, next to `singularGapRatio` (the filter
+  at the relative singular gap; it was in `LowRank/Gaussian/BlockKrylov.lean`, over ℝ).
+* GR1, GR2 and the frame lemma
+  `exists_integral_frobNorm_sub_truncatedSVD_mul_mul_pinv_sq_le_of_hasLaw_gaussianMatrix` →
+  `NLAlib/LowRank/Gaussian/RangeFinder.lean` (the Gaussian range finder's residual).
+* GI1 → `NLAlib/LowRank/Random/RangeFinder.lean`; TS0k `measurable_fromCols_blockKrylovMatrix` →
+  `NLAlib/Probability/Measurability/Krylov.lean`.
+* `IsStarProjection.hasOrthonormalCols_two_smul_sub_one` → `NLAlib/Matrix/Basic/Projector.lean`
+  (the reflection through a projector, used by PN1).
+* `Matrix.IsHermitian.re_quadForm_cfc_eq_sum_add_sum` →
+  `NLAlib/Matrix/Functions/HermitianCalculus.lean` (functional calculus through two invariant
+  frames, used by RZ2).
+* `singularValues_rsvd_cfc_le_singularValues_rbki` → `NLAlib/LowRank/Structural/BlockKrylov.lean`
+  (next to its twin for the errors, `singularValues_sub_rbki_le_of_degree_lt`).
+* `frobNorm_sub_truncatedSVD_sq_le_min_card_mul_sq` → `NLAlib/Matrix/Spectral/LowRank.lean` (next
+  to `frobNorm_sub_truncatedSVD_sq`).
+* `NLAlib/ForMathlib/Data/Matrix/ColumnRowPartitioned.lean`: the range of `fromCols` contains that
+  of its right block (TS1).
+* vocabulary row for `rbkiSum`; `docs/constants.toml` unchanged (no named bound);
+  `docs/references.bib`: `BakshiClarksonWoodruff2022`.
 
 **Changes to merged statements** (old → new):
 
 * `exists_degree_lt_div_sq_le_exp_singularGapRatio (A : Matrix m n ℝ) …` →
   `(A : Matrix m n 𝕜) …`, same conclusion, reproved from CH1 (decision CHEB-GENERAL); needed so
-  that RZ4, RZ4F are over `𝕜` [T7]. Its call sites pass a real matrix and are unaffected.
+  that RZ4, RZ4F are over `𝕜` [T7]. Its call sites pass a real matrix and are unaffected. Done
+  as planned (§12): the general statement is the lemma, under the unprimed name, in
+  `Matrix/Spectral/SingularValueInequalities.lean`.
 * `exists_filter_residual` (private, `LowRank/Gaussian/Filter.lean`): statement unchanged; its
-  proof is to be rebased on GR1 when GR1 lands (no public statement changes).
+  proof is to be rebased on GR1 when GR1 lands (no public statement changes). Not done in this
+  stage (open item, §12).
 
 No deviation from Mathlib is introduced.
 
@@ -849,6 +880,12 @@ Lemma 3.4's use of Ritz vectors (hypotheses are on singular values); Lemma 3.6 a
 Algorithm 3.2 (E2, E14); `transpose` twins (BCW run Krylov on $\mathbf A^{\mathsf T}$; the
 library's `rbki` already projects on the left).
 
+During proving, the $p>2$ chain (SP1, HD1, HD2, ST3, ST4, CB3, GA3) was audited independently
+against its statements (harness `research/lra-cube-root/omos/p-large-chain-report.md`, "Open Math"
+audit): every statement true as written except HD2's prose, which needed HD1's hypotheses made
+explicit (as Appendix A already had them); two proposed repairs were checked and rejected (CB3
+keeps $\kappa^p$; GA3 needs no new Schatten output theorem). The proofs follow that chain.
+
 ## 11. Changes after review
 
 Independent review: harness `reports/Review-Fable-LRA-CUBE-ROOT-Design.md` (verdict: revise,
@@ -872,649 +909,129 @@ One point where the reviewer's proposal was changed rather than taken as written
 single absolute $\beta$; with S4 the gap case bounds the sum of the deficits, not each one, so
 CB1 takes $\beta_i$ and concludes with $\sum_{i<k}\beta_i$.
 
+## 12. As proved (2026-11-24)
+
+**Statement changes while proving** (each a strengthening: an unused hypothesis removed; no
+statement was weakened and no constant changed):
+
+* CB1F `IsStarProjection.frobNorm_sub_truncatedSVD_mul_sq_le_of_singularValues_le_mul`: loses
+  `hκ : 0 ≤ κ` and `hβ : ∀ i < k, 0 ≤ β i`.
+* CB1 `IsStarProjection.schattenNorm_sub_mul_rpow_le_of_singularValues_le_mul`: loses
+  `hβ : ∀ i < k, 0 ≤ β i` (`hβ0` stays).
+* CB2 `min_schattenNorm_sub_mul_rpow_le_of_singularValues_le_mul`: loses `hβ₁`, `hβ₂`.
+* ST4 `IsStarProjection.schattenNorm_sub_mul_le_of_sq_singularValues_sub_le`: loses `hγ : 0 ≤ γ`.
+
+**Change to a merged statement** (decision CHEB-GENERAL, recorded in the rename map's
+`statementChanged`): `exists_degree_lt_div_sq_le_exp_singularGapRatio` takes
+`A : Matrix m n 𝕜` over any `RCLike` field instead of a real matrix, same conclusion, and moves
+from `LowRank/Gaussian/BlockKrylov.lean` to `Matrix/Spectral/SingularValueInequalities.lean`. The
+stage's twin `exists_degree_lt_div_sq_le_exp_singularGapRatio'` (CH1g) is merged into it and the
+private `exp_div_two_le_abs_eval_T_comp` (a copy of
+`Polynomial.Chebyshev.exp_mul_sqrt_div_two_le_abs_eval_T_comp`) is deleted. Real call sites
+(`LowRank/Gaussian/BlockKrylov`, `LowRank/Gaussian/SmallBlock`) are unchanged.
+
+**Renames** (N6, a power follows its argument; stage declarations only, none was on `main`):
+
+| Design name | Final name |
+|---|---|
+| `IsStarProjection.sq_singularValues_sub_sq_specNorm_le` (SV1) | `IsStarProjection.singularValues_sq_sub_specNorm_sq_le` |
+| `IsStarProjection.sq_singularValues_sub_sq_specNorm_one_sub_mul_le` | `IsStarProjection.singularValues_sq_sub_specNorm_one_sub_mul_sq_le` |
+| `HasOrthonormalCols.sq_singularValues_sub_le_sq_singularValues_rsvd_cfc` (RZ1) | `HasOrthonormalCols.singularValues_sq_sub_le_singularValues_rsvd_cfc_sq` |
+| `HasOrthonormalCols.sq_sub_le_sq_singularValues_rsvd_cfc_of_le_singularValues` (RZ2) | `HasOrthonormalCols.sq_sub_le_singularValues_rsvd_cfc_sq_of_le_singularValues` |
+| `HasOrthonormalCols.sum_sq_singularValues_sub_sq_singularValues_rsvd_cfc_le` | `HasOrthonormalCols.sum_singularValues_sq_sub_singularValues_rsvd_cfc_sq_le` |
+| `HasOrthonormalCols.sq_singularValues_sub_le_sq_singularValues_rbki` (RZ3) | `HasOrthonormalCols.singularValues_sq_sub_le_singularValues_rbki_sq` |
+| `HasOrthonormalCols.sq_singularValues_sub_le_sq_singularValues_rbki_singularGapRatio` (RZ4) | `HasOrthonormalCols.singularValues_sq_sub_le_singularValues_rbki_sq_singularGapRatio` |
+| `HasOrthonormalCols.sum_sq_singularValues_sub_sq_singularValues_rbki_le` (RZ4F) | `HasOrthonormalCols.sum_singularValues_sq_sub_singularValues_rbki_sq_le` |
+
+(all in `NLAlib` except the `IsStarProjection` ones). ST4's name keeps `sq_singularValues` in its
+hypothesis part, which N6 does not check. The private frame lemma of GA0–GA3 became the public
+`exists_integral_frobNorm_sub_truncatedSVD_mul_mul_pinv_sq_le_of_hasLaw_gaussianMatrix` in
+`LowRank/Gaussian/RangeFinder.lean`, so that both Gaussian files use it (rule 10).
+
+**Moves in the cleanup** (no statement change): the six helpers listed in §5 under "Additions"
+that carried a `TODO(move)`, and the file split of §5.
+
+**Duplication audit** (harness `reports/Audit-Duplicates-LowRank.md`; no statement changes):
+`IsStarProjection.hasOrthonormalCols_two_smul_sub_one` is now a two-line proof from Mathlib's
+`IsStarProjection.two_mul_sub_one_mem_unitary` (exact overlap, design item 6);
+`IsStarProjection.singularValues_sq_sub_specNorm_one_sub_mul_sq_le` is proved by Weyl's
+inequality on $\mathbf B^{\mathsf H}\mathbf B = (\mathbf P\mathbf B)^{\mathsf H}\mathbf P\mathbf B +
+((\mathbf I-\mathbf P)\mathbf B)^{\mathsf H}(\mathbf I-\mathbf P)\mathbf B$ instead of min–max (N5);
+the merged `natCast_div_sub_sub_one_mul_frobNorm_sub_truncatedSVD_sq_le_card_sq_mul_singularValues_sq`
+is reproved from `frobNorm_sub_truncatedSVD_sq_le_min_card_mul_sq` (F8); two generic private
+helpers of the tail file became public in their topics, `schattenNorm_eq_zero_of_min_card_eq_zero`
+(`Matrix/Norms/Schatten.lean`) and `measureReal_le_add_of_ae_imp` (`Probability/Tail.lean`) (N9).
+Not taken: N2 (deriving `Matrix.IsHermitian.re_quadForm_cfc_eq_sum_add_sum` from
+`HasOrthonormalCols.re_quadForm_cfc_eq_sum` at `fromCols T V`): the split lemma assumes only
+$\mathbf T\mathbf T^{\mathsf H} + \mathbf V\mathbf V^{\mathsf H} = \mathbf I$, not that the joined frame
+is square with orthonormal columns, so the existing lemma does not apply; its proof already goes
+through the shared partial-frame lemma `Matrix.IsHermitian.cfc_mul_eq_mul_diagonal_of_mul_eq`.
+
+**Open items.** `exists_filter_residual` (private, `LowRank/Gaussian/Filter.lean`) is not yet
+rebased on GR1 (proof only). The theorems not planned in §6 (GA3t, CH1g, TS0k) are listed in
+the targets file. Nothing in the checks, CI, the lakefile or the allowlists changed. No deviation
+from Mathlib is introduced (no entry in `Mathlib-deviations.md`).
+
 ## Appendix A. Lean statements
 
-### A.0 Check
-
-The file below was elaborated with `lake env lean` against the build of `origin/main` @
-`edb7e0ee` (toolchain `leanprover/lean4:v4.33.1`) on 2026-11-20, after the revision of §11: no
-error; every declaration reports only "declaration uses `sorry`" (and one
-unused-section-variable linter note on `rbkiSum_def`). It lives in an untracked `scratch/`
-directory of the worktree and is reproduced here verbatim; it adds nothing under `NLAlib/`.
-Comments `-- ID` give the target ids of §6; every target has a statement
-(`measurable_rbkiSum` of TS0 is the only declaration named in §6 and not stated here).
-Elaboration means the statements typecheck, nothing more. Names are to be reviewed with the
-skeleton; implicit instance arguments will be trimmed per declaration (`omit … in`) there.
-
-```lean
-import NLAlib.LowRank.Gaussian.SmallBlock
-import NLAlib.Matrix.Norms.SchattenPowers
-import NLAlib.RandomMatrix.Gaussian.BlockTail
-
-/-! Scratch statements for the LRA-CUBE-ROOT design note. Every proof is `sorry`; this file only
-checks that the statements elaborate. Not part of the library. -/
-
-open MeasureTheory ProbabilityTheory Polynomial
-open scoped Matrix ENNReal
-
-namespace NLAlib
-
-/-! ## Wave 0: shared machinery -/
-
--- SC1
-theorem _root_.Real.rpow_sub_rpow_le_max_mul {a b r : ℝ} (hb : 0 ≤ b) (hab : b ≤ a) (hr : 0 < r) :
-    a ^ r - b ^ r ≤ max 1 r * a ^ (r - 1) * (a - b) := sorry
-
--- CH1
-theorem exists_degree_lt_div_sq_le_exp_of_le {s τ : ℝ} (hτ : 0 ≤ τ) (hτs : τ ≤ s) (hs : 0 < s)
-    (d : ℕ) :
-    ∃ f : ℝ[X], f.degree < (d + 1 : ℕ) ∧ ∃ c a : ℝ, 0 < c ∧
-      (∀ x, s ^ 2 ≤ x → c ≤ |f.eval x|) ∧
-      (∀ x ∈ Set.Icc 0 (τ ^ 2), |f.eval x| ≤ a) ∧
-      (a / c) ^ 2 ≤ 4 * Real.exp (-8 * (d : ℝ) * Real.sqrt ((s - τ) / (s + τ))) := sorry
-
-section Det
-
-variable {𝕜 : Type*} [RCLike 𝕜] {l l₁ l₂ m n s s₁ s₂ : Type*} [Fintype l] [Fintype l₁] [Fintype l₂]
-  [Fintype m] [Fintype n] [Fintype s] [Fintype s₁] [Fintype s₂] [DecidableEq m] [DecidableEq n]
-  [DecidableEq s] [DecidableEq s₁] [DecidableEq s₂]
-
--- PN1
-theorem SymmetricGauge.matrixNorm_mul_mul_add_one_sub_mul_mul_one_sub_le (Φ : SymmetricGauge)
-    {P : Matrix m m 𝕜} {Q : Matrix n n 𝕜} (hP : IsStarProjection P) (hQ : IsStarProjection Q)
-    (A : Matrix m n 𝕜) :
-    Φ.matrixNorm (P * A * Q + (1 - P) * A * (1 - Q)) ≤ Φ.matrixNorm A := sorry
-
--- PN2
-theorem schattenNorm_add_rpow_of_conjTranspose_mul_eq_zero_of_mul_conjTranspose_eq_zero
-    {p : ℝ≥0∞} (hp0 : p ≠ 0) (hp : p ≠ ⊤) {X Y : Matrix m n 𝕜} (h₁ : Xᴴ * Y = 0)
-    (h₂ : X * Yᴴ = 0) :
-    schattenNorm p (X + Y) ^ p.toReal =
-      schattenNorm p X ^ p.toReal + schattenNorm p Y ^ p.toReal := sorry
-
--- PN3
-theorem _root_.IsStarProjection.schattenNorm_mul_mul_rpow_add_le {p : ℝ≥0∞} (hp1 : 1 ≤ p)
-    (hp : p ≠ ⊤) {P : Matrix m m 𝕜} {Q : Matrix n n 𝕜} (hP : IsStarProjection P)
-    (hQ : IsStarProjection Q) (A : Matrix m n 𝕜) :
-    schattenNorm p (P * A * Q) ^ p.toReal + schattenNorm p ((1 - P) * A * (1 - Q)) ^ p.toReal ≤
-      schattenNorm p A ^ p.toReal := sorry
-
--- PN4
-theorem _root_.IsStarProjection.schattenNorm_mul_rpow_add_le {p : ℝ≥0∞} (hp2 : 2 ≤ p)
-    (hp : p ≠ ⊤) {P : Matrix m m 𝕜} (hP : IsStarProjection P) (A : Matrix m n 𝕜) :
-    schattenNorm p (P * A) ^ p.toReal + schattenNorm p ((1 - P) * A) ^ p.toReal ≤
-      schattenNorm p A ^ p.toReal := sorry
-
--- SV1
-theorem _root_.IsStarProjection.sq_singularValues_sub_sq_specNorm_le {P : Matrix m m 𝕜}
-    (hP : IsStarProjection P) (A : Matrix m n 𝕜) (i : ℕ) :
-    singularValues A i ^ 2 - specNorm ((1 - P) * truncatedSVD A (i + 1)) ^ 2 ≤
-      singularValues (P * A) i ^ 2 := sorry
-
--- SV2
-omit [DecidableEq n] [DecidableEq s] in
-theorem singularValues_rangeProjector_mul_le_of_range_le {Y : Matrix m l 𝕜} {Y' : Matrix m s 𝕜}
-    (h : LinearMap.range Y'.mulVecLin ≤ LinearMap.range Y.mulVecLin) (A : Matrix m n 𝕜) (i : ℕ) :
-    singularValues (rangeProjector Y' * A) i ≤ singularValues (rangeProjector Y * A) i := sorry
-
--- SV3
-theorem mul_singularValues_rpow_le_schattenNorm_sub_truncatedSVD_rpow {p : ℝ≥0∞} (hp0 : p ≠ 0)
-    (hp : p ≠ ⊤) (A : Matrix m n 𝕜) (k j : ℕ) :
-    ((j : ℝ) + 1) * singularValues A (k + j) ^ p.toReal ≤
-      schattenNorm p (A - truncatedSVD A k) ^ p.toReal := sorry
-
--- SV4
-theorem singularValues_rpow_mul_frobNorm_sub_truncatedSVD_sq_le {p : ℝ≥0∞} (hp1 : 1 ≤ p)
-    (hp2 : p ≤ 2) (A : Matrix m n 𝕜) (k : ℕ) :
-    singularValues A k ^ (p.toReal - 2) * frobNorm (A - truncatedSVD A k) ^ 2 ≤
-      schattenNorm p (A - truncatedSVD A k) ^ p.toReal := sorry
-
--- SP1
-theorem exists_le_singularValues_le_and_gap (A : Matrix m n 𝕜) (k : ℕ) {p : ℝ} (hp : 1 ≤ p) :
-    ∃ L ≤ k, singularValues A L ≤ (1 + 1 / p) * singularValues A k ∧
-      ∀ h, h + 1 = L → (1 + 1 / (2 * p)) * singularValues A k < singularValues A h ∧
-        singularValues A L ^ 2 ≤ (1 - 1 / (2 * k * (p + 1))) * singularValues A h ^ 2 := sorry
-
--- HD1
-theorem HasOrthonormalCols.mul_frobNorm_truncatedSVD_sub_mul_sq_le {W : Matrix m s 𝕜}
-    (hW : HasOrthonormalCols W) (A : Matrix m n 𝕜) {h L : ℕ} (hL : h + 1 = L)
-    (hcard : Fintype.card s ≤ L) {θ η : ℝ} (hθ : θ ≤ 1)
-    (hgap : singularValues A L ^ 2 ≤ (1 - θ) * singularValues A h ^ 2)
-    (hη : ∑ i ∈ Finset.range L, singularValues A i ^ 2 - η ≤ frobNorm (Aᴴ * W) ^ 2) :
-    θ * frobNorm (truncatedSVD A L - W * Wᴴ * truncatedSVD A L) ^ 2 ≤ η := sorry
-
--- HD2
-theorem _root_.IsStarProjection.mul_frobNorm_truncatedSVD_sub_mul_sq_le {P : Matrix m m 𝕜}
-    (hP : IsStarProjection P) (A : Matrix m n 𝕜) {h L : ℕ} (hL : h + 1 = L) {θ : ℝ}
-    (hθ : θ ≤ 1) (hgap : singularValues A L ^ 2 ≤ (1 - θ) * singularValues A h ^ 2) :
-    θ * frobNorm (truncatedSVD A L - P * truncatedSVD A L) ^ 2 ≤
-      ∑ i ∈ Finset.range L, (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) := sorry
-
-/-! ## Wave 1: structural theorems for projectors -/
-
--- ST1
-theorem _root_.IsStarProjection.schattenNorm_sub_mul_rpow_add_le {p : ℝ≥0∞} (hp1 : 1 ≤ p)
-    (hp : p ≠ ⊤) {P : Matrix m m 𝕜} {Q : Matrix n n 𝕜} (hP : IsStarProjection P)
-    (hQ : IsStarProjection Q) {A : Matrix m n 𝕜} (hPAQ : P * A * Q = P * A) :
-    schattenNorm p (A - A * Q) ^ p.toReal + schattenNorm p (P * A) ^ p.toReal ≤
-      schattenNorm p A ^ p.toReal := sorry
-
--- ST2
-theorem _root_.IsStarProjection.schattenNorm_sub_mul_rpow_le_add_sum {p : ℝ≥0∞} (hp1 : 1 ≤ p)
-    (hp : p ≠ ⊤) {P : Matrix m m 𝕜} {Q : Matrix n n 𝕜} (hP : IsStarProjection P)
-    (hQ : IsStarProjection Q) {A : Matrix m n 𝕜} (hPAQ : P * A * Q = P * A) (k : ℕ) :
-    schattenNorm p (A - A * Q) ^ p.toReal ≤ schattenNorm p (A - truncatedSVD A k) ^ p.toReal +
-      ∑ i ∈ Finset.range k,
-        (singularValues A i ^ p.toReal - singularValues (P * A) i ^ p.toReal) := sorry
-
--- ST2F
-theorem _root_.IsStarProjection.frobNorm_sub_mul_sq_eq_add_sum {P : Matrix m m 𝕜}
-    (hP : IsStarProjection P) (A : Matrix m n 𝕜) {k : ℕ} (hk : P.rank ≤ k) :
-    frobNorm (A - P * A) ^ 2 = frobNorm (A - truncatedSVD A k) ^ 2 +
-      ∑ i ∈ Finset.range k, (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) := sorry
-
--- ST2T
-theorem _root_.IsStarProjection.frobNorm_sub_truncatedSVD_mul_sq {P : Matrix m m 𝕜}
-    (hP : IsStarProjection P) (A : Matrix m n 𝕜) (k : ℕ) :
-    frobNorm (A - truncatedSVD (P * A) k) ^ 2 = frobNorm (A - truncatedSVD A k) ^ 2 +
-      ∑ i ∈ Finset.range k, (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) := sorry
-
--- ST2s
-theorem _root_.IsStarProjection.schattenNorm_sub_mul_rpow_le_add_sum_mul {p : ℝ≥0∞}
-    (hp1 : 1 ≤ p) (hp : p ≠ ⊤) {P : Matrix m m 𝕜} {Q : Matrix n n 𝕜} (hP : IsStarProjection P)
-    (hQ : IsStarProjection Q) {A : Matrix m n 𝕜} (hPAQ : P * A * Q = P * A) (k : ℕ) :
-    schattenNorm p (A - A * Q) ^ p.toReal ≤ schattenNorm p (A - truncatedSVD A k) ^ p.toReal +
-      ∑ i ∈ Finset.range k, max 1 (p.toReal / 2) * singularValues A i ^ (p.toReal - 2) *
-        (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) := sorry
-
--- SO1
-theorem _root_.IsStarProjection.matrixNorm_sub_mul_le_matrixNorm_sub_mul (Φ : SymmetricGauge)
-    {P : Matrix m m 𝕜} {Q : Matrix n n 𝕜} (hQ : IsStarProjection Q) {A : Matrix m n 𝕜}
-    (hPAQ : P * A * Q = P * A) :
-    Φ.matrixNorm (A - A * Q) ≤ Φ.matrixNorm (A - P * A) := sorry
-
--- CB1 (tail-count form, 1 ≤ p ≤ 2, two-sided)
-theorem _root_.IsStarProjection.schattenNorm_sub_mul_rpow_le_of_singularValues_le_mul
-    {p : ℝ≥0∞} (hp1 : 1 ≤ p) (hp2 : p ≤ 2) {P : Matrix m m 𝕜} {Q : Matrix n n 𝕜}
-    (hP : IsStarProjection P) (hQ : IsStarProjection Q) {A : Matrix m n 𝕜}
-    (hPAQ : P * A * Q = P * A) {k j : ℕ} {γ κ : ℝ} {β : ℕ → ℝ} (hγ : 0 ≤ γ) (hκ : 0 ≤ κ)
-    (hβ : ∀ i < k, 0 ≤ β i) (hβ0 : singularValues A k = 0 → ∀ i < k, β i = 0)
-    (htail : singularValues A k ≤ κ * singularValues A (k + j))
-    (hritz : ∀ i < k, singularValues A i ^ 2 - γ * singularValues A k ^ 2 - β i ≤
-      singularValues (P * A) i ^ 2) :
-    schattenNorm p (A - A * Q) ^ p.toReal ≤
-      (1 + k * γ * κ ^ p.toReal / ((j : ℝ) + 1)) *
-          schattenNorm p (A - truncatedSVD A k) ^ p.toReal +
-        singularValues A k ^ (p.toReal - 2) * ∑ i ∈ Finset.range k, β i := sorry
-
--- CB1F (tail-count form, Frobenius, one-sided)
-theorem _root_.IsStarProjection.frobNorm_sub_truncatedSVD_mul_sq_le_of_singularValues_le_mul
-    {P : Matrix m m 𝕜} (hP : IsStarProjection P) {A : Matrix m n 𝕜} {k j : ℕ} {γ κ : ℝ}
-    {β : ℕ → ℝ} (hγ : 0 ≤ γ) (htail : singularValues A k ≤ κ * singularValues A (k + j))
-    (hritz : ∀ i < k, singularValues A i ^ 2 - γ * singularValues A k ^ 2 - β i ≤
-      singularValues (P * A) i ^ 2) :
-    frobNorm (A - truncatedSVD (P * A) k) ^ 2 ≤
-      (1 + k * γ * κ ^ 2 / ((j : ℝ) + 1)) * frobNorm (A - truncatedSVD A k) ^ 2 +
-        ∑ i ∈ Finset.range k, β i := sorry
-
--- CB2 (two candidates, 1 ≤ p ≤ 2)
-theorem min_schattenNorm_sub_mul_rpow_le_of_singularValues_le_mul
-    {p : ℝ≥0∞} (hp1 : 1 ≤ p) (hp2 : p ≤ 2) {P₁ P₂ : Matrix m m 𝕜} {Q₁ Q₂ : Matrix n n 𝕜}
-    (hP₁ : IsStarProjection P₁) (hQ₁ : IsStarProjection Q₁) (hP₂ : IsStarProjection P₂)
-    (hQ₂ : IsStarProjection Q₂) {A : Matrix m n 𝕜} (h₁ : P₁ * A * Q₁ = P₁ * A)
-    (h₂ : P₂ * A * Q₂ = P₂ * A) {k j : ℕ} {γ₁ γ₂ κ : ℝ} {β₁ β₂ : ℕ → ℝ} (hγ₁ : 0 ≤ γ₁)
-    (hγ₂ : 0 ≤ γ₂) (hκ : 0 ≤ κ) (hβ₁ : ∀ i < k, 0 ≤ β₁ i) (hβ₂ : ∀ i < k, 0 ≤ β₂ i)
-    (hβ0 : singularValues A k = 0 → ∀ i < k, β₁ i = 0 ∧ β₂ i = 0)
-    (hritz₁ : ∀ i < k, singularValues A i ^ 2 - γ₁ * singularValues A k ^ 2 - β₁ i ≤
-      singularValues (P₁ * A) i ^ 2)
-    (hritz₂ : κ * singularValues A (k + j) < singularValues A k →
-      ∀ i < k, singularValues A i ^ 2 - γ₂ * singularValues A k ^ 2 - β₂ i ≤
-        singularValues (P₂ * A) i ^ 2) :
-    min (schattenNorm p (A - A * Q₁) ^ p.toReal) (schattenNorm p (A - A * Q₂) ^ p.toReal) ≤
-      (1 + k * max (γ₁ * κ ^ p.toReal / ((j : ℝ) + 1)) γ₂) *
-          schattenNorm p (A - truncatedSVD A k) ^ p.toReal +
-        singularValues A k ^ (p.toReal - 2) *
-          max (∑ i ∈ Finset.range k, β₁ i) (∑ i ∈ Finset.range k, β₂ i) := sorry
-
--- ST3 (head split, one-sided, 2 ≤ p)
-theorem _root_.IsStarProjection.schattenNorm_sub_mul_le_add_rpow {p : ℝ≥0∞}
-    (hp2 : 2 ≤ p) (hp : p ≠ ⊤) {P : Matrix m m 𝕜} (hP : IsStarProjection P) (A : Matrix m n 𝕜)
-    {L k : ℕ} (hLk : L ≤ k) :
-    schattenNorm p (A - P * A) ≤
-      schattenNorm p (truncatedSVD A L - P * truncatedSVD A L) +
-        (schattenNorm p (A - truncatedSVD A k) ^ p.toReal +
-          ∑ i ∈ Finset.Ico L k,
-            (singularValues A i ^ p.toReal - singularValues (P * A) i ^ p.toReal)) ^
-          p.toReal⁻¹ := sorry
-
--- ST4
-theorem _root_.IsStarProjection.schattenNorm_sub_mul_le_of_sq_singularValues_sub_le
-    {p : ℝ≥0∞} (hp2 : 2 ≤ p) (hp : p ≠ ⊤) {P : Matrix m m 𝕜} (hP : IsStarProjection P)
-    {A : Matrix m n 𝕜} {L k : ℕ} (hLk : L ≤ k) {δ γ θ κ : ℝ} (hδ : 0 ≤ δ) (hγ : 0 ≤ γ)
-    (hθ : 0 < θ) (hθ1 : θ ≤ 1) (hκ : 1 ≤ κ)
-    (hgap : ∀ h, h + 1 = L → singularValues A L ^ 2 ≤ (1 - θ) * singularValues A h ^ 2)
-    (hflat : singularValues A L ≤ κ * singularValues A k)
-    (hhead : ∀ i < L, singularValues A i ^ 2 - δ * singularValues A k ^ 2 ≤
-      singularValues (P * A) i ^ 2)
-    (hmid : ∀ i, L ≤ i → i < k → singularValues A i ^ 2 - γ * singularValues A k ^ 2 ≤
-      singularValues (P * A) i ^ 2) :
-    schattenNorm p (A - P * A) ≤
-      Real.sqrt (L * δ / θ) * singularValues A k +
-        (schattenNorm p (A - truncatedSVD A k) ^ p.toReal +
-          p.toReal / 2 * κ ^ (p.toReal - 2) * ((k : ℝ) - L) * γ *
-            singularValues A k ^ p.toReal) ^ p.toReal⁻¹ := sorry
-
--- CB3 (tail-count form, 2 ≤ p < ∞, one-sided)
-theorem _root_.IsStarProjection.schattenNorm_sub_mul_le_mul_of_singularValues_le_mul
-    {p : ℝ≥0∞} (hp2 : 2 ≤ p) (hp : p ≠ ⊤) {P : Matrix m m 𝕜} (hP : IsStarProjection P)
-    {A : Matrix m n 𝕜} {k j : ℕ} {δ γ κ : ℝ} (hδ : 0 ≤ δ) (hγ : 0 ≤ γ) (hκ : 0 ≤ κ)
-    (htail : singularValues A k ≤ κ * singularValues A (k + j))
-    (hhead : ∀ i < k, (1 + 1 / (2 * p.toReal)) * singularValues A k < singularValues A i →
-      singularValues A i ^ 2 - δ * singularValues A k ^ 2 ≤ singularValues (P * A) i ^ 2)
-    (hritz : ∀ i < k, singularValues A i ^ 2 - γ * singularValues A k ^ 2 ≤
-      singularValues (P * A) i ^ 2) :
-    schattenNorm p (A - P * A) ≤
-      (k * Real.sqrt (2 * (p.toReal + 1) * δ) +
-        (1 + Real.exp 1 * (p.toReal / 2) * k * γ * κ ^ p.toReal / ((j : ℝ) + 1)) ^ p.toReal⁻¹) *
-        schattenNorm p (A - truncatedSVD A k) := sorry
-
-/-! ## Wave 2: singular values of filtered sketches and of RBKI -/
-
--- RZ1
-theorem HasOrthonormalCols.sq_singularValues_sub_le_sq_singularValues_rsvd_cfc
-    {A : Matrix m n 𝕜} {Ω : Matrix n l 𝕜} (g : ℝ → ℝ) {Z : Matrix n s 𝕜}
-    (hZ : HasOrthonormalCols Z) (hΩ : (Ωᴴ * Z).rank = Z.rank) {t : ℕ}
-    (hAZ : A * Z * Zᴴ = truncatedSVD A t) {i : ℕ} (hi : i < t) {c a : ℝ} (hc : 0 < c)
-    (hhead : ∀ j ≤ i, c ≤ |g (singularValues A j ^ 2)|)
-    (htail : ∀ x ∈ Set.Icc 0 (singularValues A t ^ 2), |g x| ≤ a) :
-    singularValues A i ^ 2 -
-        (a / c) ^ 2 * specNorm ((A - truncatedSVD A t) * Ω * pinv (Zᴴ * Ω)) ^ 2 ≤
-      singularValues (rsvd A (cfc g (Aᴴ * A) * Ω)) i ^ 2 := sorry
-
--- RZ2
-theorem HasOrthonormalCols.sq_sub_le_sq_singularValues_rsvd_cfc_of_le_singularValues
-    {A : Matrix m n 𝕜} {Ω : Matrix n l 𝕜} (g : ℝ → ℝ) {Z : Matrix n s 𝕜}
-    (hZ : HasOrthonormalCols Z) (hΩ : (Ωᴴ * Z).rank = Z.rank) {i : ℕ}
-    (hAZ : truncatedSVD A (i + 1) * Z * Zᴴ = truncatedSVD A (i + 1)) {c a τ : ℝ} (hc : 0 < c)
-    (hτ : 0 ≤ τ) (hτi : τ ≤ singularValues A i)
-    (hhead : ∀ j ≤ i, c ≤ |g (singularValues A j ^ 2)|)
-    (htail : ∀ x ∈ Set.Icc 0 (τ ^ 2), |g x| ≤ a) :
-    τ ^ 2 - (a / c) ^ 2 * specNorm ((A - A * Z * Zᴴ) * Ω * pinv (Zᴴ * Ω)) ^ 2 ≤
-      singularValues (rsvd A (cfc g (Aᴴ * A) * Ω)) i ^ 2 := sorry
-
--- RZ3
-theorem HasOrthonormalCols.sq_singularValues_sub_le_sq_singularValues_rbki
-    {A : Matrix m n 𝕜} {Ω : Matrix n l 𝕜} {Z : Matrix n s 𝕜} (hZ : HasOrthonormalCols Z)
-    (hΩ : (Ωᴴ * Z).rank = Z.rank) {k : ℕ} (hAZ : A * Z * Zᴴ = truncatedSVD A k) {q : ℕ}
-    (hq : 1 ≤ q) {γ : ℝ} (hγ : 0 < γ) (hγ1 : γ ≤ 1) {i : ℕ} (hi : i < k) :
-    singularValues A i ^ 2 - γ * singularValues A k ^ 2 -
-        4 * Real.exp (-2 * Real.sqrt 2 * ((q : ℝ) - 1) * Real.sqrt γ) *
-          specNorm ((A - truncatedSVD A k) * Ω * pinv (Zᴴ * Ω)) ^ 2 ≤
-      singularValues (rbki A Ω q) i ^ 2 := sorry
-
--- RZ4
-theorem HasOrthonormalCols.sq_singularValues_sub_le_sq_singularValues_rbki_singularGapRatio
-    {A : Matrix m n 𝕜} {Ω : Matrix n l 𝕜} {Z : Matrix n s 𝕜} (hZ : HasOrthonormalCols Z)
-    (hΩ : (Ωᴴ * Z).rank = Z.rank) {h r t : ℕ} (hr : h + 1 = r) (hrt : r ≤ t)
-    (hAZ : A * Z * Zᴴ = truncatedSVD A t) {q : ℕ} (hq : 1 ≤ q) {i : ℕ} (hi : i < r) :
-    singularValues A i ^ 2 -
-        4 * Real.exp (-8 * ((q : ℝ) - 1) * Real.sqrt (singularGapRatio A h t)) *
-          specNorm ((A - truncatedSVD A t) * Ω * pinv (Zᴴ * Ω)) ^ 2 ≤
-      singularValues (rbki A Ω q) i ^ 2 := sorry
-
--- RZ4F
-theorem HasOrthonormalCols.sum_sq_singularValues_sub_sq_singularValues_rbki_le
-    {A : Matrix m n 𝕜} {Ω : Matrix n l 𝕜} {Z : Matrix n s 𝕜} (hZ : HasOrthonormalCols Z)
-    (hΩ : (Ωᴴ * Z).rank = Z.rank) {h r t : ℕ} (hr : h + 1 = r) (hrt : r ≤ t)
-    (hAZ : A * Z * Zᴴ = truncatedSVD A t) {q : ℕ} (hq : 1 ≤ q) :
-    ∑ i ∈ Finset.range r, (singularValues A i ^ 2 - singularValues (rbki A Ω q) i ^ 2) ≤
-      4 * Real.exp (-8 * ((q : ℝ) - 1) * Real.sqrt (singularGapRatio A h t)) *
-        frobNorm ((A - truncatedSVD A t) * Ω * pinv (Zᴴ * Ω)) ^ 2 := sorry
-
--- RZ5
-theorem HasOrthonormalCols.frobNorm_sub_truncatedSVD_rbki_sq_le_add_mul
-    {A : Matrix m n 𝕜} {Ω : Matrix n l 𝕜} {Z : Matrix n s 𝕜} (hZ : HasOrthonormalCols Z)
-    (hΩ : (Ωᴴ * Z).rank = Z.rank) {k : ℕ} (hAZ : A * Z * Zᴴ = truncatedSVD A k) {q : ℕ}
-    (hq : 1 ≤ q) {γ : ℝ} (hγ : 0 < γ) (hγ1 : γ ≤ 1) :
-    frobNorm (A - truncatedSVD (rbki A Ω q) k) ^ 2 ≤
-      frobNorm (A - truncatedSVD A k) ^ 2 + k * γ * singularValues A k ^ 2 +
-        4 * k * Real.exp (-2 * Real.sqrt 2 * ((q : ℝ) - 1) * Real.sqrt γ) *
-          specNorm ((A - truncatedSVD A k) * Ω * pinv (Zᴴ * Ω)) ^ 2 := sorry
-
-/-! ## Wave 3: the sum of two block Krylov spaces -/
-
-/-- RBKI on the sum of two block Krylov spaces. -/
-noncomputable def rbkiSum (A : Matrix m n 𝕜) (Ω₁ : Matrix n l₁ 𝕜) (Ω₂ : Matrix n l₂ 𝕜)
-    (q₁ q₂ : ℕ) : Matrix m n 𝕜 :=
-  rsvd A (Matrix.fromCols (blockKrylovMatrix (Aᴴ * A) Ω₁ q₁) (blockKrylovMatrix (Aᴴ * A) Ω₂ q₂))
-
--- TS0
-theorem rbkiSum_def (A : Matrix m n 𝕜) (Ω₁ : Matrix n l₁ 𝕜) (Ω₂ : Matrix n l₂ 𝕜) (q₁ q₂ : ℕ) :
-    rbkiSum A Ω₁ Ω₂ q₁ q₂ = rsvd A (Matrix.fromCols (blockKrylovMatrix (Aᴴ * A) Ω₁ q₁)
-      (blockKrylovMatrix (Aᴴ * A) Ω₂ q₂)) := rfl
-
-theorem rbkiSum_eq_rangeProjector (A : Matrix m n 𝕜) (Ω₁ : Matrix n l₁ 𝕜) (Ω₂ : Matrix n l₂ 𝕜)
-    (q₁ q₂ : ℕ) :
-    rbkiSum A Ω₁ Ω₂ q₁ q₂ = rangeProjector (Matrix.fromCols
-      (blockKrylovMatrix (A * Aᴴ) (A * Ω₁) q₁) (blockKrylovMatrix (A * Aᴴ) (A * Ω₂) q₂)) * A :=
-  sorry
-
--- TS1
-theorem range_mul_blockKrylovMatrix_le_range_mul_fromCols_left (A : Matrix m n 𝕜)
-    (Ω₁ : Matrix n l₁ 𝕜) (Ω₂ : Matrix n l₂ 𝕜) (q₁ q₂ : ℕ) :
-    LinearMap.range (A * blockKrylovMatrix (Aᴴ * A) Ω₁ q₁).mulVecLin ≤
-      LinearMap.range (A * Matrix.fromCols (blockKrylovMatrix (Aᴴ * A) Ω₁ q₁)
-        (blockKrylovMatrix (Aᴴ * A) Ω₂ q₂)).mulVecLin := sorry
-
-theorem range_mul_blockKrylovMatrix_le_range_mul_fromCols_right (A : Matrix m n 𝕜)
-    (Ω₁ : Matrix n l₁ 𝕜) (Ω₂ : Matrix n l₂ 𝕜) (q₁ q₂ : ℕ) :
-    LinearMap.range (A * blockKrylovMatrix (Aᴴ * A) Ω₂ q₂).mulVecLin ≤
-      LinearMap.range (A * Matrix.fromCols (blockKrylovMatrix (Aᴴ * A) Ω₁ q₁)
-        (blockKrylovMatrix (Aᴴ * A) Ω₂ q₂)).mulVecLin := sorry
-
-theorem singularValues_rbki_le_singularValues_rbkiSum_left (A : Matrix m n 𝕜)
-    (Ω₁ : Matrix n l₁ 𝕜) (Ω₂ : Matrix n l₂ 𝕜) (q₁ q₂ i : ℕ) :
-    singularValues (rbki A Ω₁ q₁) i ≤ singularValues (rbkiSum A Ω₁ Ω₂ q₁ q₂) i := sorry
-
-theorem singularValues_rbki_le_singularValues_rbkiSum_right (A : Matrix m n 𝕜)
-    (Ω₁ : Matrix n l₁ 𝕜) (Ω₂ : Matrix n l₂ 𝕜) (q₁ q₂ i : ℕ) :
-    singularValues (rbki A Ω₂ q₂) i ≤ singularValues (rbkiSum A Ω₁ Ω₂ q₁ q₂) i := sorry
-
--- TS2 (Frobenius, any sketch whose range contains both Krylov sketches)
-theorem HasOrthonormalCols.frobNorm_sub_truncatedSVD_rsvd_sq_le_of_range_le
-    {A : Matrix m n 𝕜} {Ω₁ : Matrix n l₁ 𝕜} {Ω₂ : Matrix n l₂ 𝕜} {Z₁ : Matrix n s₁ 𝕜}
-    {Z₂ : Matrix n s₂ 𝕜} (hZ₁ : HasOrthonormalCols Z₁) (hZ₂ : HasOrthonormalCols Z₂)
-    (hΩ₁ : (Ω₁ᴴ * Z₁).rank = Z₁.rank) (hΩ₂ : (Ω₂ᴴ * Z₂).rank = Z₂.rank) {k j : ℕ}
-    (hAZ₁ : A * Z₁ * Z₁ᴴ = truncatedSVD A k) (hAZ₂ : A * Z₂ * Z₂ᴴ = truncatedSVD A (k + j))
-    {q₁ q₂ : ℕ} (hq₁ : 1 ≤ q₁) (hq₂ : 1 ≤ q₂) {γ : ℝ} (hγ : 0 < γ) (hγ1 : γ ≤ 1)
-    {Y : Matrix n l 𝕜}
-    (h₁ : LinearMap.range (A * blockKrylovMatrix (Aᴴ * A) Ω₁ q₁).mulVecLin ≤
-      LinearMap.range (A * Y).mulVecLin)
-    (h₂ : LinearMap.range (A * blockKrylovMatrix (Aᴴ * A) Ω₂ q₂).mulVecLin ≤
-      LinearMap.range (A * Y).mulVecLin) :
-    frobNorm (A - truncatedSVD (rsvd A Y) k) ^ 2 ≤
-      (1 + 2 * k * γ / ((j : ℝ) + 1)) * frobNorm (A - truncatedSVD A k) ^ 2 +
-        4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * Real.sqrt γ) *
-          specNorm ((A - truncatedSVD A k) * Ω₁ * pinv (Z₁ᴴ * Ω₁)) ^ 2 +
-        4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) *
-          frobNorm ((A - truncatedSVD A (k + j)) * Ω₂ * pinv (Z₂ᴴ * Ω₂)) ^ 2 := sorry
-
--- TS2c
-theorem HasOrthonormalCols.frobNorm_sub_truncatedSVD_rbkiSum_sq_le
-    {A : Matrix m n 𝕜} {Ω₁ : Matrix n l₁ 𝕜} {Ω₂ : Matrix n l₂ 𝕜} {Z₁ : Matrix n s₁ 𝕜}
-    {Z₂ : Matrix n s₂ 𝕜} (hZ₁ : HasOrthonormalCols Z₁) (hZ₂ : HasOrthonormalCols Z₂)
-    (hΩ₁ : (Ω₁ᴴ * Z₁).rank = Z₁.rank) (hΩ₂ : (Ω₂ᴴ * Z₂).rank = Z₂.rank) {k j : ℕ}
-    (hAZ₁ : A * Z₁ * Z₁ᴴ = truncatedSVD A k) (hAZ₂ : A * Z₂ * Z₂ᴴ = truncatedSVD A (k + j))
-    {q₁ q₂ : ℕ} (hq₁ : 1 ≤ q₁) (hq₂ : 1 ≤ q₂) {γ : ℝ} (hγ : 0 < γ) (hγ1 : γ ≤ 1) :
-    frobNorm (A - truncatedSVD (rbkiSum A Ω₁ Ω₂ q₁ q₂) k) ^ 2 ≤
-      (1 + 2 * k * γ / ((j : ℝ) + 1)) * frobNorm (A - truncatedSVD A k) ^ 2 +
-        4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * Real.sqrt γ) *
-          specNorm ((A - truncatedSVD A k) * Ω₁ * pinv (Z₁ᴴ * Ω₁)) ^ 2 +
-        4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) *
-          frobNorm ((A - truncatedSVD A (k + j)) * Ω₂ * pinv (Z₂ᴴ * Ω₂)) ^ 2 := sorry
-
--- TS2m
-theorem HasOrthonormalCols.min_frobNorm_sub_truncatedSVD_rbki_sq_le
-    {A : Matrix m n 𝕜} {Ω₁ : Matrix n l₁ 𝕜} {Ω₂ : Matrix n l₂ 𝕜} {Z₁ : Matrix n s₁ 𝕜}
-    {Z₂ : Matrix n s₂ 𝕜} (hZ₁ : HasOrthonormalCols Z₁) (hZ₂ : HasOrthonormalCols Z₂)
-    (hΩ₁ : (Ω₁ᴴ * Z₁).rank = Z₁.rank) (hΩ₂ : (Ω₂ᴴ * Z₂).rank = Z₂.rank) {k j : ℕ}
-    (hAZ₁ : A * Z₁ * Z₁ᴴ = truncatedSVD A k) (hAZ₂ : A * Z₂ * Z₂ᴴ = truncatedSVD A (k + j))
-    {q₁ q₂ : ℕ} (hq₁ : 1 ≤ q₁) (hq₂ : 1 ≤ q₂) {γ : ℝ} (hγ : 0 < γ) (hγ1 : γ ≤ 1) :
-    min (frobNorm (A - truncatedSVD (rbki A Ω₁ q₁) k) ^ 2)
-        (frobNorm (A - truncatedSVD (rbki A Ω₂ q₂) k) ^ 2) ≤
-      (1 + 2 * k * γ / ((j : ℝ) + 1)) * frobNorm (A - truncatedSVD A k) ^ 2 +
-        4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * Real.sqrt γ) *
-          specNorm ((A - truncatedSVD A k) * Ω₁ * pinv (Z₁ᴴ * Ω₁)) ^ 2 +
-        4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) *
-          frobNorm ((A - truncatedSVD A (k + j)) * Ω₂ * pinv (Z₂ᴴ * Ω₂)) ^ 2 := sorry
-
--- TS3 (Schatten 1 ≤ p ≤ 2, two-sided output, any sketch containing both Krylov sketches)
-theorem HasOrthonormalCols.schattenNorm_sub_mul_rangeProjector_rsvd_rpow_le_of_range_le
-    {p : ℝ≥0∞} (hp1 : 1 ≤ p) (hp2 : p ≤ 2)
-    {A : Matrix m n 𝕜} {Ω₁ : Matrix n l₁ 𝕜} {Ω₂ : Matrix n l₂ 𝕜} {Z₁ : Matrix n s₁ 𝕜}
-    {Z₂ : Matrix n s₂ 𝕜} (hZ₁ : HasOrthonormalCols Z₁) (hZ₂ : HasOrthonormalCols Z₂)
-    (hΩ₁ : (Ω₁ᴴ * Z₁).rank = Z₁.rank) (hΩ₂ : (Ω₂ᴴ * Z₂).rank = Z₂.rank) {k j : ℕ}
-    (hAZ₁ : A * Z₁ * Z₁ᴴ = truncatedSVD A k) (hAZ₂ : A * Z₂ * Z₂ᴴ = truncatedSVD A (k + j))
-    {q₁ q₂ : ℕ} (hq₁ : 1 ≤ q₁) (hq₂ : 1 ≤ q₂) {γ : ℝ} (hγ : 0 < γ) (hγ1 : γ ≤ 1)
-    {Y : Matrix n l 𝕜}
-    (h₁ : LinearMap.range (A * blockKrylovMatrix (Aᴴ * A) Ω₁ q₁).mulVecLin ≤
-      LinearMap.range (A * Y).mulVecLin)
-    (h₂ : LinearMap.range (A * blockKrylovMatrix (Aᴴ * A) Ω₂ q₂).mulVecLin ≤
-      LinearMap.range (A * Y).mulVecLin) :
-    schattenNorm p (A - A * rangeProjector (truncatedSVD (rsvd A Y) k)ᴴ) ^ p.toReal ≤
-      (1 + 2 * k * γ / ((j : ℝ) + 1)) * schattenNorm p (A - truncatedSVD A k) ^ p.toReal +
-        singularValues A k ^ (p.toReal - 2) *
-          (4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * Real.sqrt γ) *
-              specNorm ((A - truncatedSVD A k) * Ω₁ * pinv (Z₁ᴴ * Ω₁)) ^ 2 +
-            4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) *
-              frobNorm ((A - truncatedSVD A (k + j)) * Ω₂ * pinv (Z₂ᴴ * Ω₂)) ^ 2) := sorry
-
--- TS3c
-theorem HasOrthonormalCols.schattenNorm_sub_mul_rangeProjector_rbkiSum_rpow_le
-    {p : ℝ≥0∞} (hp1 : 1 ≤ p) (hp2 : p ≤ 2)
-    {A : Matrix m n 𝕜} {Ω₁ : Matrix n l₁ 𝕜} {Ω₂ : Matrix n l₂ 𝕜} {Z₁ : Matrix n s₁ 𝕜}
-    {Z₂ : Matrix n s₂ 𝕜} (hZ₁ : HasOrthonormalCols Z₁) (hZ₂ : HasOrthonormalCols Z₂)
-    (hΩ₁ : (Ω₁ᴴ * Z₁).rank = Z₁.rank) (hΩ₂ : (Ω₂ᴴ * Z₂).rank = Z₂.rank) {k j : ℕ}
-    (hAZ₁ : A * Z₁ * Z₁ᴴ = truncatedSVD A k) (hAZ₂ : A * Z₂ * Z₂ᴴ = truncatedSVD A (k + j))
-    {q₁ q₂ : ℕ} (hq₁ : 1 ≤ q₁) (hq₂ : 1 ≤ q₂) {γ : ℝ} (hγ : 0 < γ) (hγ1 : γ ≤ 1) :
-    schattenNorm p (A - A * rangeProjector (truncatedSVD (rbkiSum A Ω₁ Ω₂ q₁ q₂) k)ᴴ) ^ p.toReal ≤
-      (1 + 2 * k * γ / ((j : ℝ) + 1)) * schattenNorm p (A - truncatedSVD A k) ^ p.toReal +
-        singularValues A k ^ (p.toReal - 2) *
-          (4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * Real.sqrt γ) *
-              specNorm ((A - truncatedSVD A k) * Ω₁ * pinv (Z₁ᴴ * Ω₁)) ^ 2 +
-            4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) *
-              frobNorm ((A - truncatedSVD A (k + j)) * Ω₂ * pinv (Z₂ᴴ * Ω₂)) ^ 2) := sorry
-
-end Det
-
-/-! ## Wave 4: Gaussian start blocks -/
-
-section Gaussian
-
-variable {Ω : Type*} {mΩ : MeasurableSpace Ω} {μ : Measure Ω} {l m n l₁ l₂ s : Type*}
-  [Fintype l] [Fintype m] [Fintype n] [Fintype l₁] [Fintype l₂] [Fintype s] [DecidableEq m]
-  [DecidableEq n] [DecidableEq s] {X₁ : Ω → Matrix n l₁ ℝ} {X₂ : Ω → Matrix n l₂ ℝ}
-
--- GR1 (the sketch residual of a Gaussian block against a frame)
-theorem integrable_frobNorm_sub_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix (A : Matrix m n ℝ)
-    (hX : HasLaw X₁ (gaussianMatrix n l₁) μ) {Z : Matrix n s ℝ} (hZ : HasOrthonormalCols Z)
-    (hs : Fintype.card s + 2 ≤ Fintype.card l₁) :
-    Integrable (fun ω => frobNorm ((A - A * Z * Zᴴ) * X₁ ω * pinv (Zᴴ * X₁ ω)) ^ 2) μ := sorry
-
-theorem integral_frobNorm_sub_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix (A : Matrix m n ℝ)
-    (hX : HasLaw X₁ (gaussianMatrix n l₁) μ) {Z : Matrix n s ℝ} (hZ : HasOrthonormalCols Z)
-    (hs : Fintype.card s + 2 ≤ Fintype.card l₁) :
-    ∫ ω, frobNorm ((A - A * Z * Zᴴ) * X₁ ω * pinv (Zᴴ * X₁ ω)) ^ 2 ∂μ =
-      frobNorm (A - A * Z * Zᴴ) ^ 2 * Fintype.card s /
-        ((Fintype.card l₁ : ℝ) - Fintype.card s - 1) := sorry
-
--- GR2 (tail twin)
-theorem measureReal_frobNorm_sub_mul_mul_pinv_sq_gt_le_of_hasLaw_gaussianMatrix
-    (A : Matrix m n ℝ) (hX : HasLaw X₁ (gaussianMatrix n l₁) μ) {Z : Matrix n s ℝ}
-    (hZ : HasOrthonormalCols Z) (hs : Fintype.card s + 2 ≤ Fintype.card l₁) {τ : ℝ}
-    (hτ : 0 < τ) :
-    μ.real {ω | τ * (frobNorm (A - A * Z * Zᴴ) ^ 2 * Fintype.card s /
-        ((Fintype.card l₁ : ℝ) - Fintype.card s - 1)) <
-      frobNorm ((A - A * Z * Zᴴ) * X₁ ω * pinv (Zᴴ * X₁ ω)) ^ 2} ≤ τ⁻¹ := sorry
-
--- GI1
-theorem integrable_schattenNorm_sub_mul_rangeProjector_rsvd_rpow [IsFiniteMeasure μ]
-    (p : ℝ≥0∞) (A : Matrix m n ℝ) {Y : Ω → Matrix n l ℝ} (hY : AEMeasurable Y μ) (k : ℕ) :
-    Integrable (fun ω => schattenNorm p (A - A * rangeProjector
-      (truncatedSVD (rsvd A (Y ω)) k)ᴴ) ^ p.toReal) μ := sorry
-
--- GA0 (by-product: per-rank Frobenius bound for one RBKI run)
-theorem integral_frobNorm_sub_truncatedSVD_rbki_sq_le_add_mul_of_hasLaw_gaussianMatrix
-    (A : Matrix m n ℝ) (hX : HasLaw X₁ (gaussianMatrix n l₁) μ) {k q : ℕ}
-    (hk : k + 2 ≤ Fintype.card l₁) (hq : 1 ≤ q) {γ : ℝ} (hγ : 0 < γ) (hγ1 : γ ≤ 1) :
-    ∫ ω, frobNorm (A - truncatedSVD (rbki A (X₁ ω) q) k) ^ 2 ∂μ ≤
-      (1 + 4 * k * Real.exp (-2 * Real.sqrt 2 * ((q : ℝ) - 1) * Real.sqrt γ) *
-          ((k : ℝ) / ((Fintype.card l₁ : ℝ) - k - 1))) * frobNorm (A - truncatedSVD A k) ^ 2 +
-        k * γ * singularValues A k ^ 2 := sorry
-
--- GA1 (general, Frobenius, expectation, any sketch containing both Krylov sketches)
-theorem integral_frobNorm_sub_truncatedSVD_rsvd_sq_le_of_range_le_of_hasLaw_gaussianMatrix
-    (A : Matrix m n ℝ) (hX₁ : HasLaw X₁ (gaussianMatrix n l₁) μ)
-    (hX₂ : HasLaw X₂ (gaussianMatrix n l₂) μ) {k j q₁ q₂ : ℕ}
-    (hl₁ : k + 2 ≤ Fintype.card l₁) (hl₂ : k + j + 2 ≤ Fintype.card l₂) (hq₁ : 1 ≤ q₁)
-    (hq₂ : 1 ≤ q₂) {γ : ℝ} (hγ : 0 < γ) (hγ1 : γ ≤ 1)
-    {Y : Ω → Matrix n l ℝ} (hY : AEMeasurable Y μ)
-    (h₁ : ∀ ω, LinearMap.range (A * blockKrylovMatrix (Aᴴ * A) (X₁ ω) q₁).mulVecLin ≤
-      LinearMap.range (A * Y ω).mulVecLin)
-    (h₂ : ∀ ω, LinearMap.range (A * blockKrylovMatrix (Aᴴ * A) (X₂ ω) q₂).mulVecLin ≤
-      LinearMap.range (A * Y ω).mulVecLin) :
-    ∫ ω, frobNorm (A - truncatedSVD (rsvd A (Y ω)) k) ^ 2 ∂μ ≤
-      (1 + 2 * k * γ / ((j : ℝ) + 1) +
-        4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * Real.sqrt γ) *
-          ((k : ℝ) / ((Fintype.card l₁ : ℝ) - k - 1)) +
-        4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) *
-          (((k : ℝ) + j) / ((Fintype.card l₂ : ℝ) - k - j - 1))) *
-        frobNorm (A - truncatedSVD A k) ^ 2 := sorry
-
--- GA1c
-theorem integral_frobNorm_sub_truncatedSVD_rbkiSum_sq_le_of_hasLaw_gaussianMatrix
-    (A : Matrix m n ℝ) (hX₁ : HasLaw X₁ (gaussianMatrix n l₁) μ)
-    (hX₂ : HasLaw X₂ (gaussianMatrix n l₂) μ) {k j q₁ q₂ : ℕ}
-    (hl₁ : k + 2 ≤ Fintype.card l₁) (hl₂ : k + j + 2 ≤ Fintype.card l₂) (hq₁ : 1 ≤ q₁)
-    (hq₂ : 1 ≤ q₂) {γ : ℝ} (hγ : 0 < γ) (hγ1 : γ ≤ 1) :
-    ∫ ω, frobNorm (A - truncatedSVD (rbkiSum A (X₁ ω) (X₂ ω) q₁ q₂) k) ^ 2 ∂μ ≤
-      (1 + 2 * k * γ / ((j : ℝ) + 1) +
-        4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * Real.sqrt γ) *
-          ((k : ℝ) / ((Fintype.card l₁ : ℝ) - k - 1)) +
-        4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) *
-          (((k : ℝ) + j) / ((Fintype.card l₂ : ℝ) - k - j - 1))) *
-        frobNorm (A - truncatedSVD A k) ^ 2 := sorry
-
--- GA1p (general, Schatten 1 ≤ p ≤ 2, expectation)
-theorem
-    integral_schattenNorm_sub_mul_rangeProjector_rsvd_rpow_le_of_range_le_of_hasLaw_gaussianMatrix
-    {p : ℝ≥0∞} (hp1 : 1 ≤ p) (hp2 : p ≤ 2)
-    (A : Matrix m n ℝ) (hX₁ : HasLaw X₁ (gaussianMatrix n l₁) μ)
-    (hX₂ : HasLaw X₂ (gaussianMatrix n l₂) μ) {k j q₁ q₂ : ℕ}
-    (hl₁ : k + 2 ≤ Fintype.card l₁) (hl₂ : k + j + 2 ≤ Fintype.card l₂) (hq₁ : 1 ≤ q₁)
-    (hq₂ : 1 ≤ q₂) {γ : ℝ} (hγ : 0 < γ) (hγ1 : γ ≤ 1)
-    {Y : Ω → Matrix n l ℝ} (hY : AEMeasurable Y μ)
-    (h₁ : ∀ ω, LinearMap.range (A * blockKrylovMatrix (Aᴴ * A) (X₁ ω) q₁).mulVecLin ≤
-      LinearMap.range (A * Y ω).mulVecLin)
-    (h₂ : ∀ ω, LinearMap.range (A * blockKrylovMatrix (Aᴴ * A) (X₂ ω) q₂).mulVecLin ≤
-      LinearMap.range (A * Y ω).mulVecLin) :
-    ∫ ω, schattenNorm p (A - A * rangeProjector
-        (truncatedSVD (rsvd A (Y ω)) k)ᴴ) ^ p.toReal ∂μ ≤
-      (1 + 2 * k * γ / ((j : ℝ) + 1) +
-        4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * Real.sqrt γ) *
-          ((k : ℝ) / ((Fintype.card l₁ : ℝ) - k - 1)) +
-        4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) *
-          (((k : ℝ) + j) / ((Fintype.card l₂ : ℝ) - k - j - 1))) *
-        schattenNorm p (A - truncatedSVD A k) ^ p.toReal := sorry
-
--- GA1pc
-theorem integral_schattenNorm_sub_mul_rangeProjector_rbkiSum_rpow_le_of_hasLaw_gaussianMatrix
-    {p : ℝ≥0∞} (hp1 : 1 ≤ p) (hp2 : p ≤ 2)
-    (A : Matrix m n ℝ) (hX₁ : HasLaw X₁ (gaussianMatrix n l₁) μ)
-    (hX₂ : HasLaw X₂ (gaussianMatrix n l₂) μ) {k j q₁ q₂ : ℕ}
-    (hl₁ : k + 2 ≤ Fintype.card l₁) (hl₂ : k + j + 2 ≤ Fintype.card l₂) (hq₁ : 1 ≤ q₁)
-    (hq₂ : 1 ≤ q₂) {γ : ℝ} (hγ : 0 < γ) (hγ1 : γ ≤ 1) :
-    ∫ ω, schattenNorm p (A - A * rangeProjector
-        (truncatedSVD (rbkiSum A (X₁ ω) (X₂ ω) q₁ q₂) k)ᴴ) ^ p.toReal ∂μ ≤
-      (1 + 2 * k * γ / ((j : ℝ) + 1) +
-        4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * Real.sqrt γ) *
-          ((k : ℝ) / ((Fintype.card l₁ : ℝ) - k - 1)) +
-        4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) *
-          (((k : ℝ) + j) / ((Fintype.card l₂ : ℝ) - k - j - 1))) *
-        schattenNorm p (A - truncatedSVD A k) ^ p.toReal := sorry
-
--- GA3 (tail form, 2 ≤ p < ∞, one-sided output)
-theorem measureReal_schattenNorm_sub_truncatedSVD_rbkiSum_gt_le_of_hasLaw_gaussianMatrix
-    {p : ℝ≥0∞} (hp2 : 2 ≤ p) (hp : p ≠ ⊤)
-    (A : Matrix m n ℝ) (hX₁ : HasLaw X₁ (gaussianMatrix n l₁) μ)
-    (hX₂ : HasLaw X₂ (gaussianMatrix n l₂) μ) {k j q₁ q₂ : ℕ} (hk : 0 < k)
-    (hl₁ : k + 2 ≤ Fintype.card l₁) (hl₂ : k + j + 2 ≤ Fintype.card l₂) {ε δ : ℝ} (hε : 0 < ε)
-    (hε1 : ε ≤ 1) (hδ : 0 < δ)
-    (hj : Real.exp 2 * k / (ε * p.toReal) ^ (3 : ℝ)⁻¹ ≤ (j : ℝ) + 1)
-    (hq₁ : 1 + (p.toReal ^ (6 : ℝ)⁻¹ / (2 * ε ^ (3 : ℝ)⁻¹) + Real.sqrt (4 * p.toReal + 1) / 8) *
-      Real.log (256 * k ^ 3 * (p.toReal + 1) *
-        (min (Fintype.card m) (Fintype.card n) : ℕ) / (ε ^ 2 * δ)) ≤ q₁)
-    (hq₂ : 1 + Real.sqrt (4 * p.toReal + 1) / 8 *
-      Real.log (256 * k ^ 2 * ((k : ℝ) + j) * (p.toReal + 1) *
-        (min (Fintype.card m) (Fintype.card n) : ℕ) / (ε ^ 2 * δ)) ≤ q₂) :
-    μ.real {ω | (1 + ε) * schattenNorm p (A - truncatedSVD A k) <
-      schattenNorm p (A - truncatedSVD (rbkiSum A (X₁ ω) (X₂ ω) q₁ q₂) k)} ≤ δ := sorry
-
-end Gaussian
-
-/-! ## Headlines at natural-number sizes -/
-
--- GA2 (headline, Frobenius)
-theorem integral_frobNorm_sub_truncatedSVD_rbkiSum_sq_le_one_add_mul_of_hasLaw_gaussianMatrix
-    {Ω : Type*} {mΩ : MeasurableSpace Ω} {μ : Measure Ω} {m n k j q₁ q₂ : ℕ}
-    (A : Matrix (Fin m) (Fin n) ℝ) {X₁ : Ω → Matrix (Fin n) (Fin (2 * k + 1)) ℝ}
-    {X₂ : Ω → Matrix (Fin n) (Fin (2 * (k + j) + 1)) ℝ}
-    (hX₁ : HasLaw X₁ (gaussianMatrix (Fin n) (Fin (2 * k + 1))) μ)
-    (hX₂ : HasLaw X₂ (gaussianMatrix (Fin n) (Fin (2 * (k + j) + 1))) μ) (hk : 0 < k) {ε : ℝ}
-    (hε : 0 < ε) (hε1 : ε ≤ 1) (hj : 6 * k / ε ^ (3 : ℝ)⁻¹ ≤ (j : ℝ) + 1)
-    (hq₁ : 1 + Real.log (12 * k / ε) / (2 * Real.sqrt 2 * ε ^ (3 : ℝ)⁻¹) ≤ q₁)
-    (hq₂ : 1 + Real.log (12 / ε) / 3 ≤ q₂) :
-    ∫ ω, frobNorm (A - truncatedSVD (rbkiSum A (X₁ ω) (X₂ ω) q₁ q₂) k) ^ 2 ∂μ ≤
-      (1 + ε) * frobNorm (A - truncatedSVD A k) ^ 2 := sorry
-
--- GA2p (headline, Schatten 1 ≤ p ≤ 2)
-theorem
-    integral_schattenNorm_sub_mul_rangeProjector_rbkiSum_rpow_le_one_add_mul_of_hasLaw_gaussianMatrix
-    {Ω : Type*} {mΩ : MeasurableSpace Ω} {μ : Measure Ω} {m n k j q₁ q₂ : ℕ} {p : ℝ≥0∞}
-    (hp1 : 1 ≤ p) (hp2 : p ≤ 2)
-    (A : Matrix (Fin m) (Fin n) ℝ) {X₁ : Ω → Matrix (Fin n) (Fin (2 * k + 1)) ℝ}
-    {X₂ : Ω → Matrix (Fin n) (Fin (2 * (k + j) + 1)) ℝ}
-    (hX₁ : HasLaw X₁ (gaussianMatrix (Fin n) (Fin (2 * k + 1))) μ)
-    (hX₂ : HasLaw X₂ (gaussianMatrix (Fin n) (Fin (2 * (k + j) + 1))) μ) (hk : 0 < k) {ε : ℝ}
-    (hε : 0 < ε) (hε1 : ε ≤ 1) (hj : 6 * k / ε ^ (3 : ℝ)⁻¹ ≤ (j : ℝ) + 1)
-    (hq₁ : 1 + Real.log (12 * k / ε) / (2 * Real.sqrt 2 * ε ^ (3 : ℝ)⁻¹) ≤ q₁)
-    (hq₂ : 1 + Real.log (12 / ε) / 3 ≤ q₂) :
-    ∫ ω, schattenNorm p (A - A * rangeProjector
-        (truncatedSVD (rbkiSum A (X₁ ω) (X₂ ω) q₁ q₂) k)ᴴ) ^ p.toReal ∂μ ≤
-      (1 + ε) * schattenNorm p (A - truncatedSVD A k) ^ p.toReal := sorry
-
--- GA4 (asymptotic form, Frobenius)
-theorem exists_forall_integral_frobNorm_sub_truncatedSVD_rbkiSum_sq_le_of_hasLaw_gaussianMatrix :
-    ∃ C ε₀ : ℝ, 0 < C ∧ 0 < ε₀ ∧ ∀ {Ω m n l₁ l₂ : Type} [MeasurableSpace Ω] [Fintype m]
-      [Fintype n] [DecidableEq n] [Fintype l₁] [Fintype l₂] (μ : Measure Ω) (A : Matrix m n ℝ)
-      (X₁ : Ω → Matrix n l₁ ℝ) (X₂ : Ω → Matrix n l₂ ℝ) (k q₁ q₂ : ℕ) (ε : ℝ),
-      HasLaw X₁ (gaussianMatrix n l₁) μ → HasLaw X₂ (gaussianMatrix n l₂) μ → 0 < k → 0 < ε →
-      ε ≤ ε₀ → 2 * k + 1 ≤ Fintype.card l₁ → C * (k / ε ^ (3 : ℝ)⁻¹) ≤ Fintype.card l₂ →
-      C * (Real.log (k / ε) / ε ^ (3 : ℝ)⁻¹) ≤ q₁ → C * Real.log (1 / ε) ≤ q₂ →
-      ∫ ω, frobNorm (A - truncatedSVD (rbkiSum A (X₁ ω) (X₂ ω) q₁ q₂) k) ^ 2 ∂μ ≤
-        (1 + ε) * frobNorm (A - truncatedSVD A k) ^ 2 := sorry
-
--- GA4p (asymptotic form, Schatten 1 ≤ p ≤ 2)
-theorem
-    exists_forall_integral_schattenNorm_sub_mul_rangeProjector_rbkiSum_rpow_le_of_hasLaw_gaussianMatrix :
-    ∃ C ε₀ : ℝ, 0 < C ∧ 0 < ε₀ ∧ ∀ {Ω m n l₁ l₂ : Type} [MeasurableSpace Ω] [Fintype m]
-      [Fintype n] [DecidableEq m] [DecidableEq n] [Fintype l₁] [Fintype l₂] (μ : Measure Ω)
-      (A : Matrix m n ℝ) (X₁ : Ω → Matrix n l₁ ℝ) (X₂ : Ω → Matrix n l₂ ℝ) (k q₁ q₂ : ℕ) (ε : ℝ)
-      (p : ℝ≥0∞),
-      HasLaw X₁ (gaussianMatrix n l₁) μ → HasLaw X₂ (gaussianMatrix n l₂) μ → 1 ≤ p → p ≤ 2 →
-      0 < k → 0 < ε → ε ≤ ε₀ → 2 * k + 1 ≤ Fintype.card l₁ →
-      C * (k / ε ^ (3 : ℝ)⁻¹) ≤ Fintype.card l₂ →
-      C * (Real.log (k / ε) / ε ^ (3 : ℝ)⁻¹) ≤ q₁ → C * Real.log (1 / ε) ≤ q₂ →
-      ∫ ω, schattenNorm p (A - A * rangeProjector
-          (truncatedSVD (rbkiSum A (X₁ ω) (X₂ ω) q₁ q₂) k)ᴴ) ^ p.toReal ∂μ ≤
-        (1 + ε) * schattenNorm p (A - truncatedSVD A k) ^ p.toReal := sorry
-
--- GA3a (asymptotic form of GA3)
-theorem
-    exists_forall_measureReal_schattenNorm_sub_truncatedSVD_rbkiSum_gt_le_of_hasLaw_gaussianMatrix :
-    ∃ C ε₀ : ℝ, 0 < C ∧ 0 < ε₀ ∧ ∀ {Ω m n l₁ l₂ : Type} [MeasurableSpace Ω] [Fintype m]
-      [Fintype n] [DecidableEq m] [DecidableEq n] [Fintype l₁] [Fintype l₂] (μ : Measure Ω)
-      (A : Matrix m n ℝ) (X₁ : Ω → Matrix n l₁ ℝ) (X₂ : Ω → Matrix n l₂ ℝ) (k q₁ q₂ : ℕ)
-      (ε δ : ℝ) (p : ℝ≥0∞),
-      HasLaw X₁ (gaussianMatrix n l₁) μ → HasLaw X₂ (gaussianMatrix n l₂) μ → 2 ≤ p → p ≠ ⊤ →
-      0 < k → 0 < ε → ε ≤ ε₀ → 0 < δ → k + 2 ≤ Fintype.card l₁ →
-      C * (k + k / (ε * p.toReal) ^ (3 : ℝ)⁻¹) ≤ Fintype.card l₂ →
-      C * ((p.toReal ^ (6 : ℝ)⁻¹ / ε ^ (3 : ℝ)⁻¹ + Real.sqrt p.toReal) *
-        Real.log (Fintype.card l₂ * p.toReal * Fintype.card n / (ε * δ))) ≤ q₁ →
-      C * (Real.sqrt p.toReal *
-        Real.log (Fintype.card l₂ * p.toReal * Fintype.card n / (ε * δ))) ≤ q₂ →
-      μ.real {ω | (1 + ε) * schattenNorm p (A - truncatedSVD A k) <
-        schattenNorm p (A - truncatedSVD (rbkiSum A (X₁ ω) (X₂ ω) q₁ q₂) k)} ≤ δ := sorry
-
-end NLAlib
-```
+The statements as designed were elaborated against `origin/main` @ `edb7e0ee` with `sorry`
+proofs (scratch file, not committed); that text is in the history of this note (commit
+`7f020880`). The final statements are the Lean source: every target, by the id of §6, is
+
+| Id | Declaration | File (under `NLAlib/`) |
+|---|---|---|
+| SC1 | `Real.rpow_sub_rpow_le_max_mul` | `ForMathlib/Analysis/SpecialFunctions/Pow/Real.lean` |
+| CH1 | `Polynomial.Chebyshev.exists_degree_lt_div_sq_le_exp_of_le` | `ForMathlib/Analysis/SpecialFunctions/Trigonometric/Chebyshev/Growth.lean` |
+| PN1 | `NLAlib.SymmetricGauge.matrixNorm_mul_mul_add_one_sub_mul_mul_one_sub_le` | `Matrix/Norms/SchattenPinching.lean` |
+| PN2 | `NLAlib.schattenNorm_add_rpow_of_conjTranspose_mul_eq_zero_of_mul_conjTranspose_eq_zero` | `Matrix/Norms/SchattenPinching.lean` |
+| PN4 | `IsStarProjection.schattenNorm_mul_rpow_add_le` | `Matrix/Norms/SchattenPinching.lean` |
+| SV1 | `IsStarProjection.singularValues_sq_sub_specNorm_sq_le` | `Matrix/Spectral/CompressionSingularValues.lean` |
+| SV2 | `NLAlib.singularValues_rangeProjector_mul_le_of_range_le` | `Matrix/Spectral/CompressionSingularValues.lean` |
+| SV3 | `NLAlib.mul_singularValues_rpow_le_schattenNorm_sub_truncatedSVD_rpow` | `Matrix/Spectral/SingularValueDecay.lean` |
+| SV4 | `NLAlib.singularValues_rpow_mul_frobNorm_sub_truncatedSVD_sq_le` | `Matrix/Spectral/SingularValueDecay.lean` |
+| SP1 | `NLAlib.exists_le_singularValues_le_and_gap` | `Matrix/Spectral/SingularValueDecay.lean` |
+| ST2F | `IsStarProjection.frobNorm_sub_mul_sq_eq_add_sum` | `Matrix/Spectral/CompressionSingularValues.lean` |
+| HD1 | `NLAlib.HasOrthonormalCols.mul_frobNorm_truncatedSVD_sub_mul_sq_le` | `Matrix/Spectral/CompressionSingularValues.lean` |
+| SO1 | `IsStarProjection.matrixNorm_sub_mul_le_matrixNorm_sub_mul` | `LowRank/Structural/SingularValueDeficit.lean` |
+| RZ2 | `NLAlib.HasOrthonormalCols.sq_sub_le_singularValues_rsvd_cfc_sq_of_le_singularValues` | `LowRank/Structural/RitzValues.lean` |
+| GR1 | `NLAlib.integrable_frobNorm_sub_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix`, `NLAlib.integral_frobNorm_sub_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix` | `LowRank/Gaussian/RangeFinder.lean` |
+| GI1 | `NLAlib.integrable_schattenNorm_sub_mul_rangeProjector_rsvd_rpow` | `LowRank/Random/RangeFinder.lean` |
+| TS0k | `NLAlib.measurable_fromCols_blockKrylovMatrix` | `Probability/Measurability/Krylov.lean` |
+| PN3 | `IsStarProjection.schattenNorm_mul_mul_rpow_add_le` | `Matrix/Norms/SchattenPinching.lean` |
+| ST2T | `IsStarProjection.frobNorm_sub_truncatedSVD_mul_sq` | `Matrix/Spectral/CompressionSingularValues.lean` |
+| ST3 | `IsStarProjection.schattenNorm_sub_mul_le_add_rpow` | `LowRank/Structural/SingularValueDeficit.lean` |
+| RZ1 | `NLAlib.HasOrthonormalCols.singularValues_sq_sub_le_singularValues_rsvd_cfc_sq` | `LowRank/Structural/RitzValues.lean` |
+| TS0 | `NLAlib.rbkiSum`, `NLAlib.rbkiSum_def`, `NLAlib.rbkiSum_eq_rangeProjector`, `NLAlib.measurable_rbkiSum` | `LowRank/Structural/BlockKrylovSum.lean` |
+| GR2 | `NLAlib.measureReal_frobNorm_sub_mul_mul_pinv_sq_gt_le_of_hasLaw_gaussianMatrix` | `LowRank/Gaussian/RangeFinder.lean` |
+| CH1g | `NLAlib.exists_degree_lt_div_sq_le_exp_singularGapRatio` | `Matrix/Spectral/SingularValueInequalities.lean` |
+| ST1 | `IsStarProjection.schattenNorm_sub_mul_rpow_add_le` | `LowRank/Structural/SingularValueDeficit.lean` |
+| CB1F | `IsStarProjection.frobNorm_sub_truncatedSVD_mul_sq_le_of_singularValues_le_mul` | `LowRank/Structural/SingularValueDeficit.lean` |
+| HD2 | `IsStarProjection.mul_frobNorm_truncatedSVD_sub_mul_sq_le` | `Matrix/Spectral/CompressionSingularValues.lean` |
+| RZ3 | `NLAlib.HasOrthonormalCols.singularValues_sq_sub_le_singularValues_rbki_sq` | `LowRank/Structural/RitzValues.lean` |
+| RZ4 | `NLAlib.HasOrthonormalCols.singularValues_sq_sub_le_singularValues_rbki_sq_singularGapRatio` | `LowRank/Structural/RitzValues.lean` |
+| RZ4F | `NLAlib.HasOrthonormalCols.sum_singularValues_sq_sub_singularValues_rbki_sq_le` | `LowRank/Structural/RitzValues.lean` |
+| TS1 | `NLAlib.range_mul_blockKrylovMatrix_le_range_mul_fromCols_left`, `NLAlib.range_mul_blockKrylovMatrix_le_range_mul_fromCols_right`, `NLAlib.singularValues_rbki_le_singularValues_rbkiSum_left`, `NLAlib.singularValues_rbki_le_singularValues_rbkiSum_right` | `LowRank/Structural/BlockKrylovSum.lean` |
+| ST2 | `IsStarProjection.schattenNorm_sub_mul_rpow_le_add_sum` | `LowRank/Structural/SingularValueDeficit.lean` |
+| ST4 | `IsStarProjection.schattenNorm_sub_mul_le_of_sq_singularValues_sub_le` | `LowRank/Structural/SingularValueDeficit.lean` |
+| RZ5 | `NLAlib.HasOrthonormalCols.frobNorm_sub_truncatedSVD_rbki_sq_le_add_mul` | `LowRank/Structural/RitzValues.lean` |
+| TS2 | `NLAlib.HasOrthonormalCols.frobNorm_sub_truncatedSVD_rsvd_sq_le_of_range_le` | `LowRank/Structural/BlockKrylovSum.lean` |
+| TS2m | `NLAlib.HasOrthonormalCols.min_frobNorm_sub_truncatedSVD_rbki_sq_le` | `LowRank/Structural/BlockKrylovSum.lean` |
+| ST2s | `IsStarProjection.schattenNorm_sub_mul_rpow_le_add_sum_mul` | `LowRank/Structural/SingularValueDeficit.lean` |
+| CB3 | `IsStarProjection.schattenNorm_sub_mul_le_mul_of_singularValues_le_mul` | `LowRank/Structural/SingularValueDeficit.lean` |
+| TS2c | `NLAlib.HasOrthonormalCols.frobNorm_sub_truncatedSVD_rbkiSum_sq_le` | `LowRank/Structural/BlockKrylovSum.lean` |
+| GA0 | `NLAlib.integral_frobNorm_sub_truncatedSVD_rbki_sq_le_add_mul_of_hasLaw_gaussianMatrix` | `LowRank/Gaussian/BlockKrylovSum.lean` |
+| GA1 | `NLAlib.integral_frobNorm_sub_truncatedSVD_rsvd_sq_le_of_range_le_of_hasLaw_gaussianMatrix` | `LowRank/Gaussian/BlockKrylovSum.lean` |
+| CB1 | `IsStarProjection.schattenNorm_sub_mul_rpow_le_of_singularValues_le_mul` | `LowRank/Structural/SingularValueDeficit.lean` |
+| GA1c | `NLAlib.integral_frobNorm_sub_truncatedSVD_rbkiSum_sq_le_of_hasLaw_gaussianMatrix` | `LowRank/Gaussian/BlockKrylovSum.lean` |
+| GA3 | `NLAlib.measureReal_schattenNorm_sub_truncatedSVD_rbkiSum_gt_le_of_hasLaw_gaussianMatrix` | `LowRank/Gaussian/BlockKrylovSumTail.lean` |
+| CB2 | `NLAlib.min_schattenNorm_sub_mul_rpow_le_of_singularValues_le_mul` | `LowRank/Structural/SingularValueDeficit.lean` |
+| TS3 | `NLAlib.HasOrthonormalCols.schattenNorm_sub_mul_rangeProjector_rsvd_rpow_le_of_range_le` | `LowRank/Structural/BlockKrylovSum.lean` |
+| GA2 | `NLAlib.integral_frobNorm_sub_truncatedSVD_rbkiSum_sq_le_one_add_mul_of_hasLaw_gaussianMatrix` | `LowRank/Gaussian/BlockKrylovSum.lean` |
+| GA4 | `NLAlib.exists_forall_integral_frobNorm_sub_truncatedSVD_rbkiSum_sq_le_of_hasLaw_gaussianMatrix` | `LowRank/Gaussian/BlockKrylovSum.lean` |
+| GA3a | `NLAlib.exists_forall_measureReal_schattenNorm_sub_truncatedSVD_rbkiSum_gt_le_of_hasLaw_gaussianMatrix` | `LowRank/Gaussian/BlockKrylovSumTail.lean` |
+| GA3t | `NLAlib.measureReal_schattenNorm_sub_mul_rangeProjector_rbkiSum_gt_le_of_hasLaw_gaussianMatrix` | `LowRank/Gaussian/BlockKrylovSumTail.lean` |
+| TS3c | `NLAlib.HasOrthonormalCols.schattenNorm_sub_mul_rangeProjector_rbkiSum_rpow_le` | `LowRank/Structural/BlockKrylovSum.lean` |
+| GA1p | `NLAlib.integral_schattenNorm_sub_mul_rangeProjector_rsvd_rpow_le_of_range_le_of_hasLaw_gaussianMatrix` | `LowRank/Gaussian/BlockKrylovSum.lean` |
+| GA1pc | `NLAlib.integral_schattenNorm_sub_mul_rangeProjector_rbkiSum_rpow_le_of_hasLaw_gaussianMatrix` | `LowRank/Gaussian/BlockKrylovSum.lean` |
+| GA2p | `NLAlib.integral_schattenNorm_sub_mul_rangeProjector_rbkiSum_rpow_le_one_add_mul_of_hasLaw_gaussianMatrix` | `LowRank/Gaussian/BlockKrylovSum.lean` |
+| GA4p | `NLAlib.exists_forall_integral_schattenNorm_sub_mul_rangeProjector_rbkiSum_rpow_le_of_hasLaw_gaussianMatrix` | `LowRank/Gaussian/BlockKrylovSum.lean` |

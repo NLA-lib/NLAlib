@@ -70,7 +70,7 @@ variable {Ω : Type*} {mΩ : MeasurableSpace Ω} {μ : Measure Ω} {l m n l₁ l
 
 /-! ### One run -/
 
-omit [DecidableEq m] in
+omit [DecidableEq m] [DecidableEq n] in
 /-- A Gaussian block against a frame of top right singular vectors: for $k + 2 \le \ell$ there
 is a frame $\mathbf{Z}$ of $\min(k, \lvert n \rvert)$ orthonormal columns with
 $\mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}} = \llbracket\mathbf{A}\rrbracket_k$, almost
@@ -87,6 +87,7 @@ private theorem exists_frame_residual (A : Matrix m n ℝ) {X : Ω → Matrix n 
       Integrable (fun ω => frobNorm ((A - truncatedSVD A k) * X ω * pinv (Zᴴ * X ω)) ^ 2) μ ∧
       ∫ ω, frobNorm ((A - truncatedSVD A k) * X ω * pinv (Zᴴ * X ω)) ^ 2 ∂μ ≤
         (k : ℝ) / ((Fintype.card l : ℝ) - k - 1) * frobNorm (A - truncatedSVD A k) ^ 2 := by
+  classical
   obtain ⟨Z, -, hZ, -, -, -, -, -, hpre⟩ :=
     exists_hasOrthonormalCols_conjTranspose_mul_self_mul_eq_mul_diagonal A
       (min_le_right k (Fintype.card n))
@@ -327,7 +328,57 @@ theorem
           ((k : ℝ) / ((Fintype.card l₁ : ℝ) - k - 1)) +
         4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) *
           (((k : ℝ) + j) / ((Fintype.card l₂ : ℝ) - k - j - 1))) *
-        schattenNorm p (A - truncatedSVD A k) ^ p.toReal := sorry
+        schattenNorm p (A - truncatedSVD A k) ^ p.toReal := by
+  have := hX₁.isProbabilityMeasure
+  obtain ⟨Z₁, hZ₁, hAZ₁, hrk₁, hRi₁, hR₁⟩ := exists_frame_residual A hX₁ hl₁
+  obtain ⟨Z₂, hZ₂, hAZ₂, hrk₂, hRi₂, hR₂⟩ := exists_frame_residual A hX₂ (k := k + j) hl₂
+  set c₁ := 4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * Real.sqrt γ)
+  set c₂ := 4 * Real.exp (-3 * ((q₂ : ℝ) - 1))
+  set s := singularValues A k ^ (p.toReal - 2)
+  set S := schattenNorm p (A - truncatedSVD A k) ^ p.toReal
+  have hc₁ : 0 ≤ c₁ := by positivity
+  have hc₂ : 0 ≤ c₂ := by positivity
+  have hs : 0 ≤ s := Real.rpow_nonneg (singularValues_nonneg A k) _
+  have hI₁ : Integrable (fun ω => (1 + 2 * k * γ / ((j : ℝ) + 1)) * S +
+      s * c₁ * frobNorm ((A - truncatedSVD A k) * X₁ ω * pinv (Z₁ᴴ * X₁ ω)) ^ 2) μ :=
+    (integrable_const _).add (hRi₁.const_mul (s * c₁))
+  have hI : Integrable (fun ω => (1 + 2 * k * γ / ((j : ℝ) + 1)) * S +
+      s * c₁ * frobNorm ((A - truncatedSVD A k) * X₁ ω * pinv (Z₁ᴴ * X₁ ω)) ^ 2 +
+      s * c₂ * frobNorm ((A - truncatedSVD A (k + j)) * X₂ ω * pinv (Z₂ᴴ * X₂ ω)) ^ 2) μ :=
+    hI₁.add (hRi₂.const_mul (s * c₂))
+  refine (integral_mono_ae
+    (integrable_schattenNorm_sub_mul_rangeProjector_rsvd_rpow p A hY k) hI ?_).trans ?_
+  · filter_upwards [hrk₁, hrk₂] with ω hω₁ hω₂
+    have h := hZ₁.schattenNorm_sub_mul_rangeProjector_rsvd_rpow_le_of_range_le hp1 hp2 hZ₂ hω₁
+      hω₂ hAZ₁ hAZ₂ hq₁ hq₂ hγ hγ1 (h₁ ω) (h₂ ω)
+    have h2 := mul_le_mul_of_nonneg_left (pow_le_pow_left₀ (specNorm_nonneg _)
+      (specNorm_le_frobNorm ((A - truncatedSVD A k) * X₁ ω * pinv (Z₁ᴴ * X₁ ω))) 2)
+      (mul_nonneg hs hc₁)
+    linarith
+  · rw [integral_add hI₁ (hRi₂.const_mul (s * c₂)),
+      integral_add (integrable_const _) (hRi₁.const_mul (s * c₁)), integral_const, probReal_univ,
+      one_smul, integral_const_mul, integral_const_mul]
+    have hl : (k : ℝ) + j + 2 ≤ Fintype.card l₂ := by exact_mod_cast hl₂
+    have hl' : (k : ℝ) + 2 ≤ Fintype.card l₁ := by exact_mod_cast hl₁
+    have hr₁ : 0 ≤ (k : ℝ) / ((Fintype.card l₁ : ℝ) - k - 1) :=
+      div_nonneg (by positivity) (by linarith)
+    have hr₂ : 0 ≤ ((k : ℝ) + j) / ((Fintype.card l₂ : ℝ) - k - j - 1) :=
+      div_nonneg (by positivity) (by linarith)
+    have hopt : frobNorm (A - truncatedSVD A (k + j)) ^ 2 ≤ frobNorm (A - truncatedSVD A k) ^ 2 :=
+      pow_le_pow_left₀ (frobNorm_nonneg _) (frobNorm_sub_truncatedSVD_le_of_rank_le A
+        ((rank_truncatedSVD_le A k).trans (Nat.le_add_right k j))) 2
+    have hSV : s * frobNorm (A - truncatedSVD A k) ^ 2 ≤ S :=
+      singularValues_rpow_mul_frobNorm_sub_truncatedSVD_sq_le hp1 hp2 A k
+    have e₁ := mul_le_mul_of_nonneg_left hR₁ (mul_nonneg hs hc₁)
+    have hR₂' : ∫ ω, frobNorm ((A - truncatedSVD A (k + j)) * X₂ ω * pinv (Z₂ᴴ * X₂ ω)) ^ 2 ∂μ ≤
+        ((k : ℝ) + j) / ((Fintype.card l₂ : ℝ) - k - j - 1) *
+          frobNorm (A - truncatedSVD A (k + j)) ^ 2 :=
+      hR₂.trans_eq (by push_cast; ring)
+    have e₂ := mul_le_mul_of_nonneg_left hR₂' (mul_nonneg hs hc₂)
+    have e₃ := mul_le_mul_of_nonneg_left hopt (mul_nonneg (mul_nonneg hs hc₂) hr₂)
+    have e₄ := mul_le_mul_of_nonneg_left hSV (mul_nonneg hc₁ hr₁)
+    have e₅ := mul_le_mul_of_nonneg_left hSV (mul_nonneg hc₂ hr₂)
+    linarith
 
 -- A declaration name in the docstring exceeds 100 characters.
 set_option linter.style.longLine false in
@@ -365,7 +416,17 @@ theorem integral_schattenNorm_sub_mul_rangeProjector_rbkiSum_rpow_le_of_hasLaw_g
           ((k : ℝ) / ((Fintype.card l₁ : ℝ) - k - 1)) +
         4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) *
           (((k : ℝ) + j) / ((Fintype.card l₂ : ℝ) - k - j - 1))) *
-        schattenNorm p (A - truncatedSVD A k) ^ p.toReal := sorry
+        schattenNorm p (A - truncatedSVD A k) ^ p.toReal := by
+  have hm : Measurable fun B : Matrix n l₁ ℝ × Matrix n l₂ ℝ =>
+      Matrix.fromCols (blockKrylovMatrix (Aᴴ * A) B.1 q₁) (blockKrylovMatrix (Aᴴ * A) B.2 q₂) :=
+    measurable_fromCols_blockKrylovMatrix (Aᴴ * A) q₁ q₂
+  have hY := Measurable.comp_aemeasurable hm (hX₁.aemeasurable.prodMk hX₂.aemeasurable)
+  simp only [rbkiSum_def]
+  exact
+    integral_schattenNorm_sub_mul_rangeProjector_rsvd_rpow_le_of_range_le_of_hasLaw_gaussianMatrix
+    hp1 hp2 A hX₁ hX₂ hl₁ hl₂ hq₁ hq₂ hγ hγ1 hY
+    (fun ω => range_mul_blockKrylovMatrix_le_range_mul_fromCols_left A (X₁ ω) (X₂ ω) q₁ q₂)
+    (fun ω => range_mul_blockKrylovMatrix_le_range_mul_fromCols_right A (X₁ ω) (X₂ ω) q₁ q₂)
 
 /-! ### Schatten norms, $2 \le p < \infty$, tail form -/
 
@@ -1001,6 +1062,77 @@ theorem measureReal_schattenNorm_sub_mul_rangeProjector_rbkiSum_gt_le_of_hasLaw_
   exact lt_of_lt_of_le hω (schattenNorm_sub_mul_rangeProjector_le_schattenNorm_sub_truncatedSVD_rsvd
     (one_le_two.trans hp2) A _ k)
 
+/-- The scalar bookkeeping of the headlines: under their thresholds on $j$, $q_1$ and $q_2$,
+both depths are at least $1$ and, at $\gamma = \varepsilon^{2/3}$, the factor of the general
+bounds is at most $1 + \varepsilon$, each of its three error terms being at most
+$\varepsilon/3$. -/
+private theorem one_le_and_one_le_and_factor_le_one_add {k j q₁ q₂ c₁ c₂ : ℕ} (hk : 0 < k)
+    {ε : ℝ} (hε : 0 < ε) (hε1 : ε ≤ 1) (hc₁ : 2 * k + 1 ≤ c₁) (hc₂ : 2 * (k + j) + 1 ≤ c₂)
+    (hj : 6 * k / ε ^ (3 : ℝ)⁻¹ ≤ (j : ℝ) + 1)
+    (hq₁ : 1 + Real.log (12 * k / ε) / (2 * Real.sqrt 2 * ε ^ (3 : ℝ)⁻¹) ≤ q₁)
+    (hq₂ : 1 + Real.log (12 / ε) / 3 ≤ q₂) :
+    1 ≤ q₁ ∧ 1 ≤ q₂ ∧ 1 + 2 * k * (ε ^ (3 : ℝ)⁻¹) ^ 2 / ((j : ℝ) + 1) +
+        4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * Real.sqrt ((ε ^ (3 : ℝ)⁻¹) ^ 2)) *
+          ((k : ℝ) / ((c₁ : ℝ) - k - 1)) +
+        4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) * (((k : ℝ) + j) / ((c₂ : ℝ) - k - j - 1)) ≤
+      1 + ε := by
+  set t := ε ^ (3 : ℝ)⁻¹ with ht
+  have ht0 : 0 < t := Real.rpow_pos_of_pos hε _
+  have ht1 : t ≤ 1 := Real.rpow_le_one hε.le hε1 (by norm_num)
+  have ht3 : t ^ 3 = ε := by
+    rw [ht, ← Real.rpow_natCast, ← Real.rpow_mul hε.le]
+    norm_num
+  have hkR : (1 : ℝ) ≤ k := by exact_mod_cast hk
+  have hL₁ : (1 : ℝ) ≤ 12 * k / ε := (one_le_div hε).2 (by linarith)
+  have hL₂ : (1 : ℝ) ≤ 12 / ε := (one_le_div hε).2 (by linarith)
+  have hq₁' : 1 ≤ q₁ := by
+    have : 0 ≤ Real.log (12 * k / ε) / (2 * Real.sqrt 2 * t) :=
+      div_nonneg (Real.log_nonneg hL₁) (by positivity)
+    exact_mod_cast (show (1 : ℝ) ≤ q₁ by linarith)
+  have hq₂' : 1 ≤ q₂ := by
+    have : 0 ≤ Real.log (12 / ε) / 3 := div_nonneg (Real.log_nonneg hL₂) (by norm_num)
+    exact_mod_cast (show (1 : ℝ) ≤ q₂ by linarith)
+  refine ⟨hq₁', hq₂', ?_⟩
+  rw [Real.sqrt_sq ht0.le]
+  have hj0 : (0 : ℝ) < j + 1 := by positivity
+  -- the first term: `2kγ/(j + 1) ≤ ε/3`
+  have e₁ : 2 * k * t ^ 2 / ((j : ℝ) + 1) ≤ ε / 3 := by
+    rw [div_le_iff₀ hj0]
+    have : 6 * k ≤ ((j : ℝ) + 1) * t := (div_le_iff₀ ht0).1 hj
+    nlinarith [sq_nonneg t]
+  -- the second term: `e^{-2√2 (q₁-1) √γ} ≤ ε/(12k)`
+  have e₂ : Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * t) ≤ ε / (12 * k) := by
+    have hlog : Real.log (12 * k / ε) ≤ 2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * t := by
+      have := (div_le_iff₀ (by positivity : (0 : ℝ) < 2 * Real.sqrt 2 * t)).1
+        (by linarith : Real.log (12 * k / ε) / (2 * Real.sqrt 2 * t) ≤ (q₁ : ℝ) - 1)
+      linarith
+    calc Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * t)
+        ≤ Real.exp (-Real.log (12 * k / ε)) := Real.exp_le_exp.2 (by linarith)
+      _ = ε / (12 * k) := by
+        rw [Real.exp_neg, Real.exp_log (by positivity), inv_div]
+  -- the third term: `e^{-3(q₂-1)} ≤ ε/12`
+  have e₃ : Real.exp (-3 * ((q₂ : ℝ) - 1)) ≤ ε / 12 := by
+    calc Real.exp (-3 * ((q₂ : ℝ) - 1))
+        ≤ Real.exp (-Real.log (12 / ε)) := Real.exp_le_exp.2 (by linarith)
+      _ = ε / 12 := by rw [Real.exp_neg, Real.exp_log (by positivity), inv_div]
+  have hr₁ : (k : ℝ) / ((c₁ : ℝ) - k - 1) ≤ 1 := by
+    have : (2 * k + 1 : ℝ) ≤ c₁ := by exact_mod_cast hc₁
+    rw [div_le_one (by linarith)]
+    linarith
+  have hr₂ : ((k : ℝ) + j) / ((c₂ : ℝ) - k - j - 1) ≤ 1 := by
+    have : (2 * ((k : ℝ) + j) + 1) ≤ c₂ := by exact_mod_cast hc₂
+    rw [div_le_one (by linarith)]
+    linarith
+  have e₂' : 4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * t) ≤ ε / 3 := by
+    calc 4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * t)
+        ≤ 4 * k * (ε / (12 * k)) := by gcongr
+      _ = ε / 3 := by field_simp; ring
+  have e₄ := mul_le_mul_of_nonneg_left hr₁
+    (by positivity : 0 ≤ 4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * t))
+  have e₅ := mul_le_mul_of_nonneg_left hr₂
+    (by positivity : 0 ≤ 4 * Real.exp (-3 * ((q₂ : ℝ) - 1)))
+  linarith
+
 omit [DecidableEq m] in
 /-- **A $(1 + \varepsilon)$ rank-$k$ approximation from two Gaussian block Krylov spaces,
 Frobenius norm, any block sizes**: let $\mathbf{A}$ be a real matrix, $\mathbf{X}_1$ and
@@ -1028,65 +1160,51 @@ theorem
     (hq₂ : 1 + Real.log (12 / ε) / 3 ≤ q₂) :
     ∫ ω, frobNorm (A - truncatedSVD (rbkiSum A (X₁ ω) (X₂ ω) q₁ q₂) k) ^ 2 ∂μ ≤
       (1 + ε) * frobNorm (A - truncatedSVD A k) ^ 2 := by
-  set t := ε ^ (3 : ℝ)⁻¹ with ht
-  have ht0 : 0 < t := Real.rpow_pos_of_pos hε _
-  have ht1 : t ≤ 1 := Real.rpow_le_one hε.le hε1 (by norm_num)
-  have ht3 : t ^ 3 = ε := by
-    rw [ht, ← Real.rpow_natCast, ← Real.rpow_mul hε.le]
-    norm_num
-  have hkR : (1 : ℝ) ≤ k := by exact_mod_cast hk
-  have hL₁ : (1 : ℝ) ≤ 12 * k / ε := (one_le_div hε).2 (by linarith)
-  have hL₂ : (1 : ℝ) ≤ 12 / ε := (one_le_div hε).2 (by linarith)
-  have hq₁' : 1 ≤ q₁ := by
-    have : 0 ≤ Real.log (12 * k / ε) / (2 * Real.sqrt 2 * t) :=
-      div_nonneg (Real.log_nonneg hL₁) (by positivity)
-    exact_mod_cast (show (1 : ℝ) ≤ q₁ by linarith)
-  have hq₂' : 1 ≤ q₂ := by
-    have : 0 ≤ Real.log (12 / ε) / 3 := div_nonneg (Real.log_nonneg hL₂) (by norm_num)
-    exact_mod_cast (show (1 : ℝ) ≤ q₂ by linarith)
-  have h := integral_frobNorm_sub_truncatedSVD_rbkiSum_sq_le_of_hasLaw_gaussianMatrix A hX₁ hX₂
-    (k := k) (j := j) (by omega) (by omega) hq₁' hq₂' (γ := t ^ 2) (by positivity)
-    (pow_le_one₀ ht0.le ht1)
-  refine h.trans (mul_le_mul_of_nonneg_right ?_ (sq_nonneg _))
-  rw [Real.sqrt_sq ht0.le]
-  have hj0 : (0 : ℝ) < j + 1 := by positivity
-  -- the first term: `2kγ/(j + 1) ≤ ε/3`
-  have e₁ : 2 * k * t ^ 2 / ((j : ℝ) + 1) ≤ ε / 3 := by
-    rw [div_le_iff₀ hj0]
-    have : 6 * k ≤ ((j : ℝ) + 1) * t := (div_le_iff₀ ht0).1 hj
-    nlinarith [sq_nonneg t]
-  -- the second term: `e^{-2√2 (q₁-1) √γ} ≤ ε/(12k)`
-  have e₂ : Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * t) ≤ ε / (12 * k) := by
-    have hlog : Real.log (12 * k / ε) ≤ 2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * t := by
-      have := (div_le_iff₀ (by positivity : (0 : ℝ) < 2 * Real.sqrt 2 * t)).1
-        (by linarith : Real.log (12 * k / ε) / (2 * Real.sqrt 2 * t) ≤ (q₁ : ℝ) - 1)
-      linarith
-    calc Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * t)
-        ≤ Real.exp (-Real.log (12 * k / ε)) := Real.exp_le_exp.2 (by linarith)
-      _ = ε / (12 * k) := by
-        rw [Real.exp_neg, Real.exp_log (by positivity), inv_div]
-  -- the third term: `e^{-3(q₂-1)} ≤ ε/12`
-  have e₃ : Real.exp (-3 * ((q₂ : ℝ) - 1)) ≤ ε / 12 := by
-    calc Real.exp (-3 * ((q₂ : ℝ) - 1))
-        ≤ Real.exp (-Real.log (12 / ε)) := Real.exp_le_exp.2 (by linarith)
-      _ = ε / 12 := by rw [Real.exp_neg, Real.exp_log (by positivity), inv_div]
-  have hr₁ : (k : ℝ) / ((Fintype.card l₁ : ℝ) - k - 1) ≤ 1 := by
-    have : (2 * k + 1 : ℝ) ≤ Fintype.card l₁ := by exact_mod_cast hl₁
-    rw [div_le_one (by linarith)]
-    linarith
-  have hr₂ : ((k : ℝ) + j) / ((Fintype.card l₂ : ℝ) - k - j - 1) ≤ 1 := by
-    have : (2 * ((k : ℝ) + j) + 1) ≤ Fintype.card l₂ := by exact_mod_cast hl₂
-    rw [div_le_one (by linarith)]
-    linarith
-  have e₂' : 4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * t) ≤ ε / 3 := by
-    calc 4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * t)
-        ≤ 4 * k * (ε / (12 * k)) := by gcongr
-      _ = ε / 3 := by field_simp; ring
-  have e₄ := mul_le_mul_of_nonneg_left hr₁
-    (by positivity : 0 ≤ 4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * t))
-  have e₅ := mul_le_mul_of_nonneg_left hr₂
-    (by positivity : 0 ≤ 4 * Real.exp (-3 * ((q₂ : ℝ) - 1)))
-  linarith
+  obtain ⟨hq₁', hq₂', hf⟩ := one_le_and_one_le_and_factor_le_one_add hk hε hε1 hl₁ hl₂ hj hq₁ hq₂
+  have ht0 : 0 < ε ^ (3 : ℝ)⁻¹ := Real.rpow_pos_of_pos hε _
+  exact (integral_frobNorm_sub_truncatedSVD_rbkiSum_sq_le_of_hasLaw_gaussianMatrix A hX₁ hX₂
+    (k := k) (j := j) (by omega) (by omega) hq₁' hq₂' (γ := (ε ^ (3 : ℝ)⁻¹) ^ 2) (by positivity)
+    (pow_le_one₀ ht0.le (Real.rpow_le_one hε.le hε1 (by norm_num)))).trans
+    (mul_le_mul_of_nonneg_right hf (sq_nonneg _))
+
+-- The declaration name alone exceeds 100 characters.
+set_option linter.style.longLine false in
+omit [DecidableEq m] in
+/-- **A $(1 + \varepsilon)$ rank-$k$ approximation from two Gaussian block Krylov spaces,
+Schatten norms with $1 \le p \le 2$, any block sizes**: let $1 \le p \le 2$, let $\mathbf{A}$
+be a real matrix, $\mathbf{X}_1$ and $\mathbf{X}_2$ standard Gaussian $n \times \ell_1$ and
+$n \times \ell_2$ test matrices (independent standard normal entries; the two matrices need not
+be independent of each other), $k \ge 1$, $0 < \varepsilon \le 1$, $\ell_1 \ge 2k + 1$ and
+$\ell_2 \ge 2(k + j) + 1$. Write $\mathbf{B} = \llbracket\mathsf{rbkiSum}(\mathbf{A},
+\mathbf{X}_1, \mathbf{X}_2, q_1, q_2)\rrbracket_k$ and $\mathbf{P}_{\mathbf{B}^{\mathsf{H}}}$
+for the projector onto its row space. If $j + 1 \ge 6k/\varepsilon^{1/3}$,
+$q_1 \ge 1 + \log(12k/\varepsilon)/(2\sqrt{2}\,\varepsilon^{1/3})$ and
+$q_2 \ge 1 + \log(12/\varepsilon)/3$, then
+$$\mathbb{E}\|\mathbf{A} - \mathbf{A}\mathbf{P}_{\mathbf{B}^{\mathsf{H}}}\|_{S_p}^p \le
+(1 + \varepsilon)\,\|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_k\|_{S_p}^p\,.$$
+At $\gamma = \varepsilon^{2/3}$ the three error terms of
+`NLAlib.integral_schattenNorm_sub_mul_rangeProjector_rbkiSum_rpow_le_of_hasLaw_gaussianMatrix`
+are each at most $\varepsilon/3$. The headline at the smallest block sizes is
+`NLAlib.integral_schattenNorm_sub_mul_rangeProjector_rbkiSum_rpow_le_one_add_mul_of_hasLaw_gaussianMatrix`.
+Result: rbki-sum-schatten-error -/
+theorem
+    integral_schattenNorm_sub_mul_rangeProjector_rbkiSum_rpow_le_one_add_mul_of_le_card_of_hasLaw_gaussianMatrix
+    {p : ℝ≥0∞} (hp1 : 1 ≤ p) (hp2 : p ≤ 2)
+    (A : Matrix m n ℝ) (hX₁ : HasLaw X₁ (gaussianMatrix n l₁) μ)
+    (hX₂ : HasLaw X₂ (gaussianMatrix n l₂) μ) {k j q₁ q₂ : ℕ} (hk : 0 < k) {ε : ℝ}
+    (hε : 0 < ε) (hε1 : ε ≤ 1) (hl₁ : 2 * k + 1 ≤ Fintype.card l₁)
+    (hl₂ : 2 * (k + j) + 1 ≤ Fintype.card l₂) (hj : 6 * k / ε ^ (3 : ℝ)⁻¹ ≤ (j : ℝ) + 1)
+    (hq₁ : 1 + Real.log (12 * k / ε) / (2 * Real.sqrt 2 * ε ^ (3 : ℝ)⁻¹) ≤ q₁)
+    (hq₂ : 1 + Real.log (12 / ε) / 3 ≤ q₂) :
+    ∫ ω, schattenNorm p (A - A * rangeProjector
+        (truncatedSVD (rbkiSum A (X₁ ω) (X₂ ω) q₁ q₂) k)ᴴ) ^ p.toReal ∂μ ≤
+      (1 + ε) * schattenNorm p (A - truncatedSVD A k) ^ p.toReal := by
+  obtain ⟨hq₁', hq₂', hf⟩ := one_le_and_one_le_and_factor_le_one_add hk hε hε1 hl₁ hl₂ hj hq₁ hq₂
+  have ht0 : 0 < ε ^ (3 : ℝ)⁻¹ := Real.rpow_pos_of_pos hε _
+  exact (integral_schattenNorm_sub_mul_rangeProjector_rbkiSum_rpow_le_of_hasLaw_gaussianMatrix hp1
+    hp2 A hX₁ hX₂ (k := k) (j := j) (by omega) (by omega) hq₁' hq₂' (γ := (ε ^ (3 : ℝ)⁻¹) ^ 2)
+    (by positivity) (pow_le_one₀ ht0.le (Real.rpow_le_one hε.le hε1 (by norm_num)))).trans
+    (mul_le_mul_of_nonneg_right hf (Real.rpow_nonneg (schattenNorm_nonneg _ _) _))
 
 end Expectation
 
@@ -1171,9 +1289,59 @@ theorem
     (hq₂ : 1 + Real.log (12 / ε) / 3 ≤ q₂) :
     ∫ ω, schattenNorm p (A - A * rangeProjector
         (truncatedSVD (rbkiSum A (X₁ ω) (X₂ ω) q₁ q₂) k)ᴴ) ^ p.toReal ∂μ ≤
-      (1 + ε) * schattenNorm p (A - truncatedSVD A k) ^ p.toReal := sorry
+      (1 + ε) * schattenNorm p (A - truncatedSVD A k) ^ p.toReal :=
+  integral_schattenNorm_sub_mul_rangeProjector_rbkiSum_rpow_le_one_add_mul_of_le_card_of_hasLaw_gaussianMatrix
+    hp1 hp2 A hX₁ hX₂ hk hε hε1 (by simp) (by simp) hj hq₁ hq₂
 
 /-! ### Asymptotic forms -/
+
+/-- The scalar bookkeeping of the asymptotic forms: for $k \ge 1$,
+$0 < \varepsilon \le e^{-1}$, $\ell_2 \ge 14k/\varepsilon^{1/3}$,
+$q_1 \ge 14\log(k/\varepsilon)/\varepsilon^{1/3}$ and $q_2 \ge 14\log(1/\varepsilon)$, the
+block $j = \lfloor(\ell_2 - 1)/2\rfloor - k$ and the depths meet the thresholds of the
+headlines. -/
+private theorem le_one_and_exists_thresholds {k q₁ q₂ c : ℕ} (hk : 0 < k) {ε : ℝ} (hε : 0 < ε)
+    (hε₀ : ε ≤ Real.exp (-1)) (hc : 14 * (k / ε ^ (3 : ℝ)⁻¹) ≤ (c : ℝ))
+    (hq₁ : 14 * (Real.log (k / ε) / ε ^ (3 : ℝ)⁻¹) ≤ q₁) (hq₂ : 14 * Real.log (1 / ε) ≤ q₂) :
+    ε ≤ 1 ∧ ∃ j : ℕ, 2 * (k + j) + 1 ≤ c ∧ 6 * k / ε ^ (3 : ℝ)⁻¹ ≤ (j : ℝ) + 1 ∧
+      1 + Real.log (12 * k / ε) / (2 * Real.sqrt 2 * ε ^ (3 : ℝ)⁻¹) ≤ q₁ ∧
+      1 + Real.log (12 / ε) / 3 ≤ q₂ := by
+  set t := ε ^ (3 : ℝ)⁻¹
+  have hε1 : ε ≤ 1 := hε₀.trans (by rw [Real.exp_le_one_iff]; norm_num)
+  have ht0 : 0 < t := Real.rpow_pos_of_pos hε _
+  have ht1 : t ≤ 1 := Real.rpow_le_one hε.le hε1 (by norm_num)
+  have hkR : (1 : ℝ) ≤ k := by exact_mod_cast hk
+  -- `M = log(1/ε) ≥ 1` and `L = log(k/ε) ≥ M`
+  have hM : 1 ≤ Real.log (1 / ε) := by
+    rw [one_div, Real.log_inv, le_neg]
+    exact (Real.log_le_log hε hε₀).trans_eq (Real.log_exp _)
+  have hL : Real.log (1 / ε) ≤ Real.log (k / ε) :=
+    Real.log_le_log (by positivity) (div_le_div_of_nonneg_right hkR hε.le)
+  have hlog12 : Real.log 12 ≤ 11 :=
+    (Real.log_le_sub_one_of_pos (by norm_num)).trans_eq (by norm_num)
+  have hLt : Real.log (k / ε) ≤ Real.log (k / ε) / t := le_div_self (by linarith) ht0 ht1
+  -- the wide block: `j = ⌊(ℓ₂ - 1)/2⌋ - k`
+  have hkt : (k : ℝ) ≤ k / t := le_div_self (by linarith) ht0 ht1
+  have hc' : 14 * k ≤ c := by exact_mod_cast (show (14 : ℝ) * k ≤ c by linarith)
+  set j := (c - 1) / 2 - k
+  have hjc : c ≤ 2 * j + 2 * k + 2 := by omega
+  have hjcR : (c : ℝ) ≤ 2 * j + 2 * k + 2 := by exact_mod_cast hjc
+  refine ⟨hε1, j, by omega, ?_, ?_, ?_⟩
+  · rw [mul_div_assoc]
+    linarith
+  · have h12 : Real.log (12 * k / ε) = Real.log 12 + Real.log (k / ε) := by
+      rw [mul_div_assoc, Real.log_mul (by norm_num) (by positivity)]
+    have hs : (1 : ℝ) ≤ Real.sqrt 2 := by
+      simp
+    have h := div_le_div₀ (by linarith) (show Real.log (12 * k / ε) ≤ 12 * Real.log (k / ε) by
+      rw [h12]; linarith) (by positivity : (0 : ℝ) < 2 * t)
+      (by nlinarith : 2 * t ≤ 2 * Real.sqrt 2 * t)
+    have h6 : 12 * Real.log (k / ε) / (2 * t) = 6 * (Real.log (k / ε) / t) := by
+      field_simp; ring
+    linarith
+  · have h12 : Real.log (12 / ε) = Real.log 12 + Real.log (1 / ε) := by
+      rw [← Real.log_mul (by norm_num) (by positivity), mul_one_div]
+    linarith
 
 /-- **$O(k\varepsilon^{-1/3}\log(k/\varepsilon))$ products suffice for a $(1 + \varepsilon)$
 rank-$k$ approximation in the Frobenius norm**: there are absolute constants
@@ -1206,48 +1374,10 @@ theorem exists_forall_integral_frobNorm_sub_truncatedSVD_rbkiSum_sq_le_of_hasLaw
         (1 + ε) * frobNorm (A - truncatedSVD A k) ^ 2 := by
   refine ⟨14, Real.exp (-1), by norm_num, Real.exp_pos _, ?_⟩
   intro Ω m n l₁ l₂ _ _ _ _ _ _ μ A X₁ X₂ k q₁ q₂ ε hX₁ hX₂ hk hε hε₀ hl₁ hl₂ hq₁ hq₂
-  set t := ε ^ (3 : ℝ)⁻¹
-  have hε1 : ε ≤ 1 := hε₀.trans (by rw [Real.exp_le_one_iff]; norm_num)
-  have ht0 : 0 < t := Real.rpow_pos_of_pos hε _
-  have ht1 : t ≤ 1 := Real.rpow_le_one hε.le hε1 (by norm_num)
-  have hkR : (1 : ℝ) ≤ k := by exact_mod_cast hk
-  -- `M = log(1/ε) ≥ 1` and `L = log(k/ε) ≥ M`
-  have hM : 1 ≤ Real.log (1 / ε) := by
-    rw [one_div, Real.log_inv, le_neg]
-    exact (Real.log_le_log hε hε₀).trans_eq (Real.log_exp _)
-  have hL : Real.log (1 / ε) ≤ Real.log (k / ε) :=
-    Real.log_le_log (by positivity) (div_le_div_of_nonneg_right hkR hε.le)
-  have hlog12 : Real.log 12 ≤ 11 :=
-    (Real.log_le_sub_one_of_pos (by norm_num)).trans_eq (by norm_num)
-  have hLt : Real.log (k / ε) ≤ Real.log (k / ε) / t := le_div_self (by linarith) ht0 ht1
-  -- the wide block: `j = ⌊(ℓ₂ - 1)/2⌋ - k`
-  set c := Fintype.card l₂
-  have hkt : (k : ℝ) ≤ k / t := le_div_self (by linarith) ht0 ht1
-  have hc : (14 : ℝ) * k ≤ c := by linarith
-  have hc' : 14 * k ≤ c := by exact_mod_cast hc
-  set j := (c - 1) / 2 - k
-  have hjc : c ≤ 2 * j + 2 * k + 2 := by omega
-  have hjcR : (c : ℝ) ≤ 2 * j + 2 * k + 2 := by exact_mod_cast hjc
-  refine
+  obtain ⟨hε1, j, hj₂, hj, hq₁', hq₂'⟩ := le_one_and_exists_thresholds hk hε hε₀ hl₂ hq₁ hq₂
+  exact
     integral_frobNorm_sub_truncatedSVD_rbkiSum_sq_le_one_add_mul_of_le_card_of_hasLaw_gaussianMatrix
-    A hX₁ hX₂ (j := j) hk hε hε1 hl₁ (by omega) ?_ ?_ ?_
-  · change 6 * k / t ≤ (j : ℝ) + 1
-    rw [mul_div_assoc]
-    linarith
-  · change 1 + Real.log (12 * k / ε) / (2 * Real.sqrt 2 * t) ≤ q₁
-    have h12 : Real.log (12 * k / ε) = Real.log 12 + Real.log (k / ε) := by
-      rw [mul_div_assoc, Real.log_mul (by norm_num) (by positivity)]
-    have hs : (1 : ℝ) ≤ Real.sqrt 2 := by
-      simp
-    have h := div_le_div₀ (by linarith) (show Real.log (12 * k / ε) ≤ 12 * Real.log (k / ε) by
-      rw [h12]; linarith) (by positivity : (0 : ℝ) < 2 * t)
-      (by nlinarith : 2 * t ≤ 2 * Real.sqrt 2 * t)
-    have h6 : 12 * Real.log (k / ε) / (2 * t) = 6 * (Real.log (k / ε) / t) := by
-      field_simp; ring
-    linarith
-  · have h12 : Real.log (12 / ε) = Real.log 12 + Real.log (1 / ε) := by
-      rw [← Real.log_mul (by norm_num) (by positivity), mul_one_div]
-    linarith
+    A hX₁ hX₂ hk hε hε1 hl₁ hj₂ hj hq₁' hq₂'
 
 -- The declaration name alone exceeds 100 characters.
 set_option linter.style.longLine false in
@@ -1283,7 +1413,13 @@ theorem
       C * (Real.log (k / ε) / ε ^ (3 : ℝ)⁻¹) ≤ q₁ → C * Real.log (1 / ε) ≤ q₂ →
       ∫ ω, schattenNorm p (A - A * rangeProjector
           (truncatedSVD (rbkiSum A (X₁ ω) (X₂ ω) q₁ q₂) k)ᴴ) ^ p.toReal ∂μ ≤
-        (1 + ε) * schattenNorm p (A - truncatedSVD A k) ^ p.toReal := sorry
+        (1 + ε) * schattenNorm p (A - truncatedSVD A k) ^ p.toReal := by
+  refine ⟨14, Real.exp (-1), by norm_num, Real.exp_pos _, ?_⟩
+  intro Ω m n l₁ l₂ _ _ _ _ _ _ _ μ A X₁ X₂ k q₁ q₂ ε p hX₁ hX₂ hp1 hp2 hk hε hε₀ hl₁ hl₂ hq₁ hq₂
+  obtain ⟨hε1, j, hj₂, hj, hq₁', hq₂'⟩ := le_one_and_exists_thresholds hk hε hε₀ hl₂ hq₁ hq₂
+  exact
+    integral_schattenNorm_sub_mul_rangeProjector_rbkiSum_rpow_le_one_add_mul_of_le_card_of_hasLaw_gaussianMatrix
+    hp1 hp2 A hX₁ hX₂ hk hε hε1 hl₁ hj₂ hj hq₁' hq₂'
 
 /-- The logarithms of the depth thresholds of the tail bound are at most nine times the
 logarithm of the asymptotic form: for $1 \le k, T \le \ell$, $\ell \ge 3$, $p \ge 2$,

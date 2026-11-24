@@ -368,7 +368,8 @@ theorem min_schattenNorm_sub_mul_rpow_le_of_singularValues_le_mul
           max (∑ i ∈ Finset.range k, β₁ i) (∑ i ∈ Finset.range k, β₂ i) := by
   set O := schattenNorm p (A - truncatedSVD A k) ^ p.toReal
   have hO : 0 ≤ O := Real.rpow_nonneg (schattenNorm_nonneg _ _) _
-  have hs : 0 ≤ singularValues A k ^ (p.toReal - 2) := Real.rpow_nonneg (singularValues_nonneg _ _) _
+  have hs : 0 ≤ singularValues A k ^ (p.toReal - 2) :=
+    Real.rpow_nonneg (singularValues_nonneg _ _) _
   -- a candidate's bound is at most the common bound
   have hle {c : ℝ} {b : ℝ} (hc : c ≤ max (γ₁ * κ ^ p.toReal / ((j : ℝ) + 1)) γ₂)
       (hb : b ≤ max (∑ i ∈ Finset.range k, β₁ i) (∑ i ∈ Finset.range k, β₂ i)) :

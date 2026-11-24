@@ -1450,8 +1450,8 @@ private theorem log_le_nine_mul_log {k T X P M N ε δ : ℝ} (hk : 1 ≤ k) (hk
       (by positivity)
   exact mul_le_mul hA hB (by positivity) (by positivity)
 
-/-- **$O(k(p^{1/6}\varepsilon^{-1/3} + \sqrt{p})\log(\ell_2 p\lvert n \rvert/
-(\varepsilon\delta)))$ products suffice for a $(1 + \varepsilon)$ rank-$k$ approximation in
+/-- **$O(k(p^{1/6}\varepsilon^{-1/3} + \sqrt{p})\log(\ell_2 p\lvert n \rvert/(\varepsilon\delta)))$
+products suffice for a $(1 + \varepsilon)$ rank-$k$ approximation in
 Schatten norms with $2 \le p < \infty$**: there are absolute constants
 $C, \varepsilon_0 > 0$ such that for a real matrix $\mathbf{A}$ with columns indexed by $n$,
 standard Gaussian $n \times \ell_1$ and $n \times \ell_2$ test matrices $\mathbf{X}_1$ and

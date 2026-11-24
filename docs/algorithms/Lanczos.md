@@ -350,6 +350,14 @@ chains, with an explicit small-error budget. A small residual-representation def
 does not prove strong mutual orthogonality or justify substituting a different matrix-update
 implementation's constants. Stronger numerical conclusions use their proved hypotheses.
 
+The ordinary rounded output also has
+[`RitzValues` and `FunctionApprox`](../../NLAlib/Krylov/Lanczos/Rounded/RunAnalysis.lean), joined
+for the scalar program in `exec_scalarProgram_ritzValues`. Under `k·E ≤ 1/100`, each stored Ritz
+value is within `β_q|y_q|` plus the backward radius of an eigenvalue of A, and Paige's bound holds
+for the stored vectors. The stored factors `s·V f(T) e₁` approximate `f(A)b`, including the error
+of the computed start. The small matrix function and final products are exact in that statement:
+no program forms this vector.
+
 ## Source map
 
 - [Ordinary program](../../NLAlib/Krylov/Lanczos/Alg.lean)

@@ -315,6 +315,26 @@ These scalar standard-model certificates describe arithmetic without finite-form
 or underflow; native IEEE execution requires a corresponding finite-format model. The
 reorthogonalized CG canonical certificates currently cover exact arithmetic.
 
+### Attainable accuracy of the stored iterate
+
+[`exec_scalarProgram_norm_sub_mulVec_le`](../../NLAlib/Krylov/CG/HSCG/Carried/Rounded/Accuracy.lean)
+bounds the true residual of the stored iterate by `(11k + 8)·E·a′·(‖x‖ + ‖x‖_A/√a)` for a cap
+`k ≥ k★(κ, E, 1)`, whether the program reaches the cap or stops on a zero computed residual.
+`RunAccuracy` in the same file transfers the residual gap, relative energy-decrement tracking,
+the inverse-tridiagonal estimate and minimax convergence on a set containing the eigenvalue
+intervals of the backward model.
+
+The conditions `k ≥ k★` and `k²√k·E·κ² ≤ 10⁻⁵` together limit κ. For `u = 2⁻⁵³` and the
+smallest admissible `E`, a floating-point evaluation of the two conditions gives:
+
+| n | E | largest κ (to 0.05) | k★ there |
+|---:|---:|---:|---:|
+| 10 | 1.78·10⁻¹⁴ | 40.4 | 164 |
+| 100 | 2.22·10⁻¹³ | 19.25 | 108 |
+| 1000 | 7.02·10⁻¹² | 6.85 | 62 |
+| 10000 | 2.22·10⁻¹⁰ | 2.3 | 37 |
+| 100000 | 7.02·10⁻⁹ | none | |
+
 ## Checked sources
 
 - Matrix-free exact certificates: [fixed horizon](../../NLAlib/Krylov/CG/HSCG/Certification.lean),

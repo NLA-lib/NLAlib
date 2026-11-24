@@ -920,6 +920,32 @@ theorem measureReal_schattenNorm_sub_truncatedSVD_rbkiSum_gt_le_of_hasLaw_gaussi
     (specNorm_residual_sq_le_of_frobNorm_sq_le hAZ₁ (by omega) hτ.le hc.1)
     (specNorm_residual_sq_le_of_frobNorm_sq_le hAZ₂ hl₂ hτ.le hc.2))
 
+-- TODO(move): NLAlib/LowRank/Structural/SingularValueDeficit.lean
+omit [DecidableEq m] [DecidableEq n] in
+/-- The two-sided output of the truncated randomized SVD is at least as accurate as the
+one-sided one: with $\mathbf{B} = \llbracket\mathsf{rsvd}(\mathbf{A}, \mathbf{Y})\rrbracket_k$
+and $1 \le p$,
+$\|\mathbf{A} - \mathbf{A}\mathbf{P}_{\mathbf{B}^{\mathsf{H}}}\|_{S_p} \le
+\|\mathbf{A} - \mathbf{B}\|_{S_p}$. Here $\mathbf{P}_{\mathbf{B}}\mathbf{A} = \mathbf{B}$
+(`NLAlib.truncatedSVD_rsvd_eq_rangeProjector_mul`) and
+$\mathbf{B}\mathbf{P}_{\mathbf{B}^{\mathsf{H}}} = \mathbf{B}$, so
+`IsStarProjection.matrixNorm_sub_mul_le_matrixNorm_sub_mul` applies. -/
+theorem schattenNorm_sub_mul_rangeProjector_le_schattenNorm_sub_truncatedSVD_rsvd {𝕜 : Type*}
+    [RCLike 𝕜] {p : ℝ≥0∞} (hp1 : 1 ≤ p) (A : Matrix m n 𝕜) (Y : Matrix n l 𝕜) (k : ℕ) :
+    schattenNorm p (A - A * rangeProjector (truncatedSVD (rsvd A Y) k)ᴴ) ≤
+      schattenNorm p (A - truncatedSVD (rsvd A Y) k) := by
+  haveI : Fact (1 ≤ p) := ⟨hp1⟩
+  set T := truncatedSVD (rsvd A Y) k
+  have hT : T = rangeProjector T * A := truncatedSVD_rsvd_eq_rangeProjector_mul A Y k
+  have hTQ : T * rangeProjector Tᴴ = T := by
+    have h := congrArg Matrix.conjTranspose (rangeProjector_mul_self Tᴴ)
+    rwa [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose,
+      conjTranspose_rangeProjector] at h
+  have h := (isStarProjection_rangeProjector Tᴴ).matrixNorm_sub_mul_le_matrixNorm_sub_mul
+    (lpGauge p) (P := rangeProjector T) (A := A) (by rw [← hT, hTQ])
+  rw [lpGauge_matrixNorm, lpGauge_matrixNorm, ← hT] at h
+  exact h
+
 omit [DecidableEq m] in
 /-- **The tail bound for the two-sided output of block Krylov iteration on the sum of two
 Gaussian block Krylov spaces, $2 \le p < \infty$**: let $\mathbf{A}$ be a real $m \times n$
@@ -962,7 +988,13 @@ theorem measureReal_schattenNorm_sub_mul_rangeProjector_rbkiSum_gt_le_of_hasLaw_
         (min (Fintype.card m) (Fintype.card n) : ℕ) / (ε ^ 2 * δ)) ≤ q₂) :
     μ.real {ω | (1 + ε) * schattenNorm p (A - truncatedSVD A k) <
       schattenNorm p (A - A * rangeProjector
-        (truncatedSVD (rbkiSum A (X₁ ω) (X₂ ω) q₁ q₂) k)ᴴ)} ≤ δ := sorry
+        (truncatedSVD (rbkiSum A (X₁ ω) (X₂ ω) q₁ q₂) k)ᴴ)} ≤ δ := by
+  have := hX₁.isProbabilityMeasure
+  refine (measureReal_mono fun ω hω => ?_).trans
+    (measureReal_schattenNorm_sub_truncatedSVD_rbkiSum_gt_le_of_hasLaw_gaussianMatrix hp2 hp A hX₁
+      hX₂ hk hl₁ hl₂ hε hε1 hδ hj hq₁ hq₂)
+  exact lt_of_lt_of_le hω (schattenNorm_sub_mul_rangeProjector_le_schattenNorm_sub_truncatedSVD_rsvd
+    (one_le_two.trans hp2) A _ k)
 
 omit [DecidableEq m] in
 /-- **A $(1 + \varepsilon)$ rank-$k$ approximation from two Gaussian block Krylov spaces,

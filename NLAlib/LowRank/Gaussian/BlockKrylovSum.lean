@@ -422,7 +422,8 @@ theorem integral_schattenNorm_sub_mul_rangeProjector_rbkiSum_rpow_le_of_hasLaw_g
     measurable_fromCols_blockKrylovMatrix (Aᴴ * A) q₁ q₂
   have hY := Measurable.comp_aemeasurable hm (hX₁.aemeasurable.prodMk hX₂.aemeasurable)
   simp only [rbkiSum_def]
-  exact integral_schattenNorm_sub_mul_rangeProjector_rsvd_rpow_le_of_range_le_of_hasLaw_gaussianMatrix
+  exact
+    integral_schattenNorm_sub_mul_rangeProjector_rsvd_rpow_le_of_range_le_of_hasLaw_gaussianMatrix
     hp1 hp2 A hX₁ hX₂ hl₁ hl₂ hq₁ hq₂ hγ hγ1 hY
     (fun ω => range_mul_blockKrylovMatrix_le_range_mul_fromCols_left A (X₁ ω) (X₂ ω) q₁ q₂)
     (fun ω => range_mul_blockKrylovMatrix_le_range_mul_fromCols_right A (X₁ ω) (X₂ ω) q₁ q₂)

@@ -938,6 +938,20 @@ theorem HasOrthonormalCols.frobNorm_sub_truncatedSVD_rbki_sq_le_add_mul
     frobNorm (A - truncatedSVD (rbki A Ω q) k) ^ 2 ≤
       frobNorm (A - truncatedSVD A k) ^ 2 + k * γ * singularValues A k ^ 2 +
         4 * k * Real.exp (-2 * Real.sqrt 2 * ((q : ℝ) - 1) * Real.sqrt γ) *
-          specNorm ((A - truncatedSVD A k) * Ω * pinv (Zᴴ * Ω)) ^ 2 := sorry
+          specNorm ((A - truncatedSVD A k) * Ω * pinv (Zᴴ * Ω)) ^ 2 := by
+  classical
+  set E := 4 * Real.exp (-2 * Real.sqrt 2 * ((q : ℝ) - 1) * Real.sqrt γ) *
+    specNorm ((A - truncatedSVD A k) * Ω * pinv (Zᴴ * Ω)) ^ 2
+  have hST := (isStarProjection_rangeProjector
+    (A * blockKrylovMatrix (Aᴴ * A) Ω q)).frobNorm_sub_truncatedSVD_mul_sq A k
+  rw [← rsvd, ← rbki_def] at hST
+  have h := Finset.sum_le_sum fun i (hi : i ∈ Finset.range k) =>
+    (show singularValues A i ^ 2 - singularValues (rbki A Ω q) i ^ 2 ≤
+        γ * singularValues A k ^ 2 + E by
+      linarith [hZ.sq_singularValues_sub_le_sq_singularValues_rbki hΩ hAZ hq hγ hγ1
+        (Finset.mem_range.mp hi)])
+  rw [Finset.sum_const, Finset.card_range, nsmul_eq_mul] at h
+  rw [hST]
+  linarith
 
 end NLAlib

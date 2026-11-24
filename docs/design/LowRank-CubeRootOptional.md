@@ -1,6 +1,7 @@
 # Low-rank approximation with $\varepsilon^{-1/3}$ products: the optional items
 
-2026-11-24. Design note; **status: design only, awaiting the maintainer's decisions (§9). Nothing
+2026-11-24. Design note; **status: design only, revised after one independent review (§10; harness copy of the review:
+`scratch/Review-LRA-OPTIONAL-Design.md` in the worktree), awaiting the maintainer's decisions (§8). Nothing
 is proved and there is no skeleton.** Branch `design/lra-optional` from `cleanup/lra-cube-root`
 @ `1bed77c6`. Stage LRA-OPTIONAL, board card T152. Targets: harness
 `pilot/lra-optional-targets.json`. Decision sheet: harness `state/decisions/LRA-OPTIONAL.json`.
@@ -18,8 +19,8 @@ $\mathbf H = \mathbf A^{\mathsf H}\mathbf A$,
 $\mathbf M_t = (\mathbf A - \llbracket\mathbf A\rrbracket_t)\mathbf\Omega(\mathbf Z^{\mathsf H}\mathbf\Omega)^+$
 for a frame $\mathbf Z$ with $\mathbf A\mathbf Z\mathbf Z^{\mathsf H} = \llbracket\mathbf A\rrbracket_t$.
 **Known** = published, **planned** = proposed here with an outline, **checked** = derived by hand
-for this note (no numerical check this time: no numerical Python was available in the
-environment; see §9 Risks).
+for this note; the headline threshold chains were re-derived and checked numerically on grids
+by the independent review (pure Python), the per-index lemmas by hand only (§8 Risks).
 
 ## Summary
 
@@ -27,12 +28,14 @@ environment; see §9 Risks).
 |---|---|---|---|---|---|
 | MM-FROB | **Already in the library as an instance**: the proved range-inclusion theorem GA1 (`integral_frobNorm_sub_truncatedSVD_rsvd_sq_le_of_range_le_of_hasLaw_gaussianMatrix`) with $\mathbf X_1 = \mathbf X_2 = \mathbf X$, $\mathbf Y = \mathbf K_q(\mathbf H, \mathbf X)$, $j = k-1$ is Musco–Musco's single-run $(1+\varepsilon)$ Frobenius bound for a block of $\ge 2k+1$ columns, with $\log(k/\varepsilon)$. Musco–Musco's Property 3 (the rank argument) is needed only for blocks of exactly $k$ | name the instance (headline, $p \le 2$ twin, asymptotic form) | 3 (S1 M2) | low | include (named statement; nothing new to prove) |
 | BLOCK-K | **Blocks $k+2$ and $k+j+2$ are already covered** by GA1/GA1p ($\ell_1 \ge k+2$, $\ell_2 \ge k+j+2$; factors $k$, $k+j$ inside the logarithms). Exactly $k$ needs a small-ball bound for the least singular value of a square **real** Gaussian matrix: not in the library (the complex one is) | real square small ball; residual tail; tail headline with $\log(k^5/(\varepsilon\delta^3))$ (no dimension) | 3 (M3) | low–medium | **drop** (saves 2 columns per block) |
-| SINGLE-RUN | The simulation identity `rbki_blockKrylovMatrix` and the single-vector simulated-block residual (`frobNorm_sub_mul_mul_blockKrylovMatrix_mul_pinv_sq_le`) are in the library, so the stage-1 range-inclusion theorems apply to one run **by composition only**, but with the gap hypothesis $\Delta^{-2(t-1)}$ on the top $t\approx k\varepsilon^{-1/3}$ singular values. **BN23's proof is not a simulation**: it is a filter with roots at the intermediate singular values. That argument generalizes to rank $k$ and is gap-free: one run, block $2k+1$, depth $2(k/\varepsilon)^{1/3}\log(16k/\varepsilon)$, i.e. $O(k^{4/3}\varepsilon^{-1/3}\log(k/\varepsilon))$ products, dimension-free; rank 1 from a single vector in tail form (BN's setting) | root filter; per-index light-tail deficits; one-run Frobenius theorem; Gaussian; headline; asymptotic; single-vector rank-1 | 8 (S2 M5 L1) | medium (new statement; argument checked by hand) | include |
-| INEXACT | the Gram-defect-to-projector distance is in the library (`specNorm_mul_conjTranspose_sub_rangeProjector_le_gramDefect`); exact pinching for any pair (`IsStarProjection.schattenNorm_mul_mul_rpow_add_le`) is there; what is missing is the combination step without $\mathbf P\mathbf A\mathbf Q = \mathbf P\mathbf A$ | perturbed pairing; tail-count form with $\|\mathbf P\mathbf A(\mathbf I-\mathbf Q)\|_2\le\eta$; deficits under a nearby non-projector | 3 (S2 M1) | low | include |
-| P-LARGE (c) | **Achievable with a known argument, for every $k$, in expectation**: BN23's weight $x^{\lceil p/2\rceil}$ in the filter makes the filtered tail energy a Schatten-$p$ quantity, so the $\log\min(m,n)$ of the proved GA3 disappears; the head split (SP1–CB3) is not needed | weighted filter lemmas, weighted per-index Gaussian deficits, $p \ge 2$ expectation theorem, headline, asymptotic form, tail form with $\log(1/\delta)$ | 12 (S4 M5 L3) | medium | include |
+| SINGLE-RUN | The simulation identity `rbki_blockKrylovMatrix` and the single-vector simulated-block residual (`frobNorm_sub_mul_mul_blockKrylovMatrix_mul_pinv_sq_le`) are in the library, so the stage-1 range-inclusion theorems apply to one run **by composition only**, with the gap factor $\Delta^{-2(t-1)}$ on the top $t=k+j\approx6k\varepsilon^{-1/3}$ singular values: this is the route of Meyer–Musco–Musco 2024 (single vector matches BCW up to $\log(1/\text{gap})$; gap removable by a small random perturbation of the input). **BN23's proof is not a simulation**: it is a filter with roots at the intermediate singular values. That argument generalizes to rank $k$ and is gap-free: one run, block $2k+1$, depth $2(k/\varepsilon)^{1/3}\log(16k/\varepsilon)$, i.e. $O(k^{4/3}\varepsilon^{-1/3}\log(k/\varepsilon))$ products, dimension-free; rank 1 from a single vector in tail form (BN's setting) | root filter; per-index light-tail deficits; one-run Frobenius theorem; Gaussian; headline; asymptotic; single-vector rank-1 | 8 (S2 M5 L1) | medium (new as a statement for $k>1$; re-derived by the review) | include route (b); route (a) as an option (decision SR-RATE) |
+| INEXACT | exact pinching for any pair (`IsStarProjection.schattenNorm_mul_mul_rpow_add_le`) and the Gram-defect-to-projector distance (`specNorm_mul_conjTranspose_sub_rangeProjector_le_gramDefect`) are in the library; missing is the final combination step without $\mathbf P\mathbf A\mathbf Q = \mathbf P\mathbf A$. **Scope:** only that step; it does not cover a rounded Krylov range (which does not contain the exact one) and still needs exact projectors and a Schatten-$p$ bound on $\mathbf P\mathbf A(\mathbf I-\mathbf Q)$ (§2.4) | perturbed pairing; tail-count form with $\|\mathbf P\mathbf A(\mathbf I-\mathbf Q)\|_2\le\eta$, $\|\cdot\|_{S_p}\le\eta_p$ | 2 (S1 M1) | low | include, knowing the scope (weakest batch) |
+| P-LARGE (c) | **Achievable with known ingredients, for every $k$, in expectation**: BN23's weight (here $x^r$, $r=\lceil(p-2)/4\rceil$) in the filter makes the filtered tail energy a Schatten-$p$ quantity, so the $\log\min(m,n)$ of the proved GA3 disappears; the head split (SP1–CB3) is not needed | weighted filter lemmas, weighted per-index Gaussian deficits, $p \ge 2$ expectation theorem, headline, asymptotic form, tail form with $\log(1/\delta)$ | 13 (S5 M5 L3) | medium–high: for $k>1$ the statement is new (BN: rank 1; BCW: $\log d$); hand-checked, re-derived by the review | include |
 
 Total **29 targets** (S 9, M 16, L 4), every one with an elaborated statement (Appendix A); 26
-if BLOCK-K is dropped as recommended. No new definition, interface, vocabulary row, named bound or
+if BLOCK-K is dropped as recommended. **Prerequisites (not targets)**, being made by the
+LRA-CUBE-ROOT cleanup: `exists_frame_residual` public (SR4, PL1, PL2) and RZ2's two private scalar
+lemmas public (CR2); public names TBD by the cleanup. No new definition, interface, vocabulary row, named bound or
 Mathlib deviation.
 
 Headlines (planned; constants explicit; no dimension anywhere):
@@ -81,10 +84,10 @@ mathematics does not depend on them.
 | Chebyshev from two reals | `Polynomial.Chebyshev.exists_degree_lt_div_sq_le_exp_of_le` | CF1, SR0 multiply it by $x^r$ / by roots |
 | pinching, any projector pair | `IsStarProjection.schattenNorm_mul_mul_rpow_add_le` (PN3), `IsStarProjection.schattenNorm_sub_mul_rpow_add_le` (ST1, needs $\mathbf P\mathbf A\mathbf Q=\mathbf P\mathbf A$), CB1 `IsStarProjection.schattenNorm_sub_mul_rpow_le_of_singularValues_le_mul` | IX1, IX2 drop the pairing hypothesis |
 | inexact basis | `specNorm_mul_conjTranspose_sub_rangeProjector_le_gramDefect`, `frobNorm_…_le_gramDefect` (`Krylov/FinitePrecision/BandGolubKahanRun.lean`), `gramDefect` (`Matrix/Perturbation/BasisExtension.lean`) | no target for the basis-to-projector step |
-| Weyl | `singularValues_add_le` (`Matrix/Spectral/SingularValueInequalities.lean`) | IX3 is a corollary (S) |
+| Weyl | `singularValues_add_le` (`Matrix/Spectral/SingularValueInequalities.lean`) | used inside IX2 |
 | $p \ge 2$ one-sided error | `IsStarProjection.schattenNorm_sub_mul_le_add_rpow` (head split, use $L=0$), `Real.rpow_sub_rpow_le_max_mul_sq`, `mul_singularValues_rpow_le_schattenNorm_sub_truncatedSVD_rpow` (SV3) | PLd is a corollary (S) |
 | integrability | `integrable_schattenNorm_sub_mul_rangeProjector_rsvd_rpow` (two-sided), `integrable_frobNorm_sub_truncatedSVD_rsvd_sq` | PL0: one-sided Schatten twin (S) |
-| frames and a.s. rank | `exists_frame_residual` (**private**, `Gaussian/BlockKrylovSum.lean`), `exists_hasOrthonormalCols_conjTranspose_mul_self_mul_eq_mul_diagonal`, `ae_rank_conjTranspose_mul_eq_of_hasLaw_gaussianMatrix` | SR4, PL1, PL2 need `exists_frame_residual` public (one-line change to a stage-1 file, to be done with the cleanup) |
+| frames and a.s. rank | `exists_frame_residual` (**private**, `Gaussian/BlockKrylovSum.lean`), `exists_hasOrthonormalCols_conjTranspose_mul_self_mul_eq_mul_diagonal`, `ae_rank_conjTranspose_mul_eq_of_hasLaw_gaussianMatrix` | SR4, PL1, PL2 need `exists_frame_residual` public: prerequisite, made by the cleanup |
 | single-vector events | `measureReal_exists_abs_conjTranspose_mulVec_le_le_of_hasLaw_gaussianVector`, `measureReal_norm_mulVec_sq_gt_le_of_hasLaw_gaussianVector`, `ae_forall_conjTranspose_mulVec_ne_zero_of_hasLaw_gaussianVector` | SR7 is composition plus arithmetic |
 
 Mathlib: nothing for any of the above (searched: block Krylov, Chebyshev filters, Schatten norms,
@@ -200,26 +203,38 @@ $\mathbf K_{q_2}(\mathbf H,\mathbf K_s(\mathbf H,\mathbf\Omega))$ for $q_1\le q$
 with $\mathbf\Omega_2=\mathbf K_s(\mathbf H,\mathbf\Omega)$. Its residual
 $\|(\mathbf A-\llbracket\mathbf A\rrbracket_t)\mathbf K_s(\mathbf Z_t^{\mathsf H}\mathbf K_s)^+\|$
 is bounded in the library only for one start vector, by $\Delta^{-2(t-1)}\sum g_i^{-2}\|\cdot\|^2$
-under $\sigma_{i+1}^2\le(1-\Delta)\sigma_i^2$ for the top $t\approx6\varepsilon^{-1/3}$ values: the
+under $\sigma_{i+1}^2\le(1-\Delta)\sigma_i^2$ for the top $t=k+j\approx6k\varepsilon^{-1/3}$ values: the
 depth then grows by $\approx\frac23 t\log(1/\Delta)$. For a block of $b>1$ vectors the simulated
 block is a block Vandermonde matrix; no bound is in the library or in the sources, and it would
-need gaps too. **This is exactly where general $k$ fails for the simulation route.**
+need gaps too. For **one start vector** (any $k$) this is the route of Meyer–Musco–Musco
+[arXiv 2305.02535, SODA 2024; abstract in harness `research/lra-optional/`]: a single vector run
+for $t$ iterations matches block size $\ell\ge k$ run for $O(t/\ell)$ iterations up to a
+logarithmic dependence on the smallest gap, which a small random perturbation of the input
+removes; they state that this matches BCW for Schatten norms. With the library's pieces it gives
+BCW's $k\varepsilon^{-1/3}$ count with an additive $\approx t\log(1/\Delta)$ in the depth, under
+the gap hypothesis (decision SR-RATE, option b; about 3 targets, specified at skeleton if chosen).
+The perturbation step needs tail bounds for gaps of random-matrix spectra, which the library does
+not have (not planned). Chen–Epperly–Meyer–Musco–Rao 2025 (block size) is related; not read.
 
 **Route (b), roots in the filter — gap-free, every $k$ (planned).** Light tail:
 $\sqrt2\,\sigma_{k+j}\le\sigma_k$. Let $I=\{k,\dots,k+j-1\}$. For $i<k$ (checked):
 
+* *Degenerate case* $\sigma_k=0$: no roots, $g\equiv1$; then $\mathbf M_k=\mathbf0$ and RZ1 gives
+  exact capture.
 * *Case A*, $\sigma_i^2\ge(1+\eta)\sigma_k^2$: RZ1 with the frame of $\llbracket\mathbf A\rrbracket_k$
   and $f=\prod_{r\in I}(x-\sigma_r^2)\cdot T$, $T$ Chebyshev for $[0,\sigma_{k+j}^2]$ vs
   $[\sigma_k^2,\infty)$. At the head, each root factor is $\ge\eta\sigma_k^2$; on the spectral
   points of $[0,\sigma_k^2]$ it is either $0$ (a root) or $\le\sigma_k^2$. So
   $(a/c)^2\le\eta^{-2j}\cdot4e^{-8d(\sqrt2-1)}\le\eta^{-2j}4e^{-3d}$, $d=q-1-j$.
 * *Case B*, $\sigma_i^2<(1+\eta)\sigma_k^2$: RZ2 (cut form) with cut
-  $\tau^2=(1-\eta)\sigma_k^2$, roots at the $r\in I$ with $\sigma_r^2<\tau^2$ (head factors
+  $\tau^2=(1-\eta)\sigma_k^2$, roots at the $r\in I$ with $\sigma_r^2\le\tau^2$ (closed cut: RZ2's
+  tail bound is on $[0,\tau^2]$, so a value at $\tau^2$ must be a root; head factors
   $\ge\eta\sigma_k^2$, $\eta\le\frac12$ so $\sigma_{k+j}^2\le\tau^2$). Loss $\sigma_i^2-\tau^2\le2\eta\sigma_k^2$.
 
-Both use bounds only at spectral points; RZ1/RZ2 take a function $g:\mathbb R\to\mathbb R$ with a
+Both cases use bounds only at spectral points (T is large on $(\sigma_{k+j}^2,\sigma_k^2)$), so
+SR1 is needed in both; RZ1/RZ2 take a function $g:\mathbb R\to\mathbb R$ with a
 bound on an interval, and SR1 supplies $g$ equal to $f$ on the spectrum of $\mathbf H$ and $0$
-elsewhere (`cfc_congr`). Result **SR2**:
+elsewhere (`cfc_congr`; SR1 needs $a\ge0$ for the non-spectral points, B1 of the review). Result **SR2**:
 $\sigma_i(\mathsf{rbki}(\mathbf A,\mathbf\Omega,q))^2\ge\sigma_i^2-2\eta\sigma_k^2-4\eta^{-2j}e^{-3(q-1-j)}\|\mathbf M_k\|_2^2$.
 **SR3** (Frobenius, one run): case split at $\sigma_k\le\sqrt2\sigma_{k+j}$ — heavy: CB1F with RZ3
 (stage 1); light: ST2T with SR2 —
@@ -241,32 +256,35 @@ light case spends $j$ degrees on roots, and the balance of the two cases
 $O(k^{4/3}\varepsilon^{-1/3}\log(k/\varepsilon))$ products, against BCW's
 $O(k\varepsilon^{-1/3}\log)$ for two runs. It beats Musco–Musco's single run
 ($k\varepsilon^{-1/2}$) iff $k<\varepsilon^{-1/2}$; MM1 covers the other regime. Whether one run
-achieves $k\varepsilon^{-1/3}$ without gap hypotheses is open as far as the sources go (route (a)
-would, under gaps). For $k=1$ it is BN's theorem (Frobenius; their Schatten-$p$ for $p>2$ would
+achieves $k\varepsilon^{-1/3}$ without gap hypotheses is **not derived here**; Meyer–Musco–Musco
+reach it from one vector with a $\log(1/\text{gap})$ cost, or after a small random perturbation of
+the input (route (a) above). For $k=1$ it is BN's theorem (Frobenius; their Schatten-$p$ for $p>2$ would
 combine SR with P-LARGE's weight — not planned).
 
-### 2.4 INEXACT (IX1–IX3)
+### 2.4 INEXACT (IX1, IX2)
 
 * **IX1** (checked): $\mathbf A-\mathbf A\mathbf Q=\mathbf P\mathbf A(\mathbf I-\mathbf Q)+(\mathbf I-\mathbf P)\mathbf A(\mathbf I-\mathbf Q)$;
   triangle inequality and PN3 give
   $\|\mathbf A-\mathbf A\mathbf Q\|_p\le\|\mathbf P\mathbf A(\mathbf I-\mathbf Q)\|_p+(\|\mathbf A\|_p^p-\|\mathbf P\mathbf A\mathbf Q\|_p^p)^{1/p}$,
-  any projectors, $p\ge1$. At $\mathbf P\mathbf A\mathbf Q=\mathbf P\mathbf A$ it is ST1.
-* **IX2**: CB1 with the pairing replaced by $\|\mathbf P\mathbf A(\mathbf I-\mathbf Q)\|_2\le\eta$:
-  Weyl gives $\sigma_i(\mathbf P\mathbf A\mathbf Q)\ge\sigma_i(\mathbf P\mathbf A)-\eta$, hence
+  any orthogonal projectors, $p\ge1$. At $\mathbf P\mathbf A\mathbf Q=\mathbf P\mathbf A$ it is ST1.
+* **IX2**: CB1 with the pairing replaced by $\|\mathbf P\mathbf A(\mathbf I-\mathbf Q)\|_2\le\eta$
+  and $\|\mathbf P\mathbf A(\mathbf I-\mathbf Q)\|_{S_p}\le\eta_p$ (a program may use
+  $\eta_p=\operatorname{rank}(\mathbf P)^{1/p}\eta$): Weyl gives
   $\sigma_i(\mathbf P\mathbf A\mathbf Q)^2\ge\sigma_i(\mathbf P\mathbf A)^2-2\eta\sigma_i(\mathbf A)$
-  (also when $\sigma_i(\mathbf P\mathbf A)<\eta$); then IX1, SC1 and CB1's arithmetic:
-  the absolute errors become $\beta_i+2\eta\sigma_i$. Junk hypothesis at $\sigma_k=0$, $p<2$:
-  $\eta=0$ and $\beta=0$ (as CB1's `hβ0`).
-* **IX3**: for any $\mathbf M$ with $\|\mathbf M-\mathbf P\|_2\le\zeta$,
-  $\sigma_i(\mathbf M\mathbf A)^2\ge\sigma_i(\mathbf P\mathbf A)^2-2\zeta\|\mathbf A\|_2\sigma_i(\mathbf A)$.
-  With $\mathbf M=\hat{\mathbf Q}\hat{\mathbf Q}^{\mathsf H}$ and the library's Gram-defect bound
-  this is the inexact-basis step: $\beta_i\mathrel{+}=2\|\mathrm{gramDefect}\,\hat{\mathbf Q}\|_2\|\mathbf A\|_2\sigma_i$.
+  (also when $\sigma_i(\mathbf P\mathbf A)<\eta$); then IX1, SC1 and CB1's arithmetic: the absolute
+  errors become $\beta_i+2\eta\sigma_i$. Junk hypothesis at $\sigma_k=0$, $p<2$: $\eta=0$, $\beta=0$.
 
-Not planned (no statement needed): one-sided outputs ($p\ge2$, Frobenius) take any projector;
-an output perturbation is the triangle inequality; a rounded Krylov space is the routine's own
-range inclusion (stage 1 §8). Consumer: the routines stage; a program discharges
-$\|\mathbf P\mathbf A(\mathbf I-\mathbf Q)\|_2\le\eta$ (residual of the small SVD) and the Gram
-defect; the theorems stay about abstract projectors (maintainer's preference).
+**What the batch does NOT give a finite-precision routine.** (1) Only the final combination step
+(Rayleigh–Ritz output to the two-sided error) is covered. (2) $\mathbf P$ and $\mathbf Q$ are
+exact orthogonal projectors; a computed basis enters through the library's Gram-defect bound and
+an output perturbation (triangle inequality), not through a statement here. (The planned IX3,
+deficits under a nearby non-projector, had no consumer in the batch and was dropped.) (3) The
+deficit hypotheses of $\mathbf P$ are the routine's burden; in floating point the computed Krylov
+range does **not** contain the exact Krylov range, so the range-inclusion theorems of stage 1 do
+not apply to a rounded run, and nothing here repairs that (the library's RBKI obstacle, stage 1
+§8). (4) One-sided outputs ($p\ge2$, Frobenius) need no new statement: they take any projector.
+Consumer: the routines stage; a program discharges $\eta$, $\eta_p$ (residual of the small SVD)
+and the Gram defect; the theorems stay about abstract projectors (maintainer's preference).
 
 ### 2.5 P-LARGE (c) (CF1, CR1, CR2, CT1, PLd, PL0–PL6)
 
@@ -291,7 +309,8 @@ index falls in one regime ($\theta=1/p$, $\kappa^2=1+1/p$):
 | II, heavy ($\sigma_k^2\le(1+\frac1p)\sigma_{k+j}^2$) | 1, frame $k$ | PL2 (weighted RZ3: gap or cut at $\sigma_i^2-\gamma\sigma_k^2$, ratio $\ge\gamma/8$); $\sigma_i^{p-2}\le\sqrt e\sigma_k^{p-2}$; SV3 | $\frac{pe}2\frac{\gamma}{j+1}\mathrm{OPT}^p+2\sqrt e\,pe^{-2\sqrt2(q_1-1-r)\sqrt\gamma}\frac{k}{\ell_1-k-1}\mathrm{OPT}^p$ |
 | II, light | 2, frame $k+j$ | PL1 ($t=k+j$; $(1+\frac1p)\sigma_{k+j}^2\le\sigma_i^2$) | $2pe^{-\frac83(q_2-1-r)/\sqrt p}\frac{k+j}{\ell_2-k-j-1}\mathrm{OPT}^p$ |
 
-Summing over $i<k$ gives **PL3** (Appendix A). **PL4** (checked; $\gamma=\varepsilon^{2/3}/p$):
+Summing over $i<k$ gives **PL3** (Appendix A); integrability of each term comes from PL0b
+(a squared singular value of the output is bounded by $\sigma_i(\mathbf A)^2$ and measurable). **PL4** (checked; $\gamma=\varepsilon^{2/3}/p$):
 the four terms are $\le\varepsilon/4$ under $j+1\ge2ek\varepsilon^{-1/3}$,
 $q_1\ge1+r+\sqrt p\log(14pk/\varepsilon)/(2\varepsilon^{1/3})$ (covers
 $\sqrt p\log(8\sqrt e\,pk/\varepsilon)/(2\sqrt2\varepsilon^{1/3})$ and
@@ -300,8 +319,16 @@ $\frac38\sqrt p\log(8pk/\varepsilon)$), $q_2\ge1+r+\sqrt p\log(8pk/\varepsilon)/
 $\frac{pe}{2}k\gamma/(j+1)\le\varepsilon/2$ ($j+1\ge ek\varepsilon^{-1/3}$); the random part
 $W=\sum_i\frac p2\sigma_i^{p-2}\max(0,d_i-\det_i)$ has $\mathbb EW\le\frac{\varepsilon\delta}2\mathrm{OPT}^p$
 (logarithms of $20pk/(\varepsilon\delta)$, $12pk/(\varepsilon\delta)$), Markov. PL2 is stated
-with $\max(0,\cdot)$ for that reason. **PL5**: asymptotic form. At $p=2$ ($r=0$) PL4 is a
+with $\max(0,\cdot)$ for that reason. **PL5**: asymptotic form, from PL3 at general sizes (residual factors $\le1$ for
+$\ell_1\ge2k+1$, $\ell_2\ge2(k+j)+1$, $j$ chosen in the proof), not from the exact-size PL4. At $p=2$ ($r=0$) PL4 is a
 Frobenius bound of the same shape as GA2 with different constants.
+
+**Status of the claim.** For $k=1$ the mechanism is BN's; for $k>1$ the dimension-free
+statement is new as a statement (BN: rank 1; BCW and stage 1: $\log d$), checked by hand and
+re-derived by the independent review; risk medium–high (a constant could be wrong, the rate was
+re-derived twice). Docstrings cite BN and BCW for the method, without "new"/"improved" wording.
+**Norm form** (decision P-FORM): with $\varepsilon\le1$ in $p$-th powers, the norm accuracy
+$\varepsilon'=\varepsilon/p$ is covered only for $\varepsilon'\le1/p$; the docstring says so.
 
 What remains of the stage-1 chain: GA3 and SP1/HD1/HD2/ST3/ST4/CB3 stay (proved; GA3 is
 superseded in rate, not removed). The new statements are about the one-sided output; the
@@ -314,7 +341,7 @@ two-sided output inherits them (`schattenNorm_sub_mul_rangeProjector_le_schatten
 `rangeProjector`, `IsStarProjection`, `HasOrthonormalCols`, `gaussianMatrix`, `gaussianVector`,
 `HasLaw`. **Interfaces.** None (a predicate "inexact Rayleigh–Ritz pair" was considered for
 INEXACT and rejected: two inequalities, no consumer yet; decide at the routines stage).
-**Shapes.** Field `RCLike 𝕜` for deterministic statements (SR1–SR3, CR1, CR2, CT1, PLd, IX1–IX3),
+**Shapes.** Field `RCLike 𝕜` for deterministic statements (SR1–SR3, CR1, CR2, CT1, PLd, IX1, IX2),
 ℝ for Gaussian ones; index types `Type*` + `Fintype`; headlines MM1, SR5 at general `l` with
 `2 * k + 1 ≤ Fintype.card l`, PL4/PL6/BK3 at `Fin` sizes as stage 1. Exponents `p : ℝ≥0∞`,
 `2 ≤ p`, `p ≠ ⊤`, powers `^ p.toReal`; the weight degree as a hypothesis
@@ -332,7 +359,7 @@ unchanged. Asymptotic forms MM3, SR6, PL5 follow B4/N17 (root namespace, constan
 | SR2–SR7 | the same program: one run, no second block, no selection; BN's rank-1 setting (SR7) |
 | CF1, CR1, CR2, CT1 | every dimension-free bound in a norm stronger than Frobenius on the tail; Nyström in Schatten norms |
 | PL0–PL6 | the explorer's $p>2$ entry (replaces GA3's $\log\min(m,n)$); routines for $p>2$ (one-sided output, any projector) |
-| IX1–IX3 | the routines stage: a computed row basis $\hat{\mathbf Q}$ (IX1/IX2), a computed Krylov basis with Gram defect (IX3) |
+| IX1, IX2 | the routines stage: the final combination step with a computed row basis $\hat{\mathbf Q}$ |
 | BK1 | any square-Gaussian argument (smoothed analysis over ℝ; the complex twin exists) |
 | BK2, BK3 | BCW's literal block sizes |
 
@@ -360,13 +387,16 @@ Additions to existing files:
   next to `exists_degree_lt_div_sq_le_exp_of_le` (statements about polynomials and reals).
 * PLd, IX2 → `NLAlib/LowRank/Structural/SingularValueDeficit.lean` (error from deficits).
 * IX1 → `NLAlib/Matrix/Norms/SchattenPinching.lean` (pinching for a projector pair).
-* IX3 → `NLAlib/Matrix/Spectral/CompressionSingularValues.lean` (singular values of $\mathbf P\mathbf A$).
-* PL0 → `NLAlib/LowRank/Random/RangeFinder.lean`, next to
-  `integrable_schattenNorm_sub_mul_rangeProjector_rsvd_rpow`.
+* PL0, PL0b → `NLAlib/LowRank/Random/RangeFinder.lean`, next to
+  `integrable_schattenNorm_sub_mul_rangeProjector_rsvd_rpow` and
+  `integrable_frobNorm_sub_truncatedSVD_rbki_sq`.
 * BK2 → `NLAlib/LowRank/Gaussian/RangeFinder.lean`, next to GR1/GR2. BK3 → the tail file of the
   cleanup split (`Gaussian/BlockKrylovSumTail.lean`, or `BlockKrylovSum.lean` if not split).
-* **Change to a stage-1 file:** `exists_frame_residual` (private, `Gaussian/BlockKrylovSum.lean`)
-  made public (statement unchanged), needed by SR4, PL1, PL2; to be done with or after the cleanup.
+* **Prerequisites from the LRA-CUBE-ROOT cleanup (not targets):** `exists_frame_residual`
+  (private, `Gaussian/BlockKrylovSum.lean`) made public, statement unchanged (SR4, PL1, PL2);
+  RZ2's private scalar lemmas `sq_sub_mul_sum_le_sum`,
+  `sq_sub_mul_norm_sq_le_norm_conjTranspose_mulVec_sq` (`Structural/RitzValues.lean`) made public
+  (CR2). The cleanup agent is making them now; public names TBD there.
 * No vocabulary row, no `docs/constants.toml` entry, no Mathlib deviation.
 
 ## 6. Targets
@@ -389,7 +419,7 @@ Sizes S/M/L. "Uses" names library declarations; "Needs" names targets. Batch = i
 | PLd | P-LARGE | one-sided truncated output, $p\ge2$, from squared deficits | S | — | `IsStarProjection.schattenNorm_sub_mul_le_add_rpow` at $L=0$ for $\mathbf\Pi$ with $\mathbf\Pi\mathbf A=\llbracket\mathbf P\mathbf A\rrbracket_k$ (`IsStarProjection.rangeProjector_truncatedSVD_mul_mul`), `Real.rpow_sub_rpow_le_max_mul_sq` |
 | PL0 | P-LARGE | integrability, one-sided Schatten $p$-th power | S | — | copy of `integrable_schattenNorm_sub_mul_rangeProjector_rsvd_rpow` |
 | IX1 | INEXACT | pinching without the pairing | S | — | `IsStarProjection.schattenNorm_mul_mul_rpow_add_le`, `schattenNorm_add_le` |
-| IX3 | INEXACT | deficits under a nearby matrix | S | — | `singularValues_add_le`, `IsStarProjection.singularValues_mul_le` |
+| PL0b | P-LARGE | integrability of $\sigma_i(\mathsf{rbki}(\mathbf A,\mathbf X,q))^2$ | S | — | `measurable_singularValues`, `measurable_rsvd`, `measurable_blockKrylovMatrix`; bounded by $\sigma_i(\mathbf A)^2$ |
 
 ### Wave 1
 
@@ -397,10 +427,10 @@ Sizes S/M/L. "Uses" names library declarations; "Needs" names targets. Batch = i
 |---|---|---|---|---|---|
 | MM3 | MM-FROB | asymptotic form | M | MM1 | stage-1 `le_one_and_exists_thresholds` pattern; $C$ absorbs $\sqrt3/2$, $\log24$ |
 | BK2 | BLOCK-K | residual tail, square block | M | BK1 | `measureReal_gt_add_mul_le_of_hasLaw_gaussianMatrix_of_indepFun` (BlockTail), Markov, `exists_completion_sub_mul_mul_conjTranspose` |
-| SR2 | SINGLE-RUN | per-index deficits, light tail | L | SR0, SR1 | RZ1, RZ2 (cases A/B, §2.3), `singularValues_rsvd_cfc_le_singularValues_rbki` |
-| PL1 | P-LARGE | weighted gap form in expectation | M | CF1, CR1, CT1 | `exists_frame_residual` (public), GR1 at $\mathbf A f(\mathbf H)$, `singularValues_rsvd_cfc_le_singularValues_rbki` |
+| SR2 | SINGLE-RUN | per-index deficits, light tail | L | SR0, SR1 | case $\sigma_k=0$ ($g\equiv1$); RZ1 (case A, roots at all $\sigma_r^2$, $k\le r<k+j$), RZ2 (case B, closed cut, roots at $\sigma_r^2\le(1-\eta)\sigma_k^2$), SR1 in both, `singularValues_rsvd_cfc_le_singularValues_rbki` |
+| PL1 | P-LARGE | weighted gap form in expectation | M | CF1, CR1, CT1 | `exists_frame_residual` (prerequisite), GR1 at $\mathbf A f(\mathbf H)$, `singularValues_rsvd_cfc_le_singularValues_rbki` |
 | PL2 | P-LARGE | weighted cut/gap in expectation, $\max(0,\cdot)$ form | M | CF1, CR1, CR2, CT1 | as RZ3's two cases with weights relative to $\sigma_k$ |
-| IX2 | INEXACT | tail-count form with inexact pairing | M | IX1 | CB1's arithmetic (`mul_singularValues_rpow_le_schattenNorm_sub_truncatedSVD_rpow`), `Real.rpow_sub_rpow_le_max_mul_sq` |
+| IX2 | INEXACT | tail-count form with inexact pairing ($\eta$ spectral, $\eta_p$ Schatten) | M | IX1 | CB1's arithmetic (`mul_singularValues_rpow_le_schattenNorm_sub_truncatedSVD_rpow`), `Real.rpow_sub_rpow_le_max_mul_sq` |
 
 ### Wave 2
 
@@ -408,8 +438,8 @@ Sizes S/M/L. "Uses" names library declarations; "Needs" names targets. Batch = i
 |---|---|---|---|---|---|
 | BK3 | BLOCK-K | tail headline, blocks $k$ and $k+j$ | M | BK2 | TS2 (`HasOrthonormalCols.frobNorm_sub_truncatedSVD_rbkiSum_sq_le`), `measureReal_le_add_of_ae_imp` |
 | SR3 | SINGLE-RUN | one-run Frobenius, deterministic | M | SR2 | RZ3, CB1F `IsStarProjection.frobNorm_sub_truncatedSVD_mul_sq_le_of_singularValues_le_mul`, ST2T `IsStarProjection.frobNorm_sub_truncatedSVD_mul_sq` |
-| PL3 | P-LARGE | $p\ge2$ expectation, any $\mathbf Y$ | L | PL0, PLd, PL1, PL2 | regimes of §2.5, `singularValues_rangeProjector_mul_le_of_range_le`, SV3 |
-| PL6 | P-LARGE | $p\ge2$ tail, $\log(1/\delta)$ | L | PLd, PL1, PL2 | Markov on $W$; `mul_meas_ge_le_integral_of_nonneg` |
+| PL3 | P-LARGE | $p\ge2$ expectation, any $\mathbf Y$ | L | PL0, PL0b, PLd, PL1, PL2 | regimes of §2.5, `singularValues_rangeProjector_mul_le_of_range_le`, SV3 |
+| PL6 | P-LARGE | $p\ge2$ tail, $\log(1/\delta)$ | L | PL0b, PLd, PL1, PL2 | Markov on $W$; `mul_meas_ge_le_integral_of_nonneg` |
 
 ### Waves 3–5
 
@@ -419,11 +449,11 @@ Sizes S/M/L. "Uses" names library declarations; "Needs" names targets. Batch = i
 | SR7 | SINGLE-RUN | rank one, one vector, tail | M | 3 | SR3 | SmallBlock's head-coordinate and tail-energy events, `ae_forall_conjTranspose_mulVec_ne_zero_of_hasLaw_gaussianVector` |
 | PL4 | P-LARGE | $p\ge2$ headline | M | 3 | PL3 | arithmetic of §2.5 |
 | SR5 | SINGLE-RUN | headline, depth $2(k/\varepsilon)^{1/3}\log(16k/\varepsilon)$ | M | 4 | SR4 | $j=\lceil u\rceil-1$ chosen in the proof; `Nat.ceil` arithmetic |
-| PL5 | P-LARGE | asymptotic form | M | 4 | PL4 | as stage-1 GA4p |
+| PL5 | P-LARGE | asymptotic form | M | 3 | PL3 | general sizes from PL3 (residual factors $\le1$), arithmetic as PL4; pattern of stage-1 GA4p |
 | SR6 | SINGLE-RUN | asymptotic form | M | 5 | SR5 | |
 
 Counts: S 9, M 16, L 4 = 29. By batch: MM-FROB 3 (S1 M2), BLOCK-K 3 (M3), SINGLE-RUN 8 (S2 M5
-L1), INEXACT 3 (S2 M1), P-LARGE 12 (S4 M5 L3). By wave: 0: 13, 1: 6, 2: 4, 3: 3, 4: 2, 5: 1.
+L1), INEXACT 2 (S1 M1), P-LARGE 13 (S5 M5 L3). By wave: 0: 13, 1: 6, 2: 4, 3: 4, 4: 1, 5: 1.
 Batches share no target; each depends only on stage 1 and its own targets.
 
 ## 7. Shared proof machinery (item 7)
@@ -435,7 +465,7 @@ Batches share no target; each depends only on stage 1 and its own targets.
 | deficit from a filtered sketch with its own residual | CR1, CR2 (P-LARGE); SINGLE-RUN uses the existing sup-bound RZ1/RZ2 through SR1 |
 | filtered tail energy as a Schatten quantity | CT1, once; used by PL1, PL2 |
 | Gaussian moment of a residual | existing GR1 at any matrix (no new lemma) |
-| frame + a.s. rank + residual integrability | existing `exists_frame_residual` (made public) |
+| frame + a.s. rank + residual integrability | existing `exists_frame_residual` (public: prerequisite from the cleanup); PL0b for the deficits |
 | error from deficits, $p\ge2$, one-sided | PLd, once |
 | case split heavy/light | stage-1 CB1F (SR3); PL3's three regimes are written once there, PL6 reuses the same per-index lemmas |
 | threshold arithmetic ($\log$, cube roots, `Nat.ceil`) | one private lemma per headline file; stage-1 `le_one_and_exists_thresholds` as the pattern for asymptotic forms |
@@ -447,29 +477,24 @@ Batches share no target; each depends only on stage 1 and its own targets.
 |---|---|---|
 | MM-FROB | include the named instance? | include (3 targets, nothing new to prove); MM's literal block-$k$ Property 3 dropped |
 | BLOCK-K | blocks of exactly $k$? | drop: $k+2$ is in the library; exact $k$ costs 3 M targets for 2 columns per block |
-| SINGLE-RUN | gap-free roots route (b), simulation route (a), both, none? | (b) only |
-| SR-RATE | accept $k^{4/3}\varepsilon^{-1/3}$ for one run (best known to us without gaps), or require $k\varepsilon^{-1/3}$ (only via (a), with gaps)? | accept; say so in the docstring |
-| INEXACT | include IX1–IX3? | include |
+| SINGLE-RUN | gap-free roots route (b), simulation route (a), both, none? | (b) |
+| SR-RATE | accept $k^{4/3}\varepsilon^{-1/3}$ (gap-free, derived here), and/or add MMM24's single-vector $k\varepsilon^{-1/3}$ with a gap hypothesis (route (a))? | (b) as the stated result; (a) optional; perturbation route not planned |
+| INEXACT | include IX1, IX2 with the stated scope? | include |
 | P-LARGE | include the dimension-free $p\ge2$ batch (expectation + tail)? | include; GA3 stays |
 | P-FORM | $p$-th powers with $\varepsilon$ in $p$-th powers (as GA2p), or norm form $(1+\varepsilon)\mathrm{OPT}_p$ (as GA3)? | $p$-th powers for the expectation (PL4), tail PL6 in $p$-th powers too; norm forms follow by $(1+\varepsilon/p)^p\le e^{\varepsilon}$ in a docstring note |
 
 ### Risks
 
-* **No numerical check** this time (no `numpy` in the environment; a venv without `pip`). All
-  constants are hand arithmetic. What could be false is a constant, not a rate: SR2's Case A uses
-  that inner values are spectral points where the filter vanishes; ties between a head index and
-  an inner index are excluded by the case conditions ($\sigma_h^2\ge(1+\eta)\sigma_k^2$ or the
-  cut); in Case B the inner values above the cut need no bound (RZ2).
-* **SR2 (L) and CR2 (L)** reuse RZ2's min–max machinery, which is private in RitzValues.lean:
-  either make the two scalar lemmas public (stage-1 file; coordinate with the cleanup) or
-  re-prove (then CR2 stays L).
+* **Numerics.** The review checked the headline threshold chains (MM1, SR5, SR7, PL4, PL6) on
+  grids (all within about half the budget) and SR2 weakly on random spectra; per-index lemmas
+  (CR2, CT1, PL1–PL3, IX1, IX2, BK) are hand-checked only. What could be false is a constant.
+* **SR2 (L) and CR2 (L)** reuse RZ2's min–max machinery (made public by the cleanup).
 * **PL1/PL2 junk values:** $\sigma_t=0$ gives $0^{4r+2-p}$ and $0^{2-p}$ in `Real.rpow`; the
   statements remain true because the tail vanishes and the block captures the range a.s.
   (`ae_rsvd_eq_self_of_hasLaw_gaussianMatrix`); the proofs must case on it.
 * **PL3 regime bookkeeping** (three regimes, two runs, weights) is the longest proof; L.
-* **SR5's $(k/\varepsilon)^{1/3}$ claim is new as a statement.** The ingredients are BN's root
-  filter and the library's RZ1/RZ2; the balance is elementary. The independent review should
-  re-derive §2.3.
+* **SR5's $(k/\varepsilon)^{1/3}$ and PL3–PL6 for $k>1$ are new as statements** (from BN's root
+  filter and weight, BCW's case split, the library's RZ1/RZ2 and GR1); the review re-derived both.
 * The `omos` platform was not used (cost 0).
 
 ## 9. Material (item 6)
@@ -481,12 +506,30 @@ Not reproduced: MM's Property 3 rank argument (only needed for block $k$); BN's 
 (replaced by RZ1/RZ2 + roots, and by PL1/PL2); BN's lower bounds (out of scope); the simulation
 route (a) (gap-dependent, dominated by (b)).
 
+## 10. Changes after review
+
+Review: `scratch/Review-LRA-OPTIONAL-Design.md` (verdict: revise, then approve; both new claims
+re-derived). Each point verified before adoption; none disputed.
+
+| Item | Outcome |
+|---|---|
+| B1 SR1 false ($a<0$, vacuous hypothesis) | agreed (counterexample checked); `ha : 0 ≤ a` added; consumer SR2 has $a\ge0$ |
+| S1 PL5 needs general sizes | agreed; PL5 depends on PL3 |
+| S2 integrability for PL3/PL6 | agreed; PL0b added |
+| S3 private-to-public changes | listed as prerequisites from the cleanup (coordinator: being made now), not targets |
+| S4 SR-RATE "open" | agreed; MMM24 abstract read (harness `research/lra-optional/`), wording "not derived here", decision options include route (a) |
+| S5 SR2 outline | closed cut, $\sigma_k=0$, SR1 in both cases |
+| S6 INEXACT scope | IX3 dropped (no consumer); IX2 takes $\eta_p$; scope stated (§2.4) |
+| S7 cosmetic | weight written $x^r$; $t=k+j$; P-LARGE risk medium–high |
+| S8 P-FORM caveat | added (§2.5) |
+| BK1 probe argument | noted: if BLOCK-K is kept, BK1 may use the probe argument ($O(\sqrt r\,x)$); the stated $r^{3/2}x$ is true and suffices |
+
 ## Appendix A. Lean statements
 
 ### A.0 Check
 
 The file below was elaborated with `lake env lean` against the build of `1bed77c6` on
-2026-11-24: no error; each of the 29 declarations reports only "declaration uses `sorry`". It
+2026-11-24, again after the review: no error; each of the 29 declarations (revised file, after the review) reports only "declaration uses `sorry`". It
 lives in the untracked `scratch/LraOptional.lean` and is reproduced verbatim. Comments `-- ID`
 give the target ids. Elaboration means the statements typecheck, nothing more; names and
 instance arguments are to be reviewed with the skeleton (asymptotic forms sit where stage 1 put
@@ -536,7 +579,7 @@ variable {𝕜 : Type*} [RCLike 𝕜] {l m n s : Type*} [Fintype l] [Fintype m] 
 
 -- SR1: a filter needs its bounds only at the squared singular values
 theorem exists_cfc_eq_aeval_and_abs_le_of_forall_singularValues (A : Matrix m n 𝕜) (f : ℝ[X])
-    {S : ℝ} {a : ℝ}
+    {S : ℝ} {a : ℝ} (ha : 0 ≤ a)
     (htail : ∀ i < Fintype.card n, singularValues A i ^ 2 ≤ S →
       |f.eval (singularValues A i ^ 2)| ≤ a) :
     ∃ g : ℝ → ℝ, cfc g (Aᴴ * A) = cfc (fun x => f.eval x) (Aᴴ * A) ∧
@@ -622,24 +665,17 @@ theorem _root_.IsStarProjection.schattenNorm_sub_mul_le_schattenNorm_mul_mul_one
 theorem _root_.IsStarProjection.schattenNorm_sub_mul_le_add_of_singularValues_le_mul
     {p : ℝ≥0∞} (hp1 : 1 ≤ p) (hp2 : p ≤ 2) {P : Matrix m m 𝕜} {Q : Matrix n n 𝕜}
     (hP : IsStarProjection P) (hQ : IsStarProjection Q) {A : Matrix m n 𝕜} {k j : ℕ}
-    {γ κ η : ℝ} {β : ℕ → ℝ} (hγ : 0 ≤ γ) (hκ : 0 ≤ κ) (hη : 0 ≤ η)
+    {γ κ η ηp : ℝ} {β : ℕ → ℝ} (hγ : 0 ≤ γ) (hκ : 0 ≤ κ) (hη : 0 ≤ η)
     (hβ0 : singularValues A k = 0 → η = 0 ∧ ∀ i < k, β i = 0)
     (htail : singularValues A k ≤ κ * singularValues A (k + j))
     (hritz : ∀ i < k, singularValues A i ^ 2 - γ * singularValues A k ^ 2 - β i ≤
       singularValues (P * A) i ^ 2)
-    (hPAQ : specNorm (P * A * (1 - Q)) ≤ η) :
-    schattenNorm p (A - A * Q) ≤ schattenNorm p (P * A * (1 - Q)) +
+    (hPAQ : specNorm (P * A * (1 - Q)) ≤ η) (hPAQp : schattenNorm p (P * A * (1 - Q)) ≤ ηp) :
+    schattenNorm p (A - A * Q) ≤ ηp +
       ((1 + k * γ * κ ^ p.toReal / ((j : ℝ) + 1)) *
           schattenNorm p (A - truncatedSVD A k) ^ p.toReal +
         singularValues A k ^ (p.toReal - 2) *
           ∑ i ∈ Finset.range k, (β i + 2 * η * singularValues A i)) ^ p.toReal⁻¹ := sorry
-
--- IX3: deficits move by an absolute amount under a nearby (not necessarily projector) matrix
-theorem _root_.IsStarProjection.sq_singularValues_mul_sub_le_sq_singularValues_mul
-    {P M : Matrix m m 𝕜} (hP : IsStarProjection P) (A : Matrix m n 𝕜) {ζ : ℝ}
-    (hM : specNorm (M - P) ≤ ζ) (i : ℕ) :
-    singularValues (P * A) i ^ 2 - 2 * ζ * specNorm A * singularValues A i ≤
-      singularValues (M * A) i ^ 2 := sorry
 
 end Deterministic
 
@@ -735,6 +771,11 @@ theorem integrable_schattenNorm_sub_truncatedSVD_rsvd_rpow [IsFiniteMeasure μ] 
     (A : Matrix m n ℝ) {Y : Ω → Matrix n l ℝ} (hY : AEMeasurable Y μ) (k : ℕ) :
     Integrable (fun ω => schattenNorm p (A - truncatedSVD (rsvd A (Y ω)) k) ^ p.toReal) μ :=
   sorry
+
+-- PL0b: integrability of a squared singular value of the RBKI output
+theorem integrable_sq_singularValues_rbki [IsFiniteMeasure μ] (A : Matrix m n ℝ)
+    (hX : AEMeasurable X μ) (q i : ℕ) :
+    Integrable (fun ω => singularValues (rbki A (X ω) q) i ^ 2) μ := sorry
 
 -- PL1: weighted gap form in expectation
 theorem integral_rpow_mul_sq_singularValues_sub_sq_singularValues_rbki_le_of_hasLaw_gaussianMatrix

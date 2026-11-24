@@ -346,7 +346,10 @@ theorem HasOrthonormalCols.frobNorm_sub_truncatedSVD_rbkiSum_sq_le
         4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * Real.sqrt γ) *
           specNorm ((A - truncatedSVD A k) * Ω₁ * pinv (Z₁ᴴ * Ω₁)) ^ 2 +
         4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) *
-          frobNorm ((A - truncatedSVD A (k + j)) * Ω₂ * pinv (Z₂ᴴ * Ω₂)) ^ 2 := sorry
+          frobNorm ((A - truncatedSVD A (k + j)) * Ω₂ * pinv (Z₂ᴴ * Ω₂)) ^ 2 :=
+  hZ₁.frobNorm_sub_truncatedSVD_rsvd_sq_le_of_range_le hZ₂ hΩ₁ hΩ₂ hAZ₁ hAZ₂ hq₁ hq₂ hγ hγ1
+    (range_mul_blockKrylovMatrix_le_range_mul_fromCols_left A Ω₁ Ω₂ q₁ q₂)
+    (range_mul_blockKrylovMatrix_le_range_mul_fromCols_right A Ω₁ Ω₂ q₁ q₂)
 
 omit [DecidableEq m] in
 /-- **The better of two block Krylov runs, Frobenius norm**: let $\mathbf{Z}_1$, $\mathbf{Z}_2$

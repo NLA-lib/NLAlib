@@ -68,7 +68,20 @@ theorem exists_degree_lt_div_sq_le_exp_singularGapRatio' (A : Matrix m n 𝕜) {
     ∃ f : ℝ[X], f.degree < (d + 1 : ℕ) ∧ ∃ c a : ℝ, 0 < c ∧
       (∀ i < r, c ≤ |f.eval (singularValues A i ^ 2)|) ∧
       (∀ x ∈ Set.Icc 0 (singularValues A t ^ 2), |f.eval x| ≤ a) ∧
-      (a / c) ^ 2 ≤ 4 * Real.exp (-8 * (d : ℝ) * Real.sqrt (singularGapRatio A h t)) := sorry
+      (a / c) ^ 2 ≤ 4 * Real.exp (-8 * (d : ℝ) * Real.sqrt (singularGapRatio A h t)) := by
+  have hht : h ≤ t := by omega
+  rcases (singularValues_nonneg A h).eq_or_lt with hσh | hσh
+  · -- $\sigma_h = 0$: then $\sigma_t = 0$, the gap ratio is zero and the constant filter does.
+    have hσt : singularValues A t = 0 :=
+      le_antisymm (hσh ▸ singularValues_antitone A hht) (singularValues_nonneg A t)
+    refine ⟨1, by rw [degree_one]; exact_mod_cast Nat.succ_pos d, 1, 1, one_pos,
+      fun i _ => by simp, fun x _ => by simp, ?_⟩
+    simp [singularGapRatio, hσt, ← hσh]
+  obtain ⟨f, hf, c, a, hc, hhead, htail, hac⟩ :=
+    Polynomial.Chebyshev.exists_degree_lt_div_sq_le_exp_of_le
+      (singularValues_nonneg A t) (singularValues_antitone A hht) hσh d
+  refine ⟨f, hf, c, a, hc, fun i hi => hhead _ ?_, htail, hac⟩
+  exact pow_le_pow_left₀ (singularValues_nonneg A h) (singularValues_antitone A (by omega)) 2
 
 /-! ### Filtered sketches -/
 

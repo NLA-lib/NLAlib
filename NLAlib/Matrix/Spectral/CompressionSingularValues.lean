@@ -29,7 +29,8 @@ the range of $\mathbf{P}$ to capture $\llbracket\mathbf{A}\rrbracket_L$.
 * `IsStarProjection.frobNorm_sub_mul_sq_eq_add_sum`,
   `IsStarProjection.frobNorm_sub_truncatedSVD_mul_sq`: the Frobenius error as the optimal error
   plus the sum of the deficits.
-* `IsStarProjection.mul_rangeProjector_truncatedSVD_mul`: the truncated compression
+* `IsStarProjection.mul_rangeProjector_truncatedSVD_mul`,
+  `IsStarProjection.rangeProjector_truncatedSVD_mul_mul`: the truncated compression
   $\llbracket\mathbf{P}\mathbf{A}\rrbracket_k$ is $\mathbf{\Pi}\mathbf{A}$ for a projector
   $\mathbf{\Pi} \le \mathbf{P}$.
 * `NLAlib.HasOrthonormalCols.mul_frobNorm_truncatedSVD_sub_mul_sq_le`,
@@ -143,23 +144,35 @@ theorem _root_.IsStarProjection.frobNorm_sub_mul_sq_eq_add_sum {P : Matrix m m �
   linarith
 
 omit [DecidableEq m] [DecidableEq n] in
-/-- The truncated compression is a projection of $\mathbf{A}$ itself: for an orthogonal
-projector $\mathbf{P}$ and every $k$, the projector $\mathbf{\Pi}$ onto the column space of
-$\llbracket\mathbf{P}\mathbf{A}\rrbracket_k$ satisfies $\mathbf{P}\mathbf{\Pi} = \mathbf{\Pi}$
-and $\mathbf{\Pi}\mathbf{A} = \llbracket\mathbf{P}\mathbf{A}\rrbracket_k$. -/
+/-- The column space of the truncated compression lies in the range of the projector: for an
+orthogonal projector $\mathbf{P}$ and every $k$, the projector $\mathbf{\Pi}$ onto the column
+space of $\llbracket\mathbf{P}\mathbf{A}\rrbracket_k$ satisfies
+$\mathbf{P}\mathbf{\Pi} = \mathbf{\Pi}$. -/
 theorem _root_.IsStarProjection.mul_rangeProjector_truncatedSVD_mul {P : Matrix m m 𝕜}
     (hP : IsStarProjection P) (A : Matrix m n 𝕜) (k : ℕ) :
-    P * rangeProjector (truncatedSVD (P * A) k) = rangeProjector (truncatedSVD (P * A) k) ∧
-      rangeProjector (truncatedSVD (P * A) k) * A = truncatedSVD (P * A) k := by
+    P * rangeProjector (truncatedSVD (P * A) k) = rangeProjector (truncatedSVD (P * A) k) := by
   classical
-  set Y := truncatedSVD (P * A) k
-  have hYP : LinearMap.range Y.mulVecLin ≤ LinearMap.range P.mulVecLin :=
+  have hYP : LinearMap.range (truncatedSVD (P * A) k).mulVecLin ≤
+      LinearMap.range P.mulVecLin :=
     (range_truncatedSVD_le (P * A) k).trans (range_le_iff_exists_mul.mpr ⟨A, rfl⟩)
-  have hRP : rangeProjector Y * P = rangeProjector Y := by
-    simpa only [hP.rangeProjector_eq] using rangeProjector_mul_rangeProjector_of_range_le' hYP
-  refine ⟨?_, ?_⟩
-  · simpa only [hP.rangeProjector_eq] using rangeProjector_mul_rangeProjector_of_range_le hYP
-  · rw [← hRP, Matrix.mul_assoc, rangeProjector_truncatedSVD_mul]
+  simpa only [hP.rangeProjector_eq] using rangeProjector_mul_rangeProjector_of_range_le hYP
+
+omit [DecidableEq m] [DecidableEq n] in
+/-- The truncated compression is a projection of $\mathbf{A}$ itself: for an orthogonal
+projector $\mathbf{P}$ and every $k$, the projector $\mathbf{\Pi}$ onto the column space of
+$\llbracket\mathbf{P}\mathbf{A}\rrbracket_k$ satisfies
+$\mathbf{\Pi}\mathbf{A} = \llbracket\mathbf{P}\mathbf{A}\rrbracket_k$, with
+$\mathbf{\Pi} \le \mathbf{P}$ by `IsStarProjection.mul_rangeProjector_truncatedSVD_mul`. -/
+theorem _root_.IsStarProjection.rangeProjector_truncatedSVD_mul_mul {P : Matrix m m 𝕜}
+    (hP : IsStarProjection P) (A : Matrix m n 𝕜) (k : ℕ) :
+    rangeProjector (truncatedSVD (P * A) k) * A = truncatedSVD (P * A) k := by
+  classical
+  have hRP : rangeProjector (truncatedSVD (P * A) k) * P =
+      rangeProjector (truncatedSVD (P * A) k) := by
+    have h := congrArg Matrix.conjTranspose (hP.mul_rangeProjector_truncatedSVD_mul A k)
+    rwa [Matrix.conjTranspose_mul, (isStarProjection_rangeProjector _).conjTranspose_eq,
+      hP.conjTranspose_eq] at h
+  rw [← hRP, Matrix.mul_assoc, rangeProjector_truncatedSVD_mul]
 
 omit [DecidableEq m] [DecidableEq n] in
 /-- **The Frobenius error of a truncated compression**: for an orthogonal projector $\mathbf{P}$
@@ -177,7 +190,7 @@ theorem _root_.IsStarProjection.frobNorm_sub_truncatedSVD_mul_sq {P : Matrix m m
       ∑ i ∈ Finset.range k, (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) := by
   classical
   set Y := truncatedSVD (P * A) k
-  have hRA : rangeProjector Y * A = Y := (hP.mul_rangeProjector_truncatedSVD_mul A k).2
+  have hRA : rangeProjector Y * A = Y := hP.rangeProjector_truncatedSVD_mul_mul A k
   have h := (isStarProjection_rangeProjector Y).frobNorm_sub_mul_sq_eq_add_sum A
     ((rank_rangeProjector Y).trans_le (rank_truncatedSVD_le _ k))
   rw [hRA] at h
@@ -336,7 +349,8 @@ theorem _root_.IsStarProjection.mul_frobNorm_truncatedSVD_sub_mul_sq_le {P : Mat
     θ * frobNorm (truncatedSVD A L - P * truncatedSVD A L) ^ 2 ≤
       ∑ i ∈ Finset.range L, (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) := by
   classical
-  obtain ⟨hPR, hRA⟩ := hP.mul_rangeProjector_truncatedSVD_mul A L
+  have hPR := hP.mul_rangeProjector_truncatedSVD_mul A L
+  have hRA := hP.rangeProjector_truncatedSVD_mul_mul A L
   set Y := truncatedSVD (P * A) L
   set X := truncatedSVD A L
   obtain ⟨W, hW, hWr⟩ :=

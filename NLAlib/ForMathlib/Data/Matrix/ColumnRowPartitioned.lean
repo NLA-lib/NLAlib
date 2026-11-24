@@ -13,8 +13,9 @@ public import Mathlib.LinearAlgebra.Matrix.ToLin
 # Column spaces of a column-partitioned matrix
 
 The column space of `Matrix.fromCols A B`, the matrix
-$\begin{bmatrix} \mathbf{A} & \mathbf{B} \end{bmatrix}$, contains that of $\mathbf{A}$, and the
-column space of $\begin{bmatrix} \mathbf{A} & \mathbf{y} \end{bmatrix}$ contains $\mathbf{y}$.
+$\begin{bmatrix} \mathbf{A} & \mathbf{B} \end{bmatrix}$, contains those of $\mathbf{A}$ and of
+$\mathbf{B}$, and the column space of $\begin{bmatrix} \mathbf{A} & \mathbf{y} \end{bmatrix}$
+contains $\mathbf{y}$.
 Mathlib has `Matrix.fromCols_mulVec` (the action of
 $\begin{bmatrix} \mathbf{A} & \mathbf{B} \end{bmatrix}$ on a split vector) and no range statement.
 Upstream candidate for `Mathlib.Data.Matrix.ColumnRowPartitioned` (or
@@ -23,6 +24,8 @@ Upstream candidate for `Mathlib.Data.Matrix.ColumnRowPartitioned` (or
 ## Main results
 
 * `Matrix.range_le_range_fromCols_left`: $\operatorname{range} \mathbf{A} \le
+  \operatorname{range} \begin{bmatrix} \mathbf{A} & \mathbf{B} \end{bmatrix}$.
+* `Matrix.range_le_range_fromCols_right`: $\operatorname{range} \mathbf{B} \le
   \operatorname{range} \begin{bmatrix} \mathbf{A} & \mathbf{B} \end{bmatrix}$.
 * `Matrix.mem_range_fromCols_replicateCol`: $\mathbf{y} \in
   \operatorname{range} \begin{bmatrix} \mathbf{A} & \mathbf{y} \end{bmatrix}$.
@@ -41,6 +44,14 @@ theorem range_le_range_fromCols_left (A : Matrix n q R) (B : Matrix n r R) :
   rintro _ ⟨v, rfl⟩
   refine ⟨Sum.elim v 0, ?_⟩
   simp only [mulVecLin_apply, fromCols_mulVec_sumElim, mulVec_zero, add_zero]
+
+/-- The column space of $\mathbf{B}$ lies in the column space of `Matrix.fromCols A B`, the matrix
+$\begin{bmatrix} \mathbf{A} & \mathbf{B} \end{bmatrix}$. -/
+theorem range_le_range_fromCols_right (A : Matrix n q R) (B : Matrix n r R) :
+    LinearMap.range B.mulVecLin ≤ LinearMap.range (fromCols A B).mulVecLin := by
+  rintro _ ⟨v, rfl⟩
+  refine ⟨Sum.elim 0 v, ?_⟩
+  simp only [mulVecLin_apply, fromCols_mulVec_sumElim, mulVec_zero, zero_add]
 
 /-- The vector $\mathbf{y}$ lies in the column space of
 $\begin{bmatrix} \mathbf{A} & \mathbf{y} \end{bmatrix}$, the matrix $\mathbf{A}$ with

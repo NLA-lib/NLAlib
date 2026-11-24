@@ -229,6 +229,28 @@ theorem min_schattenNorm_sub_mul_rpow_le_of_singularValues_le_mul
 /-! ### The one-sided output, $2 \le p < \infty$ -/
 
 omit [DecidableEq m] [DecidableEq n] in
+/-- The Schatten tail splits at a later index: for $0 < p < \infty$ and $L \le k$,
+$$\|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_L\|_{S_p}^p =
+\|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_k\|_{S_p}^p +
+\sum_{L \le i < k} \sigma_i(\mathbf{A})^p\,.$$ -/
+theorem schattenNorm_sub_truncatedSVD_rpow_eq_add_sum {p : ℝ≥0∞} (hp0 : p ≠ 0) (hp : p ≠ ⊤)
+    (A : Matrix m n 𝕜) {L k : ℕ} (hLk : L ≤ k) :
+    schattenNorm p (A - truncatedSVD A L) ^ p.toReal =
+      schattenNorm p (A - truncatedSVD A k) ^ p.toReal +
+        ∑ i ∈ Finset.Ico L k, singularValues A i ^ p.toReal := by
+  obtain ⟨d, rfl⟩ := Nat.exists_eq_add_of_le hLk
+  have hL : (A - truncatedSVD A L).rank ≤ d + (Fintype.card n + L) := by
+    have := (A - truncatedSVD A L).rank_le_card_width
+    omega
+  have hk : (A - truncatedSVD A (L + d)).rank ≤ Fintype.card n + L := by
+    have := (A - truncatedSVD A (L + d)).rank_le_card_width
+    omega
+  rw [schattenNorm_rpow hp0 hp _ hL, schattenNorm_rpow hp0 hp _ hk, Finset.sum_range_add,
+    Finset.sum_Ico_eq_sum_range, Nat.add_sub_cancel_left, add_comm]
+  congr 1 <;> refine Finset.sum_congr rfl fun i _ => ?_ <;>
+    simp only [singularValues_sub_truncatedSVD, add_assoc]
+
+omit [DecidableEq m] [DecidableEq n] in
 /-- **The head split of the one-sided error, $2 \le p < \infty$**: for an orthogonal projector
 $\mathbf{P}$ and $L \le k$,
 $$\|\mathbf{A} - \mathbf{P}\mathbf{A}\|_{S_p} \le
@@ -249,7 +271,48 @@ theorem _root_.IsStarProjection.schattenNorm_sub_mul_le_add_rpow {p : ℝ≥0∞
         (schattenNorm p (A - truncatedSVD A k) ^ p.toReal +
           ∑ i ∈ Finset.Ico L k,
             (singularValues A i ^ p.toReal - singularValues (P * A) i ^ p.toReal)) ^
-          p.toReal⁻¹ := sorry
+          p.toReal⁻¹ := by
+  classical
+  have hp0 : p ≠ 0 := (lt_of_lt_of_le (by norm_num) hp2).ne'
+  have hr : 0 < p.toReal := ENNReal.toReal_pos hp0 hp
+  obtain ⟨d, rfl⟩ := Nat.exists_eq_add_of_le hLk
+  set E := A - truncatedSVD A L
+  have hsplit : A - P * A = (truncatedSVD A L - P * truncatedSVD A L) + (E - P * E) := by
+    simp only [E, Matrix.mul_sub]
+    abel
+  rw [hsplit]
+  refine (schattenNorm_add_le (le_trans (by norm_num) hp2) _ _).trans (add_le_add le_rfl ?_)
+  -- the tail `E` after one projector
+  have hPN4 := hP.schattenNorm_mul_rpow_add_le hp2 hp E
+  rw [Matrix.sub_mul, Matrix.one_mul] at hPN4
+  have hE := schattenNorm_sub_truncatedSVD_rpow_eq_add_sum hp0 hp A hLk
+  -- Weyl: `σ_{L+i}(PA) ≤ σ_i(PE)`, since `PA - PE` has rank at most `L`
+  have hW (i : ℕ) : singularValues (P * A) (L + i) ≤ singularValues (P * E) i := by
+    have hrk : (-(P * truncatedSVD A L)).rank ≤ L := by
+      rw [Matrix.rank_neg]
+      exact (Matrix.rank_mul_le_right _ _).trans (rank_truncatedSVD_le A L)
+    have h := singularValues_le_singularValues_add_of_rank_le (P * A) hrk i
+    rwa [← sub_eq_add_neg, ← Matrix.mul_sub, add_comm] at h
+  have hPE : (P * E).rank ≤ Fintype.card n + d := by
+    have := (P * E).rank_le_card_width
+    omega
+  have hsum : ∑ i ∈ Finset.Ico L (L + d), singularValues (P * A) i ^ p.toReal ≤
+      schattenNorm p (P * E) ^ p.toReal := by
+    rw [schattenNorm_rpow hp0 hp _ hPE, Finset.sum_Ico_eq_sum_range, Nat.add_sub_cancel_left,
+      add_comm, Finset.sum_range_add]
+    refine le_add_of_le_of_nonneg (Finset.sum_le_sum fun i _ => ?_)
+      (Finset.sum_nonneg fun i _ => Real.rpow_nonneg (singularValues_nonneg _ _) _)
+    exact Real.rpow_le_rpow (singularValues_nonneg _ _) (hW i) hr.le
+  have hX : schattenNorm p (E - P * E) ^ p.toReal ≤
+      schattenNorm p (A - truncatedSVD A (L + d)) ^ p.toReal +
+        ∑ i ∈ Finset.Ico L (L + d),
+          (singularValues A i ^ p.toReal - singularValues (P * A) i ^ p.toReal) := by
+    rw [Finset.sum_sub_distrib]
+    linarith
+  calc schattenNorm p (E - P * E)
+      = (schattenNorm p (E - P * E) ^ p.toReal) ^ p.toReal⁻¹ :=
+        (Real.rpow_rpow_inv (schattenNorm_nonneg _ _) hr.ne').symm
+    _ ≤ _ := Real.rpow_le_rpow (by positivity) hX (inv_nonneg.mpr hr.le)
 
 omit [DecidableEq m] [DecidableEq n] in
 /-- **The head split with deficits, $2 \le p < \infty$**: let $\mathbf{P}$ be an orthogonal

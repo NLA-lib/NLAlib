@@ -200,8 +200,9 @@ $\mathbf{B} = \mathbf{A}g(\mathbf{A}^{\mathsf{H}}\mathbf{A})$,
 $$\|(\mathbf{B} - \mathbf{B}\mathbf{Z}\mathbf{Z}^{\mathsf{H}})\mathbf{Y}\|_2 \le
 a\,\|(\mathbf{A} - \llbracket\mathbf{A}\rrbracket_t)\mathbf{Y}\|_2\,.$$
 The filtered residual of
-`NLAlib.HasOrthonormalCols.singularValues_one_sub_rangeProjector_mul_mul_le` at $\mathbf{Y} = \mathbf{\Omega}(\mathbf{Z}^{\mathsf{H}}\mathbf{\Omega})^{+}$ is at most $a$
-times the unfiltered one: $\mathbf{I} - \mathbf{Z}\mathbf{Z}^{\mathsf{H}}$ differs from the
+`NLAlib.HasOrthonormalCols.singularValues_one_sub_rangeProjector_mul_mul_le` at
+$\mathbf{Y} = \mathbf{\Omega}(\mathbf{Z}^{\mathsf{H}}\mathbf{\Omega})^{+}$ is at most $a$ times
+the unfiltered one: $\mathbf{I} - \mathbf{Z}\mathbf{Z}^{\mathsf{H}}$ differs from the
 projector onto the tail right singular vectors only on the kernel of $\mathbf{A}$, which
 $g(\mathbf{A}^{\mathsf{H}}\mathbf{A})$ preserves. -/
 theorem specNorm_sub_mul_cfc_mul_mul_le {A : Matrix m n 𝕜} (g : ℝ → ℝ) {Z : Matrix n s 𝕜}

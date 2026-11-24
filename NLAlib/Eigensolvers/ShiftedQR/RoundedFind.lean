@@ -45,7 +45,7 @@ them exactly up to $k$ (`NLAlib.Ops.IsExactNatLit`), as the standard model alone
   $(1.01B)^{4m/2^m}$-promising.
 * `NLAlib.ShiftedQR.repeatBlock_writes`, `NLAlib.ShiftedQR.stepComptau_writes`: their memory and
   the $0.001$ of `comptau` after a degree $k$ rounded step.
-* `NLAlib.ShiftedQR.comptauHalf_isHalfTau`: the comparison routine meets the contract.
+* `NLAlib.ShiftedQR.comptauHalf_isHalfTau`: the comparison routine satisfies the contract.
 * `NLAlib.ShiftedQR.findRitzInitialize_writes_of_exactNatLit`,
   `NLAlib.ShiftedQR.findRitzDecision_writes_of_exactNatLit`,
   `NLAlib.ShiftedQR.findRitzCopy_writes_of_readBlock`: the search words with exact natural
@@ -75,13 +75,13 @@ $$\lvert t - \tau\rvert \le 0.0011\,\tau, \qquad
 \tau = \|\mathbf{e}_n^{\mathsf T}p_l(\mathbf{H})^{-e}\|^{-1}.$$
 -/
 def IsHalfTau {n : ℕ} (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (shifts : List ℂ)
-    (Tau : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+    (Tau : Stmt O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ (a h e : ℕ), a + h ≤ shifts.length → 2 * (h * e) = shifts.length →
     ∀ (τ : Tape ℝ) (μ : Mem ℝ) (A S P : ℕ × ℕ), μ.Live [A, S, P] → HoldsMatrix A H μ.store →
       μ.store.readBlock S.1 S.2 (2 * h) =
         some (((shifts.drop a).take h).flatMap fun z => [z.re, z.im]) →
       P.2 < μ.store.len P.1 → P.1 ≠ A.1 → P.1 ≠ S.1 →
-      Writes .total I τ Tau.body (Env.frame [n + 1, h, e] [A, S, P]) (Store.inBlock P.1 P.2 1)
+      Writes .total I τ Tau (Env.frame [n + 1, h, e] [A, S, P]) (Store.inBlock P.1 P.2 1)
         (fun μ' => μ'.pos = μ.pos ∧ ∃ t : ℝ, μ'.store.get P.1 P.2 = some t ∧
           |t - ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly ((shifts.drop a).take h)))⁻¹ ^ e)
             (Fin.last n))‖⁻¹| ≤ 0.0011 * ‖WithLp.toLp 2
@@ -96,19 +96,21 @@ variable [Has ScalarOp O]
 
 /-- **A block repeated**: the $n$ words at `S` copied $e$ times, one after the other, to `T`.
 The interface is `[n, e] (S) → (T)`. -/
-def repeatBlock : Impl O Q := opsImpl% [n, e] (S) → (T) {
+def repeatBlock : Stmt O Q := ops% [n, e] (S) → (T) {
   for j < e {
-    run (unaryMap (Has.inj ScalarOp.copy)).body [n] (S, T[n * j])
+    run (unaryMap (Has.inj ScalarOp.copy)) [n] (S, T[n * j])
   }
 }
 
 /-- `repeatBlock` on any scalar machine stores the $n$ words $xs$ of `S` repeated $e$ times,
-$xs^e$, and writes only that block. Source and target are in different buffers. -/
+$xs^e$, and writes only that block. Source and target are in different buffers.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem repeatBlock_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {m : Mem ℝ} {n e : ℕ} {s t : ℕ × ℕ} {xs : List ℝ} (hl : m.Live [s, t])
     (hst : s.1 ≠ t.1) (hs : m.store.readBlock s.1 s.2 n = some xs)
     (ht : t.2 + n * e ≤ m.store.len t.1) :
-    Writes .total I τ repeatBlock.body (Env.frame [n, e] [s, t]) (Store.inBlock t.1 t.2 (n * e))
+    Writes .total I τ repeatBlock (Env.frame [n, e] [s, t]) (Store.inBlock t.1 t.2 (n * e))
       (fun m' => m'.pos = m.pos ∧
         m'.store.readBlock t.1 t.2 (n * e) = some (List.replicate e xs).flatten) m := by
   unfold repeatBlock
@@ -118,7 +120,7 @@ theorem repeatBlock_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
       μ.store.readBlock t.1 t.2 (n * j) = some (List.replicate j xs).flatten)
     ⟨rfl, by simp⟩ fun j hj μ hfr ⟨hp, hpre⟩ => ?_
   have hsμ := hfr.keep (Store.readsOnly_readBlock _ _ _ _) (Fp.disj_inBlock_of_ne hst.symm) hs
-  have hcp := writes_unaryMap_of_disj_or_eq (md := .total) (τ := τ) (f := id) (hS .copy)
+  have hcp := unaryMap_writes_of_disj_or_eq (md := .total) (τ := τ) (f := id) (hS .copy)
     (y := (t.1, t.2 + n * j)) (Or.inl (Fp.disj_inBlock_of_ne hst)) hsμ
     (by rw [hfr.len_eq]; nlinarith)
   refine (hcp.in_frame rfl rfl ?_).mono (Fp.inBlock_le_inBlock (by omega) (by nlinarith)) ?_
@@ -145,10 +147,10 @@ variable [Has IndexOp O] [Has CmpTst Q]
 $k$ shifts at `S` on the matrix at `A`, in place, recording its rotations in slot $j$ of the slotted
 log `Lg` of slot width $w$, and store in `P` the `NLAlib.ShiftedQR.comptau` of the $k$ last
 triangular diagonal entries (scoped). The interface is `[d, k, w, j] (A, S) → (A, P, Lg)`. -/
-def stepComptau : Impl O Q := opsImpl% [d, k, w, j] (A, S) → (A, P, Lg) {
+def stepComptau : Stmt O Q := ops% [d, k, w, j] (A, S) → (A, P, Lg) {
   let Ds ← alloc (2 * k);
-  run (multiStepStable (Op := O) (Tst := Q)).body [d, k, w, j] (A, S, A, Ds, Lg);
-  run (comptau (Op := O) (Tst := Q)).body [k] (Ds, P)
+  run (multiStepStable (Op := O) (Tst := Q)) [d, k, w, j] (A, S, A, Ds, Lg);
+  run (comptau (Op := O) (Tst := Q)) [k] (Ds, P)
 }
 
 /-- **`comptau` of a degree $k$ rounded step is within $0.001$**
@@ -168,7 +170,10 @@ place the rounded step's output $\widehat{\mathbf{H}}'$ (upper Hessenberg, the e
 chain from $\mathbf{H}$ with the shifts $s_1, \dots, s_k$ by the exact unitary of the entries),
 and in `P` a $t$ with $\lvert t - \tau\rvert \le 0.001\,\tau$,
 $\tau = \|\mathbf{e}_n^{\mathsf T}p(\mathbf{H})^{-1}\|_2^{-1}$.
-It writes only the matrix, `P` and the log; matrix, shifts, `P` and the log are disjoint views. -/
+It writes only the matrix, `P` and the log; matrix, shifts, `P` and the log are disjoint views.
+
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`,
+on their scratch. -/
 theorem stepComptau_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hCmp : IsCmp id I) (hL : IsIndexLit M I)
     {nmax : ℕ} (hNat : IsExactNatLit id M nmax) {τ : Tape ℝ} {m : Mem ℝ}
@@ -189,7 +194,7 @@ theorem stepComptau_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hlgd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock s.1 s.2 (2 * ss.length) ⊔ Store.inBlock p.1 p.2 1)) :
-    Writes .total I τ stepComptau.body
+    Writes .total I τ stepComptau
       (Env.frame [n + 1, ss.length, w, L.length] [a, s, a, p, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock p.1 p.2 1 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
@@ -257,17 +262,17 @@ shifts $l^e$ on the copy, storing in `P` the rounded product of the moduli of th
 triangular diagonal entries. The step's rotations are not committed: they go to a scoped scratch
 log of one slot, zero-filled first (`NLAlib.slottedLogOpen`) and never read. The interface is
 `[d, h, e] (A, S) → (P)`; the copy, the shift list and the scratch log are scoped. -/
-def comptauHalf : Impl O Q := opsImpl% [d, h, e] (A, S) → (P) {
+def comptauHalf : Stmt O Q := ops% [d, h, e] (A, S) → (P) {
   let W ← alloc (2 * (d * d));
   let SS ← alloc (2 * (h * e));
   let Lg ← alloc (1 + 5 * (h * e * (d - 1)));
-  run (slottedLogOpen (O := O) (Q := Q)).body [1, h * e * (d - 1)] (Lg);
-  run (unaryMap (Has.inj ScalarOp.copy)).body [2 * (d * d)] (A, W);
-  run (repeatBlock (O := O) (Q := Q)).body [2 * h, e] (S, SS);
-  run (stepComptau (O := O) (Q := Q)).body [d, h * e, h * e * (d - 1), 0] (W, SS, W, P, Lg)
+  run (slottedLogOpen (O := O) (Q := Q)) [1, h * e * (d - 1)] (Lg);
+  run (unaryMap (Has.inj ScalarOp.copy)) [2 * (d * d)] (A, W);
+  run (repeatBlock (O := O) (Q := Q)) [2 * h, e] (S, SS);
+  run (stepComptau (O := O) (Q := Q)) [d, h * e, h * e * (d - 1), 0] (W, SS, W, P, Lg)
 }
 
-/-- **`comptauHalf` meets the contract of `Find`'s comparison values**
+/-- **`comptauHalf` satisfies the contract of `Find`'s comparison values**
 ([BanksGarzaVargasSrivastava2022, Lemmas 3.9 and 5.1]): let $\mathbf{H}$ of order $n + 1$ be
 upper Hessenberg and nonzero, $\mathbf{H}\mathbf{V} = \mathbf{V}\mathbf{D}$ with
 $\kappa(\mathbf{V}) \le \kappa$, the $k$ shifts in $\mathbb{D}(0, C\|\mathbf{H}\|_2)$ and at
@@ -385,47 +390,50 @@ in `R[4]`, the second half's in `R[3]` (so that the exact decision
 most the one at `R[3]`, keeps the half with the smaller value, the first on a tie). The interface
 is
 `[d, k, a, h, e] (H, SS, R) → (R)`. -/
-def findRoundedNorms (Tau : Impl O Q) : Impl O Q :=
-  opsImpl% [d, k, a, h, e] (H, SS, R) → (R) {
-    run Tau.body [d, h, e] (H, SS[2 * a], R[4]);
-    run Tau.body [d, h, e] (H, SS[2 * (a + h)], R[3])
+def findRoundedNorms (Tau : Stmt O Q) : Stmt O Q :=
+  ops% [d, k, a, h, e] (H, SS, R) → (R) {
+    run Tau [d, h, e] (H, SS[2 * a], R[4]);
+    run Tau [d, h, e] (H, SS[2 * (a + h)], R[3])
   }
 
 /-- One level of `Find` with the routine `Tau`: read the window start, half length and
 exponent, compute the two values, and decide. The interface is `[d, k] (H, SS, R) → (R)`. -/
-def findRoundedLevel (Tau : Impl O Q) : Impl O Q := opsImpl% [d, k] (H, SS, R) → (R) {
+def findRoundedLevel (Tau : Stmt O Q) : Stmt O Q := ops% [d, k] (H, SS, R) → (R) {
   let a ← index (Has.inj IdxTst.toNat) (R) ≤ k;
   let h ← index (Has.inj IdxTst.toNat) (R[1]) ≤ k;
   let e ← index (Has.inj IdxTst.toNat) (R[2]) ≤ k;
-  run (findRoundedNorms Tau).body [d, k, a, h, e] (H, SS, R, R);
-  run findRitzDecision.body [a, h, e] (R, R)
+  run (findRoundedNorms Tau) [d, k, a, h, e] (H, SS, R, R);
+  run findRitzDecision [a, h, e] (R, R)
 }
 
 /-- `Find` with the routine `Tau` and six caller-owned search words: initialize the window,
 run `m` levels, copy the selected shift. The interface is `[d, m, k] (H, SS, R) → (Center)`. -/
-def findRoundedWithScratch (Tau : Impl O Q) : Impl O Q :=
-  opsImpl% [d, m, k] (H, SS, R) → (Center) {
-    run findRitzInitialize.body [k] (R, R);
+def findRoundedWithScratch (Tau : Stmt O Q) : Stmt O Q :=
+  ops% [d, m, k] (H, SS, R) → (Center) {
+    run findRitzInitialize [k] (R, R);
     for level < m {
-      run (findRoundedLevel Tau).body [d, k] (H, SS, R, R)
+      run (findRoundedLevel Tau) [d, k] (H, SS, R, R)
     };
-    run findRitzCopy.body [k] (SS, R, Center)
+    run findRitzCopy [k] (SS, R, Center)
   }
 
 /-- **`Find` in floating point** ([BanksGarzaVargasSrivastava2022, Lemma 5.1]): the binary
 search over the $k = 2^m$ shifts at `SS` for the matrix at `H`, comparing the halves by the
 routine `Tau`, with six scoped search words; the selected shift is written as a pair to
 `Center`. The interface is `[d, m, k] (H, SS) → (Center)`. -/
-def findRounded (Tau : Impl O Q) : Impl O Q := opsImpl% [d, m, k] (H, SS) → (Center) {
+def findRounded (Tau : Stmt O Q) : Stmt O Q := ops% [d, m, k] (H, SS) → (Center) {
   let R ← alloc 6;
-  run (findRoundedWithScratch Tau).body [d, m, k] (H, SS, R, Center)
+  run (findRoundedWithScratch Tau) [d, m, k] (H, SS, R, Center)
 }
 
 /-! ### Index words with exact natural literals -/
 
 omit [Has ScalarOp O] [Has CmpTst Q] [Has IdxTst Q] in
-/-- A dimension literal up to an exact bound stores the natural as an exact real word. -/
-private theorem writes_indexNat_of_exactNatLit {M : Machine ℝ} {I : Interp O Q ℝ}
+/-- A dimension literal up to an exact bound stores the natural as an exact real word. The rule for
+one call of the operation.
+A step in the proof of `NLAlib.ShiftedQR.findRitzInitialize_writes_of_exactNatLit`,
+`NLAlib.ShiftedQR.findRitzDecision_writes_of_exactNatLit`. -/
+private theorem indexNat_writes_of_exactNatLit {M : Machine ℝ} {I : Interp O Q ℝ}
     (hL : IsIndexLit M I) {B : ℕ} (hNat : IsExactNatLit id M B) {τ : Tape ℝ} {m : Mem ℝ}
     {ρ : Env} {e : IExp} {out : Operand} {n : ℕ} {z : ℕ × ℕ}
     (he : e.eval ρ.idx = some n) (ho : out.eval ρ = some z) (hn : n ≤ B)
@@ -437,22 +445,24 @@ private theorem writes_indexNat_of_exactNatLit {M : Machine ℝ} {I : Interp O Q
     (fun _ _ h => ⟨h.1, by simpa only [hlit] using h.2⟩)
 
 omit [Has ScalarOp O] [Has CmpTst Q] [Has IdxTst Q] in
-/-- The initialization of the search words with exact natural literals up to $k \ge 1$. -/
+/-- The initialization of the search words with exact natural literals up to $k \ge 1$.
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem findRitzInitialize_writes_of_exactNatLit {M : Machine ℝ} {I : Interp O Q ℝ}
     (hL : IsIndexLit M I) {k : ℕ} (hNat : IsExactNatLit id M k) (hk : 1 ≤ k) {τ : Tape ℝ}
     {m : Mem ℝ} {r : ℕ × ℕ} (hr : r.2 + 3 ≤ m.store.len r.1) :
-    Writes .total I τ findRitzInitialize.body (Env.frame [k] [r, r])
+    Writes .total I τ findRitzInitialize (Env.frame [k] [r, r])
       (Store.inBlock r.1 r.2 3)
       (fun m' => m'.pos = m.pos ∧ SearchWords r 0 (k / 2) 1 m'.store) m := by
   change Writes .total I τ (.seq _ _) _ _ _ m
-  refine Writes.seq_le (writes_indexNat_of_exactNatLit hL hNat rfl rfl (Nat.zero_le _)
+  refine Writes.seq_le (indexNat_writes_of_exactNatLit hL hNat rfl rfl (Nat.zero_le _)
     (by change r.2 < m.store.len r.1; omega)) (by fp_sub) fun m' hfr ⟨hp, hzero⟩ => ?_
-  refine Writes.seq_le (writes_indexNat_of_exactNatLit hL hNat rfl rfl (Nat.div_le_self _ _)
+  refine Writes.seq_le (indexNat_writes_of_exactNatLit hL hNat rfl rfl (Nat.div_le_self _ _)
     (by change r.2 + 1 < m'.store.len r.1; rw [hfr.len_eq]; omega))
     (by fp_sub) fun m'' hfr' ⟨hp', hhalf⟩ => ?_
   have hzero' := hfr'.keep (Store.readsOnly_get _ _ _)
     (Fp.disj_inBlock_of_le (by omega)).symm hzero
-  refine (writes_indexNat_of_exactNatLit hL hNat rfl rfl hk (by
+  refine (indexNat_writes_of_exactNatLit hL hNat rfl rfl hk (by
     change r.2 + 2 < m''.store.len r.1
     rw [hfr'.len_eq, hfr.len_eq]
     omega)).mono (by fp_sub) ?_
@@ -466,7 +476,9 @@ theorem findRitzInitialize_writes_of_exactNatLit {M : Machine ℝ} {I : Interp O
 omit [Has ScalarOp O] [Has IdxTst Q] in
 /-- The decision of a level with exact natural literals up to $B$: it keeps the first half when
 the value in `R[4]` is at most the one in `R[3]`, halves the half length and doubles the
-exponent. -/
+exponent.
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem findRitzDecision_writes_of_exactNatLit {M : Machine ℝ} {I : Interp O Q ℝ}
     (hL : IsIndexLit M I) {B : ℕ} (hNat : IsExactNatLit id M B) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {a h e : ℕ} {r : ℕ × ℕ} {left right : ℝ}
@@ -474,14 +486,14 @@ theorem findRitzDecision_writes_of_exactNatLit {M : Machine ℝ} {I : Interp O Q
     (hl : m.store.get r.1 (r.2 + 3) = some left)
     (hr : m.store.get r.1 (r.2 + 4) = some right)
     (hcap : r.2 + 3 ≤ m.store.len r.1) (hah : a + h ≤ B) (he : 2 * e ≤ B) :
-    Writes .total I τ findRitzDecision.body (Env.frame [a, h, e] [r, r])
+    Writes .total I τ findRitzDecision (Env.frame [a, h, e] [r, r])
       (Store.inBlock r.1 r.2 3)
       (fun m' => m'.pos = m.pos ∧
         SearchWords r (if right ≤ left then a else a + h) (h / 2) (2 * e) m'.store) m := by
   classical
   have hrl := Store.lt_length_of_get hwords.1
   have hlive : m.Live [r, r] := by simpa [Mem.Live] using hrl
-  have hch : Writes .total I τ findRitzChoice.body (Env.frame [a, h] [r, r])
+  have hch : Writes .total I τ findRitzChoice (Env.frame [a, h] [r, r])
       (Store.inBlock r.1 r.2 1) (fun m' => m'.pos = m.pos ∧ m'.store.get r.1 r.2 =
         some ((if right ≤ left then a else a + h : ℕ) : ℝ)) m := by
     have ht := hCmp.test_le (d := []) (m := m) (x := (r.1, r.2 + 4))
@@ -493,20 +505,20 @@ theorem findRitzDecision_writes_of_exactNatLit {M : Machine ℝ} {I : Interp O Q
         (fun _ _ h => h)
     · simp only [id_eq, hc, decide_false] at ht
       refine writes_ite rfl rfl ht ?_
-      refine (writes_indexNat_of_exactNatLit hL hNat rfl rfl hah ?_).mono le_rfl ?_
+      refine (indexNat_writes_of_exactNatLit hL hNat rfl rfl hah ?_).mono le_rfl ?_
       · exact Store.lt_len_of_get hwords.1
       · intro m' _ hp
         exact ⟨hp.1, by simpa only [if_neg hc] using hp.2⟩
   change Writes .total I τ (.seq _ _) _ _ _ m
   refine Writes.seq_le (hch.in_frame rfl rfl hlive) (by fp_sub) fun m' hfr ⟨hp, hstart⟩ => ?_
-  refine Writes.seq_le (writes_indexNat_of_exactNatLit hL hNat rfl rfl
+  refine Writes.seq_le (indexNat_writes_of_exactNatLit hL hNat rfl rfl
     ((Nat.div_le_self _ _).trans (by omega)) (by
       change r.2 + 1 < m'.store.len r.1
       rw [hfr.len_eq]
       omega)) (by fp_sub) fun m'' hfr' ⟨hp', hhalf⟩ => ?_
   have hstart' := hfr'.keep (Store.readsOnly_get _ _ _)
     (Fp.disj_inBlock_of_le (by omega)).symm hstart
-  refine (writes_indexNat_of_exactNatLit hL hNat rfl rfl he (by
+  refine (indexNat_writes_of_exactNatLit hL hNat rfl rfl he (by
     change r.2 + 2 < m''.store.len r.1
     rw [hfr'.len_eq, hfr.len_eq]
     omega)).mono (by fp_sub) ?_
@@ -524,9 +536,11 @@ local notation "τinv" H:max l:max e:max =>
   ‖WithLp.toLp 2 (((Polynomial.aeval H (shiftPoly l))⁻¹ ^ e) (Fin.last _))‖⁻¹
 
 omit [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
-/-- The two comparison values of a level: the first half's in `R[4]`, the second half's in
-`R[3]`, each within $0.0011$ of its inverse norm. Only these two words are written. -/
-private theorem findRoundedNorms_writes {I : Interp O Q ℝ} {Tau : Impl O Q} {n : ℕ}
+/-- The two comparison values of a level: the first half's in `R[4]`, the second half's in `R[3]`,
+each within $0.0011$ of its inverse norm. Only these two words are written. A fragment: its tree
+runs only inside the tree of `NLAlib.ShiftedQR.findRoundedLevel`.
+A fragment of the tree `NLAlib.ShiftedQR.findRoundedLevel`. -/
+private theorem findRoundedNorms_writes {I : Interp O Q ℝ} {Tau : Stmt O Q} {n : ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {shifts : List ℂ}
     (hTau : IsHalfTau H shifts Tau I) {τ : Tape ℝ} {m : Mem ℝ} {k a h e : ℕ}
     {b ss r : ℕ × ℕ} (hB : HoldsMatrix b H m.store)
@@ -535,7 +549,7 @@ private theorem findRoundedNorms_writes {I : Interp O Q ℝ} {Tau : Impl O Q} {n
     (hk : shifts.length = k) (hah : a + 2 * h ≤ k) (hhe : 2 * (h * e) = k)
     (hrb : r.1 ≠ b.1) (hrs : r.1 ≠ ss.1) (hl : m.Live [b, ss, r, r])
     (hr : r.2 + 6 ≤ m.store.len r.1) :
-    Writes .total I τ (findRoundedNorms Tau).body (Env.frame [n + 1, k, a, h, e] [b, ss, r, r])
+    Writes .total I τ (findRoundedNorms Tau) (Env.frame [n + 1, k, a, h, e] [b, ss, r, r])
       (Store.inBlock r.1 (r.2 + 3) 2)
       (fun m' => m'.pos = m.pos ∧ ∃ tA tB : ℝ, m'.store.get r.1 (r.2 + 4) = some tA ∧
         m'.store.get r.1 (r.2 + 3) = some tB ∧
@@ -610,10 +624,11 @@ private theorem findRoundedState_succ {n : ℕ} {H : Matrix (Fin (n + 1)) (Fin (
     exact .right tA tB hab hA hB (not_le.mp hle) hch
 
 omit [Has ScalarOp O] in
-/-- **One level of `Find` with computed values**: from the state after `j < m` levels, the
-level advances the search words to the state after `j + 1` levels, writing only the six search
-words. -/
-private theorem findRoundedLevel_writes {M : Machine ℝ} {I : Interp O Q ℝ} {Tau : Impl O Q}
+/-- **One level of `Find` with computed values**: from the state after `j < m` levels, the level
+advances the search words to the state after `j + 1` levels, writing only the six search words. A
+fragment: its tree runs only inside the tree of `NLAlib.ShiftedQR.findRoundedWithScratch`.
+A fragment of the tree `NLAlib.ShiftedQR.findRoundedWithScratch`. -/
+private theorem findRoundedLevel_writes {M : Machine ℝ} {I : Interp O Q ℝ} {Tau : Stmt O Q}
     (hL : IsIndexLit M I) (hCmp : IsCmp id I) (hQ : IsToNat id I) {n m k j : ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {shifts : List ℂ}
     (hTau : IsHalfTau H shifts Tau I) (hNat : IsExactNatLit id M k) {τ : Tape ℝ} {μ : Mem ℝ}
@@ -624,7 +639,7 @@ private theorem findRoundedLevel_writes {M : Machine ℝ} {I : Interp O Q ℝ} {
     (hst : FindRoundedState H shifts m j r μ.store)
     (hrb : r.1 ≠ b.1) (hrs : r.1 ≠ ss.1) (hl : μ.Live [b, ss, r, r])
     (hr : r.2 + 6 ≤ μ.store.len r.1) :
-    Writes .total I τ (findRoundedLevel Tau).body (Env.frame [n + 1, k] [b, ss, r, r])
+    Writes .total I τ (findRoundedLevel Tau) (Env.frame [n + 1, k] [b, ss, r, r])
       (Store.inBlock r.1 r.2 6)
       (fun μ' => μ'.pos = μ.pos ∧ FindRoundedState H shifts m (j + 1) r μ'.store) μ := by
   obtain ⟨a, hw, ha, hc⟩ := hst
@@ -668,7 +683,9 @@ private theorem findRoundedLevel_writes {M : Machine ℝ} {I : Interp O Q ℝ} {
 /-! ### The search -/
 
 omit [Has IndexOp O] [Has CmpTst Q] in
-/-- The final copy of the selected shift, from a block of pairs. -/
+/-- The final copy of the selected shift, from a block of pairs.
+Shared by the trees of `NLAlib.ShiftedQR.scalarDecouple` and
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem findRitzCopy_writes_of_readBlock {M : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar M I) (hQ : IsToNat id I) {τ : Tape ℝ} {m : Mem ℝ}
     {k a : ℕ} {ss r center : ℕ × ℕ} {shifts : List ℂ}
@@ -677,7 +694,7 @@ theorem findRitzCopy_writes_of_readBlock {M : Machine ℝ} {I : Interp O Q ℝ}
     (hA : m.store.get r.1 r.2 = some (a : ℝ)) (ha : a < k)
     (hsep : Fp.Disj (Store.inBlock ss.1 ss.2 (2 * k)) (Store.inBlock center.1 center.2 2))
     (hCenter : center.2 + 2 ≤ m.store.len center.1) :
-    Writes .total I τ findRitzCopy.body (Env.frame [k] [ss, r, center])
+    Writes .total I τ findRitzCopy (Env.frame [k] [ss, r, center])
       (Store.inBlock center.1 center.2 2)
       (fun μ => μ.pos = m.pos ∧ μ.store.readBlock center.1 center.2 2 =
         some [(shifts.getD a 0).re, (shifts.getD a 0).im]) m := by
@@ -692,17 +709,18 @@ theorem findRitzCopy_writes_of_readBlock {M : Machine ℝ} {I : Interp O Q ℝ}
   have hsLive := Store.lt_length_of_get hre
   have hcLive := Store.lt_length_of_lt_len (show center.2 < m.store.len center.1 by omega)
   have hcopy := Writes.of_wp_eq_updBlock
-    (Hermitian.wp_copyPair_of_disj (md := .total) (τ := τ)
+    (Hermitian.copyPair_wp_of_disj (md := .total) (τ := τ)
       (x := (ss.1, ss.2 + 2 * a)) (z := center) hS hlocal hre (by simpa [Nat.add_assoc] using him)
       hCenter rfl)
   refine (hcopy.in_frame rfl rfl (by simp [Mem.Live]; omega)).mono le_rfl ?_
   rintro μ _ rfl
   exact ⟨rfl, Store.readBlock_updBlock_self (by simpa using hCenter)⟩
 
-/-- **`Find` in floating point with six caller-owned search words**: the stored result is a
-choice of `Find` with computed values. -/
+/-- **`Find` in floating point with six caller-owned search words**: the stored result is a choice
+of `Find` with computed values. Shared by the trees of `NLAlib.ShiftedQR.findRounded` and
+`NLAlib.ShiftedQR.shPrefix`. -/
 private theorem findRoundedWithScratch_writes {M : Machine ℝ} {I : Interp O Q ℝ}
-    {Tau : Impl O Q} (hS : IsScalar M I) (hL : IsIndexLit M I) (hCmp : IsCmp id I)
+    {Tau : Stmt O Q} (hS : IsScalar M I) (hL : IsIndexLit M I) (hCmp : IsCmp id I)
     (hQ : IsToNat id I) {n m k : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {shifts : List ℂ} (hTau : IsHalfTau H shifts Tau I) (hNat : IsExactNatLit id M k)
     {τ : Tape ℝ} {μ : Mem ℝ} {b ss r z : ℕ × ℕ} (hkm : k = 2 ^ m) (hk : shifts.length = k)
@@ -713,7 +731,7 @@ private theorem findRoundedWithScratch_writes {M : Machine ℝ} {I : Interp O Q 
     (hr : r.2 + 6 ≤ μ.store.len r.1)
     (hsep : Fp.Disj (Store.inBlock ss.1 ss.2 (2 * k)) (Store.inBlock z.1 z.2 2))
     (hz : z.2 + 2 ≤ μ.store.len z.1) :
-    Writes .total I τ (findRoundedWithScratch Tau).body (Env.frame [n + 1, m, k] [b, ss, r, z])
+    Writes .total I τ (findRoundedWithScratch Tau) (Env.frame [n + 1, m, k] [b, ss, r, z])
       (Store.inBlock r.1 r.2 6 ⊔ Store.inBlock z.1 z.2 2)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ c : ℂ, μ'.store.readBlock z.1 z.2 2 = some [c.re, c.im] ∧
         IsFindRitzChoice H m 1 shifts c) μ := by
@@ -727,7 +745,7 @@ private theorem findRoundedWithScratch_writes {M : Machine ℝ} {I : Interp O Q 
   rintro μ₁ hfr₁ ⟨hp₁, hw₁⟩
   -- the levels
   have hloop : Writes .total I τ (.loop (.var 1) (.frame [.var 0, .var 2]
-      [⟨0, .var 3⟩, ⟨1, .var 4⟩, ⟨2, .var 5⟩, ⟨2, .var 5⟩] (findRoundedLevel Tau).body))
+      [⟨0, .var 3⟩, ⟨1, .var 4⟩, ⟨2, .var 5⟩, ⟨2, .var 5⟩] (findRoundedLevel Tau)))
       (Env.frame [n + 1, m, k] [b, ss, r, z]) (Store.inBlock r.1 r.2 6)
       (fun μ' => μ'.pos = μ.pos ∧ FindRoundedState H shifts m m r μ'.store) μ₁ := by
     refine (writes_loop rfl (fun _ => Store.inBlock r.1 r.2 6) (fun _ _ => le_rfl)
@@ -776,8 +794,9 @@ conversion, a comparison routine `Tau` meeting `NLAlib.ShiftedQR.IsHalfTau` for 
 (of order $n + 1$, at `A`) and the $k$ shifts (as pairs at `SS`), the program
 `NLAlib.ShiftedQR.findRounded` writes only the pair `Center`, keeps the tape position, and
 stores there a shift $c$ with `NLAlib.IsFindRitzChoice H m 1 shifts c`. The shifts and `Center`
-are disjoint views. -/
-theorem findRounded_writes_choice {M : Machine ℝ} {I : Interp O Q ℝ} {Tau : Impl O Q}
+are disjoint views.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
+theorem findRounded_writes_choice {M : Machine ℝ} {I : Interp O Q ℝ} {Tau : Stmt O Q}
     (hS : IsScalar M I) (hL : IsIndexLit M I) (hCmp : IsCmp id I) (hQ : IsToNat id I)
     {n m k : ℕ} {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {shifts : List ℂ}
     (hTau : IsHalfTau H shifts Tau I) (hNat : IsExactNatLit id M k) {τ : Tape ℝ} {μ : Mem ℝ}
@@ -788,7 +807,7 @@ theorem findRounded_writes_choice {M : Machine ℝ} {I : Interp O Q ℝ} {Tau : 
     (hl : μ.Live [b, ss, z])
     (hsep : Fp.Disj (Store.inBlock ss.1 ss.2 (2 * k)) (Store.inBlock z.1 z.2 2))
     (hz : z.2 + 2 ≤ μ.store.len z.1) :
-    Writes .total I τ (findRounded Tau).body (Env.frame [n + 1, m, k] [b, ss, z])
+    Writes .total I τ (findRounded Tau) (Env.frame [n + 1, m, k] [b, ss, z])
       (Store.inBlock z.1 z.2 2)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ c : ℂ, μ'.store.readBlock z.1 z.2 2 = some [c.re, c.im] ∧
         IsFindRitzChoice H m 1 shifts c) μ := by
@@ -822,8 +841,9 @@ and the rounded product of the moduli of their last diagonal entries), on a scal
 whose natural literals up to $k$ are exact, with exact comparisons and index conversion. Then
 `NLAlib.ShiftedQR.findRounded` writes only the pair `Center`, keeps the tape position, and
 stores there a $(1.01B)^{4m/2^m}$-promising shift. The shifts and `Center` are disjoint
-views. -/
-theorem findRounded_writes {M : Machine ℝ} {I : Interp O Q ℝ} {Tau : Impl O Q}
+views.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
+theorem findRounded_writes {M : Machine ℝ} {I : Interp O Q ℝ} {Tau : Stmt O Q}
     (hS : IsScalar M I) (hL : IsIndexLit M I) (hCmp : IsCmp id I) (hQ : IsToNat id I)
     {n m k : ℕ} {B : ℝ} {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e : Fin (n + 1) → ℂ}
     {shifts : List ℂ} (hV : IsUnit V) (hHV : H * V = V * Matrix.diagonal e)
@@ -836,7 +856,7 @@ theorem findRounded_writes {M : Machine ℝ} {I : Interp O Q ℝ} {Tau : Impl O 
     (hl : μ.Live [b, ss, z])
     (hsep : Fp.Disj (Store.inBlock ss.1 ss.2 (2 * k)) (Store.inBlock z.1 z.2 2))
     (hz : z.2 + 2 ≤ μ.store.len z.1) :
-    Writes .total I τ (findRounded Tau).body (Env.frame [n + 1, m, k] [b, ss, z])
+    Writes .total I τ (findRounded Tau) (Env.frame [n + 1, m, k] [b, ss, z])
       (Store.inBlock z.1 z.2 2)
       (fun μ' => μ'.pos = μ.pos ∧ ∃ c : ℂ, μ'.store.readBlock z.1 z.2 2 = some [c.re, c.im] ∧
         IsPromisingRitzValue ((1.01 * B) ^ ((4 * m : ℝ) / 2 ^ m)) V e shifts c) μ :=

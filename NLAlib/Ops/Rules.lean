@@ -49,7 +49,7 @@ blocks `xs` are read and are in the domain; the output blocks `ys` have the decl
 and are related to `xs` and to the window of `k` entries at the position, which advances. The
 lengths `k` and `ls` are handed over reduced. -/
 theorem wp_call_rel {o : Op} {R : BlockRel K}
-    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Meets md o (R.spec adm))
+    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Satisfies md o (R.spec adm))
     {ds : List IExp} {ins outs : List Operand} {d : List ℕ} {a b : List (ℕ × ℕ)} {k : ℕ}
     {ls : List ℕ} {xs : List (List K)} (hd : IExp.evalList ρ.idx ds = some d)
     (ha : Operand.evalList ρ ins = some a) (hb : Operand.evalList ρ outs = some b)
@@ -68,7 +68,7 @@ theorem wp_call_rel {o : Op} {R : BlockRel K}
 /-- **The call rule, partial correctness**: nothing is proved about the memory; a successful call
 had live operands, read its inputs and had room for its outputs. -/
 theorem wp_call_rel_liberal {o : Op} {R : BlockRel K}
-    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Meets .liberal o (R.spec adm))
+    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Satisfies .liberal o (R.spec adm))
     {ds : List IExp} {ins outs : List Operand} {d : List ℕ} {a b : List (ℕ × ℕ)} {k : ℕ}
     {ls : List ℕ} (hd : IExp.evalList ρ.idx ds = some d)
     (ha : Operand.evalList ρ ins = some a) (hb : Operand.evalList ρ outs = some b)
@@ -79,12 +79,12 @@ theorem wp_call_rel_liberal {o : Op} {R : BlockRel K}
   subst hk hls
   intro m' hrun
   simp only [eval, hd, ha, hb, Option.bind_some] at hrun
-  obtain ⟨xs, hr, hroom, ys, hlen, hrel, rfl⟩ := hI d a b τ m ⟨hnd, hadm, by simp⟩ m' hrun
+  obtain ⟨xs, hr, hroom, ys, hlen, hrel, rfl⟩ := hI.callS d a b τ m ⟨hnd, hadm, by simp⟩ m' hrun
   exact hQ xs ys (Interp.live_of_callS hrun) hr hroom hlen hrel
 
 /-- The call rule for **one output block**. -/
 theorem wp_call_rel1 {o : Op} {R : BlockRel K}
-    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Meets md o (R.spec adm))
+    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Satisfies md o (R.spec adm))
     {ds : List IExp} {ins outs : List Operand} {d : List ℕ} {a : List (ℕ × ℕ)} {z : ℕ × ℕ}
     {k l : ℕ} {xs : List (List K)} (hd : IExp.evalList ρ.idx ds = some d)
     (ha : Operand.evalList ρ ins = some a) (hb : Operand.evalList ρ outs = some [z])
@@ -99,7 +99,7 @@ theorem wp_call_rel1 {o : Op} {R : BlockRel K}
 
 /-- The call rule for **one output cell**. -/
 theorem wp_call_rel_cell {o : Op} {R : BlockRel K}
-    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Meets md o (R.spec adm))
+    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Satisfies md o (R.spec adm))
     {ds : List IExp} {ins outs : List Operand} {d : List ℕ} {a : List (ℕ × ℕ)} {z : ℕ × ℕ}
     {k : ℕ} {xs : List (List K)} (hd : IExp.evalList ρ.idx ds = some d)
     (ha : Operand.evalList ρ ins = some a) (hb : Operand.evalList ρ outs = some [z])
@@ -114,7 +114,7 @@ theorem wp_call_rel_cell {o : Op} {R : BlockRel K}
 
 /-- The call rule for **two output blocks** (a factorization, a rotation of two vectors). -/
 theorem wp_call_rel2 {o : Op} {R : BlockRel K}
-    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Meets md o (R.spec adm))
+    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (hI : I.Satisfies md o (R.spec adm))
     {ds : List IExp} {ins outs : List Operand} {d : List ℕ} {a : List (ℕ × ℕ)} {z₁ z₂ : ℕ × ℕ}
     {k l₁ l₂ : ℕ} {xs : List (List K)} (hd : IExp.evalList ρ.idx ds = some d)
     (ha : Operand.evalList ρ ins = some a) (hb : Operand.evalList ρ outs = some [z₁, z₂])

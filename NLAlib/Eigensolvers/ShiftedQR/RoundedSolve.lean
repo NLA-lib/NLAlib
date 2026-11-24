@@ -74,7 +74,7 @@ the input **by the exact unitary of the log's valid entries** (`NLAlib.givensLog
 error $\varepsilon(N)$ and one of its bottom $k$ subdiagonal entries of modulus at most $\omega$.
 Nothing is assumed of the tape. The interface is `[n, k, np, F, T, ns, w] (W, P) → (W, Fl, Lg)`. -/
 def RoundedDecouplingRoutineContract (fails : Prop) (k F T : ℕ) (ps : List ℝ) (ns w : ℕ) (ω : ℝ)
-    (ε : ℝ → ℝ) (D : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+    (ε : ℝ → ℝ) (D : Stmt O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ {n : ℕ} {N : ℝ} {w₀ q f lg : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ}
     (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
     k ≤ n → IsUpperHessenberg H → specNorm H ≤ N → HoldsMatrix w₀ H μ.store →
@@ -85,7 +85,7 @@ def RoundedDecouplingRoutineContract (fails : Prop) (k F T : ℕ) (ps : List ℝ
     Fp.Disj (Store.inBlock q.1 q.2 ps.length)
       (Store.inBlock w₀.1 w₀.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w))) →
-    Writes .total I tape D.body (Env.frame [n + 1, k, ps.length, F, T, ns, w] [w₀, q, w₀, f, lg])
+    Writes .total I tape D (Env.frame [n + 1, k, ps.length, F, T, ns, w] [w₀, q, w₀, f, lg])
       (Store.inBlock w₀.1 w₀.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun μ' => (fails ∧ μ'.store.get f.1 f.2 = some 1) ∨
@@ -102,7 +102,7 @@ section Leaf
 variable [Has EigenvalueKernelOp O]
 
 /-- The exact small-eigenvalue kernel as a routine: `[d] (Bk) → (Ev)`. -/
-def smallEigLeaf : Impl O Q := opsImpl% [d] (Bk) → (Ev) {
+def smallEigLeaf : Stmt O Q := ops% [d] (Bk) → (Ev) {
   call (Has.inj EigenvalueKernelOp.smallEig) [d] (Bk) → (Ev)
 }
 
@@ -116,16 +116,16 @@ variable [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q]
 the subdiagonal entries $(N - k + j, N - k + j - 1)$, $j < k$, of the $N \times N$ matrix `A`
 with `NLAlib.ShiftedQR.scanRound` (rounded squared modulus, exact comparison with the threshold
 word). The interface is `[N, k] (A, Thr) → (R)`, for $k < N$. -/
-def bottomScan : Impl O Q := opsImpl% [N, k] (A, Thr) → (R) {
+def bottomScan : Stmt O Q := ops% [N, k] (A, Thr) → (R) {
   call (Has.inj IndexOp.lit) [0] () → (R[3]);
   call (Has.inj IndexOp.lit) [0] () → (R[4]);
   for j < k {
-    run (scanRound (Op := O) (Tst := Q)).body [N, N - 1 - k + j] (A, Thr, R)
+    run (scanRound (Op := O) (Tst := Q)) [N, N - 1 - k + j] (A, Thr, R)
   }
 }
 
 /-- Abort: write the failure word $1$ and the stack count $0$, so that the worklist stops. -/
-def roundedAbort : Impl O Q := opsImpl% [] () → (St, Fl) {
+def roundedAbort : Stmt O Q := ops% [] () → (St, Fl) {
   call (Has.inj IndexOp.lit) [1] () → (Fl);
   call (Has.inj IndexOp.lit) [0] () → (St)
 }
@@ -138,10 +138,10 @@ rows of the right coupling (columns $lo + d, \dots, N - 1$), on the columns of t
 (rows $0, \dots, lo - 1$) and on the columns $lo, \dots, lo + d - 1$ of the accumulator `U`
 (`NLAlib.givensReplayRows`, `NLAlib.givensReplayColumns`), then write the exact zero at the cut
 entry $(lo + i + 1, lo + i)$. The interface is `[N, lo, d, i, ns, w] (Lg) → (A, U)`. -/
-def roundedDecoupleUpdate : Impl O Q := opsImpl% [N, lo, d, i, ns, w] (Lg) → (A, U) {
-  run (givensReplayRows (O := O) (Q := Q)).body [N, lo, lo + d, N - lo - d, ns, w] (Lg, A, A);
-  run (givensReplayColumns (O := O) (Q := Q)).body [N, lo, 0, lo, ns, w] (Lg, A, A);
-  run (givensReplayColumns (O := O) (Q := Q)).body [N, lo, 0, N, ns, w] (Lg, U, U);
+def roundedDecoupleUpdate : Stmt O Q := ops% [N, lo, d, i, ns, w] (Lg) → (A, U) {
+  run (givensReplayRows (O := O) (Q := Q)) [N, lo, lo + d, N - lo - d, ns, w] (Lg, A, A);
+  run (givensReplayColumns (O := O) (Q := Q)) [N, lo, 0, lo, ns, w] (Lg, A, A);
+  run (givensReplayColumns (O := O) (Q := Q)) [N, lo, 0, N, ns, w] (Lg, U, U);
   call (Has.inj (ScalarOp.lit 0)) [] () → (A[2 * ((lo + i) * N + lo + i + 1)]);
   call (Has.inj (ScalarOp.lit 0)) [] () → (A[2 * ((lo + i) * N + lo + i + 1) + 1])
 }
@@ -151,16 +151,16 @@ leading dimension $d$): the right coupling becomes $\mathbf{U}_b^{\mathsf H}$ ti
 top coupling and the columns $lo, \dots, lo + d - 1$ of `U` are multiplied by $\mathbf{U}_b$
 (`NLAlib.matMulOn` into a scoped scratch, then copied back). The interface is
 `[N, lo, d] (Ub) → (A, U)`. -/
-def roundedLeafUpdate : Impl O Q := opsImpl% [N, lo, d] (Ub) → (A, U) {
+def roundedLeafUpdate : Stmt O Q := ops% [N, lo, d] (Ub) → (A, U) {
   let C ← alloc (2 * (N * N));
-  run (matMulOn (O := O) (Q := Q)).body [d, d, N - lo - d, d, N, d, 1]
+  run (matMulOn (O := O) (Q := Q)) [d, d, N - lo - d, d, N, d, 1]
     (Ub, A[2 * ((lo + d) * N + lo)], C);
-  run (copyStrided (Op := O) (Tst := Q)).body [d, N - lo - d, d, N]
+  run (copyStrided (Op := O) (Tst := Q)) [d, N - lo - d, d, N]
     (C, A[2 * ((lo + d) * N + lo)]);
-  run (matMulOn (O := O) (Q := Q)).body [lo, d, d, N, d, lo, 0] (A[2 * (lo * N)], Ub, C);
-  run (copyStrided (Op := O) (Tst := Q)).body [lo, d, lo, N] (C, A[2 * (lo * N)]);
-  run (matMulOn (O := O) (Q := Q)).body [N, d, d, N, d, N, 0] (U[2 * (lo * N)], Ub, C);
-  run (copyStrided (Op := O) (Tst := Q)).body [N, d, N, N] (C, U[2 * (lo * N)])
+  run (matMulOn (O := O) (Q := Q)) [lo, d, d, N, d, lo, 0] (A[2 * (lo * N)], Ub, C);
+  run (copyStrided (Op := O) (Tst := Q)) [lo, d, lo, N] (C, A[2 * (lo * N)]);
+  run (matMulOn (O := O) (Q := Q)) [N, d, d, N, d, N, 0] (U[2 * (lo * N)], Ub, C);
+  run (copyStrided (Op := O) (Tst := Q)) [N, d, N, N] (C, U[2 * (lo * N)])
 }
 
 /-! ### The worklist with routines that read parameter words and a cap dimension -/
@@ -169,20 +169,20 @@ def roundedLeafUpdate : Impl O Q := opsImpl% [N, lo, d] (Ub) → (A, U) {
 `[d, k, np, F, T, ns, w] (W, P) → (W, Fl, Lg)` into a scoped log; on failure abort; otherwise
 scan its bottom $k$ couplings, and split at the index found (write back, push both children, and
 update the couplings and `U`, `NLAlib.ShiftedQR.roundedDecoupleUpdate`) or abort. -/
-def roundedProcessLargeWith (D : Impl O Q) : Impl O Q :=
-  opsImpl% [N, k, np, F, T, ns, w, lo, d] (A, Thr, P, St, U) → (W, R, Fl) {
+def roundedProcessLargeWith (D : Stmt O Q) : Stmt O Q :=
+  ops% [N, k, np, F, T, ns, w, lo, d] (A, Thr, P, St, U) → (W, R, Fl) {
     let Lg ← alloc (ns * (1 + 5 * w));
-    run D.body [d, k, np, F, T, ns, w] (W, P, W, Fl, Lg);
+    run D [d, k, np, F, T, ns, w] (W, P, W, Fl, Lg);
     if (Has.inj CmpTst.isPos) [] (Fl) {
-      run (roundedAbort (O := O) (Q := Q)).body [] (St, Fl)
+      run (roundedAbort (O := O) (Q := Q)) [] (St, Fl)
     } else {
-      run (bottomScan (O := O) (Q := Q)).body [d, k] (W, Thr, R);
+      run (bottomScan (O := O) (Q := Q)) [d, k] (W, Thr, R);
       if (Has.inj CmpTst.isPos) [] (R[3]) {
         let i ← index (Has.inj IdxTst.toNat) (R[4]) ≤ d;
-        run (writeAndSplit (O := O) (Q := Q)).body [N, lo, d, i] (A, St, W);
-        run (roundedDecoupleUpdate (O := O) (Q := Q)).body [N, lo, d, i, ns, w] (Lg, A, U)
+        run (writeAndSplit (O := O) (Q := Q)) [N, lo, d, i] (A, St, W);
+        run (roundedDecoupleUpdate (O := O) (Q := Q)) [N, lo, d, i, ns, w] (Lg, A, U)
       } else {
-        run (roundedAbort (O := O) (Q := Q)).body [] (St, Fl)
+        run (roundedAbort (O := O) (Q := Q)) [] (St, Fl)
       }
     }
   }
@@ -191,42 +191,42 @@ def roundedProcessLargeWith (D : Impl O Q) : Impl O Q :=
 `[d, np, T] (Bk, P) → (Bk, Ub)`, whose triangular block is written back and whose accumulator
 updates the couplings and `U` (`NLAlib.ShiftedQR.roundedLeafUpdate`); a larger one goes to
 `NLAlib.ShiftedQR.roundedProcessLargeWith`. -/
-def roundedProcessRangeWith (D L : Impl O Q) : Impl O Q :=
-  opsImpl% [N, k, np, F, T, ns, w, lo, d] (A, Thr, P, St, U) → (W, Ub, R, Fl) {
-    run (copyToWork (Op := O) (Tst := Q)).body [N, lo, d] (A, W);
+def roundedProcessRangeWith (D L : Stmt O Q) : Stmt O Q :=
+  ops% [N, k, np, F, T, ns, w, lo, d] (A, Thr, P, St, U) → (W, Ub, R, Fl) {
+    run (copyToWork (Op := O) (Tst := Q)) [N, lo, d] (A, W);
     ifPos k + 1 - d {
-      run L.body [d, np, T] (W, P, W, Ub);
-      run (copyToGlobal (Op := O) (Tst := Q)).body [N, lo, d] (W, A);
-      run (roundedLeafUpdate (O := O) (Q := Q)).body [N, lo, d] (Ub, A, U)
+      run L [d, np, T] (W, P, W, Ub);
+      run (copyToGlobal (Op := O) (Tst := Q)) [N, lo, d] (W, A);
+      run (roundedLeafUpdate (O := O) (Q := Q)) [N, lo, d] (Ub, A, U)
     };
     ifPos d - k {
-      run (roundedProcessLargeWith D).body [N, k, np, F, T, ns, w, lo, d]
+      run (roundedProcessLargeWith D) [N, k, np, F, T, ns, w, lo, d]
         (A, Thr, P, St, U, W, R, Fl)
     }
   }
 
 /-- Pop the top range, bounded-read its start and order, and process it. -/
-def roundedWorklistRoundWith (D L : Impl O Q) : Impl O Q :=
-  opsImpl% [N, k, np, F, T, ns, w] (A, Thr, P, St, U) → (W, Ub, R, Fl) {
-    run (rangePop (Op := O) (Tst := Q)).body [N] (St, R);
+def roundedWorklistRoundWith (D L : Stmt O Q) : Stmt O Q :=
+  ops% [N, k, np, F, T, ns, w] (A, Thr, P, St, U) → (W, Ub, R, Fl) {
+    run (rangePop (Op := O) (Tst := Q)) [N] (St, R);
     let lo ← index (Has.inj IdxTst.toNat) (R) ≤ N;
     let d ← index (Has.inj IdxTst.toNat) (R[1]) ≤ N;
-    run (roundedProcessRangeWith D L).body [N, k, np, F, T, ns, w, lo, d]
+    run (roundedProcessRangeWith D L) [N, k, np, F, T, ns, w, lo, d]
       (A, Thr, P, St, U, W, Ub, R, Fl)
   }
 
 /-- The capped worklist: clear the failure word, push the whole range, and process the top range
 while the stack is not empty, for at most $2N$ rounds; work left at the cap aborts. -/
-def roundedWorklistWith (D L : Impl O Q) : Impl O Q :=
-  opsImpl% [N, k, np, F, T, ns, w] (A, Thr, P, U) → (St, W, Ub, R, Fl) {
+def roundedWorklistWith (D L : Stmt O Q) : Stmt O Q :=
+  ops% [N, k, np, F, T, ns, w] (A, Thr, P, U) → (St, W, Ub, R, Fl) {
     call (Has.inj IndexOp.lit) [0] () → (Fl);
-    run (stackInit (Op := O) (Tst := Q)).body [N, 0, N] (St);
+    run (stackInit (Op := O) (Tst := Q)) [N, 0, N] (St);
     while j < 2 * N, (Has.inj CmpTst.isPos) [] (St) {
-      run (roundedWorklistRoundWith D L).body [N, k, np, F, T, ns, w]
+      run (roundedWorklistRoundWith D L) [N, k, np, F, T, ns, w]
         (A, Thr, P, St, U, W, Ub, R, Fl)
     } then {
       if (Has.inj CmpTst.isPos) [] (St) {
-        run (roundedAbort (O := O) (Q := Q)).body [] (St, Fl)
+        run (roundedAbort (O := O) (Q := Q)) [] (St, Fl)
       } else { skip }
     }
   }
@@ -240,13 +240,13 @@ entries) and a Schur leaf routine `[d, np, T] (Bk, P) → (Bk, Ub)`. Each decoup
 replayed on its couplings and on the accumulator `U`, each cut entry is written as an exact zero,
 and each leaf's accumulator multiplies its couplings and `U`; the stored matrix ends upper
 triangular. The interface is `[N, k, np, F, T, ns, w] (A, Thr, P, U) → (A, U, Fl)`. -/
-def solveRoundedWith (D L : Impl O Q) : Impl O Q :=
-  opsImpl% [N, k, np, F, T, ns, w] (A, Thr, P, U) → (A, U, Fl) {
+def solveRoundedWith (D L : Stmt O Q) : Stmt O Q :=
+  ops% [N, k, np, F, T, ns, w] (A, Thr, P, U) → (A, U, Fl) {
     let St ← alloc (1 + 2 * N);
     let W ← alloc (2 * (N * N));
     let Ub ← alloc (2 * (N * N));
     let R ← alloc 5;
-    run (roundedWorklistWith D L).body [N, k, np, F, T, ns, w] (A, Thr, P, U, St, W, Ub, R, Fl)
+    run (roundedWorklistWith D L) [N, k, np, F, T, ns, w] (A, Thr, P, U, St, W, Ub, R, Fl)
   }
 
 end Program

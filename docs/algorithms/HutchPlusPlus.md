@@ -95,3 +95,6 @@ Success includes a stored estimate v with `|trace(A) - v| < t`, the exact word r
 sample advance, cleanup and every count/work/span/payload bound. Total execution comes from
 the certificate; the probability theorem adds numerical accuracy. This applies to arbitrary
 real square A. Separate pure positive-semidefinite results give relative-trace forms.
+
+The law of the tape, the hypotheses, the event and the bound are packaged with the certificate as
+the randomized claim `HutchPlusPlus.Certification.claim`.

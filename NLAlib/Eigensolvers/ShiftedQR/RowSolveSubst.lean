@@ -32,13 +32,15 @@ open Ops
 variable {Op Tst : Type} [Has ScalarOp Op]
 
 /-- Solve one triangular column once its nonzero pivot has been established. -/
-def substituteColumn : Impl Op Tst := opsImpl% [n, j] (R, V, Acc, T) → (V) {
-  run columnResidual.body [n, j] (R, V, Acc, T, Acc);
-  run complexDivideWithScratch.body [] (Acc, R[2 * (j * n + j)], T, V[2 * j])
+def substituteColumn : Stmt Op Tst := ops% [n, j] (R, V, Acc, T) → (V) {
+  run columnResidual [n, j] (R, V, Acc, T, Acc);
+  run complexDivideWithScratch [] (Acc, R[2 * (j * n + j)], T, V[2 * j])
 }
 
 /-- A nonzero triangular pivot makes the actual residual and scalar divisions compute the
-next coordinate of the established mathematical forward substitution. [GolubVanLoan2013, §3.1.2]. -/
+next coordinate of the established mathematical forward substitution. [GolubVanLoan2013, §3.1.2].
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem substituteColumn_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {n : ℕ} {a v z t : ℕ × ℕ} {R : Matrix (Fin n) (Fin n) ℂ} {w : Fin n → ℂ}
@@ -46,7 +48,7 @@ theorem substituteColumn_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hpivot : R j j ≠ 0) (hva : v.1 ≠ a.1) (hza : z.1 ≠ a.1) (hzv : z.1 ≠ v.1)
     (hta : t.1 ≠ a.1) (htv : t.1 ≠ v.1) (htz : t.1 ≠ z.1)
     (hz : z.2 + 2 ≤ m.store.len z.1) (ht : t.2 + 4 ≤ m.store.len t.1) :
-    Writes .total I τ substituteColumn.body (Env.frame [n, j] [a, v, z, t, v])
+    Writes .total I τ substituteColumn (Env.frame [n, j] [a, v, z, t, v])
       ((Store.inBlock t.1 t.2 4 ⊔ Store.inBlock z.1 z.2 2) ⊔
         Store.inBlock v.1 (v.2 + 2 * j) 2)
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a R m'.store ∧

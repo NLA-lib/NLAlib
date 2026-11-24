@@ -7,7 +7,7 @@ module
 
 public import NLAlib.Krylov.Lanczos.Reorth.Sweep
 public import NLAlib.Ops.Catalog.Compare
-public import NLAlib.Ops.Catalog.Orth
+public import NLAlib.Ops.Catalog.OrthRoutine
 
 /-!
 # Extension of a stored basis by column-wise two-pass classical Gram–Schmidt
@@ -27,7 +27,7 @@ lemmas, once the classical pass is moved to the matrix layer.
 
 ## Main definitions
 
-* `NLAlib.CGS2.cgs2Extend`, `NLAlib.CGS2.cgs2ExtendImpl`: the program and the implementation.
+* `NLAlib.CGS2.cgs2Extend`, `NLAlib.CGS2.cgs2ExtendRoutine`: the tree and the routine.
 * `NLAlib.CGS2.cgs2ExtendColumnCount`, `NLAlib.CGS2.cgs2ExtendCount`: the operations of one
   column and of the block.
 * `NLAlib.CGS2.cgs2ExtendPeak`: the workspace.
@@ -86,10 +86,11 @@ def cgs2Extend (τ : ℚ) : Stmt Op Tst := ops% [n, k, b] (Q, W) → (Qn, W, C) 
   }
 }
 
-/-- The implementation of `NLAlib.Ops.OrthOp.extend` by column-wise two-pass classical
-Gram–Schmidt with the deflation threshold `τ`: three dimensions `[n, k, b]`, the two inputs
-`Q`, `W` and the three outputs `Qn`, `W`, `C`. -/
-def cgs2ExtendImpl (τ : ℚ) : Impl Op Tst := ⟨3, 2, 3, cgs2Extend τ⟩
+/-- The routine of the column-wise extension of an orthonormal basis by twice-applied classical
+Gram–Schmidt with the deflation threshold `τ`: the tree with the interface of a basis extension
+(`NLAlib.Ops.extendRoutine`), three dimensions `[n, k, b]`, the basis `Q` with the new columns
+continuing it, the block `W` and the coefficients `C`. -/
+def cgs2ExtendRoutine (τ : ℚ) : Routine Op Tst := extendRoutine (cgs2Extend τ)
 
 /-- The operations of column `c` of a block extension at the dimensions `[n, k, b]`: two norms,
 `b` zero literals, two classical passes against `k + c` columns, `k + c` additions, the

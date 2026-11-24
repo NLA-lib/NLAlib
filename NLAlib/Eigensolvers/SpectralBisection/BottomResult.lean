@@ -18,7 +18,7 @@ actual machine literals; no exact-real arithmetic hypothesis is required.
 ## Main results
 
 * `NLAlib.SpectralBisection.BottomOutput`: the mathematical identity and zero output.
-* `NLAlib.SpectralBisection.writes_bottomResult`: total initialization from disjoint capacity.
+* `NLAlib.SpectralBisection.bottomResult_writes`: total initialization from disjoint capacity.
 -/
 
 @[expose] public section
@@ -58,19 +58,27 @@ theorem readsOnly_bottomOutput {K : Type} (M : Machine K) (k : ℕ) (u e : ℕ �
       s s' (fun b i hi => h b i (Or.inl hi)) hU,
     Store.readsOnly_holdsVec _ _ _ _ s s' (fun b i hi => h b i (Or.inr hi)) hE⟩
 
-/-- Literal identity and zero eigenvalues are initialized from output capacity alone. -/
-theorem writes_bottomResult {K Op Tst : Type} [Has ScalarOp Op]
+/-- Literal identity and zero eigenvalues are initialized from output capacity alone.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem bottomResult_writes {K Op Tst : Type} [Has ScalarOp Op]
     {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I) {τ : Tape K}
     {m : Mem K} {k : ℕ} {u e : ℕ × ℕ} (hl : m.Live [u, e])
     (hu : u.2 + 2 * (k * k) ≤ m.store.len u.1) (he : e.2 + k ≤ m.store.len e.1)
     (hdis : Fp.Disj (Store.inBlock u.1 u.2 (2 * (k * k))) (Store.inBlock e.1 e.2 k)) :
-    Writes .total I τ (bottomResultImpl (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (bottomResult (Op := Op) (Tst := Tst))
       (Env.frame [k] [u, e])
       (Store.inBlock u.1 u.2 (2 * (k * k)) ⊔ Store.inBlock e.1 e.2 k)
       (fun m' => m'.pos = m.pos ∧ BottomOutput M k u e m'.store) m := by
-  simp only [Mem.live_cons, Mem.live_nil, and_true] at hl
-  refine (writes_frame rfl rfl (by room) (PairMatrix.writes_identity hS hu)).seq
-    fun m₁ hfr ⟨hU, hp⟩ => ?_
+  have hlU : m.Live [u] := fun z hz => hl z (by
+    obtain rfl := List.mem_singleton.mp hz
+    simp)
+  have hroomU : m.Room [u] [2 * (k * k)] := by
+    simpa only [Mem.room_cons, Mem.room_nil, and_true] using hu
+  call (PairMatrix.identityRoutine_meets hS) [k] (u) as m₁ hfr hp (us) hpost
+  have hfr : m.store.EqOff (Store.inBlock u.1 u.2 (2 * (k * k))) m₁.store :=
+    hfr.mono (by fp_sub)
+  have hU := PairMatrix.holdsVec_of_identitySpec hus hpost
+  refine Writes.mono (F := Store.inBlock e.1 e.2 k) ?_ le_sup_right fun _ _ h => h
   have hU' := PairMatrix.holdsEntries_of_holdsVec hU
   have hz : e.2 + k ≤ m₁.store.len e.1 := by rw [hfr.len_eq]; exact he
   have hfill := writes_fill (n := .var 0) (N := k) (b := e.1) (o := e.2)

@@ -29,7 +29,9 @@ variable {K Op Tst : Type} [Inhabited K]
 variable [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op] [Has CmpTst Tst]
 
 /-- Every cap executes successfully from an initialized state. Exact breakdown returns the
-recurrence's zero tail, including breakdown before the first round. -/
+recurrence's zero tail, including breakdown before the first round.
+
+A fragment of `NLAlib.Krylov.Lanczos.solveRoutine`: its loop, on the solver's own variables. -/
 theorem rounds_writes {M : Machine K} {dec : K → ℝ} {n cap L B V C bo vo co : ℕ}
     {A : Matrix (Fin n) (Fin n) ℝ} {b : Fin n → ℝ}
     {I : Interp Op Tst K} {ok : ℕ → Prop}

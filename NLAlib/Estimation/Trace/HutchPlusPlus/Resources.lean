@@ -35,28 +35,29 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has Blas1Op Op] [Has CmpTst Tst]
 /-- The actual full estimator has exactly two matrix batches and two scalar cells at peak.
 The sketch temporary and MGS temporary occur earlier and do not add to that peak. -/
 theorem estimate_peak_zero (stream n k ell data out : ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (estimate (Tst := Tst) stream).body
+    stmtPeak (fun (_ : Op) _ => 0) (estimate (Tst := Tst) stream)
       [n, k, ell, data, out] = 2 * n * (k + ell) + 2 := by
   have hSample (idx : List ℕ) := stmtPeak_zero_of_allocationFree
-    (s := (sampleVector (Op := Op) (Tst := Tst) stream).body) (idx := idx) (by rfl)
+    (s := (sampleVector (Op := Op) (Tst := Tst) stream)) (idx := idx) (by rfl)
   have hApply (idx : List ℕ) := stmtPeak_zero_of_allocationFree
-    (s := (applyColumns (Op := Op) (Tst := Tst)).body) (idx := idx) (by rfl)
+    (s := (applyColumns (Op := Op) (Tst := Tst))) (idx := idx) (by rfl)
   have hProject (idx : List ℕ) := stmtPeak_zero_of_allocationFree
-    (s := (projectProbes (Op := Op) (Tst := Tst)).body) (idx := idx) (by rfl)
+    (s := (projectProbes (Op := Op) (Tst := Tst))) (idx := idx) (by rfl)
   have hEval (idx : List ℕ) := stmtPeak_zero_of_allocationFree
-    (s := (evaluate (Op := Op) (Tst := Tst)).body) (idx := idx) (by rfl)
+    (s := (evaluate (Op := Op) (Tst := Tst))) (idx := idx) (by rfl)
   have hnk : n * k ≤ 2 + n * (k + ell) := by nlinarith
   have htwo : 2 * n * (k + ell) = n * (k + ell) + n * (k + ell) := by ring
   simp [estimate, prepare, sketch, finish, stmtPeak, Stmt.alloc, IExp.evalList, IExp.eval,
-    hSample, hApply, hProject, hEval, MGS.factor_peak_zero, hnk]
+    sampleRoutine, hSample, hApply, hProject, hEval, MGS.factorRoutine, MGS.factor_peak_zero,
+    hnk]
   omega
 
 /-- A common primitive-workspace ceiling is reserved once above the stored peak. -/
 theorem estimate_peak_le (W : Op → List ℕ → ℕ) (w : ℕ)
     (hW : ∀ o d, W o d ≤ w) (stream n k ell data out : ℕ) :
-    stmtPeak W (estimate (Tst := Tst) stream).body [n, k, ell, data, out] ≤
+    stmtPeak W (estimate (Tst := Tst) stream) [n, k, ell, data, out] ≤
       2 * n * (k + ell) + 2 + w := by
   simpa only [estimate_peak_zero] using
-    stmtPeak_le_zero_add W w hW (estimate (Tst := Tst) stream).body [n, k, ell, data, out]
+    stmtPeak_le_zero_add W w hW (estimate (Tst := Tst) stream) [n, k, ell, data, out]
 
 end NLAlib.HutchPlusPlus

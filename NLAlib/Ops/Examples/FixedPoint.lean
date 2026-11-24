@@ -153,26 +153,31 @@ theorem isScalMixedErr_scalF (bound scale : ℕ) (hs : 0 < scale) (a : Word boun
       (vec (scalF (machine bound scale) a x n)) :=
   Ops.isScalMixedErr_scalF (mixedModel_machine bound scale hs) a x n h
 
-/-- On actual finite words, the existing axpy loop stores the admitted mixed-error output.
-There is no assumed scalar-model witness: the interpretation and numerical model are supplied. -/
-theorem wp_axpyLoop (bound scale : ℕ) (hs : 0 < scale)
-    {τ : Tape (Word bound)} {n : ℕ} {al x y : ℕ × ℕ} {m : Mem (Word bound)}
-    {a : Word bound} {xs ys : List (Word bound)}
-    (hal : al.1 ≠ y.1) (hxy : x.1 ≠ y.1) (hl : m.Live [al, x, y])
-    (ha : m.store.get al.1 al.2 = some a) (hx : m.store.readBlock x.1 x.2 n = some xs)
-    (hy : m.store.readBlock y.1 y.2 n = some ys)
-    (h : AxpySafe (decode scale) (machine bound scale)
-      (fun z => |z| ≤ (bound : ℝ) / scale) n a (vec xs) (vec ys)) :
-    Wp .total (Interp.ofFns (machine bound scale).fn : Interp ScalarOp Empty (Word bound))
-      τ axpyLoop.body (Env.frame [n] [al, x, y, y])
-      (fun m' => m'.pos = m.pos ∧ ∃ zs, m'.store.readBlock y.1 y.2 n = some zs ∧
-        IsAxpyMixedErr (decode scale) 0 (1 / (scale : ℝ)) n a (vec xs) (vec ys) (vec zs))
-      m := by
+/-- On actual finite words, the `axpy` loop stores the admitted mixed-error output. There is
+no assumed scalar-model witness: the interpretation and numerical model are supplied. -/
+theorem axpyLoopRoutine_meets (bound scale : ℕ) (hs : 0 < scale) :
+    (axpyLoopRoutine (Op := ScalarOp) (Tst := Empty)).Meets
+      (Interp.ofFns (machine bound scale).fn : Interp ScalarOp Empty (Word bound))
+      (spec% [n] ([a], xs, ys) → (zs)
+        requires AxpySafe (decode scale) (machine bound scale)
+          (fun z => |z| ≤ (bound : ℝ) / scale) n a (vec xs) (vec ys)
+        ensures IsAxpyMixedErr (decode scale) 0 (1 / (scale : ℝ)) n a (vec xs) (vec ys)
+          (vec zs)) := by
   have he : 2 * ((1 / 2 : ℝ) / scale) = 1 / (scale : ℝ) := by ring
-  simpa only [add_zero, zero_add, one_pow, sub_self, he] using
-    wp_axpyLoop_mixed
-      (isScalar_ofFns (machine bound scale) (machine bound scale).fn (fun _ => rfl))
-      (mixedModel_machine bound scale hs) hal hxy hl ha hx hy h
+  routine_intro [n] (al, x, y)
+  refine ((axpyLoopRoutine_meets_mixed
+    (isScalar_ofFns (machine bound scale) (machine bound scale).fn (fun _ => rfl))
+    (mixedModel_machine bound scale hs)) [n] [al, x, y] τ m X rfl rfl hlive hsep hr ?_
+    hrooms).mono le_rfl fun m' _ ⟨hpos, zs, hzs, hpost⟩ => ⟨hpos, zs, hzs, ?_⟩
+  · split_reads hr as (as, xs, ys)
+    obtain ⟨a, -, rfl⟩ := Store.readBlock_one_eq_some.mp has
+    exact hpre
+  · split_reads hr as (as, xs, ys)
+    obtain ⟨a, -, rfl⟩ := Store.readBlock_one_eq_some.mp has
+    rcases zs with _ | ⟨z, _ | ⟨_, _⟩⟩ <;> try exact hpost.elim
+    have hp : IsAxpyMixedErr (decode scale) ((1 + 0) ^ 2 - 1) ((2 + 0) * (1 / 2 / scale)) n a
+        (vec xs) (vec ys) (vec z) := hpost
+    simpa only [add_zero, zero_add, one_pow, sub_self, he] using hp
 
 /-- Nonempty admitted domains at every vector length: zero data need no range margin. -/
 theorem axpySafe_zero (bound scale n : ℕ) :

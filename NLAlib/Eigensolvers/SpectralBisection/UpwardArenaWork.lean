@@ -59,7 +59,7 @@ theorem upwardPass_kernelWeight_le_of_arenas (unif : K → Su → K) (normal : S
     (T : ℕ → ℕ) (hT : Monotone T) (hadd : ∀ i j, T i + T j ≤ T (i + j))
     (W : DenseOp → List ℕ → ℕ) {a b : St DenseOp (CmpTst ⊕ IdxTst) K}
     (hmem : a.mem = m)
-    (hrun : evalCounted I W τ (upwardPass (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body
+    (hrun : evalCounted I W τ (upwardPass (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))
       (Env.frame [n, L] [lv, ua, qa, ea, sz, kd, kp, c]) a = some b) :
     Dense.kernelWeight T b.cost ≤ Dense.kernelWeight T a.cost + (L + 1) * (2 * T n) := by
   have hBound (d lo : ℕ) := nodeAtSlot_k_le F n fuel R0 eps beta ell A d lo

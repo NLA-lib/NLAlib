@@ -29,13 +29,15 @@ open Ops
 variable {Op Tst : Type} [Has ScalarOp Op] [Has CmpTst Tst]
 
 /-- Subtract the supplied shift from a working matrix, then solve its row system. -/
-def solveShiftedWorking : Impl Op Tst := opsImpl% [n] (R, S, V) → (V, Flag) {
-  run shiftDiagonal.body [n] (R, S, R);
-  run rowSolve.body [n] (R, V, V, Flag)
+def solveShiftedWorking : Stmt Op Tst := ops% [n] (R, S, V) → (V, Flag) {
+  run shiftDiagonal [n] (R, S, R);
+  run rowSolve [n] (R, V, V, Flag)
 }
 
 /-- The working-copy path computes the shifted inverse row or reports actual singularity.
-[GolubVanLoan2013, §5.2.5]. -/
+[GolubVanLoan2013, §5.2.5].
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem solveShiftedWorking_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {r s v f : ℕ × ℕ}
@@ -45,7 +47,7 @@ theorem solveShiftedWorking_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hV : HoldsVector v w m.store) (hrv : r.1 ≠ v.1) (hfv : f.1 ≠ v.1)
     (hrs : Fp.Disj (Store.inBlock r.1 r.2 (2 * ((n + 1) * (n + 1))))
       (Store.inBlock s.1 s.2 2)) (hf : f.2 + 1 ≤ m.store.len f.1) :
-    Writes .total I τ solveShiftedWorking.body (Env.frame [n + 1] [r, s, v, v, f])
+    Writes .total I τ solveShiftedWorking (Env.frame [n + 1] [r, s, v, v, f])
       (Store.inBlock r.1 r.2 (2 * ((n + 1) * (n + 1))) ⊔
         (Store.inBlock v.1 v.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1))
       (fun m' => m'.pos = m.pos ∧ RowSolveResult v f (H - shift • 1) w m'.store) m := by
@@ -72,15 +74,17 @@ theorem solveShiftedWorking_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 /-- A fresh working copy leaves the raw matrix and stored shift available to the caller.
 Algorithm: shifted-qr (run model) -/
-def shiftedRowSolve : Impl Op Tst := opsImpl% [n] (H, S, V) → (V, Flag) {
+def shiftedRowSolve : Stmt Op Tst := ops% [n] (H, S, V) → (V, Flag) {
   let R ← alloc (2 * (n * n));
-  run (unaryMap (Has.inj ScalarOp.copy)).body [2 * (n * n)] (H, R);
-  run solveShiftedWorking.body [n] (R, S, V, V, Flag)
+  run (unaryMap (Has.inj ScalarOp.copy)) [2 * (n * n)] (H, R);
+  run solveShiftedWorking [n] (R, S, V, V, Flag)
 }
 
 /-- The actual stored shift yields either a certified singular shifted matrix or its exact
 inverse row, without any assumption that the shift avoids the spectrum. All scratch is scoped.
-[GolubVanLoan2013, §5.2.5]. -/
+[GolubVanLoan2013, §5.2.5].
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem shiftedRowSolve_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a s v f : ℕ × ℕ}
@@ -88,7 +92,7 @@ theorem shiftedRowSolve_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hH : IsUpperHessenberg H) (hA : HoldsMatrix a H m.store)
     (hs : m.store.readBlock s.1 s.2 2 = some [shift.re, shift.im])
     (hV : HoldsVector v w m.store) (hfv : f.1 ≠ v.1) (hf : f.2 + 1 ≤ m.store.len f.1) :
-    Writes .total I τ shiftedRowSolve.body (Env.frame [n + 1] [a, s, v, v, f])
+    Writes .total I τ shiftedRowSolve (Env.frame [n + 1] [a, s, v, v, f])
       (Store.inBlock v.1 v.2 (2 * (n + 1)) ⊔ Store.inBlock f.1 f.2 1)
       (fun m' => m'.pos = m.pos ∧ RowSolveResult v f (H - shift • 1) w m'.store) m := by
   have hal := Store.lt_length_of_get (hA.get_re (0 : Fin (n + 1)) 0)

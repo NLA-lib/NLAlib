@@ -16,7 +16,7 @@ rounded arithmetic: the six directions $e^{i\pi j/3}$ computed from the literals
 and a rounded $\sqrt3$, the candidate points $\mathrm{fl}(\mathrm{fl}(\mathrm{fl}(\tau D) + s) +
 w)$ of a round, and the bar $\mathrm{fl}(\tau\,\mathrm{fl}(0.66))$. A computed candidate is a net
 point perturbed by the disk sample and a rounding error of order $\boldsymbol{u}\Sigma$, which the
-margin of the six-point net absorbs (the paper's erratum P5); the precision condition of
+margin of the six-point net absorbs; the precision condition of
 `DistSpec` makes that rounding error small against the inner radius $\eta_1$.
 
 ## Main definitions

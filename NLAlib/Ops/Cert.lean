@@ -6,48 +6,58 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Rules
+public import NLAlib.Ops.Reference.Equivalence
 
 /-!
 # Total certification and conditional proof rules
 
-The canonical certificates are `NLAlib.Ops.Algorithm` and `NLAlib.Ops.Impl.Meets`: one fixed
-program, jointly realized contracts and successful execution with mandatory full accounting.
-`Impl.Triple` and the conditional judgments below are the proof calculus used to build them. A raw
-`ConditionalRuns`, `ConditionalRunsL` or `Impl.Triple` theorem is not that certificate.
+The canonical certificate is `NLAlib.Ops.Algorithm`: one fixed program, jointly realized
+contracts and successful execution with mandatory full accounting. The conditional judgments
+below are the proof calculus used to build it; a raw `ConditionalRuns`, `ConditionalRunsL` or
+`Impl.Satisfies` theorem is not that certificate.
 
-**One statement for every program**, an algorithm of the library or an implementation of an
-operation: `NLAlib.Ops.Impl.Triple R I md C`, *the implementation `R` meets the contract `C` over
-the interpretation `I`*. It is the statement that an operation meets a contract
-(`NLAlib.Ops.Interp.Meets`) with the call replaced by the run of the tree, so the two are
-exchanged by linking:
+The three statements of the layer, `NLAlib.Ops.Routine.Meets`, `NLAlib.Ops.Interp.Satisfies` and
+`NLAlib.Ops.Impl.Satisfies`, and their roles are described once, in `NLAlib/Ops/README.md`
+("Three statements") and the header of `NLAlib/Ops/Routine.lean`.
+In detail:
 
-* **grounding** (`NLAlib.Ops.Interp.link_meets`): if the implementation of `o` in a table meets
-  `C` over `I`, then the operation `o` of the induced interpretation meets `C`. An algorithm
-  that is certified this way is an operation for the algorithms above it.
-* **the bridge** (`NLAlib.Ops.Impl.Triple.runs`, `NLAlib.Ops.Impl.Triple.runs_rel`): a certificate
-  in total mode gives the top-level statement `NLAlib.Ops.ConditionalRuns`, with the static counts
-    and
-  workspace of the tree. The hypotheses on handles and operands are those of the contract, once.
+* `NLAlib.Ops.Routine.Meets` (`NLAlib/Ops/Routine.lean`) is also what a caller uses: a tree with
+  an interface meets a specification.
+* Operation models are made of `NLAlib.Ops.Interp.Satisfies` statements.
+* `NLAlib.Ops.Impl.Satisfies E I md C`, *the implementation `E` satisfies the contract `C` over the
+  interpretation `I`*, is the second statement with the call replaced by the run of a tree. It
+  is obtained from a routine judgment (`NLAlib.Ops.Routine.Meets.satisfies`), not stated by
+  authors. The two are exchanged by linking:
 
-Certificates are proved in operand form through `NLAlib.Ops.Impl.meets_rel` (from the blocks that
-are read) or, for an exact certificate, `NLAlib.Ops.Impl.meets_fn_of_run` (the run of the tree is
+* **grounding** (`NLAlib.Ops.Interp.link_satisfies`): if the implementation of `o` in a table
+  satisfies `C` over `I`, then the operation `o` of the induced interpretation satisfies `C`. An
+  algorithm that is certified this way is an operation for the algorithms above it.
+* **the bridge** (`NLAlib.Ops.Impl.Satisfies.runs`, `NLAlib.Ops.Impl.Satisfies.runs_rel`): a
+  satisfaction statement in total mode gives the top-level statement
+  `NLAlib.Ops.ConditionalRuns`, with the static counts and workspace of the tree. The
+  hypotheses on handles and operands are those of the contract, once.
+
+Such a statement is introduced in operand form through `NLAlib.Ops.Impl.satisfies_rel` (from the
+blocks
+that are read) or, for an exact one, `NLAlib.Ops.Impl.satisfies_fn_of_run` (the run of the tree is
 the block function).
 
-A conditional certificate in **liberal mode** says nothing of success: an implementation
-that fails meets every contract (`NLAlib.Ops.Impl.meets_liberal_abort`,
-`NLAlib.Ops.Interp.link_meets_liberal_of_abort`). A liberal statement is never a result by
+A satisfaction statement in **liberal mode** says nothing of success: an implementation
+that fails satisfies every contract (`NLAlib.Ops.Impl.satisfies_liberal_abort`,
+`NLAlib.Ops.Interp.link_satisfies_liberal_of_abort`). A liberal statement is never a result by
 itself. `Algorithm` requires total correctness in its own type, rather than looking up a
 separately named success theorem.
 
 ## Main results
 
-* `NLAlib.Ops.Impl.Triple`: the certificate.
-* `NLAlib.Ops.Interp.link_meets`, `NLAlib.Ops.Interp.link_meets_kept`,
+* `NLAlib.Ops.Impl.Satisfies`: a tree implements the contract of an operation.
+* `NLAlib.Ops.Interp.link_satisfies`, `NLAlib.Ops.Interp.link_satisfies_kept`,
   `NLAlib.Ops.Interp.link_isFn`: grounding.
-* `NLAlib.Ops.Impl.Triple.runs`, `NLAlib.Ops.Impl.Triple.runs_rel`, `NLAlib.Ops.Impl.Triple.runsL`:
+* `NLAlib.Ops.Impl.Satisfies.runs`, `NLAlib.Ops.Impl.Satisfies.runs_rel`,
+  `NLAlib.Ops.Impl.Satisfies.runsL`:
   the bridge to the top-level statements.
-* `NLAlib.Ops.Interp.IsFn.meets_rel`: a functional operation meets a relational contract that
-  its values satisfy.
+* `NLAlib.Ops.Interp.IsFn.satisfies_rel`: a functional operation satisfies a relational contract
+  that its values satisfy.
 -/
 
 @[expose] public section
@@ -56,22 +66,24 @@ namespace NLAlib.Ops
 
 variable {Op Op₁ Op₂ Tst K : Type}
 
-/-- **The implementation `R` meets the contract `C`** over the interpretation `I`, in the mode
+/-- **The implementation `E` satisfies the contract `C`** over the interpretation `I`, in the mode
 `md`: under the precondition of `C`, on operands that are buffers of the store (the evaluator
 rejects the others; in total mode the precondition must give that they are), the numbers of
-dimensions and operands fit and the run of the tree satisfies the postcondition of `C`. This is
-the certificate of a program, independent of any table. -/
-def Impl.Triple (R : Impl Op Tst) (I : Interp Op Tst K) (md : Mode) (C : Contract K) : Prop :=
+dimensions and operands fit and the run of the tree satisfies the postcondition of `C`. It is a
+statement about one table entry, independent of any table; the certificate of a program is
+`NLAlib.Ops.Algorithm`. -/
+def Impl.Satisfies (E : Impl Op Tst) (I : Interp Op Tst K) (md : Mode) (C : Contract K) : Prop :=
   ∀ d ins outs τ m, (C.on md d ins outs τ m).pre m →
     md.Needs (m.Live (ins ++ outs)) ∧ (m.Live (ins ++ outs) →
-      R.Fits d.length ins.length outs.length ∧
-        Wp md I τ R.body (Env.frame d (ins ++ outs)) ((C.on md d ins outs τ m).post m) m)
+      E.Fits d.length ins.length outs.length ∧
+        Wp md I τ E.body (Env.frame d (ins ++ outs)) ((C.on md d ins outs τ m).post m) m)
 
-/-- **Grounding**: the induced interpretation meets the contract of an implemented operation
-when its implementation meets it. -/
-theorem Interp.link_meets {I : Interp Op₂ Tst K} {T : Table Op₁ Op₂ Tst} {o : Op₁}
-    {R : Impl Op₂ Tst} (hT : T o = .inl R) {md : Mode} {C : Contract K} (h : R.Triple I md C) :
-    (I.link T).Meets md o C := by
+/-- Grounding: the induced interpretation satisfies the contract of an implemented operation
+when its implementation satisfies it. -/
+theorem Interp.link_satisfies {I : Interp Op₂ Tst K} {T : Table Op₁ Op₂ Tst} {o : Op₁}
+    {E : Impl Op₂ Tst} (hT : T o = .inl E) {md : Mode} {C : Contract K} (h : E.Satisfies I md C) :
+    (I.link T).Satisfies md o C := by
+  refine Interp.Satisfies.of_callS ?_
   intro d ins outs τ m hpre
   obtain ⟨hl, hw⟩ := h d ins outs τ m hpre
   rw [Interp.link_callS_inl I hT]
@@ -83,85 +95,88 @@ theorem Interp.link_meets {I : Interp Op₂ Tst K} {T : Table Op₁ Op₂ Tst} {
     · exact absurd (hl rfl) hlive
     · exact fun _ h => by cases h
 
-/-- A kept operation meets the contracts it meets below. -/
-theorem Interp.link_meets_kept {I : Interp Op₂ Tst K} {T : Table Op₁ Op₂ Tst} {o : Op₁} {o' : Op₂}
-    (hT : T o = .inr o') {md : Mode} {C : Contract K} (h : I.Meets md o' C) :
-    (I.link T).Meets md o C := by
+/-- A kept operation satisfies the contracts it satisfies below. -/
+theorem Interp.link_satisfies_kept {I : Interp Op₂ Tst K} {T : Table Op₁ Op₂ Tst} {o : Op₁}
+    {o' : Op₂}
+    (hT : T o = .inr o') {md : Mode} {C : Contract K} (h : I.Satisfies md o' C) :
+    (I.link T).Satisfies md o C := by
+  refine Interp.Satisfies.of_callS ?_
   intro d ins outs τ m hpre
   rw [Interp.link_callS_inr I hT]
-  exact h d ins outs τ m hpre
+  exact h.callS d ins outs τ m hpre
 
-/-- **In liberal mode an implementation that fails meets every contract.** -/
-theorem Impl.meets_liberal_abort (nd nin nout : ℕ) (I : Interp Op Tst K) (C : Contract K)
+/-- In liberal mode an implementation that fails satisfies every contract. -/
+theorem Impl.satisfies_liberal_abort (nd nin nout : ℕ) (I : Interp Op Tst K) (C : Contract K)
     (hfit : ∀ d ins outs τ m, (C.on .liberal d ins outs τ m).pre m →
       d.length = nd ∧ ins.length = nin ∧ outs.length = nout) :
-    (⟨nd, nin, nout, .abort⟩ : Impl Op Tst).Triple I .liberal C :=
+    (⟨nd, nin, nout, .abort⟩ : Impl Op Tst).Satisfies I .liberal C :=
   fun d ins outs τ m hpre => ⟨by simp, fun _ => ⟨hfit d ins outs τ m hpre, wp_abort_liberal⟩⟩
 
-/-- **Liberal statements can be vacuous**: an operation whose implementation in the table fails
-meets every contract in liberal mode, under the induced interpretation. So a liberal corollary of
-linking is never a result without a statement of success. -/
-theorem Interp.link_meets_liberal_of_abort {I : Interp Op₂ Tst K} {T : Table Op₁ Op₂ Tst}
-    {o : Op₁} {R : Impl Op₂ Tst} (hT : T o = .inl R) (hR : R.body = .abort) (C : Contract K) :
-    (I.link T).Meets .liberal o C := by
+/-- Liberal statements can be vacuous: an operation whose implementation in the table fails
+satisfies every contract in liberal mode, under the induced interpretation. So a liberal corollary
+of linking is never a result without a statement of success. -/
+theorem Interp.link_satisfies_liberal_of_abort {I : Interp Op₂ Tst K} {T : Table Op₁ Op₂ Tst}
+    {o : Op₁} {E : Impl Op₂ Tst} (hT : T o = .inl E) (hE : E.body = .abort) (C : Contract K) :
+    (I.link T).Satisfies .liberal o C := by
+  refine Interp.Satisfies.of_callS ?_
   intro d ins outs τ m _ m' hm'
-  rw [Interp.link_callS_inl I hT, hR] at hm'
+  rw [Interp.link_callS_inl I hT, hE] at hm'
   split_ifs at hm'
   cases hm'
 
-/-- **A certificate in operand form**, total correctness: on admitted, live operands, with the
+/-- Satisfaction in operand form, total correctness: on admitted, live operands, with the
 input blocks `xs` read and in the domain and room for the outputs, the implementation fits and
 its run writes output blocks related to `xs` and to the window, advances the position by the
 window, and changes nothing else. Whatever it draws into its scratch is gone at the end. -/
-theorem Impl.meets_rel {R : Impl Op Tst} {I : Interp Op Tst K} {B : BlockRel K}
+theorem Impl.satisfies_rel {E : Impl Op Tst} {I : Interp Op Tst K} {B : BlockRel K}
     {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop}
     (h : ∀ (d : List ℕ) (ins outs : List (ℕ × ℕ)) (τ : Tape K) (m : Mem K) (xs : List (List K)),
       d.length = B.nd → adm d ins outs → m.Live (ins ++ outs) →
       m.readBlocks ins (B.inLens d) = some xs →
       B.dom d xs (τ.window B.stream m.pos (B.win d)) → m.Room outs (B.outLens d) →
-      R.Fits d.length ins.length outs.length ∧ Wp .total I τ R.body (Env.frame d (ins ++ outs))
+      E.Fits d.length ins.length outs.length ∧ Wp .total I τ E.body (Env.frame d (ins ++ outs))
         (B.Post d xs outs (τ.window B.stream m.pos (B.win d)) m) m) :
-    R.Triple I .total (B.spec adm) := by
+    E.Satisfies I .total (B.spec adm) := by
   rintro d ins outs τ m ⟨hnd, hadm, hn⟩
   obtain ⟨hl, ⟨xs, hxs, hdom⟩, hz⟩ := hn rfl
   obtain ⟨hfit, hw⟩ := h d ins outs τ m xs hnd hadm hl hxs hdom hz
   exact ⟨fun _ => hl, fun _ => ⟨hfit, hw.mono fun m' hp => ⟨xs, hxs, hz, hp⟩⟩⟩
 
-/-- **An exact certificate**: on admitted operands, where the block function succeeds, the run of
+/-- Exact satisfaction: on admitted operands, where the block function succeeds, the run of
 the implementation is the block function. -/
-theorem Impl.meets_fn_of_run {R : Impl Op Tst} {I : Interp Op Tst K} {f : BlockFn K}
+theorem Impl.satisfies_fn_of_run {E : Impl Op Tst} {I : Interp Op Tst K} {f : BlockFn K}
     {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop}
     (h : ∀ d ins outs τ m m', adm d ins outs → f.apply d ins outs τ m = some m' →
-      R.Fits d.length ins.length outs.length ∧
-        eval I τ R.body (Env.frame d (ins ++ outs)) m = some m') :
-    R.Triple I .total (f.rel.spec adm) := by
+      E.Fits d.length ins.length outs.length ∧
+        eval I τ E.body (Env.frame d (ins ++ outs)) m = some m') :
+    E.Satisfies I .total (f.rel.spec adm) := by
   rintro d ins outs τ m ⟨hnd, hadm, hn⟩
   obtain ⟨hl, ⟨xs, hxs, ys, hys, hlen⟩, hz⟩ := hn rfl
   obtain ⟨hfit, hr⟩ := h d ins outs τ m _ hadm (BlockFn.apply_of_read hnd hl hxs hys hlen hz)
   exact ⟨fun _ => hl, fun _ => ⟨hfit, _, hr, xs, hxs, hz, ys, hlen, hys, rfl⟩⟩
 
-/-- **Grounding a functional contract** (the exact certificate). -/
+/-- **Grounding a functional contract** (exact satisfaction). -/
 theorem Interp.link_isFn {I : Interp Op₂ Tst K} {T : Table Op₁ Op₂ Tst} {o : Op₁}
-    {R : Impl Op₂ Tst} (hT : T o = .inl R) {f : BlockFn K}
+    {E : Impl Op₂ Tst} (hT : T o = .inl E) {f : BlockFn K}
     {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop}
     (h : ∀ d ins outs τ m m', adm d ins outs → f.apply d ins outs τ m = some m' →
-      R.Fits d.length ins.length outs.length ∧
-        eval I τ R.body (Env.frame d (ins ++ outs)) m = some m') :
+      E.Fits d.length ins.length outs.length ∧
+        eval I τ E.body (Env.frame d (ins ++ outs)) m = some m') :
     (I.link T).IsFn .total o f adm :=
-  Interp.link_meets hT (Impl.meets_fn_of_run h)
+  Interp.link_satisfies hT (Impl.satisfies_fn_of_run h)
 
 /-! ### The bridge to the top-level statements -/
 
-/-- **The bridge**: a certificate in total mode gives the top-level statement. Under the
+/-- **The bridge**: satisfaction in total mode gives the top-level statement. Under the
 precondition of the contract, the tree, run in the environment of its dimensions and operands,
 terminates within its static counts and workspace, and the postcondition of the contract holds
 of the final memory. -/
-theorem Impl.Triple.runs {R : Impl Op Tst} {I : Interp Op Tst K} {C : Contract K}
-    (h : R.Triple I .total C) (W : Op → List ℕ → ℕ) {d : List ℕ} {ins outs : List (ℕ × ℕ)}
+theorem Impl.Satisfies.runs {E : Impl Op Tst} {I : Interp Op Tst K} {C : Contract K}
+    (h : E.Satisfies I .total C) (W : Op → List ℕ → ℕ) {d : List ℕ} {ins outs : List (ℕ × ℕ)}
     {τ : Tape K} {m : Mem K} (hpre : (C.on .total d ins outs τ m).pre m) :
-    ConditionalRuns I W τ R.body (Env.frame d (ins ++ outs)) m
-      (stmtCost R.body (d ++ (ins ++ outs).map Prod.snd))
-      (stmtPeak W R.body (d ++ (ins ++ outs).map Prod.snd))
+    ConditionalRuns I W τ E.body (Env.frame d (ins ++ outs)) m
+      (stmtCost E.body (d ++ (ins ++ outs).map Prod.snd))
+      (stmtPeak W E.body (d ++ (ins ++ outs).map Prod.snd))
       ((C.on .total d ins outs τ m).post m) := by
   obtain ⟨hl, hw⟩ := h d ins outs τ m hpre
   obtain ⟨m', hrun, hQ⟩ := (hw (hl rfl)).2
@@ -170,15 +185,15 @@ theorem Impl.Triple.runs {R : Impl Op Tst} {I : Interp Op Tst K} {C : Contract K
 /-- **The bridge, in operand form**: on admitted, live operands, with the input blocks `xs` read
 and room for the outputs, the tree terminates within its static counts and workspace and has
 written output blocks related to `xs` and to the window. -/
-theorem Impl.Triple.runs_rel {R : Impl Op Tst} {I : Interp Op Tst K} {B : BlockRel K}
-    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (h : R.Triple I .total (B.spec adm))
+theorem Impl.Satisfies.runs_rel {E : Impl Op Tst} {I : Interp Op Tst K} {B : BlockRel K}
+    {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (h : E.Satisfies I .total (B.spec adm))
     (W : Op → List ℕ → ℕ) {d : List ℕ} {ins outs : List (ℕ × ℕ)} {τ : Tape K} {m : Mem K}
     {xs : List (List K)} (hnd : d.length = B.nd) (hadm : adm d ins outs)
     (hl : m.Live (ins ++ outs)) (hr : m.readBlocks ins (B.inLens d) = some xs)
     (hdom : B.dom d xs (τ.window B.stream m.pos (B.win d))) (hz : m.Room outs (B.outLens d)) :
-    ConditionalRuns I W τ R.body (Env.frame d (ins ++ outs)) m
-      (stmtCost R.body (d ++ (ins ++ outs).map Prod.snd))
-      (stmtPeak W R.body (d ++ (ins ++ outs).map Prod.snd))
+    ConditionalRuns I W τ E.body (Env.frame d (ins ++ outs)) m
+      (stmtCost E.body (d ++ (ins ++ outs).map Prod.snd))
+      (stmtPeak W E.body (d ++ (ins ++ outs).map Prod.snd))
       (B.Post d xs outs (τ.window B.stream m.pos (B.win d)) m) := by
   refine (h.runs W (d := d) (ins := ins) (outs := outs) (τ := τ) (m := m)
     ⟨hnd, hadm, fun _ => ⟨hl, ⟨xs, hr, hdom⟩, hz⟩⟩).mono le_rfl le_rfl ?_
@@ -186,30 +201,31 @@ theorem Impl.Triple.runs_rel {R : Impl Op Tst} {I : Interp Op Tst K} {B : BlockR
   have e : xs' = xs := Option.some.inj (hr'.symm.trans hr)
   exact e ▸ hp
 
-/-- **The bridge, partial correctness**: a liberal certificate gives a refinement statement,
+/-- **The bridge, partial correctness**: liberal satisfaction gives a refinement statement,
 which says nothing of success. -/
-theorem Impl.Triple.runsL {R : Impl Op Tst} {I : Interp Op Tst K} {C : Contract K}
-    (h : R.Triple I .liberal C) {d : List ℕ} {ins outs : List (ℕ × ℕ)} {τ : Tape K} {m : Mem K}
+theorem Impl.Satisfies.runsL {E : Impl Op Tst} {I : Interp Op Tst K} {C : Contract K}
+    (h : E.Satisfies I .liberal C) {d : List ℕ} {ins outs : List (ℕ × ℕ)} {τ : Tape K} {m : Mem K}
     (hpre : (C.on .liberal d ins outs τ m).pre m) (hl : m.Live (ins ++ outs)) :
-    ConditionalRunsL I τ R.body (Env.frame d (ins ++ outs)) m ((C.on .liberal d ins outs τ m).post
+    ConditionalRunsL I τ E.body (Env.frame d (ins ++ outs)) m ((C.on .liberal d ins outs τ m).post
       m) :=
   ((h d ins outs τ m hpre).2 hl).2
 
 /-! ### Witnesses -/
 
-/-- **A functional operation meets a relational contract that its values satisfy.** For
+/-- A functional operation satisfies a relational contract that its values satisfy. For
 witnesses and model primitives: the block function has the shape of the relation, and on blocks
 that were read its value has the declared lengths and is related to them. -/
-theorem Interp.IsFn.meets_rel {I : Interp Op Tst K} {o : Op} {f : BlockFn K}
+theorem Interp.IsFn.satisfies_rel {I : Interp Op Tst K} {o : Op} {f : BlockFn K}
     {adm' : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (h : I.IsFn .total o f adm')
-    {R : BlockRel K} {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop}
-    (hadm : ∀ d ins outs, adm d ins outs → adm' d ins outs) (hnd : f.nd = R.nd)
-    (hst : f.stream = R.stream) (hwin : ∀ d, f.win d = R.win d)
-    (hin : ∀ d, f.inLens d = R.inLens d) (hout : ∀ d, f.outLens d = R.outLens d)
-    (hf : ∀ d w xs (m : Mem K) ins outs, d.length = R.nd → w.length = R.win d → adm d ins outs →
-      m.readBlocks ins (R.inLens d) = some xs → R.dom d xs w →
-      ∃ ys, f.fn d w xs = some ys ∧ ys.map List.length = R.outLens d ∧ R.rel d xs w ys) :
-    I.Meets .total o (R.spec adm) := by
+    {B : BlockRel K} {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop}
+    (hadm : ∀ d ins outs, adm d ins outs → adm' d ins outs) (hnd : f.nd = B.nd)
+    (hst : f.stream = B.stream) (hwin : ∀ d, f.win d = B.win d)
+    (hin : ∀ d, f.inLens d = B.inLens d) (hout : ∀ d, f.outLens d = B.outLens d)
+    (hf : ∀ d w xs (m : Mem K) ins outs, d.length = B.nd → w.length = B.win d → adm d ins outs →
+      m.readBlocks ins (B.inLens d) = some xs → B.dom d xs w →
+      ∃ ys, f.fn d w xs = some ys ∧ ys.map List.length = B.outLens d ∧ B.rel d xs w ys) :
+    I.Satisfies .total o (B.spec adm) := by
+  refine Interp.Satisfies.of_callS ?_
   rintro d ins outs τ m ⟨hnd', hadm', hn⟩
   obtain ⟨hl, ⟨xs, hxs, hdom⟩, hz⟩ := hn rfl
   obtain ⟨ys, hys, hlen, hrel⟩ := hf d _ xs m ins outs hnd'
@@ -220,20 +236,21 @@ theorem Interp.IsFn.meets_rel {I : Interp Op Tst K} {o : Op} {f : BlockFn K}
   rw [hwin] at ha
   exact ⟨_, h.callS_eq (hadm _ _ _ hadm') ha, xs, hxs, hz, ys, hlen, hrel, rfl⟩
 
-/-- A functional operation meets a relation when admission follows from its actual readable
+/-- A functional operation satisfies a relation when admission follows from its actual readable
 inputs and output capacity. This permits relational admissions that do not themselves constrain
 operand arity: successful reads and room facts supply that shape information. -/
-theorem Interp.IsFn.meets_rel_of_pre {I : Interp Op Tst K} {o : Op} {f : BlockFn K}
+theorem Interp.IsFn.satisfies_rel_of_pre {I : Interp Op Tst K} {o : Op} {f : BlockFn K}
     {adm' : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop} (h : I.IsFn .total o f adm')
-    {R : BlockRel K} {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop}
+    {B : BlockRel K} {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop}
     (hadm : ∀ d ins outs (m : Mem K) xs, adm d ins outs →
-      m.readBlocks ins (R.inLens d) = some xs → m.Room outs (R.outLens d) → adm' d ins outs)
-    (hnd : f.nd = R.nd) (hst : f.stream = R.stream) (hwin : ∀ d, f.win d = R.win d)
-    (hin : ∀ d, f.inLens d = R.inLens d) (hout : ∀ d, f.outLens d = R.outLens d)
-    (hf : ∀ d w xs (m : Mem K) ins outs, d.length = R.nd → w.length = R.win d →
-      adm d ins outs → m.readBlocks ins (R.inLens d) = some xs → R.dom d xs w →
-      ∃ ys, f.fn d w xs = some ys ∧ ys.map List.length = R.outLens d ∧ R.rel d xs w ys) :
-    I.Meets .total o (R.spec adm) := by
+      m.readBlocks ins (B.inLens d) = some xs → m.Room outs (B.outLens d) → adm' d ins outs)
+    (hnd : f.nd = B.nd) (hst : f.stream = B.stream) (hwin : ∀ d, f.win d = B.win d)
+    (hin : ∀ d, f.inLens d = B.inLens d) (hout : ∀ d, f.outLens d = B.outLens d)
+    (hf : ∀ d w xs (m : Mem K) ins outs, d.length = B.nd → w.length = B.win d →
+      adm d ins outs → m.readBlocks ins (B.inLens d) = some xs → B.dom d xs w →
+      ∃ ys, f.fn d w xs = some ys ∧ ys.map List.length = B.outLens d ∧ B.rel d xs w ys) :
+    I.Satisfies .total o (B.spec adm) := by
+  refine Interp.Satisfies.of_callS ?_
   rintro d ins outs τ m ⟨hnd', ha, hn⟩
   obtain ⟨hl, ⟨xs, hxs, hdom⟩, hz⟩ := hn rfl
   obtain ⟨ys, hys, hlen, hrel⟩ := hf d _ xs m ins outs hnd'
@@ -244,13 +261,6 @@ theorem Interp.IsFn.meets_rel_of_pre {I : Interp Op Tst K} {o : Op} {f : BlockFn
   rw [hwin] at hcall
   exact ⟨_, h.callS_eq (hadm _ _ _ _ _ ha hxs hz) hcall, xs, hxs, hz,
     ys, hlen, hrel, rfl⟩
-
-/-- Canonical implementation certification. Both operand lists and the implementation are
-fixed before runtime sizes and inputs; the claim requires successful fully counted execution
-under a jointly realized model. Conditional implementation proofs use `Impl.Triple`. -/
-def Impl.Meets (R : Impl Op Tst) {b : ℕ} {P : Problem K R.nd b}
-    (ins outs : List Operand) (M : AccessModel Op Tst P) (S : Specification Op Tst P) : Prop :=
-  Runs (R.program b ins outs) M S
 
 /-- One fixed symbolic program, with successful counted execution under every interpretation
 satisfying a realized model, at every admitted size and input and every tape. A partial
@@ -279,6 +289,18 @@ namespace Algorithm
 variable {Op Lo Tst K : Type} {r b : ℕ} {P : Problem K r b}
   {M : AccessModel Op Tst P} {S : Specification Op Tst P}
 
+/-- A certificate read with the evaluator: on every admitted input, under every interpretation
+satisfying the model and every tape, canonical execution succeeds within all five resource
+bounds, and its count and memory satisfy the output condition. Proofs use this form; the
+statement of the certificate itself is in terms of the execution rules. -/
+theorem correct_exec (A : Algorithm M S) (d : Fin r → ℕ) (hd : P.valid d) (x : P.Input d)
+    (I : Interp Op Tst K) (hI : M.contracts d x I) (τ : Tape K) :
+    ∃ st, exec A.program I M.resources P.formats τ d (P.initial d x) = some st ∧
+      st.peak ≤ S.scratch d ∧ st.cost ≤ S.budget d ∧
+      M.resources.work st.cost ≤ S.work d ∧ M.resources.span st.cost ≤ S.span d ∧
+      P.initialBytes d x + st.peak ≤ S.memory d ∧ S.good d x τ st.cost st.mem :=
+  (A.program.certifies_iff_exec M S).mp A.correct d hd x I hI τ
+
 /-- Add a pure mathematical output consequence without redoing program or resource proofs. -/
 def mapPost (A : Algorithm M S)
     (Q : (d : Fin r → ℕ) → P.Input d → Tape K → Count (Op ⊕ Bookkeeping) Tst → Mem K → Prop)
@@ -292,7 +314,7 @@ theorem wellTyped (A : Algorithm M S) : A.program.wellTyped M.resources P.format
   obtain ⟨d, hd⟩ := P.admitted
   obtain ⟨x⟩ := P.inputs_exist d hd
   obtain ⟨I, hI⟩ := M.realize d hd x
-  obtain ⟨st, hr, -⟩ := A.correct d hd x I hI (fun _ _ => M.word)
+  obtain ⟨st, hr, -⟩ := A.correct_exec d hd x I hI (fun _ _ => M.word)
   unfold exec at hr
   split_ifs at hr with h
   exact h.1
@@ -302,7 +324,7 @@ theorem run (A : Algorithm M S) {d : Fin r → ℕ} (hd : P.valid d) (x : P.Inpu
     (I : Interp Op Tst K) (hI : M.contracts d x I) (τ : Tape K) :
     ∃ c m', A.program.run I M.resources P.formats τ d (P.initial d x) = some m' ∧
       c ≤ S.budget d ∧ S.good d x τ c m' := by
-  obtain ⟨st, hr, -, hc, -, -, -, hg⟩ := A.correct d hd x I hI τ
+  obtain ⟨st, hr, -, hc, -, -, -, hg⟩ := A.correct_exec d hd x I hI τ
   have hm := congrArg (Option.map St.mem) hr
   rw [exec_mem, Option.map_some] at hm
   exact ⟨st.cost, st.mem, hm, hc, hg⟩
@@ -330,7 +352,7 @@ def ofWp (p : Program Op Tst r b)
     (hmemory : ∀ d, P.valid d → ∀ x : P.Input d,
       P.initialBytes d x + S.scratch d ≤ S.memory d) : Algorithm M S where
   program := p
-  correct d hd x I hI τ := by
+  correct := (p.certifies_iff_exec M S).mpr fun d hd x I hI τ => by
     obtain ⟨m', hr, hg⟩ := hwp d hd x I hI τ
     have hm : eval I.instrument τ p.body.instrument (Program.environment (b := b) d)
         (P.initial d x) = some m' := by rw [run_instrument]; exact hr
@@ -368,19 +390,19 @@ theorem not_nonempty (hgood : ∀ d, P.valid d → ∀ (x : P.Input d) (τ : Tap
 /-- Link fixed trees and recheck storage compatibility, full lower work/span and resident bytes.
 Different primitive parallel configurations require separately specified resource models. -/
 def link (A : Algorithm M S) (T : Table Op Lo Tst) (L : AccessModel Lo Tst P)
-    (R : Specification Lo Tst P)
+    (S₂ : Specification Lo Tst P)
     (ht : (A.program.link T).wellTyped L.resources P.formats = true)
     (hcontracts : ∀ d, P.valid d → ∀ (x : P.Input d) (I : Interp Lo Tst K),
       L.contracts d x I → M.contracts d x (I.link T))
     (hgood : ∀ d, P.valid d → ∀ (x : P.Input d) τ c m',
       c ≤ S.budget d → S.good d x τ c m' →
-        ∀ c', c' ≤ R.budget d → R.good d x τ c' m')
-    (hcost : ∀ d, P.valid d → staticCost (A.program.link T) d ≤ R.budget d)
-    (hspace : ∀ d, P.valid d → staticPeak L.resources (A.program.link T) d ≤ R.scratch d)
-    (hwork : ∀ d, P.valid d → L.resources.work (R.budget d) ≤ R.work d)
-    (hspan : ∀ d, P.valid d → L.resources.span (R.budget d) ≤ R.span d)
+        ∀ c', c' ≤ S₂.budget d → S₂.good d x τ c' m')
+    (hcost : ∀ d, P.valid d → staticCost (A.program.link T) d ≤ S₂.budget d)
+    (hspace : ∀ d, P.valid d → staticPeak L.resources (A.program.link T) d ≤ S₂.scratch d)
+    (hwork : ∀ d, P.valid d → L.resources.work (S₂.budget d) ≤ S₂.work d)
+    (hspan : ∀ d, P.valid d → L.resources.span (S₂.budget d) ≤ S₂.span d)
     (hmemory : ∀ d, P.valid d → ∀ x : P.Input d,
-      P.initialBytes d x + R.scratch d ≤ R.memory d) : Algorithm L R :=
+      P.initialBytes d x + S₂.scratch d ≤ S₂.memory d) : Algorithm L S₂ :=
   ofWp (A.program.link T) ht (fun d hd x I hI τ => by
     obtain ⟨c, m', hr, hc, hg⟩ := A.run hd x (I.link T) (hcontracts d hd x I hI) τ
     have hraw : eval (I.link T) τ A.program.body (Program.environment (b := b) d)

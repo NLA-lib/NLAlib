@@ -212,6 +212,22 @@ theorem Apart.of_disj_getD {zs : List (ℕ × ℕ)} {ls : List ℕ}
           simpa only [List.getD_cons_succ] using
             h (i + 1) (by simpa using hi) (j + 1) (by simpa using hj) (by omega)
 
+/-- **A selection from an apart collection is apart**: the blocks at any list of distinct indices
+in range, in any order, are pairwise disjoint. This projects an apart operand collection onto any
+sub-collection, so that a stage's own apart operands follow from its caller's. -/
+theorem Apart.select {zs : List (ℕ × ℕ)} {ls : List ℕ} (h : Apart zs ls) (sel : List ℕ)
+    (hsel : ∀ i ∈ sel, i < min zs.length ls.length) (hnd : sel.Nodup) :
+    Apart (sel.map fun i => zs.getD i (0, 0)) (sel.map fun i => ls.getD i 0) := by
+  apply Apart.of_disj_getD
+  intro i hi j hj hne
+  simp only [List.length_map, min_self] at hi hj
+  have hsi := List.getElem_mem hi
+  have hsj := List.getElem_mem hj
+  have hd := h.disj_getD (hsel _ hsi) (hsel _ hsj)
+    (fun he => hne ((List.Nodup.getElem_inj_iff hnd).mp he))
+  simpa only [List.getD_eq_getElem?_getD, List.getElem?_map, List.getElem?_eq_getElem hi,
+    List.getElem?_eq_getElem hj, Option.map_some, Option.getD_some] using hd
+
 /-- Cells in disjoint footprints differ in buffer or offset. This is the preservation
 condition for a scalar read across a write, including disjoint regions of one buffer. -/
 theorem Disj.ne_cells {F G : Fp} (h : Disj F G) {b i b' j : ℕ}
@@ -483,7 +499,7 @@ theorem keep {P : Store K → Prop} (h : EqOff F s s') (hP : ReadsOnly G P) (hD 
     (hp : P s) : P s' :=
   hP s s' (fun b i g => h.2 b i fun hf => hD b i hf g) hp
 
-/-- **Frames compose by `⊔`.** The running frame of a block, from its first memory to the
+/-- Frames compose by `⊔`. The running frame of a block, from its first memory to the
 current one, after one more step. -/
 theorem trans' (h : EqOff F s s') (h' : EqOff G s' s'') : EqOff (F ⊔ G) s s'' :=
   (h.mono fun _ _ => Or.inl).trans (h'.mono fun _ _ => Or.inr)
@@ -553,7 +569,7 @@ theorem updBlocks_advance (m : Mem K) (k : ℕ) (zs : List (ℕ × ℕ)) (ys : L
     | nil => rfl
     | cons y ys => exact ih (m.updBlock z y) ys
 
-/-- Reading several blocks, one at a time (for `cert_intro`, by name: not a simp lemma, so that
+/-- Reading several blocks, one at a time (for `split_reads`, by name: not a simp lemma, so that
 the core's `store_simp` is unchanged). -/
 theorem readBlocks_cons_eq_some {m : Mem K} {a : ℕ × ℕ} {as : List (ℕ × ℕ)}
     {n : ℕ} {ns : List ℕ} {X : List (List K)} :
@@ -572,7 +588,7 @@ theorem readBlocks_cons_eq_some {m : Mem K} {a : ℕ × ℕ} {as : List (ℕ × 
 /-- **The equation of a contract in operand form, from a frame and the blocks read back**, for
 any number of output blocks (when two overlap, both read back the same cells, so the order of
 the writes does not matter). Generalises `Store.EqOff.eq_updBlock₂`; used once in
-`NLAlib.Ops.Impl.meets_of_writes`, so a certificate never rebuilds the equation by hand. -/
+`NLAlib.Ops.Impl.satisfies_of_writes`, so a certificate never rebuilds the equation by hand. -/
 theorem eq_updBlocks_of_eqOff {m m' : Mem K} {zs : List (ℕ × ℕ)} {ls : List ℕ}
     {ys : List (List K)} (h : m.store.EqOff (Fp.blocks zs ls) m'.store)
     (hr : m'.readBlocks zs ls = some ys) (hpos : m'.pos = m.pos) : m' = m.updBlocks zs ys := by
@@ -766,5 +782,94 @@ theorem readBlock_pair (h : HoldsWords s cs) {b o : ℕ} (h0 : (b, o) ∈ cs)
     (Store.readBlock_one_of_get hy)⟩
 
 end HoldsWords
+
+/-- A cell of the blocks of a list of operands is in the buffer of one of them. -/
+theorem Fp.exists_mem_of_blocks :
+    ∀ {zs : List (ℕ × ℕ)} {ls : List ℕ} {b i : ℕ}, Fp.blocks zs ls b i → ∃ z ∈ zs, b = z.1
+  | [], _, _, _, h => False.elim h
+  | _ :: _, [], _, _, h => False.elim h
+  | z :: zs, l :: ls, b, i, h => by
+    rcases h with h | h
+    · exact ⟨z, List.mem_cons_self, h.1⟩
+    · obtain ⟨w, hw, e⟩ := Fp.exists_mem_of_blocks h
+      exact ⟨w, List.mem_cons_of_mem _ hw, e⟩
+
+/-- Blocks of operands in buffers different from those of other operands are disjoint from
+the blocks of those. -/
+theorem Fp.disj_blocks_of_ne {zs ws : List (ℕ × ℕ)} (ls ks : List ℕ)
+    (h : ∀ z ∈ zs, ∀ w ∈ ws, z.1 ≠ w.1) : Fp.Disj (Fp.blocks zs ls) (Fp.blocks ws ks) :=
+  fun _ _ hz hw => by
+    obtain ⟨z, hz, e⟩ := Fp.exists_mem_of_blocks hz
+    obtain ⟨w, hw, e'⟩ := Fp.exists_mem_of_blocks hw
+    exact h z hz w hw (e.symm.trans e')
+
+/-- Blocks of operands in pairwise different buffers are pairwise disjoint. -/
+theorem Fp.apart_of_nodup :
+    ∀ {zs : List (ℕ × ℕ)} (ls : List ℕ), (zs.map Prod.fst).Nodup → Fp.Apart zs ls
+  | [], _, _ => trivial
+  | _ :: _, [], _ => trivial
+  | z :: zs, l :: ls, h => by
+    rw [List.map_cons, List.nodup_cons] at h
+    refine ⟨fun b i hz hb => ?_, Fp.apart_of_nodup ls h.2⟩
+    obtain ⟨w, hw, e⟩ := Fp.exists_mem_of_blocks hb
+    exact h.1 (List.mem_map.mpr ⟨w, hw, e.symm.trans hz.1⟩)
+
+/-- A list of operands whose blocks of the given lengths are read has as many operands as
+lengths. -/
+theorem Mem.length_eq_of_readBlocks {m : Mem K} :
+    ∀ {as : List (ℕ × ℕ)} {ns : List ℕ} {xs : List (List K)},
+      m.readBlocks as ns = some xs → as.length = ns.length
+  | [], [], _, _ => rfl
+  | [], _ :: _, _, h => by cases h
+  | _ :: _, [], _, h => by cases h
+  | a :: as, n :: ns, xs, h => by
+    rw [Mem.readBlocks_cons_eq_some] at h
+    obtain ⟨_, _, _, h', _⟩ := h
+    simp only [List.length_cons, Mem.length_eq_of_readBlocks h']
+
+/-- A single block is apart from no other. -/
+theorem Fp.apart_singleton (z : ℕ × ℕ) (n : ℕ) : Fp.Apart [z] [n] :=
+  ⟨fun _ _ _ h => False.elim h, trivial⟩
+
+/-! ### Blocks of columns -/
+
+/-- The `i`-th column of a block of `k` columns is the part of the block at offset `n * i`. -/
+theorem Store.readBlock_column {K : Type} {s : Store K} {b off n k i : ℕ} {qs : List K}
+    (h : s.readBlock b off (k * n) = some qs) (hi : i < k) :
+    s.readBlock b (off + n * i) n = some ((qs.drop (n * i)).take n) :=
+  Store.readBlock_sub h (by
+    have := Nat.mul_le_mul_left n (Nat.succ_le_of_lt hi)
+    rw [Nat.mul_succ, Nat.mul_comm n k] at this
+    omega)
+
+/-- A block disjoint from each of the first `k` columns of a matrix is disjoint from the block
+of those columns. -/
+theorem Fp.disj_columns_block {F : Fp} {b off n k : ℕ}
+    (h : ∀ i < k, Fp.Disj F (Store.inBlock b (off + n * i) n)) :
+    Fp.Disj F (Store.inBlock b off (k * n)) := by
+  intro c x hF hG
+  obtain ⟨rfl, hlo, hhi⟩ := hG
+  rcases Nat.eq_zero_or_pos n with hn | hn
+  · subst hn
+    omega
+  have hj : (x - off) / n < k := Nat.div_lt_of_lt_mul (by rw [Nat.mul_comm] at hhi; omega)
+  refine h _ hj c x hF ⟨rfl, ?_, ?_⟩
+  · have := Nat.div_mul_le_self (x - off) n
+    rw [Nat.mul_comm] at this
+    omega
+  · have := Nat.lt_div_mul_add (a := x - off) hn
+    rw [Nat.mul_comm] at this
+    omega
+
+/-- The block of the first `k` columns is read from the columns one by one. -/
+theorem Store.readBlock_columns {K : Type} {s : Store K} {b off n : ℕ} {cols : ℕ → List K} :
+    ∀ {k : ℕ}, (∀ i < k, s.readBlock b (off + n * i) n = some (cols i)) →
+      s.readBlock b off (k * n) = some ((List.range k).flatMap cols)
+  | 0, _ => by simp
+  | k + 1, h => by
+    have hk := Store.readBlock_columns (k := k) fun i hi => h i (by omega)
+    have hl := h k (by omega)
+    rw [Nat.succ_mul, List.range_succ, List.flatMap_append, List.flatMap_singleton]
+    exact Store.readBlock_add hk (by rwa [Nat.mul_comm k n])
 
 end NLAlib.Ops

@@ -11,6 +11,7 @@ public import NLAlib.Ops.Blas.Sampling
 public import NLAlib.Ops.Catalog.Index
 public import NLAlib.Ops.Catalog.Sampling
 public import NLAlib.Ops.Catalog.StoredOperator
+public import NLAlib.Ops.RoutineSyntax
 
 /-!
 # Hutch++ as one fixed program
@@ -37,7 +38,7 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has Blas1Op Op] [Has CmpTst Tst]
 
 /-- Apply the represented square matrix to each of `k` column-major vectors.
 The input and output vector blocks may be disjoint subviews of larger buffers. -/
-def applyColumns : Impl Op Tst := opsImpl% [n, k] (data, X) → (Y) {
+def applyColumns : Stmt Op Tst := ops% [n, k] (data, X) → (Y) {
   for j < k {
     call (Has.inj StoredOperatorOp.matvec) [n, n] (data, X[n * j]) → (Y[n * j])
   }
@@ -45,23 +46,23 @@ def applyColumns : Impl Op Tst := opsImpl% [n, k] (data, X) → (Y) {
 
 /-- Draw the sketch, form its image and release the sketch before later workspaces
 are allocated. Sample words are read in column-major order. -/
-def sketch (stream : ℕ) : Impl Op Tst := opsImpl% [n, k] (data) → (B) {
+def sketch (stream : ℕ) : Stmt Op Tst := ops% [n, k] (data) → (B) {
   let S ← alloc (n * k);
-  run (sampleVector stream).body [n * k] (S);
-  run applyColumns.body [n, k] (data, S, B)
+  run (sampleRoutine stream) [n * k] (S);
+  run applyColumns [n, k] (data, S, B)
 }
 
 /-- Sweep every probe against the computed sketch-image columns. The basis prefix
 is retained and each probe is updated in its own column-major subview. -/
-def projectProbes : Impl Op Tst := opsImpl% [n, k, ell] (B, t) → () {
+def projectProbes : Stmt Op Tst := ops% [n, k, ell] (B, t) → () {
   for j < ell {
-    run MGS.sweep.body [n, k] (B, B[n * (k + j)], t)
+    run MGS.sweepRoutine [n, k] (B, B[n * (k + j)], t)
   }
 }
 
 /-- Add the averaged residual sum to the retained low-rank trace contribution.
 `t[1]` contains the residual sum; `out` contains the low-rank contribution. -/
-def combineTrace : Impl Op Tst := opsImpl% [ell] (t, out) → () {
+def combineTrace : Stmt Op Tst := ops% [ell] (t, out) → () {
   call (Has.inj IndexOp.lit) [ell] () → (t);
   call (Has.inj ScalarOp.div) [] (t[1], t) → (t[1]);
   call (Has.inj ScalarOp.add) [] (out, t[1]) → (out)
@@ -69,47 +70,54 @@ def combineTrace : Impl Op Tst := opsImpl% [ell] (t, out) → () {
 
 /-- Accumulate the low-rank trace plus the averaged residual contribution.
 The positive probe-count premise belongs to the total mathematical theorem. -/
-def accumulate : Impl Op Tst := opsImpl% [n, k, ell] (B, C, t) → (out) {
-  run ColumnProducts.sum.body [n, k] (B, C, t, out);
-  run ColumnProducts.sum.body [n, ell] (B[n * k], C[n * k], t, t[1]);
-  run combineTrace.body [ell] (t, out)
+def accumulate : Stmt Op Tst := ops% [n, k, ell] (B, C, t) → (out) {
+  run ColumnProducts.sum [n, k] (B, C, t, out);
+  run ColumnProducts.sum [n, ell] (B[n * k], C[n * k], t, t[1]);
+  run combineTrace [ell] (t, out)
 }
 
 /-- Prepare the rank-revealing sketch-image basis followed by untouched probes.
 The temporary sketch and MGS workspace are scoped inside their own procedures. -/
-def prepare (stream : ℕ) : Impl Op Tst := opsImpl% [n, k, ell] (data) → (B) {
-  run (sketch stream).body [n, k] (data, B);
-  run (sampleVector stream).body [n * ell] (B[n * k]);
-  run MGS.factor.body [n, k] (B)
+def prepare (stream : ℕ) : Stmt Op Tst := ops% [n, k, ell] (data) → (B) {
+  run (sketch stream) [n, k] (data, B);
+  run (sampleRoutine stream) [n * ell] (B[n * k]);
+  run MGS.factorRoutine [n, k] (B)
 }
 
 /-- Apply the operator to the prepared basis and reduced probes, then evaluate the
 trace contributions. All workspaces are supplied explicitly by the caller. -/
-def evaluate : Impl Op Tst := opsImpl% [n, k, ell] (data, B, t, C) → (out) {
-  run applyColumns.body [n, k + ell] (data, B, C);
-  run accumulate.body [n, k, ell] (B, C, t, out)
+def evaluate : Stmt Op Tst := ops% [n, k, ell] (data, B, t, C) → (out) {
+  run applyColumns [n, k + ell] (data, B, C);
+  run accumulate [n, k, ell] (B, C, t, out)
 }
 
 /-- Finish from the prepared basis and probes, scoping the coefficient and operator-output
 workspaces around probe projection and trace evaluation. -/
-def finish : Impl Op Tst := opsImpl% [n, k, ell] (data, B) → (out) {
+def finish : Stmt Op Tst := ops% [n, k, ell] (data, B) → (out) {
   let t ← alloc 2;
-  run projectProbes.body [n, k, ell] (B, t);
+  run projectProbes [n, k, ell] (B, t);
   let C ← alloc (n * (k + ell));
-  run evaluate.body [n, k, ell] (data, B, t, C, out)
+  run evaluate [n, k, ell] (data, B, t, C, out)
 }
 
 /-- Full Hutch++, including zero-safe MGS for rank-deficient sketch images.
 All matrix entries, samples, arithmetic and control operations are visible;
 only local matrix-vector application is supplied by the operator model. -/
-def estimate (stream : ℕ) : Impl Op Tst := opsImpl% [n, k, ell] (data) → (out) {
+def estimate (stream : ℕ) : Stmt Op Tst := ops% [n, k, ell] (data) → (out) {
   let B ← alloc (n * (k + ell));
-  run (prepare stream).body [n, k, ell] (data, B);
-  run finish.body [n, k, ell] (data, B, out)
+  run (prepare stream) [n, k, ell] (data, B);
+  run finish [n, k, ell] (data, B, out)
 }
 
+/-- Hutch++: `[n, k, ell] (data : read) → (out : write 1)`, drawing `n * (k + ell)` tape
+positions. Operands are separated by block, so the output cell may be in the buffer of the
+operator data. -/
+def estimateRoutine (stream : ℕ) (dataLength : ℕ → ℕ → ℕ) : Routine Op Tst :=
+  routine% [n, k, ell] (data : ↑(dataLength n n)) → (out : 1)
+    draws n * (k + ell)
+    by blocks := estimate stream
+
 /-- A fixed three-dimension program with declared operator-data and output buffers. -/
-def program (stream : ℕ) : Program Op Tst 3 2 :=
-  (estimate stream).program 2 [⟨0, .const 0⟩] [⟨1, .const 0⟩]
+def estimateProgram (stream : ℕ) : Program Op Tst 3 2 := ⟨(estimate stream)⟩
 
 end NLAlib.HutchPlusPlus

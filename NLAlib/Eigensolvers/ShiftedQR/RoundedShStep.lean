@@ -103,7 +103,8 @@ state `NLAlib.ShiftedQR.ShState3` (with the words $(1 - \gamma)^k$,
 $2^{1/k}\theta\alpha B^{1/k}$, $\varepsilon/2$, $1.0015(1 - \gamma)$) ends in
 `NLAlib.ShiftedQR.ShOutcome` except with probability at most $\varphi$: the accepted branch
 (`NLAlib.ShiftedQR.shAccept_writes`) never fails, the exceptional one
-(`NLAlib.ShiftedQR.shExc_pwrites`) fails with probability at most $\varphi$. -/
+(`NLAlib.ShiftedQR.shExc_pwrites`) fails with probability at most $\varphi$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem shDecide_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I)
@@ -139,7 +140,7 @@ theorem shDecide_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
     (hj : LL.length + (excNet ε).length < ns) (hw : k * n ≤ w) (hlgL : lg.1 < L) (hlgv : ∀ b ∈ [a,
       s, wg, wr, ww, wp, g, thr, f], b.1 ≠ lg.1) :
-    PWrites law I (shDecide (O := O) (Q := Q)).body
+    PWrites law I (shDecide (O := O) (Q := Q))
       (Env.frame [n + 1, k, q, (excNet ε).length, w, LL.length] [a, (L, 0), wr, ww, wp, g, thr,
         (L + 1, 0),
         (L + 2, 0), (L + 3, 0), (L + 4, 0), (L + 5, 0), (L + 6, 0), (L + 7, 0), (L + 8, 0),
@@ -196,7 +197,8 @@ omit [Has DiskSampleOp O] in
 /-- The start of `Sh`: from the context `NLAlib.ShiftedQR.ShCtx`, the rounded potential,
 `Find` and the computation of the `comptau` test (`NLAlib.ShiftedQR.shPotential_writes`,
 `NLAlib.ShiftedQR.shFind_writes`, `NLAlib.ShiftedQR.shTest_writes`) reach
-`NLAlib.ShiftedQR.ShState3` with $\alpha = (1.01B)^{4m/2^m}$. -/
+`NLAlib.ShiftedQR.ShState3` with $\alpha = (1.01B)^{4m/2^m}$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem shPrefix_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hL : IsIndexLit M I) (hC : IsCmp id I) (hQ : IsToNat id I)
     (hNat : IsExactNatLit id M (n + 1)) {τ : Tape ℝ} {m : Mem ℝ} {L k q : ℕ} (hkq : k = 2 ^ q)
@@ -215,7 +217,7 @@ theorem shPrefix_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : I
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
     (hlog : HoldsSlottedLog lg ns w LL [] m.store) (hj : LL.length < ns) (hw : k * n ≤ w)
     (hlgL : lg.1 < L) (hlgv : ∀ b ∈ [a, s, wg, wr, ww, wp, g, thr, f], b.1 ≠ lg.1) :
-    Writes .total I τ (shPrefix (O := O) (Q := Q)).body
+    Writes .total I τ (shPrefix (O := O) (Q := Q))
       (Env.frame [n + 1, q, k, w, LL.length] [a, s, wg, (L, 0), (L + 1, 0), (L + 3, 0), (L + 4,
         0), (L + 5, 0),
         (L + 6, 0), lg])
@@ -271,7 +273,8 @@ $6\boldsymbol{u}(1.1\Sigma + 3R_{\mathrm{hi}}) \le
 \min(0.005, \sqrt{\varphi/(11(n + 1))}/8)\,\varepsilon R_{\mathrm{lo}}$.
 Then `NLAlib.ShiftedQR.shStepWithScratch`, from the context `NLAlib.ShiftedQR.ShCtx` with these
 words and scratch above `L`, writes only the matrix, the flag and the scratch, and ends in
-`NLAlib.ShiftedQR.ShOutcome` except with probability at most $\varphi$. -/
+`NLAlib.ShiftedQR.ShOutcome` except with probability at most $\varphi$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem shStepWithScratch_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I)
@@ -306,7 +309,7 @@ theorem shStepWithScratch_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
     (hj : LL.length + (excNet ε).length < ns) (hw : k * n ≤ w) (hlgL : lg.1 < L) (hlgv : ∀ b ∈ [a,
       s, wg, wr, ww, wp, g, thr, f], b.1 ≠ lg.1) :
-    PWrites law I (shStepWithScratch (O := O) (Q := Q)).body
+    PWrites law I (shStepWithScratch (O := O) (Q := Q))
       (Env.frame [n + 1, q, k, (excNet ε).length, w, LL.length] [a, s, wg, wr, ww, wp, g, thr,
         (L, 0),
         (L + 1, 0), (L + 2, 0), (L + 3, 0), (L + 4, 0), (L + 5, 0), (L + 6, 0), (L + 7, 0),
@@ -392,7 +395,8 @@ $6\boldsymbol{u}(1.1\Sigma + 3R_{\mathrm{hi}}) \le \min(0.005, \sqrt{\varphi/(11
 flag and, except with probability at most $\varphi$, ends in `NLAlib.ShiftedQR.ShOutcome`: the
 flag is $1$ and the matrix is an upper Hessenberg perturbed unitary similarity of $\mathbf{H}$
 with error $(1 + C)\|\mathbf{H}\|_2((1 + x)^k - 1)$, decoupled at the bottom (a bottom
-subdiagonal entry passes the scan) or with $\psi_k \le 1.002(1 - \gamma)\psi_k(\mathbf{H})$. -/
+subdiagonal entry passes the scan) or with $\psi_k \le 1.002(1 - \gamma)\psi_k(\mathbf{H})$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem shStep_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I)
@@ -431,7 +435,7 @@ theorem shStep_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
     (hj : LL.length + (excNet ε).length < ns) (hw : k * n ≤ w) (hlgv : ∀ b ∈ [a, s, wg, wr, ww,
       wp, g, thr, f], b.1 ≠ lg.1) :
-    PWrites law I (shStep (O := O) (Q := Q)).body
+    PWrites law I (shStep (O := O) (Q := Q))
       (Env.frame [n + 1, q, k, (excNet ε).length, w, LL.length] [a, s, wg, wr, ww, wp, g, thr, a,
         f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
@@ -448,7 +452,7 @@ theorem shStep_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
       (ShOutcome u k H γ tv ((1 + C) * specNorm H * ((1 + 300 * (n + 1) ^ 2 * u) ^ k - 1)) a f lg
         ns w LL (1 + (excNet ε).length))
       φ := by
-  have e : (shStep (O := O) (Q := Q)).body = Stmt.allocs [.const 2, .const 1, .const 1,
+  have e : (shStep (O := O) (Q := Q)) = Stmt.allocs [.const 2, .const 1, .const 1,
       .const 1, .const 1, .const 2 * (.var 0 * .var 0), .const 2 * .var 2, .const 2 * .var 2,
       .const 5, .const 1, .const 2 * .var 3, .const 1]
       (.frame [.var 0, .var 1, .var 2, .var 3, .var 4, .var 5] [⟨0, .var 6⟩, ⟨1, .var 7⟩,
@@ -456,7 +460,7 @@ theorem shStep_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
         ⟨11, .const 0⟩, ⟨12, .const 0⟩, ⟨13, .const 0⟩, ⟨14, .const 0⟩, ⟨15, .const 0⟩,
         ⟨16, .const 0⟩, ⟨17, .const 0⟩, ⟨18, .const 0⟩, ⟨19, .const 0⟩, ⟨20, .const 0⟩,
         ⟨21, .const 0⟩, ⟨22, .const 0⟩, ⟨0, .var 6⟩, ⟨9, .var 15⟩, ⟨10, .var 16⟩]
-        (shStepWithScratch (O := O) (Q := Q)).body) := rfl
+        (shStepWithScratch (O := O) (Q := Q))) := rfl
   rw [e]
   refine PWrites.allocs rfl (Pre₁ := fun L μ => (ShViews L n k ε a s wg wr ww wp g thr f ∧
     lg.1 < L) ∧ ShCtx L k ε H ss ((1 - γ) ^ k) ((2 : ℝ) ^ ((k : ℝ)⁻¹) * (θ * α * B ^ ((k : ℝ)⁻¹)))

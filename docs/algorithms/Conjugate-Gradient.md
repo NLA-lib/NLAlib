@@ -8,7 +8,7 @@ The certificates describe the actual stored state and its counted execution.
 ## Headline statement: scalar conjugate gradient in rounded arithmetic
 
 This is the strongest statement proved about a conjugate gradient program, as one theorem:
-[`exec_scalarProgram_work_le_and_quadForm_le`](../../NLAlib/Krylov/CG/HSCG/Carried/FinitePrecision/ScalarTheorem.lean).
+[`exec_scalarProgram_work_le_and_quadForm_le`](../../NLAlib/Krylov/CG/HSCG/Carried/Rounded/ScalarTheorem.lean).
 The other certificates on this page are for other programs or other operation models, and are
 listed under "Checked sources".
 
@@ -102,15 +102,15 @@ theorem exec_scalarProgram_work_le_and_quadForm_le (M : Machine ℝ) (u : ℝ)
 |---|---|---|
 | n, k | `d 0`, `d 1`, the two sizes of the program | `d : Fin 2 → ℕ` |
 | which (n, k) are covered | `domain d`, a parameter: the theorem holds for whatever set of sizes satisfies its hypotheses | `hd : domain d` |
-| A, b | `inputMatrix x`, `inputRhs x`: the words of buffers 0 and 1, read as a matrix and a vector | [`ScalarTheorem.lean`](../../NLAlib/Krylov/CG/HSCG/Carried/FinitePrecision/ScalarTheorem.lean) |
-| A symmetric with spectrum in [a, a′] | part of being an input: `accepts lower upper d raw rhs` is `Aᵀ = A ∧ spectrum ℝ A ⊆ Set.Icc (lower d) (upper d)`; a, a′ are `lower d`, `upper d` | [`StoredCertificate.lean`](../../NLAlib/Krylov/CG/HSCG/Carried/FinitePrecision/StoredCertificate.lean) |
+| A, b | `inputMatrix x`, `inputRhs x`: the words of buffers 0 and 1, read as a matrix and a vector | [`ScalarTheorem.lean`](../../NLAlib/Krylov/CG/HSCG/Carried/Rounded/ScalarTheorem.lean) |
+| A symmetric with spectrum in [a, a′] | part of being an input: `accepts lower upper d raw rhs` is `Aᵀ = A ∧ spectrum ℝ A ⊆ Set.Icc (lower d) (upper d)`; a, a′ are `lower d`, `upper d` | [`StoredCertification.lean`](../../NLAlib/Krylov/CG/HSCG/Carried/Rounded/StoredCertification.lean) |
 | scalar machine in the standard model | `M : Machine ℝ` with `hM : StdModel u id M` | [`Catalog/Scalar.lean`](../../NLAlib/Ops/Catalog/Scalar.lean) |
 | the first four conditions on E, and E ≤ 1/100 | `hMatvec` and `hAccuracy`; `em d` is the matrix-vector allowance, `Blas.seq.err u` the sequential dot, update and scaling errors | [`Profiles/Standard.lean`](../../NLAlib/Ops/Profiles/Standard.lean), [`Profiles/BlasCert.lean`](../../NLAlib/Ops/Profiles/BlasCert.lean) |
 | E may depend on the sizes | `E d` | |
 | every interpretation meeting the model | `I` with `hI : (RoundedScalarBlas.model …).contracts d x I` | [`Profiles/RoundedScalarBlas.lean`](../../NLAlib/Ops/Profiles/RoundedScalarBlas.lean) |
 | the run succeeds | `exec scalarProgram … = some st` | [`Ops/Exec.lean`](../../NLAlib/Ops/Exec.lean) |
-| number of instructions | `RoundedScalarBlas.resources.work st.cost`; every weight of these resources is 1 | [`OperationCount.lean`](../../NLAlib/Krylov/CG/HSCG/Carried/FinitePrecision/OperationCount.lean) |
-| x̂, r̂, the direction and the retained scalar are in memory | `StoresValues id n (2,0) (3,0) (4,0) (5,0) s rho st.mem`: buffers 2, 3, 4 hold `s.x`, `s.r`, `s.p` and buffer 5 holds `rho` | [`State.lean`](../../NLAlib/Krylov/CG/HSCG/Carried/FinitePrecision/State.lean) |
+| number of instructions | `RoundedScalarBlas.resources.work st.cost`; every weight of these resources is 1 | [`OperationCount.lean`](../../NLAlib/Krylov/CG/HSCG/Carried/Rounded/OperationCount.lean) |
+| x̂, r̂, the direction and the retained scalar are in memory | `StoresValues id n (2,0) (3,0) (4,0) (5,0) s rho st.mem`: buffers 2, 3, 4 hold `s.x`, `s.r`, `s.p` and buffer 5 holds `rho` | [`State.lean`](../../NLAlib/Krylov/CG/HSCG/Carried/Rounded/State.lean) |
 | (x − x̂)ᵀ A (x − x̂) | `quadForm (inputMatrix x) (xs - s.x)` | |
 | 12000·m²·√m·E·κ·a′·‖b‖²/a² | `2 * ‖b‖ ^ 2 * (6000 * m ^ 2 * √m * E d * κ * upper d) / lower d ^ 2` | |
 
@@ -118,7 +118,7 @@ The Lean statement says three things the theorem above leaves implicit: the tape
 arbitrary (the program draws nothing); the theorem is stated for a family `E`, `em`, `lower`,
 `upper` indexed by the sizes; and the three conclusions are about one execution state `st`.
 The proof only unfolds the certificate
-[`scalarCountedAlgorithm`](../../NLAlib/Krylov/CG/HSCG/Carried/FinitePrecision/OperationCount.lean);
+[`scalarCountedAlgorithm`](../../NLAlib/Krylov/CG/HSCG/Carried/Rounded/OperationCount.lean);
 the energy bound is `NLAlib.CGRun.quadForm_sub_x_le_four_mul_pow_add` for the run the program
 executes.
 
@@ -270,14 +270,14 @@ or a sharp adaptive-work claim.
 
 ## Rounded guarantees
 
-The [rounded carried certificate](../../NLAlib/Krylov/CG/HSCG/Carried/FinitePrecision/Certificate.lean)
+The [rounded carried certificate](../../NLAlib/Krylov/CG/HSCG/Carried/Rounded/Certification.lean)
 uses the actual computed residual self-product and returned state. Under its explicit
 symmetry, spectral interval, error-budget and precision-window assumptions, it gives residual-gap,
 physical-energy and backward-model guarantees. Rounded stopping and the exact Krylov grade
 are not interchangeable. A zero computed self-product stops the program; its numerical
 meaning is supplied by the rounded theorem's hypotheses.
 
-The [rounded stored certificate](../../NLAlib/Krylov/CG/HSCG/Carried/FinitePrecision/StoredCertificate.lean)
+The [rounded stored certificate](../../NLAlib/Krylov/CG/HSCG/Carried/Rounded/StoredCertification.lean)
 also provides `Rounded.Stored.scalarAlgorithm`. Its operation signature contains only scalar
 operations: all dense matrix applications and sequential BLAS reductions are actual scalar
 loops. The raw matrix is symmetric with spectrum in the admitted positive interval. The
@@ -285,7 +285,7 @@ matvec allowance is derived from the scalar roundoff and dimension, and the theo
 the resulting common-error and accumulated-precision inequalities explicitly. Full instruction,
 work, span, scratch and resident-memory bounds are recomputed after both lowerings.
 
-The [rounded stored PCG certificate](../../NLAlib/Krylov/CG/HSPCG/FinitePrecision/StoredCertificate.lean)
+The [rounded stored PCG certificate](../../NLAlib/Krylov/CG/HSPCG/Rounded/StoredCertification.lean)
 executes a capped zero-start variant using both supplied raw matrices. Initialization copies
 `b` into `r`, applies the actual rounded inverse preconditioner to form `z`, and copies `z`
 into `p`. A scoped scalar stores `dot(r,z)`. Each round tests that scalar, executes the existing
@@ -315,22 +315,42 @@ These scalar standard-model certificates describe arithmetic without finite-form
 or underflow; native IEEE execution requires a corresponding finite-format model. The
 reorthogonalized CG canonical certificates currently cover exact arithmetic.
 
+### Attainable accuracy of the stored iterate
+
+[`exec_scalarProgram_norm_sub_mulVec_le`](../../NLAlib/Krylov/CG/HSCG/Carried/Rounded/Accuracy.lean)
+bounds the true residual of the stored iterate by `(11k + 8)·E·a′·(‖x‖ + ‖x‖_A/√a)` for a cap
+`k ≥ k★(κ, E, 1)`, whether the program reaches the cap or stops on a zero computed residual.
+`RunAccuracy` in the same file transfers the residual gap, relative energy-decrement tracking,
+the inverse-tridiagonal estimate and minimax convergence on a set containing the eigenvalue
+intervals of the backward model.
+
+The conditions `k ≥ k★` and `k²√k·E·κ² ≤ 10⁻⁵` together limit κ. For `u = 2⁻⁵³` and the
+smallest admissible `E`, a floating-point evaluation of the two conditions gives:
+
+| n | E | largest κ (to 0.05) | k★ there |
+|---:|---:|---:|---:|
+| 10 | 1.78·10⁻¹⁴ | 40.4 | 164 |
+| 100 | 2.22·10⁻¹³ | 19.25 | 108 |
+| 1000 | 7.02·10⁻¹² | 6.85 | 62 |
+| 10000 | 2.22·10⁻¹⁰ | 2.3 | 37 |
+| 100000 | 7.02·10⁻⁹ | none | |
+
 ## Checked sources
 
-- Matrix-free exact certificates: [fixed horizon](../../NLAlib/Krylov/CG/HSCG/Certificate.lean),
-  [carried](../../NLAlib/Krylov/CG/HSCG/Carried/Certificate.lean),
-  [reorthogonalized](../../NLAlib/Krylov/CG/Reorth/Certificate.lean),
-  [PCG](../../NLAlib/Krylov/CG/HSPCG/Certificate.lean).
-- Exact stored certificates: [fixed horizon](../../NLAlib/Krylov/CG/HSCG/StoredCertificate.lean),
-  [carried](../../NLAlib/Krylov/CG/HSCG/Carried/StoredCertificate.lean),
-  [reorthogonalized](../../NLAlib/Krylov/CG/Reorth/StoredCertificate.lean),
-  [PCG](../../NLAlib/Krylov/CG/HSPCG/StoredCertificate.lean).
+- Matrix-free exact certificates: [fixed horizon](../../NLAlib/Krylov/CG/HSCG/Certification.lean),
+  [carried](../../NLAlib/Krylov/CG/HSCG/Carried/Certification.lean),
+  [reorthogonalized](../../NLAlib/Krylov/CG/Reorth/Certification.lean),
+  [PCG](../../NLAlib/Krylov/CG/HSPCG/Certification.lean).
+- Exact stored certificates: [fixed horizon](../../NLAlib/Krylov/CG/HSCG/StoredCertification.lean),
+  [carried](../../NLAlib/Krylov/CG/HSCG/Carried/StoredCertification.lean),
+  [reorthogonalized](../../NLAlib/Krylov/CG/Reorth/StoredCertification.lean),
+  [PCG](../../NLAlib/Krylov/CG/HSPCG/StoredCertification.lean).
 - [Exact scalar/vector operation model](../../NLAlib/Ops/Profiles/ExactBlas.lean) and
   [scalar dense matrix application](../../NLAlib/Ops/Profiles/StoredDense.lean).
 
-- Rounded stored scalar carried CG: [canonical certificate](../../NLAlib/Krylov/CG/HSCG/Carried/FinitePrecision/StoredCertificate.lean),
-  [actual stored word theorem](../../NLAlib/Krylov/CG/HSCG/Carried/FinitePrecision/StoredWords.lean).
-- Rounded stored scalar PCG: [canonical certificate](../../NLAlib/Krylov/CG/HSPCG/FinitePrecision/StoredCertificate.lean),
-  [total solver](../../NLAlib/Krylov/CG/HSPCG/FinitePrecision/Solve.lean),
+- Rounded stored scalar carried CG: [canonical certificate](../../NLAlib/Krylov/CG/HSCG/Carried/Rounded/StoredCertification.lean),
+  [stored routine](../../NLAlib/Krylov/CG/HSCG/Carried/Rounded/StoredRoutine.lean).
+- Rounded stored scalar PCG: [canonical certificate](../../NLAlib/Krylov/CG/HSPCG/Rounded/StoredCertification.lean),
+  [total solver](../../NLAlib/Krylov/CG/HSPCG/Rounded/Solve.lean),
   [continuation from input precision](../../NLAlib/Krylov/FinitePrecision/PCGContinuationPrecision.lean),
-  [functional dot evidence](../../NLAlib/Krylov/CG/HSPCG/FinitePrecision/Pairing.lean).
+  [functional dot evidence](../../NLAlib/Krylov/CG/HSPCG/Rounded/Pairing.lean).

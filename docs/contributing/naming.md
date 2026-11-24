@@ -79,6 +79,10 @@ spellings of §3. Hypothesis variables are `h`-prefixed (`hA`, `hQ`, `hk`). Exam
 | N12 | Renames. Before the `v0.1` tag a rename needs no alias; it is listed in a rename map `docs/renames/<YYYY-MM>-<topic>.json` (`{"renames": [{"old", "new", "rule"}], "statementChanged": [names]}`, full names), from which the explorer redirects old `#d/` links. A deleted declaration is listed with `"removed": true` and, as `new`, the declaration that now carries its content (a Jensen corollary's higher-moment theorem, T15). After `v0.1`, a rename keeps `@[deprecated (since := "YYYY-MM-DD")] alias old := new` for one release, and is also listed in a rename map. | no |
 | N18 | Dot notation. A root-namespace theorem whose first explicit argument is `hA : A.IsHermitian`, `hA : A.PosSemidef`, `hA : A.PosDef` (of any matrix expression, `(fromBlocks A B Bᴴ C).PosSemidef` included), `h : IsSVD A U σ V` or `hU : HasOrthonormalCols U` lives in that predicate's namespace (`Matrix.IsHermitian.eigenvalue_add_le`, `HasOrthonormalCols.gramSchmidtQ_mul_left`), so that `hA.eigenvalue_add_le hB k` works; the name then drops the `_of_<predicate>` it no longer needs (`Matrix.PosSemidef.re_det_fromBlocks_le`). A theorem already in an interface namespace (N9) or another predicate's namespace keeps it, and asymptotic forms stay in the root namespace (N17). | yes |
 
+The website also names declarations in its own metadata, which a rename map does not update:
+CI builds the explorer with the new names and reports the ones the website still uses
+([checks](checks.md), "The explorer build").
+
 ## 3. Spellings
 
 The tokens of the [vocabulary](vocabulary.md) vocabulary, and the ones a statement shape forces:

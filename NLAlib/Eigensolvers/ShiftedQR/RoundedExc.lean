@@ -123,7 +123,7 @@ variable {O Q : Type} [Has ScalarOp O] [Has DiskSampleOp O]
 componentwise, for the radius word at `Rt`, the net point $g$ (a pair at `Gp`), the rounded
 centre $z$ (a pair at `Z`) and one scratch word `T`. The interface is
 `[] (Rt, Gp, Z, T) → (S)`. -/
-def excShiftPoint : Impl O Q := opsImpl% [] (Rt, Gp, Z, T) → (S) {
+def excShiftPoint : Stmt O Q := ops% [] (Rt, Gp, Z, T) → (S) {
   call (Has.inj ScalarOp.mul) [] (Rt, Gp) → (T);
   call (Has.inj ScalarOp.add) [] (Z, T) → (S);
   call (Has.inj ScalarOp.mul) [] (Rt, Gp[1]) → (T);
@@ -135,13 +135,13 @@ $\mathrm{fl}(c_w\tilde R)$, the polar sample $w$ of that radius, the rounded cen
 $\mathrm{fl}(r + w)$, and one product; then, for each of the $n_0$ stored net points $g_j$, the
 shift $\mathrm{fl}(\mathrm{fl}(r + w) + \mathrm{fl}(\tilde R g_j))$ componentwise. The
 interface is `[n0] (C, Rt, Cw, G, T) → (Ss)`. -/
-def excShiftsWithScratch : Impl O Q := opsImpl% [n0] (C, Rt, Cw, G, T) → (Ss) {
+def excShiftsWithScratch : Stmt O Q := ops% [n0] (C, Rt, Cw, G, T) → (Ss) {
   call (Has.inj ScalarOp.mul) [] (Cw, Rt) → (T);
   call (Has.inj DiskSampleOp.polar) [] (T) → (T[1]);
   call (Has.inj ScalarOp.add) [] (C, T[1]) → (T[3]);
   call (Has.inj ScalarOp.add) [] (C[1], T[2]) → (T[4]);
   for j < n0 {
-    run excShiftPoint.body [] (Rt, G[2 * j], T[3], T[5], Ss[2 * j])
+    run excShiftPoint [] (Rt, G[2 * j], T[3], T[5], Ss[2 * j])
   }
 }
 
@@ -151,9 +151,9 @@ $c_w$ at `Cw` and $n_0$ net points $g_j$ (pairs at `G`, global data), draw one p
 of radius $\mathrm{fl}(c_w\tilde R)$ and store the $n_0$ shifts
 $\mathrm{fl}(r + w + \tilde R g_j)$ as pairs at `Ss`. The six scratch words are scoped. The
 interface is `[n0] (C, Rt, Cw, G) → (Ss)`. -/
-def excShifts : Impl O Q := opsImpl% [n0] (C, Rt, Cw, G) → (Ss) {
+def excShifts : Stmt O Q := ops% [n0] (C, Rt, Cw, G) → (Ss) {
   let T ← alloc 6;
-  run excShiftsWithScratch.body [n0] (C, Rt, Cw, G, T, Ss)
+  run excShiftsWithScratch [n0] (C, Rt, Cw, G, T, Ss)
 }
 
 end Program
@@ -171,8 +171,10 @@ section Program
 variable {O Q : Type} [Has ScalarOp O] [Has DiskSampleOp O]
 
 omit [Has DiskSampleOp O] in
-/-- One exceptional shift on any scalar machine stores `NLAlib.ShiftedQR.excShiftWord`. The
-output pair and the scratch word are disjoint from each other and from the inputs. -/
+/-- One exceptional shift on any scalar machine stores `NLAlib.ShiftedQR.excShiftWord`. The output
+pair and the scratch word are disjoint from each other and from the inputs. A fragment: its tree
+runs only inside the tree of `NLAlib.ShiftedQR.excShiftsWithScratch`.
+A fragment of the tree `NLAlib.ShiftedQR.excShiftsWithScratch`. -/
 private theorem excShiftPoint_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {m : Mem ℝ} {rt gp zt tt sp : ℕ × ℕ} {z : ℝ × ℝ} {R : ℝ} {gv : ℂ}
     (hrt : m.store.get rt.1 rt.2 = some R)
@@ -186,7 +188,7 @@ private theorem excShiftPoint_writes_word {M : Machine ℝ} {I : Interp O Q ℝ}
     (hsr : Fp.Disj (Store.inBlock sp.1 sp.2 2) (Store.inBlock rt.1 rt.2 1))
     (hsg : Fp.Disj (Store.inBlock sp.1 sp.2 2) (Store.inBlock gp.1 gp.2 2))
     (hsz : Fp.Disj (Store.inBlock sp.1 sp.2 2) (Store.inBlock zt.1 zt.2 2)) :
-    Writes .total I τ (excShiftPoint (O := O) (Q := Q)).body (Env.frame [] [rt, gp, zt, tt, sp])
+    Writes .total I τ (excShiftPoint (O := O) (Q := Q)) (Env.frame [] [rt, gp, zt, tt, sp])
       (Store.inBlock sp.1 sp.2 2 ⊔ Store.inBlock tt.1 tt.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.get sp.1 sp.2 = some (excShiftWord M z R gv).re ∧
         m'.store.get sp.1 (sp.2 + 1) = some (excShiftWord M z R gv).im) m := by
@@ -222,7 +224,8 @@ private theorem excShiftPoint_writes_word {M : Machine ℝ} {I : Interp O Q ℝ}
 
 omit [Has DiskSampleOp O] in
 /-- The loop of `NLAlib.ShiftedQR.excShiftsWithScratch` on any scalar machine stores the computed
-shifts of the net points, with the rounded centre in `T[3]`, `T[4]`. -/
+shifts of the net points, with the rounded centre in `T[3]`, `T[4]`.
+A step in the proof of `excShiftsWithScratch_writes_word`. -/
 private theorem excShiftsLoop_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {m : Mem ℝ} {c rt cw g t ss : ℕ × ℕ} {z : ℝ × ℝ} {R : ℝ} {gs : List ℂ}
     (hrt : m.store.get rt.1 rt.2 = some R)
@@ -238,7 +241,7 @@ private theorem excShiftsLoop_writes_word {M : Machine ℝ} {I : Interp O Q ℝ}
     Writes .total I τ (.loop (.var 0)
       (.frame [] [⟨1, .var 2⟩, ⟨3, .var 4 + .const 2 * .var 7⟩, ⟨4, .var 5 + .const 3⟩,
         ⟨4, .var 5 + .const 5⟩, ⟨5, .var 6 + .const 2 * .var 7⟩]
-        (excShiftPoint (O := O) (Q := Q)).body))
+        (excShiftPoint (O := O) (Q := Q))))
       (Env.frame [gs.length] [c, rt, cw, g, t, ss])
       (Store.inBlock ss.1 ss.2 (2 * gs.length) ⊔ Store.inBlock t.1 (t.2 + 5) 1)
       (fun m' => m'.pos = m.pos ∧ ∀ j < gs.length,
@@ -310,10 +313,10 @@ private theorem excShiftsLoop_writes_word {M : Machine ℝ} {I : Interp O Q ℝ}
 noncomputable def excSample (τ : Tape ℝ) (s p : ℕ) (ρ : ℝ) : ℂ :=
   polarDisk 0 ρ (Tape.windowFn τ s p 2)
 
-/-- `NLAlib.ShiftedQR.excShiftsWithScratch` on any scalar machine with an exact polar sampler
-stores the computed shifts `NLAlib.ShiftedQR.excShiftWord` of the net points, for the sample of
-radius $\mathrm{fl}(c_w\tilde R)$ read at the start position, and advances the position by
-two. -/
+/-- `NLAlib.ShiftedQR.excShiftsWithScratch` on any scalar machine with an exact polar sampler stores
+the computed shifts `NLAlib.ShiftedQR.excShiftWord` of the net points, for the sample of radius
+$\mathrm{fl}(c_w\tilde R)$ read at the start position, and advances the position by two. Shared by
+the trees of `NLAlib.ShiftedQR.excShifts` and `NLAlib.shExc`. -/
 private theorem excShiftsWithScratch_writes_word {M : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar M I) {s : ℕ} (hD : IsPolarDiskSampler s I) {τ : Tape ℝ} {m : Mem ℝ}
     {c rt cw g t ss : ℕ × ℕ} {r : ℂ} {R cv : ℝ} {gs : List ℂ}
@@ -328,7 +331,7 @@ private theorem excShiftsWithScratch_writes_word {M : Machine ℝ} {I : Interp O
     (hsr : Fp.Disj (Store.inBlock ss.1 ss.2 (2 * gs.length)) (Store.inBlock rt.1 rt.2 1))
     (hsg : Fp.Disj (Store.inBlock ss.1 ss.2 (2 * gs.length))
       (Store.inBlock g.1 g.2 (2 * gs.length))) :
-    Writes .total I τ (excShiftsWithScratch (O := O) (Q := Q)).body
+    Writes .total I τ (excShiftsWithScratch (O := O) (Q := Q))
       (Env.frame [gs.length] [c, rt, cw, g, t, ss])
       (Store.inBlock ss.1 ss.2 (2 * gs.length) ⊔ Store.inBlock t.1 t.2 6)
       (fun m' => m'.pos = m.pos + 2 ∧ m'.store.readBlock ss.1 ss.2 (2 * gs.length) =
@@ -415,7 +418,8 @@ private theorem excShiftsWithScratch_writes_word {M : Machine ℝ} {I : Interp O
 `s`: `NLAlib.ShiftedQR.excShifts` writes only its output, stores the computed shifts
 `NLAlib.ShiftedQR.excShiftWord` of the $n_0$ net points for the polar sample of radius
 $\mathrm{fl}(c_w\tilde R)$ read at the start position, and advances the position by two. The
-output is disjoint from the radius word and the net. -/
+output is disjoint from the radius word and the net.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem excShifts_writes_word {M : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar M I) {s : ℕ} (hD : IsPolarDiskSampler s I) {τ : Tape ℝ} {m : Mem ℝ}
     {c rt cw g ss : ℕ × ℕ} {r : ℂ} {R cv : ℝ} {gs : List ℂ}
@@ -426,7 +430,7 @@ theorem excShifts_writes_word {M : Machine ℝ} {I : Interp O Q ℝ}
     (hsr : Fp.Disj (Store.inBlock ss.1 ss.2 (2 * gs.length)) (Store.inBlock rt.1 rt.2 1))
     (hsg : Fp.Disj (Store.inBlock ss.1 ss.2 (2 * gs.length))
       (Store.inBlock g.1 g.2 (2 * gs.length))) :
-    Writes .total I τ (excShifts (O := O) (Q := Q)).body
+    Writes .total I τ (excShifts (O := O) (Q := Q))
       (Env.frame [gs.length] [c, rt, cw, g, ss]) (Store.inBlock ss.1 ss.2 (2 * gs.length))
       (fun m' => m'.pos = m.pos + 2 ∧ m'.store.readBlock ss.1 ss.2 (2 * gs.length) =
         some ((gs.map (excShiftWord M (excCentreWord M r (excSample τ s m.pos (M.mul cv R)))
@@ -697,14 +701,15 @@ forward-stability distance for the shifted steps. The translate has radius
 $\mathrm{fl}(\varepsilon\tilde R/2)$, and its points are not intersected with a disk (the
 paper's intersection with $\mathbb{D}(r, \tilde R)$ can drop the points covering the boundary);
 the rounding budget $0.005\,\varepsilon\tilde R$ replaces the paper's $0.1\,\varepsilon\tilde R$,
-which exceeds the covering slack, and the packing count is $11$, not $3$. -/
+which exceeds the covering slack, and the packing count is $11$, not $3$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine`, on their scratch. -/
 theorem excShifts_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) {law : ℕ → Measure ℝ} {s : ℕ} (hD : IsPolarDiskSampler s I)
     (hU : law s = volume.restrict (Set.Icc 0 1)) {N : ℕ} (e : Fin N → ℂ) {r : ℂ} {R ε φ : ℝ}
     (hR : 0 < R) (hε : 0 < ε) (hε2 : ε ≤ 1 / 2) (hφ : 0 ≤ φ) (hφ1 : φ ≤ 1 / 5)
     (hu : u ≤ 1 / 100) (hδ : 6 * u * (‖r‖ + 3 * R) ≤ 0.005 * ε * R)
     (hδη : 6 * u * (‖r‖ + 3 * R) ≤ ε * R * √(φ / (11 * N)) / 8) {c rt cw g ss : ℕ × ℕ} :
-    PWrites law I (excShifts (O := O) (Q := Q)).body
+    PWrites law I (excShifts (O := O) (Q := Q))
       (Env.frame [(excNet ε).length] [c, rt, cw, g, ss])
       (Store.inBlock ss.1 ss.2 (2 * (excNet ε).length))
       (fun μ => μ.Live [c, rt, cw, g, ss] ∧ μ.store.get c.1 c.2 = some r.re ∧

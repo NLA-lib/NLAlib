@@ -44,16 +44,17 @@ index reads of $m$ and $n_0$ from the parameter words (`NLAlib.Ops.PWrites.alloc
 `NLAlib.Ops.PWrites.bindIdx`) carry a probabilistic specification of
 `NLAlib.ShiftedQR.roundedDecoupleLoopWith` at every fresh buffer to
 `NLAlib.ShiftedQR.roundedDecoupleWith` from the precondition of
-`NLAlib.ShiftedQR.RandomDecouplingRoutineContract`. -/
+`NLAlib.ShiftedQR.RandomDecouplingRoutineContract`.
+A step in the proof of `NLAlib.ShiftedQR.roundedDecoupleWith_randomDecouplingRoutineContract_at`. -/
 theorem roundedDecouple_pwrites_of_loop {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hI : I.IsMeasurable) {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o))
     (hS : IsScalar M I) (hM : StdModel u id M) (hQ : IsToNat id I) {law : ℕ → Measure ℝ}
-    {k q F T : ℕ} {SE : Impl O Q} (hqk : q ≤ k)
+    {k q F T : ℕ} {SE : Stmt O Q} (hqk : q ≤ k)
     {w p f lg : ℕ × ℕ} {ns ws : ℕ} {ps qs : List ℝ} {tL R tv γ Bi α ε : ℝ}
     (hps : ps = roundedDecoupleParams tL R tv γ Bi α ε k q ++ qs)
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {e ωD φ : ℝ} (hφ : 0 ≤ φ)
     (hloop : ∀ L, lg.1 < L → (∀ b ∈ [w, p, f], b.1 ≠ lg.1) →
-      PWrites law I (roundedDecoupleLoopWith SE).body
+      PWrites law I (roundedDecoupleLoopWith SE)
       (Env.frame [n + 1, k, ps.length, F, T, q, (excNet ε).length, ws]
         [w, p, (L, 0), w, f, lg])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
@@ -68,7 +69,7 @@ theorem roundedDecouple_pwrites_of_loop {M : Machine ℝ} {I : Interp O Q ℝ} {
             IsUpperHessenberg H' ∧
         (∃ j : Fin n, n ≤ (j : ℕ) + k ∧ ‖H' j.succ j.castSucc‖ ≤ ωD) ∧
         HoldsMatrix w H' μ'.store) φ) :
-    PWrites law I (roundedDecoupleWith SE).body
+    PWrites law I (roundedDecoupleWith SE)
       (Env.frame [n + 1, k, ps.length, F, T, ns, ws] [w, p, w, f, lg])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * ws)))
@@ -245,7 +246,7 @@ theorem roundedDecoupleWith_randomDecouplingRoutineContract_at {M : Machine ℝ}
     (hfuel : (1 + u) ^ 2 * ((1.002 * (1 - γ)) ^ F * Nmax) ^ 2 ≤ tL)
     (hSN : Nmax + F * ((1 + C) * S * ((1 + 300 * (nmax + 1) ^ 2 * u) ^ k - 1)) ≤ S)
     (hsmall : F * ((1 + C) * S * ((1 + 300 * (nmax + 1) ^ 2 * u) ^ k - 1)) ≤
-      g / 2 / (16 * (nmax + 1) * (2 * B))) {T : ℕ} {qs : List ℝ} {SE : Impl O Q}
+      g / 2 / (16 * (nmax + 1) * (2 * B))) {T : ℕ} {qs : List ℝ} {SE : Stmt O Q}
     (hSE : RandomSmallEigContractAt law β φse k 12 T S qs SE I)
     (hq12 : qs = [] ∨ qs.length = 12) {ps : List ℝ}
     (hps : ps = roundedDecoupleParams tL R tv γ Bi α ε k q ++ qs) {ns ws : ℕ}

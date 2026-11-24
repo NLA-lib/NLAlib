@@ -75,19 +75,20 @@ theorem stmtCost_initialize (n cap len b v c p t : ℕ) :
     stmtCost (initializeState (Op := Op) (Tst := Tst)) [n, cap, len, b, v, c, p, t] =
       zeroCount ((cap + 1) * n) + zeroCount len + zeroCount n +
         Count.one (Has.inj Blas1Op.dot) [n] + normalizeCount n := by
-  simp [initializeState, stmtCost, useCost, stmtCost_zero, stmtCost_normalize]
+  simp [initializeState, stmtCost, useCost, fillRoutine, stmtCost_fillMap, zeroCount,
+    stmtCost_normalize]
   module
 
 /-- The borrowed initializer requires only a call workspace regardless of output lengths. -/
 theorem stmtPeak_initialize_le (W : Op → List ℕ → ℕ) (n cap len b v c p t : ℕ) :
     stmtPeak W (initializeState (Op := Op) (Tst := Tst)) [n, cap, len, b, v, c, p, t] ≤
       callPeak W n := by
-  have hzV := stmtPeak_zero_le (Op := Op) (Tst := Tst) W ((cap + 1) * n) v
-  have hzC := stmtPeak_zero_le (Op := Op) (Tst := Tst) W len c
-  have hzP := stmtPeak_zero_le (Op := Op) (Tst := Tst) W n p
+  have hzV := stmtPeak_fillMap_le (Tst := Tst) (Has.inj (ScalarOp.lit 0) : Op) W ((cap + 1) * n) v
+  have hzC := stmtPeak_fillMap_le (Tst := Tst) (Has.inj (ScalarOp.lit 0) : Op) W len c
+  have hzP := stmtPeak_fillMap_le (Tst := Tst) (Has.inj (ScalarOp.lit 0) : Op) W n p
   have hn := stmtPeak_normalize_le (Tst := Tst) W n b t v (c + 2 * cap + 1) v
     (c + 2 * cap + 1)
-  simp [initializeState, stmtPeak]
+  simp [initializeState, stmtPeak, fillRoutine]
   simp only [callPeak] at hn ⊢
   omega
 

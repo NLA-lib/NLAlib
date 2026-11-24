@@ -674,7 +674,7 @@ section Programs
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O]
 
 /-- Zero-fill a log of `ns` slots of `w` entries: `[ns, w] () → (Lg)`. -/
-def slottedLogOpen : Impl O Q := opsImpl% [ns, w] () → (Lg) {
+def slottedLogOpen : Stmt O Q := ops% [ns, w] () → (Lg) {
   for t < ns * (1 + 5 * w) {
     call (Has.inj (ScalarOp.lit 0)) [] () → (Lg[t])
   }
@@ -683,7 +683,7 @@ def slottedLogOpen : Impl O Q := opsImpl% [ns, w] () → (Lg) {
 /-- Write entry `i` of slot `j`: the plane `r` as a literal, then the pairs at the views `Pw`,
 `Qw`. `[w, j, i, r] (Pw, Qw) → (Lg)`. The producer passes the plane as a dimension and $p, q$ as
 views of words it already holds. -/
-def slottedLogWrite : Impl O Q := opsImpl% [w, j, i, r] (Pw, Qw) → (Lg) {
+def slottedLogWrite : Stmt O Q := ops% [w, j, i, r] (Pw, Qw) → (Lg) {
   call (Has.inj IndexOp.lit) [r] () → (Lg[j * (1 + 5 * w) + 1 + 5 * i]);
   call (Has.inj ScalarOp.copy) [] (Pw) → (Lg[j * (1 + 5 * w) + 2 + 5 * i]);
   call (Has.inj ScalarOp.copy) [] (Pw[1]) → (Lg[j * (1 + 5 * w) + 3 + 5 * i]);
@@ -692,7 +692,7 @@ def slottedLogWrite : Impl O Q := opsImpl% [w, j, i, r] (Pw, Qw) → (Lg) {
 }
 
 /-- Validate slot `j`: write the literal one to its valid word. `[w, j] () → (Lg)`. -/
-def slottedLogValidate : Impl O Q := opsImpl% [w, j] () → (Lg) {
+def slottedLogValidate : Stmt O Q := ops% [w, j] () → (Lg) {
   call (Has.inj IndexOp.lit) [1] () → (Lg[j * (1 + 5 * w)])
 }
 
@@ -728,11 +728,13 @@ theorem holdsSlottedLog_nil_of_readBlock {lg : ℕ × ℕ} {ns w : ℕ} {s : Sto
   exact ⟨h1, by rw [h2, flatMap_entryWords_padEntries_nil]⟩
 
 omit [Has IndexOp O] [Inhabited ℝ] in
-/-- Opening a log stores the empty log. -/
+/-- Opening a log stores the empty log.
+Shared by the trees of `NLAlib.hessenbergReduceQ`, `NLAlib.ShiftedQR.roundedDecoupleLoopWith`,
+`NLAlib.ShiftedQR.roundedDecoupleWith` and 3 more. -/
 theorem slottedLogOpen_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar Mch I) (hM : StdModel u id Mch) {ns w : ℕ} {lg : ℕ × ℕ} {τ : Tape ℝ}
     {μ : Mem ℝ} (hroom : lg.2 + ns * (1 + 5 * w) ≤ μ.store.len lg.1) :
-    Writes .total I τ (slottedLogOpen (O := O) (Q := Q)).body (Env.frame [ns, w] [lg])
+    Writes .total I τ (slottedLogOpen (O := O) (Q := Q)) (Env.frame [ns, w] [lg])
       (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsSlottedLog lg ns w [] [] μ'.store) μ := by
   have h0 : Mch.lit 0 = 0 := by simpa using hM.lit 0
@@ -749,7 +751,9 @@ theorem slottedLogOpen_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
 
 omit [Inhabited ℝ] in
 /-- Writing an entry appends it to the pending slot. The plane is an exact natural below
-`nmax` (`hNat`); this hypothesis belongs to the log, not to the producer. -/
+`nmax` (`hNat`); this hypothesis belongs to the log, not to the producer.
+Shared by the trees of `NLAlib.reduceLastStep`, `NLAlib.ShiftedQR.stepWithDiag`,
+`NLAlib.SmallEig.rhess`. -/
 theorem slottedLogWrite_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar Mch I)
     (hL : IsIndexLit Mch I) {nmax : ℕ} (hNat : IsExactNatLit id Mch nmax) {ns w r : ℕ}
     (hr : r ≤ nmax) {lg pw qw : ℕ × ℕ} {L : List (Option (List GivensEntry))}
@@ -759,7 +763,7 @@ theorem slottedLogWrite_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : Is
     (hq : μ.store.readBlock qw.1 qw.2 2 = some [q.re, q.im])
     (hd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (Store.inBlock pw.1 pw.2 2 ⊔ Store.inBlock qw.1 qw.2 2)) :
-    Writes .total I τ (slottedLogWrite (O := O) (Q := Q)).body
+    Writes .total I τ (slottedLogWrite (O := O) (Q := Q))
       (Env.frame [w, L.length, P.length, r] [pw, qw, lg])
       (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsSlottedLog lg ns w L (P ++ [(r, p, q)]) μ'.store) μ := by
@@ -790,7 +794,7 @@ theorem slottedLogWrite_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : Is
       by simpa using Store.get_of_readBlock h.1 (j := 1) (by omega) 0,
       by simpa using Store.get_of_readBlock h.2 (j := 0) (by omega) 0,
       by simpa using Store.get_of_readBlock h.2 (j := 1) (by omega) 0⟩
-  have W : Writes .total I τ (slottedLogWrite (O := O) (Q := Q)).body
+  have W : Writes .total I τ (slottedLogWrite (O := O) (Q := Q))
       (Env.frame [w, L.length, P.length, r] [pw, qw, lg]) (Store.inBlock lg.1 o 5)
       (fun μ' => μ'.pos = μ.pos ∧ μ'.store.readBlock lg.1 o 5 = some (entryWords (r, p, q))) μ := by
     unfold slottedLogWrite
@@ -838,12 +842,14 @@ theorem slottedLogWrite_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} (hS : Is
 
 omit [Has ScalarOp O] [Inhabited ℝ] in
 /-- Validating the pending slot closes it as accepted, on a machine whose literal one is
-positive. -/
+positive.
+Shared by the trees of `NLAlib.hessenbergReduceLast`, `NLAlib.ShiftedQR.trialAccept`,
+`NLAlib.SmallEig.decoupleLast` and 1 more. -/
 theorem slottedLogValidate_writes_of_pos {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hL : IsIndexLit Mch I) (h1 : 0 < Mch.lit 1) {ns w : ℕ} {lg : ℕ × ℕ}
     {L : List (Option (List GivensEntry))} {P : List GivensEntry} {τ : Tape ℝ} {μ : Mem ℝ}
     (h : HoldsSlottedLog lg ns w L P μ.store) (hL' : L.length < ns) :
-    Writes .total I τ (slottedLogValidate (O := O) (Q := Q)).body
+    Writes .total I τ (slottedLogValidate (O := O) (Q := Q))
       (Env.frame [w, L.length] [lg]) (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsSlottedLog lg ns w (L ++ [some P]) [] μ'.store) μ := by
   have hle := slot_end_le (w := w) hL'
@@ -854,12 +860,14 @@ theorem slottedLogValidate_writes_of_pos {Mch : Machine ℝ} {I : Interp O Q ℝ
   exact ⟨hp, h.of_validate hL' hfr hg (by simpa using h1)⟩
 
 omit [Has ScalarOp O] [Inhabited ℝ] in
-/-- Validating the pending slot closes it as accepted. -/
+/-- Validating the pending slot closes it as accepted.
+Shared by the trees of `NLAlib.hessenbergReduceLast`, `NLAlib.ShiftedQR.trialAccept`,
+`NLAlib.SmallEig.decoupleLast` and 1 more. -/
 theorem slottedLogValidate_writes {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hL : IsIndexLit Mch I) (hM : StdModel u id Mch) (hu : u < 1) {ns w : ℕ} {lg : ℕ × ℕ}
     {L : List (Option (List GivensEntry))} {P : List GivensEntry} {τ : Tape ℝ} {μ : Mem ℝ}
     (h : HoldsSlottedLog lg ns w L P μ.store) (hL' : L.length < ns) :
-    Writes .total I τ (slottedLogValidate (O := O) (Q := Q)).body
+    Writes .total I τ (slottedLogValidate (O := O) (Q := Q))
       (Env.frame [w, L.length] [lg]) (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsSlottedLog lg ns w (L ++ [some P]) [] μ'.store) μ := by
   have h1 : 0 < Mch.lit 1 := by

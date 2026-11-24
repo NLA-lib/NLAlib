@@ -38,7 +38,7 @@ theorem measureReal_not_exists_isEigenvalueListing_le_le_log_sq_of_hasLaw_comple
     μ.real {ω | ¬ ∃ d : n → ℂ,
       IsEigenvalueListing (M + (γ / √(Fintype.card n : ℝ)) • G ω) d ∧
         ∀ i j, i ≠ j → t < ‖d i - d j‖} ≤
-      (10000 * Real.exp 1) * (Fintype.card n : ℝ) ^ 5 * √(t / γ) *
+      (2048 * Real.exp 1) * (Fintype.card n : ℝ) ^ (11 / 3 : ℝ) * (t / γ) ^ (2 / 3 : ℝ) *
         (specNorm M / γ + Real.log (γ / t)) ^ 2
 ```
 
@@ -123,14 +123,17 @@ Szarek's exact law or Śniady's coupling). Singular values are indexed in decrea
    value (`singularValues_submatrix_le`), so for the normalized perturbation
    $\mathbb{P}[\sigma_{n-1}(\mathbf{M} + \gamma n^{-1/2}\mathbf{G}) \le x] \le n^5(x/\gamma)^4$.
 
-**Gap tail.** Put $\tau = t/\gamma$, $q = \tau^{1/4}$, condition cutoff $B = 1/q$, norm cutoff
+**Gap tail.** Put $\tau = t/\gamma$, $q = (n\tau)^{1/3}$ (when $n\tau \le 1$; otherwise the bound
+exceeds $1$), condition cutoff $B = 1/q$, norm cutoff
 radius $R = 3\gamma K$ with $K = \|\mathbf{M}\|_2/\gamma + \log(1/\tau)$, and a $t/2$-net of
 $36(R/t)^2$ points of the disk of radius $R$. If two eigenvalues are within $t$, some net point
 $y$ has both within $t$, and on the diagonalizer event `EigenvalueClustering` gives
 $\sigma_{n-1}(y\mathbf{I} - \mathbf{X}) \le 2tB$. The three failure probabilities are at most
-$128e\,n^3\sqrt\tau K^2$ (condition at $q$), $\tau^2$ (norm) and
-$36(R/t)^2n^5(2tB/\gamma)^4 = 576\,n^5(R/\gamma)^2\tau \le 5184\,n^5\tau K^2$ (net), and sum to at
-most $10000e\,n^5\sqrt\tau K^2$: constants $(10000e, 5, 1/2, 2)$, with no additive floor. Orders
+$128e\,n^3q^2K^2$ (condition at $q$), $\tau^2$ (norm) and
+$36(R/t)^2n^5(2tB/\gamma)^4 = 576\,n^3q^2(R/\gamma)^2 \le 5184\,n^3q^2K^2$ (net, as $q^6 = n^2\tau^2$),
+and sum to at most $2048e\,n^3q^2K^2 = 2048e\,n^{11/3}\tau^{2/3}K^2$: constants
+$(2048e, 11/3, 2/3, 2)$, with no additive floor. The cutoff balances the net term against the
+condition tail (the earlier $q = \tau^{1/4}$ gave $(10000e, 5, 1/2, 2)$). Orders
 $0$ and $1$ have no pair of eigenvalues and are handled separately.
 
 ## 6. Shared machinery

@@ -19,7 +19,7 @@ Early breakdown uses the actual executed length; zero tails are excluded from th
 The bound concerns an unnormalized physical Ritz vector. Converting it to an eigenvalue-error
 bound would additionally require a lower bound on that vector's norm, so none is silently added.
 
-`Krylov/Lanczos/RoundedRitz.lean` owns matrix readback bridges, `RitzResidual` stored-data predicate, output-level residual guarantee,
+`Krylov/Lanczos/Rounded/Ritz.lean` owns matrix readback bridges, `RitzResidual` stored-data predicate, output-level residual guarantee,
 and a total `runs_solve_ritz` corollary using the unchanged ordinary rounded `runs_solve` and
 `ConditionalRuns.mono`. All input-model/precision/buffer assumptions remain explicit; there
 is no successful-execution premise. Zero input/cap remain handled by `runs_solve`; the Ritz
@@ -29,7 +29,7 @@ No primitive implementation, algorithm tree, target registry or core contract ch
 
 ## Named models for the full reorthogonalized solver
 
-`Reorth/RoundedModels.lean` supplies `wellTyped_program`, `runs_solve_of_model` and
+`Reorth/Rounded/Models.lean` supplies `wellTyped_program`, `runs_solve_of_model` and
 `runs_solve_standard` for the same complete two-pass program and actual rounded history.
 These reuse `Standard.Model.laws`, `Precision.of_budgets` and proved profile refinement.
 The model wrapper retains the declared workspace; the lowering wrapper pushes the complete
@@ -41,7 +41,7 @@ The ordinary full-solver wrappers provide the template; no execution proof is du
 The total solver corollary uses `RitzOutput`, retaining the entire original `Output` plus
 `cap = 0 ∨ rhs = 0 ∨ RitzResidual ...`. It therefore accepts zero cap/input as well. Only the
 output-level nonempty Ritz lemma needs the explicit nonzero assumptions described above.
-`Lanczos/RitzCertificate.lean` applies `Algorithm.mapPost` to the same output consequence,
+`Lanczos/RitzCertification.lean` applies `Algorithm.mapPost` to the same output consequence,
 retaining its original full count, work, span and memory bounds. `ritzSpecification` changes
 only the numerical postcondition; `ritzAlgorithm` accepts the original certificate and the
 size-only linear precision bound.

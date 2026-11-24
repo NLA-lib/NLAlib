@@ -24,11 +24,11 @@ matrix large: a unitary similarity whose last column is a random direction, foll
 bottom-up Hessenberg reduction, which fixes the last coordinate vector. The direction here is a
 complex Gaussian vector $\mathbf{g}$ of $2N$ draws, rotated to $\mathbf{e}_N$ by $N - 1$ rounded
 Givens rotations, instead of the paper's uniform vector on the sphere applied by a reflector: the
-phase of the last column is explicit (the paper's erratum P3), anti-concentration in a fixed
+phase of the last column is explicit, anti-concentration in a fixed
 direction is that of a Gaussian
 (`NLAlib.measureReal_norm_dotProduct_le_le_of_hasLaw_complexGaussianVector`),
 and the weights are taken for the eigenvectors of the input, fixed before the draw, then
-transferred to the output (`NLAlib.exists_lastRowWeights_ge_of_norm_sub_le`, the erratum P4).
+transferred to the output (`NLAlib.exists_lastRowWeights_ge_of_norm_sub_le`).
 
 ## Main definitions
 
@@ -64,26 +64,26 @@ as the entries of slot $j_0$ (validated), the reduction's rounds in the slots
 $j_0 + 1, \dots, j_0 + N - 2$. The interface is `[N, w, j0] (A) → (A, Lg)`; the vector, the
 coefficients and the scratch are scoped.
 Algorithm: small-eig -/
-def rhess (sG : ℕ) : Impl O Q := opsImpl% [N, w, j0] (A) → (A, Lg) {
+def rhess (sG : ℕ) : Stmt O Q := ops% [N, w, j0] (A) → (A, Lg) {
   let G ← alloc (2 * N);
   let Cf ← alloc 4;
   let Uv ← alloc 4;
   let Tm ← alloc 10;
-  run (gaussDraws (O := O) (Q := Q) sG).body [2 * N] (G);
+  run (gaussDraws (O := O) (Q := Q) sG) [2 * N] (G);
   for j < N - 1 {
     call (Has.inj ScalarOp.copy) [] (G[2 * j + 2]) → (Uv);
     call (Has.inj ScalarOp.neg) [] (G[2 * j + 3]) → (Uv[1]);
     call (Has.inj ScalarOp.neg) [] (G[2 * j]) → (Uv[2]);
     call (Has.inj ScalarOp.copy) [] (G[2 * j + 1]) → (Uv[3]);
-    run (slottedLogWrite (O := O) (Q := Q)).body [w, j0, j, j] (Uv, Uv[2], Lg);
-    run (coefficients (Op := O) (Tst := Q)).body [] (Uv, Uv[2], Cf, Cf[2]);
-    run (rotateLeftWithScratch (Op := O) (Tst := Q)).body []
+    run (slottedLogWrite (O := O) (Q := Q)) [w, j0, j, j] (Uv, Uv[2], Lg);
+    run (coefficients (Op := O) (Tst := Q)) [] (Uv, Uv[2], Cf, Cf[2]);
+    run (rotateLeftWithScratch (Op := O) (Tst := Q)) []
       (Cf, Cf[2], G[2 * j], G[2 * j + 2], Tm, G[2 * j], G[2 * j + 2]);
-    run (rotateRows (Op := O) (Tst := Q)).body [N, j] (A, Cf, Cf[2], A);
-    run (rotateColumns (Op := O) (Tst := Q)).body [N, j] (A, Cf, Cf[2], A)
+    run (rotateRows (Op := O) (Tst := Q)) [N, j] (A, Cf, Cf[2], A);
+    run (rotateColumns (Op := O) (Tst := Q)) [N, j] (A, Cf, Cf[2], A)
   };
-  run (slottedLogValidate (O := O) (Q := Q)).body [w, j0] (Lg);
-  run (hessenbergReduceLast (O := O) (Q := Q)).body [N, w, j0 + 1] (A, A, Lg)
+  run (slottedLogValidate (O := O) (Q := Q)) [w, j0] (Lg);
+  run (hessenbergReduceLast (O := O) (Q := Q)) [N, w, j0 + 1] (A, A, Lg)
 }
 
 end Program
@@ -115,8 +115,9 @@ private theorem holdsMatrix_colVec {N L : ℕ} {s : Store ℝ} {v : Fin N → �
     simpa [this] using (h i).2
 
 /-- **The words of one rotation of `RHess`**: the four words
-$(\Re g_{j+1}, -\Im g_{j+1}, -\Re g_j, \Im g_j)$ into `Uv`; only `Uv` is written. -/
-private theorem writes_rhessUv {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+$(\Re g_{j+1}, -\Im g_{j+1}, -\Re g_j, \Im g_j)$ into `Uv`; only `Uv` is written.
+A step in the proof of `NLAlib.SmallEig.rhess_step_writes`. -/
+private theorem rhessUv_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {ρ : Env} {m : Mem ℝ} {F : Fp} {P : Mem ℝ → Prop}
     {L t : ℕ} {x₀ x₁ y₀ y₁ : ℝ} {i₁ u₁ i₂ u₂ i₃ u₃ i₄ u₄ : List Operand} {next : Stmt O Q}
     (h₁ : Operand.evalList ρ i₁ = some [(L, t + 2)])
@@ -171,8 +172,9 @@ variable {O Q : Type} [Has ScalarOp O] [Has CmpTst Q]
 omit [Has CmpTst Q] in
 /-- **The rotations of one step of `RHess`**: with the coefficients in `Cf`, the rotation of the
 entries $j, j + 1$ of the vector at `G`, then of the rows and the columns $j, j + 1$ of the matrix
-at `a`; only `a`, `G` and the scratch `Tm` are written. -/
-private theorem writes_rhessRotate {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
+at `a`; only `a`, `G` and the scratch `Tm` are written.
+A step in the proof of `rhess_loop_writes`. -/
+private theorem rhessRotate_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {ρ : Env} {m : Mem ℝ} {N L j : ℕ} (hj : j + 1 < N) {a : ℕ × ℕ}
     {B : Matrix (Fin N) (Fin N) ℂ} {v : Fin N → ℂ} {cs : ℂ × ℂ} {ds₆ ds₇ ds₈ : List IExp}
     {as₆ as₇ as₈ : List Operand} (hd₆ : IExp.evalList ρ.idx ds₆ = some [])
@@ -188,9 +190,9 @@ private theorem writes_rhessRotate {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     (hs : m.store.readBlock (L + 1) 2 2 = some [cs.2.re, cs.2.im])
     (hB : HoldsMatrix a B m.store) (hV : HoldsMatrix (L, 0) (replicateCol (Fin 1) v) m.store) :
     Writes .total I τ
-      (.seq (.frame ds₆ as₆ (rotateLeftWithScratch (Op := O) (Tst := Q)).body)
-        (.seq (.frame ds₇ as₇ (rotateRows (Op := O) (Tst := Q)).body)
-          (.frame ds₈ as₈ (rotateColumns (Op := O) (Tst := Q)).body))) ρ
+      (.seq (.frame ds₆ as₆ (rotateLeftWithScratch (Op := O) (Tst := Q)))
+        (.seq (.frame ds₇ as₇ (rotateRows (Op := O) (Tst := Q)))
+          (.frame ds₈ as₈ (rotateColumns (Op := O) (Tst := Q))))) ρ
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Fp.above L)
       (fun m' => m'.pos = m.pos ∧
         HoldsMatrix a (machineColRotation M ⟨j, by omega⟩ ⟨j + 1, hj⟩ cs.1 cs.2
@@ -210,7 +212,7 @@ private theorem writes_rhessRotate {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     intro b i hi
     simp [Fp.blocks, Store.inBlock] at hi
     exact Or.inr (show L ≤ b by omega)
-  refine (writes_rotateLeftWithScratch_word (τ := τ) (m := m) (c := (L + 1, 0)) (s := (L + 1, 2))
+  refine (rotateLeftWithScratch_writes_word (τ := τ) (m := m) (c := (L + 1, 0)) (s := (L + 1, 2))
     (x := (L, 2 * j)) (y := (L, 2 * j + 2)) (t := (L + 3, 0)) (cv := cs.1) (sv := cs.2)
     (xv := v ⟨j, by omega⟩) (yv := v ⟨j + 1, hj⟩) hS (by simp) (by simp) (by simp) (by simp)
     (Fp.disj_inBlock_of_le (by omega)) hc0 hc1 (by simpa using hs0) (by simpa using hs1) hx0
@@ -311,10 +313,10 @@ private theorem rhess_rotate_step {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
     (hB : HoldsMatrix a B m.store) (hW : HoldsMatrix (L, 0) (replicateCol (Fin 1) v) m.store)
     (hlg : HoldsSlottedLog lg ns w LL P m.store) :
     Writes .total I τ
-      (.seq (.frame ds₅ as₅ (coefficients (Op := O) (Tst := Q)).body)
-        (.seq (.frame ds₆ as₆ (rotateLeftWithScratch (Op := O) (Tst := Q)).body)
-          (.seq (.frame ds₇ as₇ (rotateRows (Op := O) (Tst := Q)).body)
-            (.frame ds₈ as₈ (rotateColumns (Op := O) (Tst := Q)).body)))) ρ
+      (.seq (.frame ds₅ as₅ (coefficients (Op := O) (Tst := Q)))
+        (.seq (.frame ds₆ as₆ (rotateLeftWithScratch (Op := O) (Tst := Q)))
+          (.seq (.frame ds₇ as₇ (rotateRows (Op := O) (Tst := Q)))
+            (.frame ds₈ as₈ (rotateColumns (Op := O) (Tst := Q)))))) ρ
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)) ⊔
         Fp.above L)
       (fun m' => m'.pos = m.pos ∧ m'.store.length = L + 4 ∧ m'.store.len L = 2 * N ∧
@@ -346,7 +348,7 @@ private theorem rhess_rotate_step {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
   have hlg₃ : HoldsSlottedLog lg ns w LL P m₃.store :=
     hf₃.keep (readsOnly_holdsSlottedLog _ _ _ _ _)
       ((Fp.disj_inBlock_of_ne (b := L + 1) (by omega)).mono hcf le_rfl) hlg
-  refine (writes_rhessRotate hS hjN hd₆ ha₆ hd₇ ha₇ hd₈ ha₈ haL
+  refine (rhessRotate_writes hS hjN hd₆ ha₆ hd₇ ha₇ hd₈ ha₈ haL
     (hf₃.length_eq.trans hlen) (by rw [hf₃.len_eq, hG]) (by rw [hf₃.len_eq, hTm])
     (Mem.readBlocks_cons_iff.mp hcs).1
     (Mem.readBlocks_cons_iff.mp (Mem.readBlocks_cons_iff.mp hcs).2).1 hB₃ hW₃).mono
@@ -368,7 +370,8 @@ private theorem rhess_rotate_step {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
 
 /-- **One step of `RHess`**: the four words of the rotation into `Uv`, their entry
 $(j, p, q)$ appended to the pending slot of the log, then the coefficients and the rotation of the
-vector and of the matrix (`NLAlib.SmallEig.rotateToStepWord`). -/
+vector and of the matrix (`NLAlib.SmallEig.rotateToStepWord`).
+A step in the proof of `NLAlib.SmallEig.rhess_loop_writes`. -/
 private theorem rhess_step_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hC : IsCmp id I) (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M nmax)
     {τ : Tape ℝ} {ρ : Env} {m : Mem ℝ} {N L j : ℕ} (hjN : j + 1 < N) (hjn : j ≤ nmax)
@@ -404,11 +407,11 @@ private theorem rhess_step_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
       (.seq (.call (Has.inj ScalarOp.copy) [] i₁ u₁)
         (.seq (.call (Has.inj ScalarOp.neg) [] i₂ u₂) (.seq (.call (Has.inj ScalarOp.neg) [] i₃ u₃)
           (.seq (.call (Has.inj ScalarOp.copy) [] i₄ u₄)
-            (.seq (.frame dsW asW (slottedLogWrite (O := O) (Q := Q)).body)
-              (.seq (.frame ds₅ as₅ (coefficients (Op := O) (Tst := Q)).body)
-                (.seq (.frame ds₆ as₆ (rotateLeftWithScratch (Op := O) (Tst := Q)).body)
-                  (.seq (.frame ds₇ as₇ (rotateRows (Op := O) (Tst := Q)).body)
-                    (.frame ds₈ as₈ (rotateColumns (Op := O) (Tst := Q)).body))))))))) ρ
+            (.seq (.frame dsW asW (slottedLogWrite (O := O) (Q := Q)))
+              (.seq (.frame ds₅ as₅ (coefficients (Op := O) (Tst := Q)))
+                (.seq (.frame ds₆ as₆ (rotateLeftWithScratch (Op := O) (Tst := Q)))
+                  (.seq (.frame ds₇ as₇ (rotateRows (Op := O) (Tst := Q)))
+                    (.frame ds₈ as₈ (rotateColumns (Op := O) (Tst := Q))))))))))) ρ
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)) ⊔
         Fp.above L)
       (fun m' => m'.pos = m.pos ∧ m'.store.length = L + 4 ∧ m'.store.len L = 2 * N ∧
@@ -421,7 +424,7 @@ private theorem rhess_step_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
     fun hb => Fp.disj_inBlock_of_ne hb
   obtain ⟨hx0, hx1⟩ := get_colVec hW ⟨j, by omega⟩
   obtain ⟨hy0, hy1⟩ := get_colVec hW ⟨j + 1, hjN⟩
-  refine writes_rhessUv hS (t := 2 * j) h₁ h₁' h₂ h₂' h₃ h₃' h₄ h₄' hx0 hx1
+  refine rhessUv_writes hS (t := 2 * j) h₁ h₁' h₂ h₂' h₃ h₃' h₄ h₄' hx0 hx1
     (by simpa [show 2 * (j + 1) = 2 * j + 2 by ring] using hy0)
     (by simpa [show 2 * (j + 1) + 1 = 2 * j + 3 by ring] using hy1) hUv
     (fun b i hi => Or.inr (show L ≤ b by have := hi.1; omega)) ?_
@@ -465,7 +468,8 @@ private theorem rhess_step_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
 /-- **The loop, the validation and the reduction of `RHess`**: from $\mathbf{A}$ at `a`, the
 vector $\mathbf{g}$ of the words $x$ at `G` and a log with closed slots `LL`, the $N - 1$
 rotations (recorded as the pending entries), the validation of their slot and
-`NLAlib.hessenbergReduceLast` store `NLAlib.SmallEig.rhessWord` at `a` and close $N - 1$ slots. -/
+`NLAlib.hessenbergReduceLast` store `NLAlib.SmallEig.rhessWord` at `a` and close $N - 1$ slots.
+A step in the proof of `NLAlib.SmallEig.rhessUv_writes`, `NLAlib.SmallEig.rhess_writes_word`. -/
 private theorem rhess_loop_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hC : IsCmp id I) (hL : IsIndexLit M I) {nmax : ℕ} (hNat : IsExactNatLit id M nmax)
     (h1 : 1 ≤ nmax) {τ : Tape ℝ} {ρ : Env} {m : Mem ℝ} {N L p : ℕ} (h2 : 2 ≤ N)
@@ -507,13 +511,13 @@ private theorem rhess_loop_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : I
       (.seq (.loop n (.seq (.call (Has.inj ScalarOp.copy) [] i₁ u₁)
         (.seq (.call (Has.inj ScalarOp.neg) [] i₂ u₂) (.seq (.call (Has.inj ScalarOp.neg) [] i₃ u₃)
           (.seq (.call (Has.inj ScalarOp.copy) [] i₄ u₄)
-            (.seq (.frame dsW asW (slottedLogWrite (O := O) (Q := Q)).body)
-              (.seq (.frame ds₅ as₅ (coefficients (Op := O) (Tst := Q)).body)
-                (.seq (.frame ds₆ as₆ (rotateLeftWithScratch (Op := O) (Tst := Q)).body)
-                  (.seq (.frame ds₇ as₇ (rotateRows (Op := O) (Tst := Q)).body)
-                    (.frame ds₈ as₈ (rotateColumns (Op := O) (Tst := Q)).body))))))))))
-        (.seq (.frame dsV asV (slottedLogValidate (O := O) (Q := Q)).body)
-          (.frame dsH asH (hessenbergReduceLast (O := O) (Q := Q)).body))) ρ
+            (.seq (.frame dsW asW (slottedLogWrite (O := O) (Q := Q)))
+              (.seq (.frame ds₅ as₅ (coefficients (Op := O) (Tst := Q)))
+                (.seq (.frame ds₆ as₆ (rotateLeftWithScratch (Op := O) (Tst := Q)))
+                  (.seq (.frame ds₇ as₇ (rotateRows (Op := O) (Tst := Q)))
+                    (.frame ds₈ as₈ (rotateColumns (Op := O) (Tst := Q))))))))))))
+        (.seq (.frame dsV asV (slottedLogValidate (O := O) (Q := Q)))
+          (.frame dsH asH (hessenbergReduceLast (O := O) (Q := Q))))) ρ
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)) ⊔
         Fp.above L)
       (fun m' => m'.pos = p ∧ HoldsMatrix a (rhessWord M A x) m'.store ∧
@@ -579,7 +583,10 @@ $\mathbf{A}$ of order $2 \le N$ at `a` and a log with closed slots `LL` and room
 it writes only the matrix and the log, advances the position by $2N$, stores
 `NLAlib.SmallEig.rhessWord` of $\mathbf{A}$ and the $2N$ entries of the stream `sG` at the start
 position, and closes the $N - 1$ accepted slots `NLAlib.SmallEig.rhessSlots` of $\mathbf{A}$ and
-those entries. -/
+those entries.
+
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem rhess_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hC : IsCmp id I) (hSmp : IsSample I) {sG N : ℕ} {τ : Tape ℝ} {μ : Mem ℝ} {a : ℕ × ℕ}
     {A : Matrix (Fin N) (Fin N) ℂ} (hl : μ.Live [a]) (hA : HoldsMatrix a A μ.store)
@@ -588,7 +595,7 @@ theorem rhess_writes_word {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar 
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
     (hlog : HoldsSlottedLog lg ns w LL [] μ.store) (hj : LL.length + (N - 1) ≤ ns) (hw : N - 1 ≤ w)
     (hlgl : μ.Live [lg]) (hlga : lg.1 ≠ a.1) :
-    Writes .total I τ (rhess (O := O) (Q := Q) sG).body (Env.frame [N, w, LL.length] [a, a, lg])
+    Writes .total I τ (rhess (O := O) (Q := Q) sG) (Env.frame [N, w, LL.length] [a, a, lg])
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun μ' => μ'.pos = μ.pos + 2 * N ∧
@@ -696,7 +703,7 @@ theorem rhess_isPerturbedUnitarySimilar {M : Machine ℝ} {u : ℝ} (hM : StdMod
 
 /-- **`RHess` makes the last-row weights large** ([BanksGarzaVargasSrivastava2025,
 Proposition 5.3], corrected: the anti-concentration is applied to the eigenvectors of the input,
-fixed before the draw, its erratum P4): on a scalar machine with the standard model at the unit
+fixed before the draw): on a scalar machine with the standard model at the unit
 roundoff $\boldsymbol{u}$, $M.\mathrm{lit}(0) = 0$ and exact comparisons, a measurable
 interpretation reading the tape only in its windows whose draws store the tape entry, and a
 stream `sG` with the standard real Gaussian law: let $\mathbf{A}$ of order $n + 1$ have
@@ -712,7 +719,9 @@ upper Hessenberg perturbed unitary similarity $\widehat{\mathbf{H}}$ of $\mathbf
 exact unitary of the slots' entries** (`NLAlib.givensLog`) with backward error
 $200(n + 1)^2\boldsymbol{u}\Sigma$ that has a diagonalization
 $\mathbf{V}'$, $\mathbf{d}'$ with $\|\mathbf{V}'\|_2\|\mathbf{V}'^{-1}\|_2 \le 2B$, eigenvalues
-separated by $g/2$, and every last-row weight at least $s^2/(64R^2B^2)$. -/
+separated by $g/2$, and every last-row weight at least $s^2/(64R^2B^2)$.
+Shared by the trees of `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem rhess_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hzero : M.lit 0 = 0) (hC : IsCmp id I) (hSmp : IsSample I)
     {law : ℕ → Measure ℝ} {sG : ℕ} (hG : law sG = gaussianReal 0 1) {n : ℕ}
@@ -727,7 +736,7 @@ theorem rhess_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsS
     (hL : IsIndexLit M I) (h1 : 1 ≤ n) {nmax : ℕ} (hNat : IsExactNatLit id M nmax) (hn : n ≤ nmax)
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))} (hj : LL.length + n ≤ ns)
     (hw : n ≤ w) :
-    PWrites law I (rhess (O := O) (Q := Q) sG).body (Env.frame [n + 1, w, LL.length] [a, a, lg])
+    PWrites law I (rhess (O := O) (Q := Q) sG) (Env.frame [n + 1, w, LL.length] [a, a, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun μ => HoldsMatrix a A μ.store ∧ μ.Live [a] ∧
@@ -805,7 +814,7 @@ theorem rhess_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
     (hlog : HoldsSlottedLog lg ns w LL [] μ.store) (hj : LL.length + (N - 1) ≤ ns) (hw : N - 1 ≤ w)
     (hlgl : μ.Live [lg]) (hlga : lg.1 ≠ a.1) :
-    Writes .total I τ (rhess (O := O) (Q := Q) sG).body (Env.frame [N, w, LL.length] [a, a, lg])
+    Writes .total I τ (rhess (O := O) (Q := Q) sG) (Env.frame [N, w, LL.length] [a, a, lg])
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun μ' => ∃ H : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix a H μ'.store ∧

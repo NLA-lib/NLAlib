@@ -32,7 +32,7 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op] [Has MatrixOp Op]
 five scalar cells beyond its caller-owned matrix buffers. -/
 theorem stmtPeak_nodeProjectors_zero_le [Has CmpTst Tst]
     (k cap : ℕ) (offs : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (nodeProjectors (Tst := Tst)).body
+    stmtPeak (fun (_ : Op) _ => 0) (nodeProjectors (Tst := Tst))
       ([k, cap] ++ offs) ≤ 4 * (k * k) + 5 := by
   apply max_le
   · apply stmtPeak_frame_le (d := [k, cap])

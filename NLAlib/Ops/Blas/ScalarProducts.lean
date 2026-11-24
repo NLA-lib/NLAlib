@@ -21,8 +21,8 @@ stored by columns. Only scalar multiplication, addition and literal zero are use
 
 * `NLAlib.Ops.ScalarProducts.step` adds one product to an accumulator.
 * `NLAlib.Ops.ScalarProducts.sum` sums products with explicit word strides.
-* `NLAlib.Ops.ScalarProducts.writes_sum_word` returns the actual machine accumulation.
-* `NLAlib.Ops.ScalarProducts.writes_sum` specializes it to the exact stored sum.
+* `NLAlib.Ops.ScalarProducts.sum_writes_word` returns the actual machine accumulation.
+* `NLAlib.Ops.ScalarProducts.sum_writes` specializes it to the exact stored sum.
 -/
 
 @[expose] public section
@@ -32,15 +32,15 @@ namespace NLAlib.Ops.ScalarProducts
 variable {Op Tst : Type} [Has ScalarOp Op]
 
 /-- One scalar multiplication followed by one accumulation. -/
-def step : Impl Op Tst := opsImpl% [] (X, Y, t, out) → () {
+def step : Stmt Op Tst := ops% [] (X, Y, t, out) → () {
   call (Has.inj ScalarOp.mul) [] (X, Y) → (t);
   call (Has.inj ScalarOp.add) [] (out, t) → (out)
 }
 
 /-- Stream products from two strided word views, using one caller-owned temporary. -/
-def sum : Impl Op Tst := opsImpl% [n, sx, sy] (X, Y, t, out) → () {
+def sum : Stmt Op Tst := ops% [n, sx, sy] (X, Y, t, out) → () {
   call (Has.inj (ScalarOp.lit 0)) [] () → (out);
-  for j < n { run step.body [] (X[sx * j], Y[sy * j], t, out) }
+  for j < n { run step [] (X[sx * j], Y[sy * j], t, out) }
 }
 
 /-- The actual streamed accumulator: literal zero followed by one multiplication and one
@@ -53,20 +53,21 @@ variable {K : Type} {M : Machine K}
   {I : Interp Op Tst K} {tape : Tape K} {m : Mem K}
 
 /-- A streamed scalar step performs multiplication and addition, preserving the input
-accumulator through the disjoint temporary cell. -/
-theorem writes_step_word (hS : IsScalar M I)
+accumulator through the disjoint temporary cell.
+Shared by the trees of `NLAlib.reduceLastStep`, `NLAlib.hessenbergReduceLast`,
+`NLAlib.ShiftedQR.shiftedStep` and 44 more. -/
+theorem step_writes_word (hS : IsScalar M I)
     {x y t out : ℕ × ℕ} (a b acc : K) (hl : m.Live [x, y, t, out])
     (hX : m.store.readBlock x.1 x.2 1 = some [a])
     (hY : m.store.readBlock y.1 y.2 1 = some [b])
     (hA : m.store.readBlock out.1 out.2 1 = some [acc])
     (hTO : Fp.Disj (Store.inBlock t.1 t.2 1) (Store.inBlock out.1 out.2 1))
     (ht : t.2 + 1 ≤ m.store.len t.1) (ho : out.2 + 1 ≤ m.store.len out.1) :
-    Writes .total I tape step.body (Env.frame [] [x, y, t, out])
+    Writes .total I tape step (Env.frame [] [x, y, t, out])
       (Store.inBlock t.1 t.2 1 ⊔ Store.inBlock out.1 out.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 1 =
         some [M.add acc (M.mul a b)]) m := by
   unfold step
-  dsimp only
   refine Writes.seq_le (writes_call_fn1 (hS .mul) (xs := [[a], [b]])
     rfl rfl rfl rfl rfl trivial (by
       simp only [Mem.live_append, Mem.live_cons, Mem.live_nil]
@@ -86,8 +87,10 @@ theorem writes_step_word (hS : IsScalar M I)
 
 /-- The streamed loop returns the actual machine sum, using only the declared accumulator and
 temporary. Inputs can share a buffer or repeat words; their accessed cells stay outside
-the two-cell write footprint. Empty products return literal zero. -/
-theorem writes_sum_word (hS : IsScalar M I)
+the two-cell write footprint. Empty products return literal zero.
+Shared by the trees of `NLAlib.HutchPlusPlus.projectProbes`, `NLAlib.HutchPlusPlus.accumulate`,
+`NLAlib.CGS2.cgs2ExtendFinish` and 17 more. -/
+theorem sum_writes_word (hS : IsScalar M I)
     {n sx sy : ℕ} {x y t out : ℕ × ℕ} (xs ys : ℕ → K)
     (hl : m.Live [x, y, t, out])
     (hX : ∀ j < n, m.store.readBlock x.1 (x.2 + sx * j) 1 = some [xs j])
@@ -98,12 +101,11 @@ theorem writes_sum_word (hS : IsScalar M I)
       (Store.inBlock y.1 (y.2 + sy * j) 1))
     (hTO : Fp.Disj (Store.inBlock t.1 t.2 1) (Store.inBlock out.1 out.2 1))
     (ht : t.2 + 1 ≤ m.store.len t.1) (ho : out.2 + 1 ≤ m.store.len out.1) :
-    Writes .total I tape sum.body (Env.frame [n, sx, sy] [x, y, t, out])
+    Writes .total I tape sum (Env.frame [n, sx, sy] [x, y, t, out])
       (Store.inBlock t.1 t.2 1 ⊔ Store.inBlock out.1 out.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 1 =
         some [sumWord M xs ys n]) m := by
   unfold sum
-  dsimp only
   refine Writes.seq_le (writes_call_fn1 (hS (.lit 0)) (xs := [])
     rfl rfl rfl rfl rfl trivial (by simpa [Mem.Live] using hl out (by simp))
     rfl rfl rfl ho) le_sup_right ?_
@@ -120,7 +122,7 @@ theorem writes_sum_word (hS : IsScalar M I)
   have hY' := hWhole.keep (Store.readsOnly_readBlock _ _ _ [ys i]) (hDY i hi) (hY i hi)
   have hl' : m'.Live [(x.1, x.2 + sx * i), (y.1, y.2 + sy * i), t, out] := by
     simpa only [Mem.live_cons, Mem.live_nil] using hl.congr hWhole.length_eq
-  refine ((writes_step_word hS (xs i) (ys i) (sumWord M xs ys i)
+  refine ((step_writes_word hS (xs i) (ys i) (sumWord M xs ys i)
     hl' hX' hY' hAcc hTO (by simpa only [hWhole.len_eq] using ht)
     (by simpa only [hWhole.len_eq] using ho)).in_frame rfl rfl hl').mono le_rfl ?_
   intro m'' _ h
@@ -141,24 +143,28 @@ theorem sumWord_exact (xs ys : ℕ → 𝕜) (n : ℕ) :
     rw [ih]
 
 /-- A streamed scalar step adds the exact product, preserving the input accumulator
-through the disjoint temporary cell. -/
-theorem writes_step (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+through the disjoint temporary cell.
+Shared by the trees of `NLAlib.reduceLastStep`, `NLAlib.hessenbergReduceLast`,
+`NLAlib.ShiftedQR.shiftedStep` and 44 more. -/
+theorem step_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     {x y t out : ℕ × ℕ} (a b acc : 𝕜) (hl : m.Live [x, y, t, out])
     (hX : m.store.readBlock x.1 x.2 1 = some [a])
     (hY : m.store.readBlock y.1 y.2 1 = some [b])
     (hA : m.store.readBlock out.1 out.2 1 = some [acc])
     (hTO : Fp.Disj (Store.inBlock t.1 t.2 1) (Store.inBlock out.1 out.2 1))
     (ht : t.2 + 1 ≤ m.store.len t.1) (ho : out.2 + 1 ≤ m.store.len out.1) :
-    Writes .total I tape step.body (Env.frame [] [x, y, t, out])
+    Writes .total I tape step (Env.frame [] [x, y, t, out])
       (Store.inBlock t.1 t.2 1 ⊔ Store.inBlock out.1 out.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 1 = some [acc + a * b]) m := by
   simpa only [RCLikeBlas.machine] using
-    writes_step_word hS a b acc hl hX hY hA hTO ht ho
+    step_writes_word hS a b acc hl hX hY hA hTO ht ho
 
 /-- The streamed loop returns the exact sum, using only the declared accumulator and
 temporary. Inputs can share a buffer or repeat words; their accessed cells stay outside
-the two-cell write footprint. Empty products return literal zero. -/
-theorem writes_sum (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+the two-cell write footprint. Empty products return literal zero.
+Shared by the trees of `NLAlib.HutchPlusPlus.projectProbes`, `NLAlib.HutchPlusPlus.accumulate`,
+`NLAlib.CGS2.cgs2ExtendFinish` and 17 more. -/
+theorem sum_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     {n sx sy : ℕ} {x y t out : ℕ × ℕ} (xs ys : ℕ → 𝕜)
     (hl : m.Live [x, y, t, out])
     (hX : ∀ j < n, m.store.readBlock x.1 (x.2 + sx * j) 1 = some [xs j])
@@ -169,12 +175,12 @@ theorem writes_sum (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
       (Store.inBlock y.1 (y.2 + sy * j) 1))
     (hTO : Fp.Disj (Store.inBlock t.1 t.2 1) (Store.inBlock out.1 out.2 1))
     (ht : t.2 + 1 ≤ m.store.len t.1) (ho : out.2 + 1 ≤ m.store.len out.1) :
-    Writes .total I tape sum.body (Env.frame [n, sx, sy] [x, y, t, out])
+    Writes .total I tape sum (Env.frame [n, sx, sy] [x, y, t, out])
       (Store.inBlock t.1 t.2 1 ⊔ Store.inBlock out.1 out.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock out.1 out.2 1 =
         some [∑ j ∈ Finset.range n, xs j * ys j]) m := by
   simpa only [sumWord_exact] using
-    writes_sum_word hS xs ys hl hX hY hDX hDY hTO ht ho
+    sum_writes_word hS xs ys hl hX hY hDX hDY hTO ht ho
 
 end Exact
 

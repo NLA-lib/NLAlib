@@ -32,6 +32,8 @@ certificate checks that its model is uniform or names its oracle, is confined an
 * `NLAlib.Ops.Examples.Oracles.not_uniform_oracleModel`,
   `NLAlib.Ops.Examples.Oracles.not_confined_sumModel`,
   `NLAlib.Ops.Examples.Oracles.not_charged_freeModel`: the three rejections.
+* `NLAlib.Ops.Examples.Oracles.not_good_oracleInput_zero_one`: two inputs of the oracle
+  certificate have the same buffers and no common output.
 * `NLAlib.Ops.Examples.Oracles.confined_repeatModel`: the honest example model has all three
   properties.
 -/
@@ -86,7 +88,9 @@ theorem span_oneCall : unitResources.span oneCall = 1 := by
 /-! ### An answer oracle: the contract of a primitive depends on the input -/
 
 /-- A real number as semantic data. The only buffer is one uninitialised output cell: the
-number is stored nowhere. -/
+number is stored nowhere. This problem is written by hand on purpose: it shows what a
+hand-written `NLAlib.Ops.Problem` can hide (data in no buffer, reached through an undeclared
+oracle), which `NLAlib.Ops.Routine.Domain` forbids or makes a declaration. -/
 def oracleProblem : Problem ℝ 1 1 where
   formats _ := .cell
   valid _ := True
@@ -118,7 +122,9 @@ noncomputable def oracleModel : AccessModel Unit Empty oracleProblem where
   realize _ _ x := by
     refine ⟨⟨fun _ _ _ _ _ m => some (m.upd (0, 0) x.val.1), (fun q => nomatch q),
       (fun q => nomatch q)⟩, ?_, fun q => nomatch q⟩
-    intro _ d ins outs τ m hpre
+    intro o
+    refine Interp.Satisfies.of_callS ?_
+    intro d ins outs τ m hpre
     change m.Live (ins ++ outs) at hpre
     refine ⟨m.upd (0, 0) x.val.1, ?_, rfl⟩
     have hs : (m.upd (0, 0) (x.val.1 : ℝ)).store.shape = m.store.shape := Store.shape_upd ..
@@ -166,6 +172,20 @@ theorem not_uniform_oracleModel : ¬ oracleModel.Uniform := by
   have h1 : (⟨[[some 0]], 0⟩ : Mem ℝ) = (⟨[[none]], 0⟩ : Mem ℝ).upd (0, 0) 1 := e'.mp rfl
   simp [Mem.upd, Store.upd] at h1
 
+/-- The inputs holding `0` and `1` have the same supplied buffer, and no count and memory meet
+the output condition of both: the answer of `oracleAlgorithm` depends on a number that is in no
+buffer. In a uniform model, or one whose oracles are declared and not called, this cannot happen
+(`NLAlib.Ops.Algorithm.good_of_buffers_eq`, `NLAlib.Ops.Inputs.Oracles.good_of_allOps`). -/
+theorem not_good_oracleInput_zero_one (d : Fin 1 → ℕ) (τ : Tape ℝ)
+    (c : Count (Unit ⊕ Bookkeeping) Empty) (m : Mem ℝ) :
+    (oracleInput d 0).val.2 = (oracleInput d 1).val.2 ∧
+      ¬ (oracleSpecification.good d (oracleInput d 0) τ c m ∧
+        oracleSpecification.good d (oracleInput d 1) τ c m) := by
+  refine ⟨rfl, ?_⟩
+  rintro ⟨h₀, h₁⟩
+  have h : (some (0 : ℝ)) = some (1 : ℝ) := h₀.symm.trans h₁
+  exact zero_ne_one (Option.some.inj h)
+
 /-! ### Ambient authority: a primitive reads a buffer that is not an operand -/
 
 /-- `n` reals in buffer `0` and one uninitialised output cell in buffer `1`. -/
@@ -193,7 +213,9 @@ noncomputable def sumModel : AccessModel Unit Empty sumProblem where
   realize _ _ _ := by
     refine ⟨⟨fun _ _ _ _ _ m => some (m.upd (1, 0) (total m)), (fun q => nomatch q),
       (fun q => nomatch q)⟩, ?_, fun q => nomatch q⟩
-    intro _ d ins outs τ m hpre
+    intro o
+    refine Interp.Satisfies.of_callS ?_
+    intro d ins outs τ m hpre
     change m.Live (ins ++ outs) at hpre
     refine ⟨m.upd (1, 0) (total m), ?_, rfl⟩
     rw [Interp.callS_of_live hpre]
@@ -300,7 +322,7 @@ noncomputable def freeSpecification : Specification ScalarOp Empty repeatProblem
 and span zero for every `n`, under a budget that is the program's own static count. -/
 noncomputable def freeAlgorithm : Algorithm freeModel freeSpecification :=
   Algorithm.ofWp repeatProgram (by decide)
-    (fun d _ x I hI τ => (wp_repeat hI.1 d x τ).mono fun _ hg _ _ => hg)
+    (fun d _ x I hI τ => (repeat_wp hI.1 d x τ).mono fun _ hg _ _ => hg)
     (fun _ _ => le_rfl)
     (fun d _ => by
       rw [staticPeak]

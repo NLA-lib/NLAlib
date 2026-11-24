@@ -22,8 +22,8 @@ successful-run premise is part of a primitive contract.
 ## Main results
 
 * `NLAlib.SpectralBisection.sampledGaussian` is the actual scaled sample matrix.
-* `NLAlib.SpectralBisection.writes_deflateSamples` connects the sample program to that matrix.
-* `NLAlib.SpectralBisection.writes_deflate` returns the actual selected QR columns.
+* `NLAlib.SpectralBisection.deflateSamples_writes` connects the sample program to that matrix.
+* `NLAlib.SpectralBisection.deflate_writes` returns the actual selected QR columns.
 -/
 
 @[expose] public section
@@ -43,8 +43,9 @@ def sampledGaussian (M : Machine K) (k lo side : ℕ) (S : ℕ → ℕ → K × 
 omit [Inhabited K] [Has MatrixOp Op] in
 /-- The sample stage writes exactly the selected, machine-scaled Gaussian matrix. The sample
 span and scale cell are spatially disjoint from its output span; shared buffers are permitted.
-Explicit side and slot bounds ensure every stored sample used by the program exists. -/
-theorem writes_deflateSamples {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
+Explicit side and slot bounds ensure every stored sample used by the program exists.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem deflateSamples_writes {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
     {md : Mode} {τ : Tape K} {m : Mem K} {n k lo side : ℕ} {sg sq g : ℕ × ℕ}
     (S : ℕ → ℕ → K × K) (a : K) (hside : side < 2) (hslot : lo + k ≤ n)
     (hl : m.Live [sg, sq, g])
@@ -54,7 +55,7 @@ theorem writes_deflateSamples {M : Machine K} {I : Interp Op Tst K} (hS : IsScal
     (hsgg : Fp.Disj (Store.inBlock sg.1 sg.2 (2 * ((2 * n) * n)))
       (Store.inBlock g.1 g.2 (2 * (k * k))))
     (hsqg : Fp.Disj (Store.inBlock sq.1 sq.2 1) (Store.inBlock g.1 g.2 (2 * (k * k)))) :
-    Writes md I τ (deflateSamples (Op := Op) (Tst := Tst)).body
+    Writes md I τ (deflateSamples (Op := Op) (Tst := Tst))
       (Env.frame [n, k, lo, side] [sg, sq, g]) (Store.inBlock g.1 g.2 (2 * (k * k)))
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock g.1 g.2 (2 * (k * k)) =
         some ((EntryCodec.pair K).packFinMatrix (sampledGaussian M k lo side S a))) m := by
@@ -63,7 +64,7 @@ theorem writes_deflateSamples {M : Machine K} {I : Interp Op Tst K} (hS : IsScal
     (M.mul (S i (2 * (lo + j) + side)).1 a, M.mul (S i (2 * (lo + j) + side)).2 a)
   have hfp := C.regionFp_le_inBlock g.1 g.2 k (k * k)
     (fun i j => j * k + i) (fun _ => k) (fun j hj i hi => Idx.add_lt_mul hj hi)
-  suffices hw : Writes md I τ (deflateSamples (Op := Op) (Tst := Tst)).body
+  suffices hw : Writes md I τ (deflateSamples (Op := Op) (Tst := Tst))
       (Env.frame [n, k, lo, side] [sg, sq, g])
       (C.regionFp g.1 g.2 k (fun i j => j * k + i) (fun _ => k))
       (fun m' => m'.store.HoldsEntryRegion C g.1 g.2 k (fun i j => j * k + i)
@@ -96,7 +97,7 @@ theorem writes_deflateSamples {M : Machine K} {I : Interp Op Tst K} (hS : IsScal
     have hsrc := C.entryBlock_le_inBlock sg.1 sg.2 ((2 * n) * n)
       (Idx.add_lt_mul hjn hin)
     have hdst := C.entryBlock_le_inBlock g.1 g.2 (k * k) (Idx.add_lt_mul hj hi)
-    have hw := Pair.writes_multiply hS (md := md) (τ := τ) (m := m')
+    have hw := Pair.multiply_writes hS (md := md) (τ := τ) (m := m')
       (x := (sg.1, sg.2 + 2 * (n * (2 * (lo + j) + side) + i)))
       (c := sq) (z := (g.1, g.2 + 2 * (j * k + i)))
       (by simpa [C, EntryCodec.entryBlock, Nat.mul_comm n] using hsgg.mono hsrc hdst)
@@ -104,20 +105,17 @@ theorem writes_deflateSamples {M : Machine K} {I : Interp Op Tst K} (hS : IsScal
       (by simpa [C, Nat.mul_comm n] using hxr)
       (by simpa [C, Nat.mul_comm n] using hxi) hscale hspace
     refine writes_frame rfl rfl (by simpa [Mem.Live] using hl.congr hfr.length_eq) ?_
-    refine hw.mono le_rfl fun m'' _ he => ?_
-    subst m''
-    refine ⟨?_, hp⟩
+    refine hw.mono le_rfl fun m'' _ ⟨hpos, hread⟩ => ?_
+    refine ⟨?_, hpos.trans hp⟩
     intro z
-    have hg' := Store.get_updBlock (s := m'.store) (b := g.1)
-      (off := g.2 + 2 * (j * k + i))
-      (xs := [M.mul (S i (2 * (lo + j) + side)).1 a, M.mul (S i (2 * (lo + j) + side)).2 a])
-      (by simpa using hspace) z.isLt
+    have hg' := Store.get_of_readBlock hread z.isLt a
     fin_cases z <;> simpa [C, A] using hg'
 
 /-- Deflation executes sample scaling, the supplied multiplication and QR routines, and
 copies the first requested QR columns. All four scratch matrices are scoped. The output may
-alias an original input: its copy occurs after every input-dependent computation. -/
-theorem writes_deflate {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
+alias an original input: its copy occurs after every input-dependent computation.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem deflate_writes {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
     {mm : ∀ {l m n : ℕ}, Matrix (Fin l) (Fin m) (K × K) →
       Matrix (Fin m) (Fin n) (K × K) → Matrix (Fin l) (Fin n) (K × K)}
     {qr : ∀ {m n : ℕ}, Matrix (Fin m) (Fin n) (K × K) →
@@ -132,7 +130,7 @@ theorem writes_deflate {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
     (hP : μ.store.readBlock p.1 p.2 (2 * (k * k)) =
       some ((EntryCodec.pair K).packFinMatrix P))
     (hz : z.2 + 2 * (k * r) ≤ μ.store.len z.1) :
-    Writes .total I τ (deflate (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (deflate (Op := Op) (Tst := Tst))
       (Env.frame [n, k, r, lo, side] [sg, sq, p, z])
       (Store.inBlock z.1 z.2 (2 * (k * r)))
       (fun μ' => μ'.pos = μ.pos ∧ μ'.store.readBlock z.1 z.2 (2 * (k * r)) =
@@ -158,7 +156,7 @@ theorem writes_deflate {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
   have hP₀ := (hBelow.readBlock hpL p.2 (2 * (k * k))).trans hP
   have hz₀ : z.2 + 2 * (k * r) ≤ s.len z.1 := by rw [(hBelow z.1 hzL).1]; exact hz
   refine (writes_frame rfl rfl (by simp [Mem.Live, hs]; omega)
-    (writes_deflateSamples hS S a hside hslot (by simp [Mem.Live, hs]; omega)
+    (deflateSamples_writes hS S a hside hslot (by simp [Mem.Live, hs]; omega)
       hsg₀ hsq₀ (by simpa using hGlen.ge)
       (Fp.disj_inBlock_of_ne (by dsimp only; omega))
       (Fp.disj_inBlock_of_ne (by dsimp only; omega)))).seq_le
@@ -185,11 +183,15 @@ theorem writes_deflate {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
       Store.readBlock_packFinMatrix_columns C hQ₃ hr
   have hz₃ : z.2 + 2 * (k * r) ≤ μ₃.store.len z.1 := by
     rw [hfr₃.len_eq, hfr₂.len_eq, hfr₁.len_eq]; exact hz₀
-  refine (writes_frame rfl rfl (by
-    simp [Mem.Live, hfr₃.length_eq, hfr₂.length_eq, hfr₁.length_eq, hs]; omega)
-    (PairMatrix.writes_copy hS (by
-      simp [Mem.Live, hfr₃.length_eq, hfr₂.length_eq, hfr₁.length_eq, hs]; omega)
-      (Or.inl (Fp.disj_inBlock_of_ne (by dsimp only; omega))) hread hz₃)).mono le_sup_left ?_
-  exact fun _ _ hp => ⟨hp.1.trans (hpos₃.trans (hpos₂.trans hpos₁)), hp.2⟩
+  have hlive₃ : μ₃.Live [(μ.store.length + 2, 0), z] := by
+    simp [Mem.Live, hfr₃.length_eq, hfr₂.length_eq, hfr₁.length_eq, hs]; omega
+  have hroom₃ : μ₃.Room [z] [2 * (k * r)] := by
+    simpa only [Mem.room_cons, Mem.room_nil, and_true] using hz₃
+  have hdqz : Fp.Disj (Store.inBlock (μ.store.length + 2) 0 (2 * (k * r)))
+      (Store.inBlock z.1 z.2 (2 * (k * r))) := Fp.disj_inBlock_of_ne (by omega)
+  call (PairMatrix.copyRoutine_meets hS) [k, r] ((μ.store.length + 2, 0), z)
+    as μ₄ hfr₄ hpos₄ (zs) hpost
+  obtain rfl : zs = _ := hpost
+  exact ⟨hpos₄.trans (hpos₃.trans (hpos₂.trans hpos₁)), hzs⟩
 
 end NLAlib.SpectralBisection

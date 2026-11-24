@@ -101,12 +101,101 @@ def schurRoundFp (N : ℕ) (a uo f st w ub r : ℕ × ℕ) : Fp :=
   Fp.blocks [a, uo, f, st, w, ub, r]
     [2 * (N * N), 2 * (N * N), 1, 1 + 2 * N, 2 * (N * N), 2 * (N * N), 5]
 
+/-- **The separation of the five operand views** of the rounded shifted QR algorithm (matrix,
+threshold word, parameter words, accumulator, failure word): every view is apart from the three
+written ones (matrix, accumulator, failure word). The threshold word and the parameter words are
+only read, so they may overlap each other; no pair of blocks is required apart beyond that. -/
+def ShQRViewsApart (N np : ℕ) (a t p uo f : ℕ × ℕ) : Prop :=
+  Fp.Apart [a, t, uo, f] [2 * (N * N), 1, 2 * (N * N), 1] ∧
+    Fp.Apart [a, p, uo, f] [2 * (N * N), np, 2 * (N * N), 1]
+
+/-- Five views that are pairwise apart are separated. -/
+theorem ShQRViewsApart.of_apart {N np : ℕ} {a t p uo f : ℕ × ℕ}
+    (h : Fp.Apart [a, t, p, uo, f] [2 * (N * N), 1, np, 2 * (N * N), 1]) :
+    ShQRViewsApart N np a t p uo f := by
+  simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, sup_bot_eq,
+    Fp.disj_bot_right, and_true] at h
+  simp only [ShQRViewsApart, Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right,
+    sup_bot_eq, Fp.disj_bot_right, and_true]
+  tauto
+
 /-- The nine views of the rounded worklist in Schur mode (matrix, threshold, parameters,
 accumulator, failure word, stack, work matrix, leaf accumulator, scan registers) are live, have
-room and are pairwise apart (`NLAlib.Ops.Geometry`). -/
-abbrev SchurGeometry (N np : ℕ) (a t p uo f st w ub r : ℕ × ℕ) (μ : Mem ℝ) : Prop :=
-  Geometry [a, t, p, uo, f, st, w, ub, r]
-    [2 * (N * N), 1, np, 2 * (N * N), 1, 1 + 2 * N, 2 * (N * N), 2 * (N * N), 5] μ
+room and are apart, except that the threshold word and the parameter words, which no round
+writes, may overlap each other: the geometry (`NLAlib.Ops.Geometry`) of the views without the
+parameter words, and that of the views without the threshold word. -/
+structure SchurGeometry (N np : ℕ) (a t p uo f st w ub r : ℕ × ℕ) (μ : Mem ℝ) : Prop where
+  /-- The geometry of the views other than the parameter words. -/
+  thr : Geometry [a, t, uo, f, st, w, ub, r]
+    [2 * (N * N), 1, 2 * (N * N), 1, 1 + 2 * N, 2 * (N * N), 2 * (N * N), 5] μ
+  /-- The geometry of the views other than the threshold word. -/
+  par : Geometry [a, p, uo, f, st, w, ub, r]
+    [2 * (N * N), np, 2 * (N * N), 1, 1 + 2 * N, 2 * (N * N), 2 * (N * N), 5] μ
+
+namespace SchurGeometry
+
+variable {N np : ℕ} {a t p uo f st w ub r : ℕ × ℕ} {μ μ' : Mem ℝ}
+
+/-- All nine views are live. -/
+theorem live (h : SchurGeometry N np a t p uo f st w ub r μ) :
+    μ.Live [a, t, p, uo, f, st, w, ub, r] := by
+  intro z hz
+  simp only [List.mem_cons, List.not_mem_nil, or_false] at hz
+  rcases hz with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
+  · exact h.thr.live _ (by simp)
+  · exact h.thr.live _ (by simp)
+  · exact h.par.live _ (by simp)
+  · exact h.thr.live _ (by simp)
+  · exact h.thr.live _ (by simp)
+  · exact h.thr.live _ (by simp)
+  · exact h.thr.live _ (by simp)
+  · exact h.thr.live _ (by simp)
+  · exact h.thr.live _ (by simp)
+
+/-- Each of the nine views has room for its length. -/
+theorem room (h : SchurGeometry N np a t p uo f st w ub r μ) :
+    μ.Room [a, t, p, uo, f, st, w, ub, r]
+      [2 * (N * N), 1, np, 2 * (N * N), 1, 1 + 2 * N, 2 * (N * N), 2 * (N * N), 5] :=
+  ⟨h.thr.room.1, h.thr.room.2.1, h.par.room.2.1, h.thr.room.2.2⟩
+
+/-- Any list of the views is live. -/
+theorem live_of_subset (h : SchurGeometry N np a t p uo f st w ub r μ) {l : List (ℕ × ℕ)}
+    (hl : ∀ x ∈ l, x ∈ [a, t, p, uo, f, st, w, ub, r]) : μ.Live l :=
+  fun x hx => h.live x (hl x hx)
+
+/-- The geometry survives every write that keeps the buffer lengths. -/
+theorem of_eqOff {F : Fp} (h : SchurGeometry N np a t p uo f st w ub r μ)
+    (hfr : μ.store.EqOff F μ'.store) : SchurGeometry N np a t p uo f st w ub r μ' :=
+  ⟨h.thr.of_eqOff hfr, h.par.of_eqOff hfr⟩
+
+/-- The geometry of five separated operand views, extended by the four scratch buffers of the
+worklist allocated on top of them. -/
+theorem allocated {n np : ℕ} {a t p uo f : ℕ × ℕ} {μ : Mem ℝ} {s : Store ℝ}
+    (hl : μ.Live [a, t, p, uo, f])
+    (hr : μ.Room [a, t, p, uo, f]
+      [2 * ((n + 1) * (n + 1)), 1, np, 2 * ((n + 1) * (n + 1)), 1])
+    (ha : ShQRViewsApart (n + 1) np a t p uo f)
+    (hs : s.length = μ.store.length +
+      [1 + 2 * (n + 1), 2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), 5].length)
+    (hlens : ∀ i (hi : i <
+        [1 + 2 * (n + 1), 2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), 5].length),
+      s.len (μ.store.length + i) =
+        [1 + 2 * (n + 1), 2 * ((n + 1) * (n + 1)), 2 * ((n + 1) * (n + 1)), 5][i])
+    (hBelow : Store.Below μ.store.length μ.store s) :
+    SchurGeometry (n + 1) np a t p uo f (μ.store.length, 0) (μ.store.length + 1, 0)
+      (μ.store.length + 2, 0) (μ.store.length + 3, 0) ⟨s, μ.pos⟩ := by
+  have hT : Geometry [a, t, uo, f] [2 * ((n + 1) * (n + 1)), 1, 2 * ((n + 1) * (n + 1)), 1] μ :=
+    ⟨fun z hz => hl z (by
+        simp only [List.mem_cons, List.not_mem_nil, or_false] at hz ⊢
+        tauto), ⟨hr.1, hr.2.1, hr.2.2.2⟩, ha.1⟩
+  have hP : Geometry [a, p, uo, f] [2 * ((n + 1) * (n + 1)), np, 2 * ((n + 1) * (n + 1)), 1] μ :=
+    ⟨fun z hz => hl z (by
+        simp only [List.mem_cons, List.not_mem_nil, or_false] at hz ⊢
+        tauto), ⟨hr.1, hr.2.2.1, hr.2.2.2⟩, ha.2⟩
+  exact ⟨by simpa [List.range_succ] using hT.allocated hs hlens hBelow,
+    by simpa [List.range_succ] using hP.allocated hs hlens hBelow⟩
+
+end SchurGeometry
 
 /-- The block of the view `i` of the worklist in Schur mode (in the order of
 `NLAlib.ShiftedQR.SchurGeometry`). -/
@@ -116,9 +205,14 @@ abbrev schurBlock (N np : ℕ) (a t p uo f st w ub r : ℕ × ℕ) (i : ℕ) : F
     (([2 * (N * N), 1, np, 2 * (N * N), 1, 1 + 2 * N, 2 * (N * N), 2 * (N * N), 5] :
       List ℕ).getD i 0)
 
-/-- Two distinct views of the worklist in Schur mode have disjoint words. -/
+/-- Two distinct views of the worklist in Schur mode have disjoint words, unless they are the
+threshold word and the parameter words (views 1 and 2), which may overlap. -/
 theorem SchurGeometry.disj' {N np : ℕ} {a t p uo f st w ub r : ℕ × ℕ} {μ : Mem ℝ}
-    (h : SchurGeometry N np a t p uo f st w ub r μ) (i j : Fin 9) (hne : i ≠ j) :
+    (h : SchurGeometry N np a t p uo f st w ub r μ) (i j : Fin 9) (hne : i ≠ j)
+    (htp : ¬(i = 1 ∧ j = 2) ∧ ¬(i = 2 ∧ j = 1) := by
+      first
+        | decide
+        | exact ⟨fun h => absurd h.1 (by decide), fun h => absurd h.1 (by decide)⟩) :
     Fp.Disj
       (Store.inBlock (([a, t, p, uo, f, st, w, ub, r] : List (ℕ × ℕ)).getD i (0, 0)).1
         (([a, t, p, uo, f, st, w, ub, r] : List (ℕ × ℕ)).getD i (0, 0)).2
@@ -127,17 +221,56 @@ theorem SchurGeometry.disj' {N np : ℕ} {a t p uo f st w ub r : ℕ × ℕ} {μ
       (Store.inBlock (([a, t, p, uo, f, st, w, ub, r] : List (ℕ × ℕ)).getD j (0, 0)).1
         (([a, t, p, uo, f, st, w, ub, r] : List (ℕ × ℕ)).getD j (0, 0)).2
         (([2 * (N * N), 1, np, 2 * (N * N), 1, 1 + 2 * N, 2 * (N * N), 2 * (N * N), 5] :
-          List ℕ).getD j 0)) :=
-  h.apart.disj_getD (by simp) (by simp) (fun he => hne (Fin.ext he))
+          List ℕ).getD j 0)) := by
+  obtain ⟨i, hi⟩ := i
+  obtain ⟨j, hj⟩ := j
+  have hij : i ≠ j := fun e => hne (Fin.ext e)
+  have h12 : ¬(i = 1 ∧ j = 2) := fun e => htp.1 ⟨Fin.ext e.1, Fin.ext e.2⟩
+  have h21 : ¬(i = 2 ∧ j = 1) := fun e => htp.2 ⟨Fin.ext e.1, Fin.ext e.2⟩
+  by_cases h2 : i = 2 ∨ j = 2
+  · have hi1 : i ≠ 1 := by omega
+    have hj1 : j ≠ 1 := by omega
+    have key := h.par.disj (i := if i < 1 then i else i - 1) (j := if j < 1 then j else j - 1)
+      (by simp only [List.length_cons, List.length_nil]; split_ifs <;> omega)
+      (by simp only [List.length_cons, List.length_nil]; split_ifs <;> omega)
+      (by split_ifs <;> omega)
+    interval_cases i <;> interval_cases j <;>
+      first
+        | exact absurd rfl hij
+        | exact absurd rfl hi1
+        | exact absurd rfl hj1
+        | exact key
+  · have hi2 : i ≠ 2 := fun e => h2 (Or.inl e)
+    have hj2 : j ≠ 2 := fun e => h2 (Or.inr e)
+    have key := h.thr.disj (i := if i < 2 then i else i - 1) (j := if j < 2 then j else j - 1)
+      (by simp only [List.length_cons, List.length_nil]; split_ifs <;> omega)
+      (by simp only [List.length_cons, List.length_nil]; split_ifs <;> omega)
+      (by split_ifs <;> omega)
+    interval_cases i <;> interval_cases j <;>
+      first
+        | exact absurd rfl hij
+        | exact absurd rfl hi2
+        | exact absurd rfl hj2
+        | exact key
+
+/-- The side condition of `NLAlib.ShiftedQR.SchurGeometry.disj'` when the first view is neither
+the threshold word nor the parameter words. -/
+theorem SchurGeometry.side {i j : Fin 9} (h1 : i ≠ 1 := by decide) (h2 : i ≠ 2 := by decide) :
+    ¬(i = 1 ∧ j = 2) ∧ ¬(i = 2 ∧ j = 1) :=
+  ⟨fun h => h1 h.1, fun h => h2 h.1⟩
 
 /-- The writes of a round leave the threshold and the parameter words alone. -/
 theorem SchurGeometry.disj_params {N np : ℕ} {a t p uo f st w ub r : ℕ × ℕ} {μ : Mem ℝ}
     (h : SchurGeometry N np a t p uo f st w ub r μ) :
     Fp.Disj (schurRoundFp N a uo f st w ub r)
       (Store.inBlock t.1 t.2 1 ⊔ Store.inBlock p.1 p.2 np) := by
-  simpa only [schurRoundFp, List.map_cons, List.map_nil, List.getD_cons_zero,
-    List.getD_cons_succ, Fp.blocks_cons, Fp.blocks_nil, sup_bot_eq] using
-    h.apart.disj_select [0, 3, 4, 5, 6, 7, 8] [1, 2] (by simp) (by simp) (by simp)
+  have hT := h.thr.disj_select [0, 2, 3, 4, 5, 6, 7] [1] (by simp) (by simp) (by simp)
+  have hP := h.par.disj_select [0, 2, 3, 4, 5, 6, 7] [1] (by simp) (by simp) (by simp)
+  simp only [List.map_cons, List.map_nil, List.getD_cons_zero, List.getD_cons_succ,
+    Fp.blocks_cons, Fp.blocks_nil, sup_bot_eq] at hT hP
+  exact Fp.disj_sup_right.mpr ⟨by simpa only [schurRoundFp, Fp.blocks_cons, Fp.blocks_nil,
+    sup_bot_eq] using hT, by simpa only [schurRoundFp, Fp.blocks_cons, Fp.blocks_nil,
+    sup_bot_eq] using hP⟩
 
 /-- The accumulator stays near $\mathbf{U}$ times a unitary: if $\|\mathbf{U}_1 -
 \mathbf{U}\mathbf{V}_1\|_2 \le (a - 1)\|\mathbf{U}\|_2$ and $\|\mathbf{U}_2 -
@@ -273,14 +406,16 @@ omit [Has ScalarOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- The abort keeps the value-free core: on a machine whose natural literals up to $n + 1$ are
 exact, from the geometry of the worklist in Schur mode with some matrix stored, a count
 $\ell \le n + 1$ and the accumulator within its factor, `roundedAbort` writes the failure word and
-the stack count and leaves the core `NLAlib.ShiftedQR.SchurStoredCore` (an empty stack). -/
+the stack count and leaves the core `NLAlib.ShiftedQR.SchurStoredCore` (an empty stack).
+Shared by the trees of `NLAlib.ShiftedQR.roundedProcessLargeWith`,
+`NLAlib.ShiftedQR.roundedWorklistWith`, `NLAlib.ShiftedQR.roundedLargeRest`. -/
 theorem roundedAbort_writes_schurCore {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hL : IsIndexLit Mch I) {n : ℕ} (hN : IsExactNatLit id Mch (n + 1)) {np : ℕ} {τ : Tape ℝ}
     {μ : Mem ℝ} {P : Prop} {U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {u εL : ℝ} {m j ℓ : ℕ}
     {a t p uo f st w ub r : ℕ × ℕ} (hG : SchurGeometry (n + 1) np a t p uo f st w ub r μ)
     (hA : ∃ A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a A μ.store) (hℓ : ℓ ≤ n + 1)
     (hacc : AccumIf P U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ) :
-    Writes .total I τ (roundedAbort (O := O) (Q := Q)).body (Env.frame [] [st, f])
+    Writes .total I τ (roundedAbort (O := O) (Q := Q)) (Env.frame [] [st, f])
       (Store.inBlock f.1 f.2 1 ⊔ Store.inBlock st.1 st.2 1)
       (SchurStoredCore n P U u εL m a uo f st j) μ := by
   obtain ⟨A, hA⟩ := hA
@@ -314,32 +449,32 @@ failure, else scan the bottom couplings and split and update, or abort. -/
 def roundedLargeRest : Stmt O Q :=
   Stmt.ite (Has.inj CmpTst.isPos) [] [{ buf := 7, off := IExp.var 16 }]
     (Stmt.frame [] [{ buf := 3, off := IExp.var 12 }, { buf := 7, off := IExp.var 16 }]
-      (roundedAbort (O := O) (Q := Q)).body)
+      (roundedAbort (O := O) (Q := Q)))
     ((Stmt.frame [IExp.var 8, IExp.var 1]
         [{ buf := 5, off := IExp.var 14 }, { buf := 1, off := IExp.var 10 },
-          { buf := 6, off := IExp.var 15 }] (bottomScan (O := O) (Q := Q)).body).seq
+          { buf := 6, off := IExp.var 15 }] (bottomScan (O := O) (Q := Q))).seq
       (Stmt.ite (Has.inj CmpTst.isPos) [] [{ buf := 6, off := IExp.var 15 + IExp.const 3 }]
         (Stmt.bindIdx (Has.inj IdxTst.toNat) [{ buf := 6, off := IExp.var 15 + IExp.const 4 }]
           (IExp.var 8)
           ((Stmt.frame [IExp.var 0, IExp.var 7, IExp.var 8, IExp.var 17]
               [{ buf := 0, off := IExp.var 9 }, { buf := 3, off := IExp.var 12 },
-                { buf := 5, off := IExp.var 14 }] (writeAndSplit (O := O) (Q := Q)).body).seq
+                { buf := 5, off := IExp.var 14 }] (writeAndSplit (O := O) (Q := Q))).seq
             (Stmt.frame [IExp.var 0, IExp.var 7, IExp.var 8, IExp.var 17, IExp.var 5, IExp.var 6]
               [{ buf := 8, off := IExp.const 0 }, { buf := 0, off := IExp.var 9 },
-                { buf := 4, off := IExp.var 13 }] (roundedDecoupleUpdate (O := O) (Q := Q)).body)))
+                { buf := 4, off := IExp.var 13 }] (roundedDecoupleUpdate (O := O) (Q := Q)))))
         (Stmt.frame [] [{ buf := 3, off := IExp.var 12 }, { buf := 7, off := IExp.var 16 }]
-          (roundedAbort (O := O) (Q := Q)).body)))
+          (roundedAbort (O := O) (Q := Q)))))
 
 /-- The large branch is a scoped log, the decoupling call and
 `NLAlib.ShiftedQR.roundedLargeRest`. -/
-theorem roundedProcessLargeWith_body (D : Impl O Q) :
-    (roundedProcessLargeWith D).body =
+theorem roundedProcessLargeWith_body (D : Stmt O Q) :
+    (roundedProcessLargeWith D) =
       Stmt.alloc (IExp.var 5 * (IExp.const 1 + IExp.const 5 * IExp.var 6))
         ((Stmt.frame [IExp.var 8, IExp.var 1, IExp.var 2, IExp.var 3, IExp.var 4, IExp.var 5,
             IExp.var 6]
           [{ buf := 5, off := IExp.var 14 }, { buf := 2, off := IExp.var 11 },
             { buf := 5, off := IExp.var 14 }, { buf := 7, off := IExp.var 16 },
-            { buf := 8, off := IExp.const 0 }] D.body).seq roundedLargeRest) := rfl
+            { buf := 8, off := IExp.const 0 }] D).seq roundedLargeRest) := rfl
 
 /-- The split after a decoupled block and its update keep the core: on a scalar machine with
 the standard model at $\boldsymbol{u} \le 1/100$, exact natural literals up to $n + 1$ and exact
@@ -365,10 +500,10 @@ theorem roundedSplitUpdate_core {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
     Writes .total I tape
       ((Stmt.frame [IExp.var 0, IExp.var 7, IExp.var 8, IExp.var 17]
           [{ buf := 0, off := IExp.var 9 }, { buf := 3, off := IExp.var 12 },
-            { buf := 5, off := IExp.var 14 }] (writeAndSplit (O := O) (Q := Q)).body).seq
+            { buf := 5, off := IExp.var 14 }] (writeAndSplit (O := O) (Q := Q))).seq
         (Stmt.frame [IExp.var 0, IExp.var 7, IExp.var 8, IExp.var 17, IExp.var 5, IExp.var 6]
           [{ buf := 8, off := IExp.const 0 }, { buf := 0, off := IExp.var 9 },
-            { buf := 4, off := IExp.var 13 }] (roundedDecoupleUpdate (O := O) (Q := Q)).body))
+            { buf := 4, off := IExp.var 13 }] (roundedDecoupleUpdate (O := O) (Q := Q))))
       ((⟨(Env.frame [n + 1, k, np, F, T, ns, w, lo, d + 1] [a, t, p, st, uo, wk, r, f]).idx,
         (Env.frame [n + 1, k, np, F, T, ns, w, lo, d + 1] [a, t, p, st, uo, wk, r, f]).buf ++
           [lgb]⟩ : Env).pushIdx i)
@@ -557,8 +692,12 @@ theorem SchurGeometry.of_below {N np : ℕ} {a t p uo f st w ub r : ℕ × ℕ} 
     {s : Store ℝ} (h : SchurGeometry N np a t p uo f st w ub r μ)
     (hlen : μ.store.length ≤ s.length) (hBelow : Store.Below μ.store.length μ.store s) :
     SchurGeometry N np a t p uo f st w ub r ⟨s, μ.pos⟩ :=
-  ⟨fun z hz => (h.live z hz).trans_le hlen,
-    by rw [Mem.room_eq_of_below hBelow (fun z hz => h.live z hz)]; exact h.room, h.apart⟩
+  ⟨⟨fun z hz => (h.thr.live z hz).trans_le hlen,
+      by rw [Mem.room_eq_of_below hBelow (fun z hz => h.thr.live z hz)]; exact h.thr.room,
+      h.thr.apart⟩,
+    ⟨fun z hz => (h.par.live z hz).trans_le hlen,
+      by rw [Mem.room_eq_of_below hBelow (fun z hz => h.par.live z hz)]; exact h.par.room,
+      h.par.apart⟩⟩
 
 /-- The large branch keeps the core: on a scalar machine with the standard model at
 $\boldsymbol{u} \le 1/100$, exact natural literals up to $n + 1$, exact `toNat` and comparisons,
@@ -572,7 +711,7 @@ theorem roundedLarge_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
     (hS : IsScalar Mch I)
     {P : Prop} (hP : P → StdModel u id Mch ∧ u ≤ 1 / 100) (hL : IsIndexLit Mch I)
     {n : ℕ} (hNat : IsExactNatLit id Mch (n + 1)) (hQ : IsToNat id I) (hC : IsCmp id I)
-    {k F T ns w m : ℕ} (hm : ns * w ≤ m) {ps : List ℝ} (D : Impl O Q)
+    {k F T ns w m : ℕ} (hm : ns * w ≤ m) {ps : List ℝ} (D : Stmt O Q)
     (hD : TerminatingDecouplerRoutine n k F T ps ns w D I) {tape : Tape ℝ} {μ : Mem ℝ}
     {lo d j ℓ : ℕ} {a t p uo f st wk ub r : ℕ × ℕ} {rs : List (ℕ × ℕ)}
     {A U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr εL : ℝ} (hεL : P → 0 ≤ εL)
@@ -582,7 +721,7 @@ theorem roundedLarge_terminates {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : �
     (hSt : StackHolds st rs μ.store) (hfit : RangesFit (n + 1) ((lo, d + 1) :: rs))
     (hℓ : ℓ + (d + 1) + (rs.map Prod.snd).sum ≤ n + 1) (hk : k ≤ d)
     (hacc : AccumIf P U ((1 + 24 * u) ^ (j * m) * (1 + εL) ^ ℓ) uo μ) :
-    Writes .total I tape (roundedProcessLargeWith D).body
+    Writes .total I tape (roundedProcessLargeWith D)
       (Env.frame [n + 1, k, ps.length, F, T, ns, w, lo, d + 1] [a, t, p, st, uo, wk, r, f])
       (schurRoundFp (n + 1) a uo f st wk ub r)
       (SchurStoredCore n P U u εL m a uo f st (j + 1)) μ := by

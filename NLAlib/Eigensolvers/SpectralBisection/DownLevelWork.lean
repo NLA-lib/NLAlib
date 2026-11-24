@@ -19,7 +19,7 @@ sum at the selected stored sizes. Incoming counts and live scratch are unrestric
 
 ## Main results
 
-* `NLAlib.SpectralBisection.downLevelImpl_kernelWeight_sum_le_of_exec`: actual level costs.
+* `NLAlib.SpectralBisection.downLevelBody_kernelWeight_sum_le_of_exec`: actual level costs.
 -/
 
 @[expose] public section
@@ -30,7 +30,7 @@ open Ops
 
 /-- Actual preparation and scan add exactly the same partition-sensitive upper bound as the
 scan alone. Scalar arithmetic and samples retain their independent full canonical charges. -/
-theorem downLevelImpl_kernelWeight_sum_le_of_exec {K : Type} [Inhabited K]
+theorem downLevelBody_kernelWeight_sum_le_of_exec {K : Type} [Inhabited K]
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     {I : Interp DenseOp (CmpTst ⊕ IdxTst) K} (hS : IsScalar M I) (hL : IsIndexLit M I)
     (hC : IsCmp dec I) (hMM : IsMatrixMul (EntryCodec.pair K) mm I)
@@ -51,8 +51,8 @@ theorem downLevelImpl_kernelWeight_sum_le_of_exec {K : Type} [Inhabited K]
     (hG : DownLevelGeometry n d ks par lv su sg ma ua qa ea sz kd kp c t μ.store)
     (T : ℕ → ℕ) (W : DenseOp → List ℕ → ℕ)
     {a b : St DenseOp (CmpTst ⊕ IdxTst) K} (hmem : a.mem = μ)
-    (hr : evalCounted I W τ (downLevelImpl (node (Op := DenseOp)
-      (Tst := CmpTst ⊕ IdxTst))).body
+    (hr : evalCounted I W τ (downLevelBody (node (Op := DenseOp)
+      (Tst := CmpTst ⊕ IdxTst)))
       (Env.frame [n, L, fuel, d] [par, lv, su, sg, ma, ua, qa, ea, sz, kd, kp, c, t]) a = some b) :
     Dense.kernelWeight T b.cost ≤ Dense.kernelWeight T a.cost +
       ∑ lo ∈ Finset.range n, (2 * fuel + 9) * T (ks lo) := by
@@ -60,7 +60,7 @@ theorem downLevelImpl_kernelWeight_sum_le_of_exec {K : Type} [Inhabited K]
   have hl := hG.live
   simp only [Mem.live_cons, Mem.live_nil, and_true] at hl
   rcases hl with ⟨hparl, hlvl, hsul, hsgl, hmal, hual, hqal, heal, hszl, hkdl, hkpl, hcl, htl⟩
-  have hp := writes_downPrepare (τ := τ) (m := a.mem) (L := L) hS hL hSample
+  have hp := downPrepare_writes (τ := τ) (m := a.mem) (L := L) hS hL hSample
     (M.lit 1) (M.lit 2) (M.div (M.lit 1) (M.lit 2)) R eps (by room) hG.prepare_apart
     (by simpa using Store.readBlock_sub hc (o := 0) (n := 3) (by omega)) hlv
     hG.next_room hG.uniform_room hG.gaussian_room (by have := hG.scratch_room; omega)
@@ -72,7 +72,7 @@ theorem downLevelImpl_kernelWeight_sum_le_of_exec {K : Type} [Inhabited K]
   obtain ⟨hfr, hpost⟩ := hp.post_of_evalCounted hprep'
   have hzero := evalCounted_weight_le
     (Dense.matrixWeight (MatrixOp.dimensionWeight T)) (fun _ _ => 0) hprep'
-  rw [downPrepareImpl_matrixWork_zero, Nat.add_zero] at hzero
+  rw [downPrepare_matrixWork_zero, Nat.add_zero] at hzero
   obtain ⟨hsizes', hread'⟩ := downScan_inputs_of_prepare M ks A R0 eps0 beta R eps
     (τ.window Stream.unif a.mem.pos n) (τ.window Stream.gauss (a.mem.pos + n) (4 * (n * n)))
     hslot hsizes hmat hpar hlv hc hG.prepare_read hfr hpost.2.2.1 hpost.2.2.2

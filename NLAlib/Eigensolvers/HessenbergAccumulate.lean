@@ -78,11 +78,11 @@ slots of $N - 1$ entries (`NLAlib.slottedLogOpen`), reduce `A` recording the rot
 $\mathbf{V}$ the unitary of the reduction. The interface is `[N] (A, U) → (A, U)`; the log is
 scoped.
 Algorithm: hessenberg-reduction -/
-def hessenbergReduceQ : Impl O Q := opsImpl% [N] (A, U) → (A, U) {
+def hessenbergReduceQ : Stmt O Q := ops% [N] (A, U) → (A, U) {
   let Lg ← alloc (N * (1 + 5 * (N - 1)));
-  run (slottedLogOpen (O := O) (Q := Q)).body [N, N - 1] (Lg);
-  run (hessenbergReduceLast (O := O) (Q := Q)).body [N, N - 1, 0] (A, A, Lg);
-  run (givensReplayColumns (O := O) (Q := Q)).body [N, 0, 0, N, N, N - 1] (Lg, U, U)
+  run (slottedLogOpen (O := O) (Q := Q)) [N, N - 1] (Lg);
+  run (hessenbergReduceLast (O := O) (Q := Q)) [N, N - 1, 0] (A, A, Lg);
+  run (givensReplayColumns (O := O) (Q := Q)) [N, 0, 0, N, N, N - 1] (Lg, U, U)
 }
 
 /-- **The reduction with the accumulated unitary is a Hessenberg reducer**: on a scalar machine

@@ -33,17 +33,19 @@ open Ops
 variable {Op Tst : Type} [Has ScalarOp Op]
 
 /-- Fill every component with zero, then set the last real component to one. -/
-def lastBasisVector : Impl Op Tst := opsImpl% [n] () → (V) {
+def lastBasisVector : Stmt Op Tst := ops% [n] () → (V) {
   for q < 2 * n { call (Has.inj (ScalarOp.lit 0)) [] () → (V[q]) };
   call (Has.inj (ScalarOp.lit 1)) [] () → (V[2 * (n - 1)])
 }
 
 /-- Initialize the last complex basis vector of a nonempty finite space from uninitialized
-capacity. Every stored component is written by an actual scalar literal call. -/
+capacity. Every stored component is written by an actual scalar literal call.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem lastBasisVector_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {n : ℕ} {v : ℕ × ℕ} (hv : v.2 + 2 * (n + 1) ≤ m.store.len v.1) :
-    Writes .total I τ lastBasisVector.body (Env.frame [n + 1] [v])
+    Writes .total I τ lastBasisVector (Env.frame [n + 1] [v])
       (Store.inBlock v.1 v.2 (2 * (n + 1)))
       (fun μ => μ.pos = m.pos ∧
         HoldsVector v (Pi.single (Fin.last n) (1 : ℂ)) μ.store) m := by
@@ -86,20 +88,22 @@ theorem lastBasisVector_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     · simpa [Pi.single_apply, hi] using hget
 
 /-- Compute the scalar norm of the actual vector words and square its retained scratch word. -/
-def vectorNormSquared : Impl Op Tst := opsImpl% [n] (V, T) → (Norm) {
-  run matrixNorm.body [n, 1] (V, T);
+def vectorNormSquared : Stmt Op Tst := ops% [n] (V, T) → (Norm) {
+  run matrixNorm [n, 1] (V, T);
   call (Has.inj ScalarOp.mul) [] (T, T) → (Norm)
 }
 
 /-- The existing real-word norm lowering and one multiplication return the squared complex
-Euclidean norm. The supplied scratch view is separate from the vector. -/
+Euclidean norm. The supplied scratch view is separate from the vector.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem vectorNormSquared_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {n : ℕ} {v t z : ℕ × ℕ} {w : Fin n → ℂ}
     (hl : m.Live [v, t, z]) (hV : HoldsVector v w m.store)
     (htv : t.1 ≠ v.1)
     (ht : t.2 + 3 ≤ m.store.len t.1) (hz : z.2 + 1 ≤ m.store.len z.1) :
-    Writes .total I τ vectorNormSquared.body (Env.frame [n] [v, t, z])
+    Writes .total I τ vectorNormSquared (Env.frame [n] [v, t, z])
       (Store.inBlock t.1 t.2 3 ⊔ Store.inBlock z.1 z.2 1)
       (fun μ => μ.pos = m.pos ∧ μ.store.get z.1 z.2 = some (‖WithLp.toLp 2 w‖ ^ 2)) m := by
   have hlive : v.1 < m.store.length ∧ t.1 < m.store.length ∧ z.1 < m.store.length := by

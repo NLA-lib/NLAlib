@@ -390,8 +390,8 @@ $\|\mathbf{e}_n^{\mathsf{H}}p_h(\mathbf{H})^{-q}\|$, and $p_c = p_ap_b$ for $c =
 b$. Then
 $$\sum_i\frac{w_i}{\lvert p_c(\mathbf{d}_i)\rvert^q} \le \kappa^4\sum_i\frac{w_i}{\lvert
 p_h(\mathbf{d}_i)\rvert^{2q}}\,.$$
-[BanksGarzaVargasSrivastava2021, proof of Lemma 4.5], one step of the induction (with the squares
-the printed chain omits; gap G5 of the design note). -/
+Adapted from [BanksGarzaVargasSrivastava2021, proof of Lemma 4.5]: one step of the induction,
+with the exponent $2q$ on the right. -/
 theorem sum_lastRowWeights_div_norm_eval_shiftPoly_le
     {H V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {d : Fin (n + 1) → ℂ} (hV : IsUnit V)
     (hHV : H * V = V * Matrix.diagonal d) {a b h : List ℂ} (hd : ∀ i, ∀ s ∈ a ++ b, d i ≠ s)

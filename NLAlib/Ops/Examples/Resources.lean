@@ -55,7 +55,8 @@ def memoryResources : ResourceModel Empty Empty where
     memoryResources.queryReserve c = 0 :=
   memoryResources.queryReserve_of_zero (fun q => nomatch q) c
 
-/-- No buffers are supplied; the single runtime size is the vector length. -/
+/-- No buffers are supplied; the single runtime size is the vector length. Written by hand on
+purpose: an example about resources, not the problem of a routine. -/
 def mixedProblem : Problem Unit 1 0 where
   formats := Fin.elim0
   valid _ := True
@@ -130,7 +131,7 @@ theorem span_mixedCount (n : ℕ) : memoryResources.span (mixedCount n) = 4 * n 
   work_mixedCount n
 
 /-- The allocations succeed, clean up their payload buffers and retain the tape position. -/
-theorem wp_mixedProgram (I : Interp Empty Empty Unit) (τ : Tape Unit) (d : Fin 1 → ℕ)
+theorem mixedProgram_wp (I : Interp Empty Empty Unit) (τ : Tape Unit) (d : Fin 1 → ℕ)
     (x : mixedProblem.Input d) :
     Wp .total I τ mixedProgram.body (Program.environment (b := 0) d)
       (fun m => m.store = [] ∧ m.pos = 0) (mixedProblem.initial d x) := by
@@ -140,7 +141,7 @@ theorem wp_mixedProgram (I : Interp Empty Empty Unit) (τ : Tape Unit) (d : Fin 
 /-- A complete mixed-memory certificate for every natural vector length. -/
 noncomputable def mixedAlgorithm : Algorithm mixedModel mixedSpecification :=
   Algorithm.ofWp mixedProgram wellTyped_mixedProgram
-    (fun d _ x I _ τ => (wp_mixedProgram I τ d x).mono fun _ h _ _ => h)
+    (fun d _ x I _ τ => (mixedProgram_wp I τ d x).mono fun _ h _ _ => h)
     (fun d _ => le_of_eq (staticCost_mixedProgram d))
     (fun d _ => le_of_eq (staticPeak_mixedProgram d))
     (fun d _ => le_of_eq (work_mixedCount (d 0)))
@@ -242,7 +243,8 @@ example (S : Specification Empty Empty mixedProblem) (h : S.scratch (fun _ => 0)
   let x : mixedProblem.Input (fun _ => 0) := ⟨⟨(), Fin.elim0⟩, trivial⟩
   have hi : mixedModel.contracts (fun _ => 0) x emptyInterp :=
     ⟨(fun o => nomatch o), (fun q => nomatch q)⟩
-  obtain ⟨st, he, hp, -⟩ := hc (fun _ => 0) trivial x emptyInterp hi (fun _ _ => ())
+  obtain ⟨st, he, hp, -⟩ := (Program.certifies_iff_exec _ _ _).mp hc (fun _ => 0) trivial x
+    emptyInterp hi (fun _ _ => ())
   obtain ⟨actual, ha, hpeak, -, -⟩ := exec_allocation24 (fun _ => 0)
   change exec allocation24 emptyInterp memoryResources mixedProblem.formats
     (fun _ _ => ()) (fun _ => 0) ⟨[], 0⟩ = some st at he
@@ -282,7 +284,8 @@ example : ∃ st, exec queryProgram queryInterp conversionResources (fun _ => .f
   refine ⟨⟨⟨[[some ()]], 0⟩, c, 0, 7⟩, ?_, rfl⟩
   simpa only [St.reserveQueries, hq, Nat.zero_add] using exec_of_evalCounted ht rfl hr
 
-/-- All supplied capacity counts, including uninitialized output slots. -/
+/-- All supplied capacity counts, including uninitialized output slots. Written by hand on
+purpose: its buffers have storage formats other than cells, to exercise the byte count. -/
 def capacityProblem : Problem Unit 0 2 where
   formats i := if i.val = 0 then .fp16 else .fp64
   valid _ := True

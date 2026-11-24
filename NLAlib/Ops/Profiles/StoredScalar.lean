@@ -29,21 +29,22 @@ implementation choices, independently of the mathematical algorithm.
 
 namespace NLAlib.Ops.StoredScalar
 
-/-- Keep scalar groups and lower every explicit-data product to its supplied fixed leaf. -/
-def table (leaf : Impl ScalarOnly.Operation CmpTst) :
+/-- Keep scalar groups and lower every explicit-data product to the tree of a fixed leaf
+routine. -/
+def table (leaf : Routine ScalarOnly.Operation CmpTst) :
     Table ExactScalarLinear.Operation ScalarOnly.Operation CmpTst
   | .inl o => .inr (.inl o)
-  | .inr (.inl _) => .inl leaf
+  | .inr (.inl _) => .inl leaf.impl
   | .inr (.inr o) => .inr (.inr o)
 
 /-- Stream column-major matrix words using one scalar temporary. -/
 def denseTable : Table ExactScalarLinear.Operation ScalarOnly.Operation CmpTst :=
-  table StoredDense.impl
+  table StoredDense.implRoutine
 
 /-- Expand a fixed public coordinate pattern using one scalar temporary. -/
 def cooTable (pattern : List (ℕ × ℕ)) :
     Table ExactScalarLinear.Operation ScalarOnly.Operation CmpTst :=
-  table (StoredCOO.matvec pattern)
+  table (StoredCOO.matvecRoutine pattern)
 
 /-- Eliminate both vector and dense matrix-vector groups from the exact linear collection. -/
 def fullDenseTable : Table ExactLinear.Operation ScalarOnly.Operation CmpTst :=
@@ -60,17 +61,17 @@ variable {𝕜 : Type} [RCLike 𝕜] {I : Interp ScalarOnly.Operation CmpTst �
 theorem isDense (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) :
     StoredOperator.IsExact (fun m n => m * n) StoredOperator.denseMatrix
       (I.link denseTable) :=
-  Interp.link_meets rfl (StoredDense.meets_impl hS)
+  Interp.link_satisfies rfl (StoredDense.satisfies_impl hS)
 
 /-- Coordinate words are multiplied by the scalar leaf for the selected public pattern. -/
 theorem isCOO (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (pattern : List (ℕ × ℕ)) :
     StoredOperator.IsExact (fun _ _ => pattern.length) (StoredOperator.cooMatrix pattern)
       (I.link (cooTable pattern)) :=
-  Interp.link_meets rfl (StoredCOO.meets_matvec hS pattern)
+  Interp.link_satisfies rfl (StoredCOO.satisfies_matvec hS pattern)
 
 /-- Non-matrix groups retain their local contracts through the storage lowering. -/
-theorem scalar_laws (leaf : Impl ScalarOnly.Operation CmpTst)
+theorem scalar_laws (leaf : Routine ScalarOnly.Operation CmpTst)
     (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hStar : RCLikeStar.IsExact I) (hDraw : IsSample I)
     (hIndex : IsIndexLit RCLikeBlas.machine I) (hCmp : IsCmp RCLike.re I) :
@@ -78,32 +79,38 @@ theorem scalar_laws (leaf : Impl ScalarOnly.Operation CmpTst)
       RCLikeStar.IsExact (I.link (table leaf)) ∧ IsSample (I.link (table leaf)) ∧
         IsIndexLit RCLikeBlas.machine (I.link (table leaf)) ∧
           IsCmp RCLike.re (I.link (table leaf)) := by
-  refine ⟨?_, Interp.link_meets_kept rfl hStar, ?_,
-    Interp.link_meets_kept rfl hIndex, hCmp⟩
+  refine ⟨?_, Interp.link_satisfies_kept rfl hStar, ?_,
+    Interp.link_satisfies_kept rfl hIndex, hCmp⟩
   · intro o
-    exact Interp.link_meets_kept rfl (hS o)
+    exact Interp.link_satisfies_kept rfl (hS o)
   · intro stream
-    exact Interp.link_meets_kept rfl (hDraw stream)
+    exact Interp.link_satisfies_kept rfl (hDraw stream)
 
 /-- The composed lowering supplies every higher primitive law from a scalar-only model
-and the checked local storage implementation. No whole-program execution is a premise. -/
+and a leaf tree that, as a matrix-vector routine (`NLAlib.Ops.StoredOperator.matvecRoutine`),
+meets the specification read off the stored-operator contract. No whole-program execution is a
+premise. -/
 theorem full_laws {dataLength : ℕ → ℕ → ℕ}
     {matrix : (m n : ℕ) → List 𝕜 → Matrix (Fin m) (Fin n) 𝕜}
-    (leaf : Impl ScalarOnly.Operation CmpTst)
+    (body : Stmt ScalarOnly.Operation CmpTst)
     (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hStar : RCLikeStar.IsExact I) (hDraw : IsSample I)
     (hIndex : IsIndexLit RCLikeBlas.machine I) (hCmp : IsCmp RCLike.re I)
-    (hLeaf : leaf.Triple I .total
-      ((StoredOperator.functions dataLength matrix .matvec).rel.spec
-        (StoredOperator.OutApart dataLength))) :
-    let J := I.link (ExactLinearScalar.table.comp (table leaf))
+    (hLeaf : (StoredOperator.matvecRoutine dataLength body).Meets I
+      (Routine.Spec.ofRel (StoredOperator.functions dataLength matrix .matvec).rel
+        fun _ => True)) :
+    let J := I.link (ExactLinearScalar.table.comp
+      (table (StoredOperator.matvecRoutine dataLength body)))
     IsScalar RCLikeBlas.machine J ∧ RCLikeBlas.IsExact J ∧
       StoredOperator.IsExact dataLength matrix J ∧ IsSample J ∧
         IsIndexLit RCLikeBlas.machine J ∧ IsCmp RCLike.re J := by
   obtain ⟨hS', hStar', hDraw', hIndex', hCmp'⟩ :=
-    scalar_laws leaf hS hStar hDraw hIndex hCmp
-  have hA : StoredOperator.IsExact dataLength matrix (I.link (table leaf)) :=
-    Interp.link_meets rfl hLeaf
+    scalar_laws (StoredOperator.matvecRoutine dataLength body) hS hStar hDraw hIndex
+      hCmp
+  have hA : StoredOperator.IsExact dataLength matrix
+      (I.link (table (StoredOperator.matvecRoutine dataLength body))) :=
+    Interp.link_satisfies rfl (hLeaf.satisfies_ofRel
+      (StoredOperator.matvecRoutine_implements dataLength matrix body) fun _ _ _ _ => trivial)
   simpa only [Interp.link_comp] using
     ExactLinearScalar.laws hS' hStar' hA hDraw' hIndex' hCmp'
 

@@ -43,9 +43,6 @@ def sweep : Stmt Op Tst := ops% [n, k] (Q, R) → (R) {
   }
 }
 
-/-- The sweep has two dimensions, a basis and residual input, and one residual output. -/
-def sweepImpl : Impl Op Tst := ⟨2, 2, 1, sweep⟩
-
 /-- Two dots, division, negation and one vector update per stored column. -/
 noncomputable def sweepCount (n k : ℕ) : Count Op Tst :=
   k • (2 • Count.one (Has.inj Blas1Op.dot) [n] +

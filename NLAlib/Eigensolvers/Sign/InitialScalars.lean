@@ -17,7 +17,7 @@ function. Numerical nonzero and accuracy hypotheses belong to the numerical theo
 
 ## Main results
 
-* `NLAlib.Sign.writes_initialScalars` computes the threshold and its signed bounds.
+* `NLAlib.Sign.initialScalars_writes` computes the threshold and its signed bounds.
 -/
 
 @[expose] public section
@@ -29,12 +29,12 @@ open Ops
 variable {K Op Tst : Type} [Has ScalarOp Op] {M : Ops.Machine K}
 
 /-- The executed scalar block stores the computed threshold, its negative and literal one.
-No initial contents of the output region are needed. -/
-theorem writes_initialScalars {I : Interp Op Tst K} (hS : IsScalar M I) {τ : Tape K}
+No initial contents of the output region are needed. A fragment of `NLAlib.Sign.signRoutine`. -/
+theorem initialScalars_writes {I : Interp Op Tst K} (hS : IsScalar M I) {τ : Tape K}
     {eps den : K} {e d t : ℕ × ℕ} {m : Mem K}
     (he : m.store.get e.1 e.2 = some eps) (hd : m.store.get d.1 d.2 = some den)
     (ht : t.2 + 5 ≤ m.store.len t.1) :
-    Writes .total I τ initialScalars.body (Env.frame [] [e, d, t])
+    Writes .total I τ initialScalars (Env.frame [] [e, d, t])
       (Store.inBlock t.1 t.2 5)
       (fun μ => μ.pos = m.pos ∧ μ.store.get t.1 t.2 = some (M.div eps den) ∧
         μ.store.get t.1 (t.2 + 4) = some (M.neg (M.div eps den)) ∧
@@ -53,7 +53,7 @@ theorem writes_initialScalars {I : Interp Op Tst K} (hS : IsScalar M I) {τ : Ta
     simp only [ws, List.mem_cons, List.not_mem_nil, or_false] at hw
     rcases hw with rfl | rfl | rfl <;> dsimp <;> omega
   have h := writes_machineScalarBlock (τ := τ) hS hev hr
-  change Writes .total I τ initialScalars.body _ _ _ m at h
+  change Writes .total I τ initialScalars _ _ _ m at h
   refine h.mono ?_ ?_
   · intro b i hi
     rcases t with ⟨tb, toff⟩

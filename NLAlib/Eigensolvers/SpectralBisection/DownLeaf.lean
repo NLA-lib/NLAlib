@@ -17,7 +17,7 @@ come from actual executed scalar operations.
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_downLeaf`: an actual leaf stores its mathematical outcome.
+* `NLAlib.SpectralBisection.downLeaf_writes`: an actual leaf stores its mathematical outcome.
 -/
 
 @[expose] public section
@@ -45,8 +45,9 @@ theorem apart_downLeaf {n d lo k : ℕ} {par lv su sg ma ua ea kd c : ℕ × ℕ
         (nodeInputLengths n k) (i := 6) (by simp [nodeInputs, nodeInputLengths])
   exact hAP.append (by simp [Fp.Apart]) rfl (hDisj.mono le_rfl (sup_le hA bot_le))
 
-/-- A diagonal or zero leaf stores the corresponding constructor of the mathematical step. -/
-theorem writes_downLeaf {K Op Tst Su Sg : Type} [Inhabited K] [Has ScalarOp Op]
+/-- A diagonal or zero leaf stores the corresponding constructor of the mathematical step.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem downLeaf_writes {K Op Tst Su Sg : Type} [Inhabited K] [Has ScalarOp Op]
     [Has IndexOp Op] {M : Machine K} {dec : K → ℝ} {mm : MatMulMap (K × K)}
     {qr : QRMap (K × K)} {unif : K → Su → K} {normal : Sg → K × K}
     {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndexLit M I)
@@ -78,7 +79,7 @@ theorem writes_downLeaf {K Op Tst Su Sg : Type} [Inhabited K] [Has ScalarOp Op]
     have h := hRoom.2.2.1
     dsimp at h
     omega
-  exact (writes_leaf_packed (dec := dec) (mm := mm) (qr := qr) (unif := unif)
+  exact (leaf_writes_packed (dec := dec) (mm := mm) (qr := qr) (unif := unif)
     (normal := normal) (τ := τ) hS hL diagonal A (by room) hA hRoom.1 hRoom.2.1
     hkind hAP).mono le_rfl fun _ _ h => ⟨h.1, ⟨trivial, h.2⟩⟩
 

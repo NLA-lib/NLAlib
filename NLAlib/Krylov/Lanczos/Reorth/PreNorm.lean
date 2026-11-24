@@ -32,11 +32,14 @@ variable [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op] [Has CmpTst Tst]
 
 omit [Has OperatorOp Op] in
 /-- The guarded preorthogonalization norm is total, including zero residuals. The stored norm
-has the standard norm contract, so its positivity follows from the shared norm guard theorem. -/
+has the standard norm contract, so its positivity follows from the shared norm guard theorem.
+
+A fragment of `NLAlib.Krylov.Lanczos.Reorth.solveRoutine`: the guard-norm refresh of one round,
+on the scratch the solver allocates. -/
 theorem preNorm_writes {M : Machine K} {dec : K → ℝ} {u : ℝ} {ed : ℕ → ℝ}
     {n cap j L B V C bo vo co : ℕ} {I : Interp Op Tst K} {ok : ℕ → Prop}
     (hS : IsScalar M I) (hM : StdModel u dec M) (hd : ed n < 1)
-    (hD : I.Meets .total (Has.inj Blas1Op.dot) ((dotRel dec ed).spec (OutApart ok)))
+    (hD : I.Satisfies .total (Has.inj Blas1Op.dot) ((dotRel dec ed).spec (OutApart ok)))
     (hok : ok n) (hCmp : IsCmp dec I)
     {τ : Tape K} {μ : Mem K} {ws : List K} {ν₀ : K}
     (hCL : C < L) (hlen : μ.store.length = L + 3)

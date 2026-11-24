@@ -21,6 +21,13 @@ its fuel, a `bindIdx` its worst value.
 by evaluating a function on the tree, never by a proof about loops, and
 `NLAlib.Ops.ConditionalRuns.of_run` turns a statement about the memory (program logic) into the full
 statement with counts and workspace.
+
+## Main definitions
+
+* `NLAlib.Ops.stmtCost`, `NLAlib.Ops.stmtPeak`: the static count and workspace of a tree.
+* `NLAlib.Ops.staticCost`, `NLAlib.Ops.staticPeak`: those of a program, with its structural
+  instructions.
+
 ## Main results
 
 * `NLAlib.Ops.exec_within`: soundness of the static count and workspace.
@@ -62,6 +69,7 @@ noncomputable def stmtCost : Stmt Op Tst → List ℕ → Count Op Tst
       match IExp.evalList idx ds, IExp.evalList idx (args.map Operand.off) with
       | some d, some o => stmtCost body (d ++ o)
       | _, _ => 0
+  | .note _ s, idx => stmtCost s idx
 
 /-- **The static workspace** of a tree: a bound on the scratch payload bytes above those live at its
 start, with the workspace `W` of each call. -/
@@ -83,14 +91,23 @@ def stmtPeak (W : Op → List ℕ → ℕ) : Stmt Op Tst → List ℕ → ℕ
       match IExp.evalList idx ds, IExp.evalList idx (args.map Operand.off) with
       | some d, some o => stmtPeak W body (d ++ o)
       | _, _ => 0
+  | .note _ s, idx => stmtPeak W s idx
 
-/-- A legacy one-unit allocation adds no primitive calls to its body. Structural allocation
+/-- A note adds nothing to the static count. -/
+@[simp] theorem stmtCost_note (n : Note) (s : Stmt Op Tst) (idx : List ℕ) :
+    stmtCost (.note n s) idx = stmtCost s idx := rfl
+
+/-- A note adds nothing to the static workspace. -/
+@[simp] theorem stmtPeak_note (W : Op → List ℕ → ℕ) (n : Note) (s : Stmt Op Tst)
+    (idx : List ℕ) : stmtPeak W (.note n s) idx = stmtPeak W s idx := rfl
+
+/-- An allocation of one-byte cells adds no primitive calls to its body. Structural allocation
 instructions are included separately by canonical program instrumentation. -/
 theorem stmtCost_alloc (len : IExp) (body : Stmt Op Tst) (idx : List ℕ) :
     stmtCost (.alloc len body) idx = stmtCost body idx := rfl
 
-/-- The legacy allocation helper reserves one abstract unit per cell. Explicit storage
-formats instead use `Stmt.allocAs` and its format-dependent byte width. -/
+/-- An allocation of one-byte cells reserves one unit per cell. An allocation in an explicit
+storage format uses `Stmt.allocAs` and the byte width of the format. -/
 theorem stmtPeak_alloc (W : Op → List ℕ → ℕ) (len : IExp)
     (body : Stmt Op Tst) (idx : List ℕ) :
     stmtPeak W (.alloc len body) idx = (len.eval idx).getD 0 + stmtPeak W body idx := by
@@ -176,15 +193,13 @@ theorem whileIter_within {test : ℕ → St Op Tst K → Option (Bool × St Op T
 /-- **Soundness of the static count and workspace**: a successful counted run keeps the live
 cells, adds at most the static count and stays within the static workspace. -/
 theorem exec_within {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : Tape K} {s : Stmt Op Tst}
-    {ρ : Env}
-    {st st' : St Op Tst K} (h : evalCounted I W τ s ρ st = some st') :
+    {ρ : Env} {st st' : St Op Tst K} (h : evalCounted I W τ s ρ st = some st') :
     St.Within st st' (stmtCost s ρ.idx) (stmtPeak W s ρ.idx) := by
   induction s generalizing ρ st st' with
   | skip => cases h; exact St.Within.refl _
   | abort => cases h
   | seq s t ihs iht =>
-    obtain ⟨a, ha, hb⟩ := Option.bind_eq_some_iff.mp h
-    exact (ihs ha).trans (iht hb)
+    obtain ⟨a, ha, hb⟩ := Option.bind_eq_some_iff.mp h; exact (ihs ha).trans (iht hb)
   | call o ds ins outs =>
     obtain ⟨d, hd, h⟩ := Option.bind_eq_some_iff.mp h
     obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
@@ -259,6 +274,7 @@ theorem exec_within {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ : Ta
     obtain ⟨a, ha, h⟩ := Option.bind_eq_some_iff.mp h
     split_ifs at h
     simpa [stmtCost, stmtPeak, hd, Operand.evalList_off_of_evalList ha] using ih h
+  | note _ _ ih => exact ih h
 
 /-- **A run within a budget** (total correctness with accounting): from the memory `m`, the
 counted run succeeds, its counts are at most `B`, its scratch payload bytes at most `M`, and `Q`
@@ -319,41 +335,6 @@ theorem ConditionalRuns.mono {I : Interp Op Tst K} {W : Op → List ℕ → ℕ}
   obtain ⟨st', h1, h2, h3, h4⟩ := h
   exact ⟨st', h1, h2.trans hB, h3.trans hM, hQ _ h4⟩
 
-/-- An independently specified algorithmic claim. All resource budgets depend on sizes alone.
-The actual counted postcondition may also depend on the input and tape. Structural instructions
-are separate operation names in the same count, so omitting them is a false budget claim. -/
-structure Specification (Op Tst : Type) {K : Type} {r b : ℕ} (P : Problem K r b) where
-  /-- Budget for original operations, queries, index evaluation and control. -/
-  budget : (Fin r → ℕ) → Count (Op ⊕ Bookkeeping) Tst
-  /-- Peak additional scratch payload bytes above the declared buffers. -/
-  scratch : (Fin r → ℕ) → ℕ
-  /-- Total modeled work, including explicit structural work. -/
-  work : (Fin r → ℕ) → ℕ
-  /-- Sequential composition of modeled primitive critical paths. -/
-  span : (Fin r → ℕ) → ℕ
-  /-- Initial buffer payload plus peak scratch payload bytes. -/
-  memory : (Fin r → ℕ) → ℕ
-  /-- The postcondition of this same successful, counted execution. -/
-  good : (d : Fin r → ℕ) → P.Input d → Tape K →
-    Count (Op ⊕ Bookkeeping) Tst → Mem K → Prop
-
-/-- Total certification of this fixed program against an independently specified model and
-claim. A target can require this proposition directly, fixing the program before every runtime
-size and input. Realizability is already required by the type of the model. -/
-def Runs {Op Tst K : Type} {r b : ℕ} {P : Problem K r b}
-    (p : Program Op Tst r b) (M : AccessModel Op Tst P) (S : Specification Op Tst P) : Prop :=
-  ∀ d, P.valid d → ∀ (x : P.Input d) (I : Interp Op Tst K), M.contracts d x I → ∀ τ,
-    ∃ st, exec p I M.resources P.formats τ d (P.initial d x) = some st ∧
-      st.peak ≤ S.scratch d ∧ st.cost ≤ S.budget d ∧
-        M.resources.work st.cost ≤ S.work d ∧ M.resources.span st.cost ≤ S.span d ∧
-          P.initialBytes d x + st.peak ≤ S.memory d ∧ S.good d x τ st.cost st.mem
-
-
-/-- Certification is the canonical total run proposition for one fixed tree and model. -/
-abbrev Program.Certifies {Op Tst K : Type} {r b : ℕ} {P : Problem K r b}
-    (p : Program Op Tst r b) (M : AccessModel Op Tst P) (S : Specification Op Tst P) : Prop :=
-  Runs p M S
-
 /-- Full canonical static count, including index expressions and control. -/
 noncomputable def staticCost {r b : ℕ} (p : Program Op Tst r b) (d : Fin r → ℕ) :
     Count (Op ⊕ Bookkeeping) Tst :=
@@ -394,6 +375,7 @@ theorem stmtPeak_instrument (W : Op → List ℕ → ℕ) (s : Stmt Op Tst) (idx
     simp only [Stmt.instrument, stmtPeak, stmtPeak_tally, zero_max]
     cases IExp.evalList idx ds <;> cases IExp.evalList idx (args.map Operand.off) <;>
       simp [ih]
+  | note _ _ ih => exact ih ..
 
 /-- The allocation/primitive part of the byte bound is unchanged by structural elaboration. -/
 theorem staticPeak_eq {r b : ℕ} (R : ResourceModel Op Tst) (p : Program Op Tst r b)

@@ -27,7 +27,7 @@ and the core record their rotations in a slotted Givens log, and the headlines (
 corollaries of the Schur theorems (`smallEigProg_pwrites_schur`,
 `smallEigProg_randomSchurLeafContract`, `ShiftedQR.roundedShQRSchur_measureReal_not_schur_le`).
 The eigenvalue-only programs and contracts named below are removed: the oracle-leaf `roundedShQR`
-and its certificate `roundedShQRAlgorithm`, `seLeaf`, `liftLeaf`, `solveRounded`,
+and its certificate `shqrAlgorithm`, `seLeaf`, `liftLeaf`, `solveRounded`,
 `RandomLeafContract`, `RandomLeafRoutineContract`, `BackwardLeaf(Routine)Contract`,
 `TerminatingLeaf`, and `copyLeaf` (now `identityLeaf`); the leaf contract is
 `Schur.RandomSchurLeafContract`. The constants of §14 are updated there; the rest of this note is
@@ -44,12 +44,12 @@ the design record of SMALLEIG and is not rewritten.
   `hSE : IsRandomSmallEig …` replaced by the program, conditional only on the two random-matrix
   hypotheses, at $\boldsymbol{u} \le \min(\boldsymbol{u}_{\mathrm{ShQR}}, \boldsymbol{u}_{\mathsf{SmallEig}})$.
 * **One change to merged code is required (§2.1).** The `SmallEig` call in the merged programs has
-  no operand for parameter words and no cap dimension (`run smallEigLeaf.body [k] (B, S)`,
-  `run L.body [d] (W, Out[2 lo])`). A program needs both (its $\gamma, \omega, \eta_{1,2}$, loop caps
+  no operand for parameter words and no cap dimension (`run smallEigLeaf [k] (B, S)`,
+  `run L [d] (W, Out[2 lo])`). A program needs both (its $\gamma, \omega, \eta_{1,2}$, loop caps
   depend on $\Sigma, \beta, \varphi$; they cannot be literals, since a program is fixed before the
   data). Every substitution mechanism, `Stmt.link` included, needs this operand. The words sit at
   the tail of the parameter list, viewed as `P[np - nq]`. Design: the
-  routine becomes a parameter `SE : Impl` of `…With` versions of the merged programs, and every
+  routine becomes a parameter `SE : Stmt` of `…With` versions of the merged programs, and every
   merged program is re-defined as a thin wrapper at the kernel. **No merged theorem statement
   changes**; the only numerals that may move are the work constants of the certificate (RF7).
 * **No probabilistic substitution rule exists for adaptive programs (§2.1).** `Interp.TapeLocal.link`
@@ -83,7 +83,7 @@ Streams: $s_U$ uniform on $[0,1]$ (the merged disk sampler), $s_G$ standard real
 
 ### 1.1 (a) Part III, Theorem 1.1, as a program theorem
 
-`smallEigProg sG : Impl O Q`, interface `[d, nq, T] (Bk, Q) → (Ev)`: for $d \le 1$ copy the entry;
+`smallEigProg sG : Stmt O Q`, interface `[d, nq, T] (Bk, Q) → (Ev)`: for $d \le 1$ copy the entry;
 otherwise copy the block to scratch, perturb by $\gamma'\mathbf{G}$ with $\gamma' = \mathrm{fl}(\gamma/\sqrt d)$
 computed in the program from $2d^2$ Gaussian draws (rounded), reduce to
 Hessenberg form bottom-up (rounded Givens), and run the merged worklist `solveRoundedWith` at
@@ -107,7 +107,7 @@ theorem smallEig_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp O Q
     (hu : u ≤ uSmallEig nmax S δ φ c₁ c₂)
     {w q o : ℕ × ℕ} {μ : Mem ℝ} (hin : SmallEigInput nmax S δ φ c₁ c₂ w q o M μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg sG (O := O) (Q := Q)).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg sG (O := O) (Q := Q))
       (Env.frame (smallEigDims n nmax S δ φ c₁ c₂) [w, q, o]) (Store.inBlock o.1 o.2 (2 * (n + 1)))
       (SmallEigSpectrum o M δ) μ} ≤ φ
 ```
@@ -187,7 +187,7 @@ theorem roundedShQRSmallEig_measureReal_not_spectrum_le {Mch : Machine ℝ} {I :
     {a t p out f : ℕ × ℕ} {μ : Mem ℝ}
     (hin : ShQRSmallEigInput k B Γ S δ φ c₁ c₂ a t p out f H μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig sG (O := O) (Q := Q)).body
+    P.real {ω' | ¬ Writes .total I (ξ ω') (roundedShQRSmallEig sG (O := O) (Q := Q))
       (Env.frame (shqrSmallEigDims n k B Γ S δ φ c₁ c₂) [a, t, p, out, f]) (shqrFp n a out f)
       (ShQRSpectrum out f H δ) μ} ≤ φ
 ```
@@ -215,7 +215,7 @@ per-node re-randomization is kept).
 
 **What Ops has (checked).** `Stmt.link`/`Interp.link`/`run_link` (`Ops/Link.lean`) substitute an
 `Impl` for an operation, pointwise in the tape. `Algorithm.link` (`Ops/Cert.lean:370`) needs
-the linked interpretation to meet the model's contracts (`Interp.link_meets`), i.e. a
+the linked interpretation to meet the model's contracts (`Interp.link_satisfies`), i.e. a
 deterministic or relational contract of the operation. The law-level transfer
 `Profile.Refines.measureReal_not_runs_le` (`Ops/Law.lean`) needs the linked operation to be
 `TapeLocal` with a fixed window, which `Interp.TapeLocal.link` (`Ops/Tape.lean:251`) gives only
@@ -259,7 +259,7 @@ generic in its routines (`solveRounded D L`). The same pattern for `SmallEig`:
 
 * `regularizeWith SE`, `shIterationWith SE`, `roundedDecoupleLoopWith SE`,
   `roundedDecoupleWith SE`, `solveRoundedWith D L`, `roundedShQRWith SE` (RF2a, RF3, RF5). Inside,
-  `SE.body` is inlined, so every operation the proofs see is a base operation (scalar, index,
+  `SE` is inlined, so every operation the proofs see is a base operation (scalar, index,
   sample, polar sampler), all tape-local: **`hloc` and every composition rule are used as they
   are**.
 * Each merged name becomes a wrapper at `SE := smallEigKernel` (the kernel call, ignoring `Q`),
@@ -284,15 +284,15 @@ dimension:
   dimension `T` the static count (TH5, HL5) has no bound. The `DistSpec` degree $m = 2^q$ is itself a
   cap word: `IExp` has no power (`Ops/Syntax.lean:40`), and with only $q \le T$ the count would be
   $2^T$ (review B4). $q$ is read with bound $m$, as the merged programs carry $k$ and $\log_2 k$.
-* The two call sites: `run smallEigLeaf.body [k] (B, S)` in `regularizeWithScratch`
-  (`RoundedRegularize.lean:137`) and `run L.body [d] (W, Out[2 lo])` in the worklist round
+* The two call sites: `run smallEigLeaf [k] (B, S)` in `regularizeWithScratch`
+  (`RoundedRegularize.lean:137`) and `run L [d] (W, Out[2 lo])` in the worklist round
   (`RoundedSolve.lean:186`). The second also forces a **bounded** leaf contract: the merged
   `RandomLeafContract` quantifies every order $d$, so a leaf that is not an oracle (`copyLeaf`
   handles $d \le 1$; `smallEigProg` is analysed for $d \le k$, $\|\mathbf{B}\| \le \Sigma$) cannot meet
   it. The bounded `RandomLeafRoutineContract law β φ kmax Nmax ps T L I` follows the precedent of
   `RandomDecouplingContract`'s `nmax`/`Nmax` (Part II note §2.1, found while proving P11p).
 * Statement-level consequences in merged code: none in theorem text. The certificate
-  (`RoundedCertificate.lean`) states its work polynomial as numerals in a definition
+  (`RoundedCertification.lean`) states its work polynomial as numerals in a definition
   (`196017(n+1)^3(k+1)^3(n_p+1)(F+1) + 8b^4\bar w` before this stage); the wrapper's extra frame
   changed the static count, and with it the numeral, now `196218` (RF7, §14). T5's witness `2011` is inside a proof of `∃ c`.
   (Removed by SCHUR: the oracle program, its certificate and T5 are deleted; see the banner.)
@@ -304,10 +304,10 @@ consumes instead (RF1):
 
 ```lean
 def RandomSmallEigContract (law : ℕ → Measure ℝ) (β φ : ℝ) (kmax T : ℕ) (S : ℝ) (qs : List ℝ)
-    (SE : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+    (SE : Stmt O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ {d : ℕ} {w q o : ℕ × ℕ} (B : Matrix (Fin d) (Fin d) ℂ), d ≤ kmax →
     IsUpperHessenberg B → specNorm B ≤ S →
-    PWrites law I SE.body (Env.frame [d, qs.length, T] [w, q, o]) (Store.inBlock o.1 o.2 (2 * d))
+    PWrites law I SE (Env.frame [d, qs.length, T] [w, q, o]) (Store.inBlock o.1 o.2 (2 * d))
       (fun μ => HoldsMatrix w B μ.store ∧ μ.store.readBlock q.1 q.2 qs.length = some qs ∧
         μ.Live [w, q, o] ∧ o.2 + 2 * d ≤ μ.store.len o.1 ∧
         Fp.Disj (Store.inBlock w.1 w.2 (2 * (d * d))) (Store.inBlock o.1 o.2 (2 * d)) ∧
@@ -316,7 +316,7 @@ def RandomSmallEigContract (law : ℕ → Measure ℝ) (β φ : ℝ) (kmax T : �
         (∀ i, ‖roots i - ev i‖ ≤ β) ∧
         HoldsMatrix o (Matrix.of fun i (_ : Fin 1) => roots i) μ'.store) φ
 
-def TerminatingSmallEig (T : ℕ) (qs : List ℝ) (SE : Impl O Q) (I : Interp O Q ℝ) : Prop := …
+def TerminatingSmallEig (T : ℕ) (qs : List ℝ) (SE : Stmt O Q) (I : Interp O Q ℝ) : Prop := …
   -- every tape, every input block: Writes .total … (fun _ => True)
 
 theorem IsRandomSmallEig.randomSmallEigContract (h : IsRandomSmallEig law s β φ I) :
@@ -603,7 +603,7 @@ are in the JSON only.
 | RH4 | `NLAlib.SmallEig.rhess_terminates` — Total on every tape | Eigensolvers/SmallEig/RandomHessenberg.lean | S | RH1, HR3 | 2 | stage |
 | OE3 | `NLAlib.SmallEig.oneEig_terminates` — Total on every tape (capped) | Eigensolvers/SmallEig/OneEig.lean | S | OE1, DS3 | 2 | stage |
 | LF1 | `NLAlib.SmallEig.copyLeaf, copyLeaf_randomLeafRoutineContract` — `[d, np, T] (Bk, P) → (Ev)` copying the single entry; for d ≤ 1 meets `RandomLeafRoutineContract law 0 0 1 Nmax ps T` | Eigensolvers/SmallEig/Leaf.lean | S | RF2a | 2 | stage |
-| TH5 | `NLAlib.SmallEig.smallEig_work_le` — ∃ c, ∀ n nq T, Count.size (stmtCost smallEigProg.body [n+1, nq, T]) ≤ c (n+1)^4 (T+1)^2 (true with m, t, m₂ ≤ T: N·(N³ + 6t·m·N² + m₂N²), review B4) (static: on every tape; review N5: the t·m·log m term carries the factor n) | Eigensolvers/SmallEig/Theorems.lean | M | SE1, RF2a | 2 | stage |
+| TH5 | `NLAlib.SmallEig.smallEig_work_le` — ∃ c, ∀ n nq T, Count.size (stmtCost smallEigProg [n+1, nq, T]) ≤ c (n+1)^4 (T+1)^2 (true with m, t, m₂ ≤ T: N·(N³ + 6t·m·N² + m₂N²), review B4) (static: on every tape; review N5: the t·m·log m term carries the factor n) | Eigensolvers/SmallEig/Theorems.lean | M | SE1, RF2a | 2 | stage |
 | GP3 | `NLAlib.SmallEig.ginibrePerturb_pwrites` — At every order N ≤ nmax, words at nmax (review B1). PWrites: from A with ‖A‖ ≤ S, except with probability tail(t₁) + tail(t₂) + φ_norm ≤ 3φ/4 (budget table §1.1, review S2), the stored Â is in the class (κ ≤ 2/t₂, gap ≥ t₁/2), ‖Â‖ ≤ S + 2γW, and Â = A + E₁ with ‖E₁‖ ≤ γW + c N u(...) | Eigensolvers/SmallEig/Perturb.lean | M | GP1, GP2, RM4, RM5, RM6, RM8, M12 | 3 | stage |
 | RH3 | `NLAlib.SmallEig.rhess_pwrites` — Prop 5.3 corrected (P3, P4, N1): A in class (κ ≤ B, gap g), ‖A‖ ≤ S, u ≤ u_RH: except with probability ≤ N s² + e^{-…} (RM7, RM6), Ĥ is in class (2B, g/2) with a diagonalization whose last-row weights are all ≥ p = s²/(64 R² B²) | Eigensolvers/SmallEig/RandomHessenberg.lean | L | RH2, M8, M9, M10, RM7, RM6, RM8 | 3 | stage |
 | OE2 | `NLAlib.SmallEig.oneEig_pwrites` — Prop 3.5 corrected (P5 η₂ = β'/40, P6 t, P7 log₂; perturbed start, review B3): H in class with weights ≥ p, ‖H‖ ≤ S, u ≤ u_OE: except with probability ≤ (6t+1)(η₁/η₂)², Fl = 0 and η₁ ≤ dist(λ̃) ≤ β' | Eigensolvers/SmallEig/OneEig.lean | L | OE1, DS2, M3, M5, M6, M4b, M4c | 3 | stage |
@@ -622,7 +622,7 @@ are in the JSON only.
 | TH1 | `NLAlib.SmallEig.smallEig_measureReal_not_spectrum_le` — Headline (a), §1.1: order n + 1 ≤ nmax, words and u₀ at nmax | Eigensolvers/SmallEig/Theorems.lean | M | CO1, GP3, SE1, PA1, PA3, HR2, RMn | 8 | stage |
 | TH2 | `NLAlib.SmallEig.smallEig_relative` — Relative form: ‖M‖ ≤ S ≤ c‖M‖ (S a word, review P9/N4: Σ is an input of Theorem 1.1), error δ‖M‖ | Eigensolvers/SmallEig/Theorems.lean | S | TH1 | 9 | stage |
 | TH3 | `NLAlib.SmallEig.smallEigProg_randomSmallEigContract` — Headline (b), §1.2: forward contract on orders ≤ kmax, norms ≤ S | Eigensolvers/SmallEig/Theorems.lean | M | TH1, PA5, M14 | 9 | stage |
-| TH6 | `NLAlib.SmallEig.smallEigAlgorithm, smallEig_algorithm_measureReal_not_accepts_le` — Canonical certificate (confined, uniform, no oracle) and the accepts bound: cost and correctness on one counted run | Eigensolvers/SmallEig/Certificate.lean | M | TH1, TH5, SE2 | 9 | stage |
+| TH6 | `NLAlib.SmallEig.smallEigAlgorithm, smallEig_algorithm_measureReal_not_accepts_le` — Canonical certificate (confined, uniform, no oracle) and the accepts bound: cost and correctness on one counted run | Eigensolvers/SmallEig/Certification.lean | M | TH1, TH5, SE2 | 9 | stage |
 | TH4 | `NLAlib.SmallEig.smallEig_measureReal_not_forward_le` — Corollary 1.3 as a probability statement for one input of order n+1 ≤ kmax | Eigensolvers/SmallEig/Theorems.lean | S | TH3 | 10 | stage |
 | RM1 | `NLAlib.PolyLogTail.BoundsGinibreGap` — def PolyLogTail.BoundsGinibreGap (c : PolyLogTail) : Prop := ∀ {Ω : Type} {mΩ} {μ} {n : Type} [Fintype n] [DecidableEq n] {G}, HasLaw G (complexGaussianMatrix n n) μ → ∀ M {γ t}, 0 < γ → 2γ ≤ specNorm M → 0 < t → t ≤ γ → μ.real {ω \| ¬ ∃ d, IsEigenvalueListing (M + (γ/√card n) • G ω) d ∧ ∀ i j, i ≠ j → t < ‖d i - d j‖} ≤ c.C · card n ^ c.a · (t/γ)^c.b · (specNorm M/γ + log(γ/t))^c.c  (the body of the spec's weak form A; `PolyLogTail` = (C a b c : ℝ)) | RandomMatrix/Shattering/GinibreClass.lean (new; collaborator's file, ours: defs + glue) | S | — | 0 | hyp |
 | RM2 | `NLAlib.PolyLogTail.BoundsGinibreCondition` — def PolyLogTail.BoundsGinibreCondition (c : PolyLogTail) : Prop := (the body of the spec's weak form B: … 0 < t → t ≤ 1 → μ.real {ω \| ¬ ∃ V d, IsUnit V ∧ (M + (γ/√card n) • G ω) * V = V * diagonal d ∧ pseudoConditionNumber V ≤ t⁻¹} ≤ c.C card n^c.a t^c.b (specNorm M/γ + log t⁻¹)^c.c) | RandomMatrix/Shattering/GinibreClass.lean (new; collaborator's file, ours: defs + glue) | S | — | 0 | hyp |
@@ -632,9 +632,9 @@ are in the JSON only.
 | RMn | `NLAlib.PolyLogTail.normalize, PolyLogTail.BoundsGinibreGap.normalize, PolyLogTail.BoundsGinibreCondition.normalize` — Normalized record (review S1): PolyLogTail.BoundsGinibreGap c ⇒ PolyLogTail.BoundsGinibreGap c.normalize with c.normalize = (max C 1, max a 0, b, max c 0) (valid: card n ≥ 1 and the base K ≥ 2 in the range); same for the condition tail. Every parameter is defined from the normalized record: log₂(C/φ) is not junk, tails are monotone in the order and in K | RandomMatrix/Shattering/GinibreClass.lean (new; collaborator's file, ours: defs + glue) | S | RM1, RM2 | 1 | gen |
 | RM4 | `NLAlib.measureReal_not_exists_class_le_of_hasLaw_complexGaussianMatrix` — For every M (no norm condition), every γ > 0 (the program's rounded scale γ'/√d is a valid γ, review B1), 0 < t₁ ≤ γ, 0 < t₂ ≤ 1, RM1 c₁, RM2 c₂: μ.real {ω \| ¬ ∃ V d, IsUnit V ∧ (M + (γ/√n) G ω) V = V diag d ∧ κ(V) ≤ t₂⁻¹ ∧ ∀ i ≠ j, t₁ ≤ ‖d i - d j‖} ≤ tail c₁ n (K/…) + tail c₂ …, K = (‖M‖ + 4γ)/γ | RandomMatrix/Shattering/GinibreClass.lean (new; collaborator's file, ours: defs + glue) | M | RM1, RM2, M13, RMn | 2 | gen |
 | RM5 | `NLAlib.SmallEig.ginibreClass_spec` — At an outer order bound nmax (review B1) and a free failure budget φ' (review S2): t₁(φ', nmax, S, γ, c₁), t₂(φ', nmax, S, γ, c₂) with each tail ≤ φ' at every order ≤ nmax (normalized record, a ≥ 0), 0 < t₁ ≤ γ, 0 < t₂ ≤ 1, and log₂(1/t_i) ≤ (a log₂(4 nmax) + log₂(C/φ') + c log₂ K + 1)/(b/2) | Eigensolvers/SmallEig/Parameters.lean | M | RM1, RM2, RMn | 2 | stage |
-| RF1 | `NLAlib.ShiftedQR.RandomSmallEigContract, TerminatingSmallEig, smallEigKernel, IsRandomSmallEig.randomSmallEigContract, IsRandomSmallEig.terminatingSmallEig` — `RandomSmallEigContract law β φ kmax T S qs SE I`: ∀ d ≤ kmax, B Hessenberg, specNorm B ≤ S, PWrites law I SE.body (frame [d, qs.length, T] [w, q, o]) (inBlock o (2d)) (B, qs stored, live, room, apart) (∃ roots ev, IsEigenvalueListing B ev ∧ ∀ i, ‖roots i - ev i‖ ≤ β ∧ HoldsMatrix o (col roots)) φ; `TerminatingSmallEig kmax T qs SE I` the all-tape total run on orders ≤ kmax (elaboration: an unbounded order would need exact natural literals of every size); `smallEigKernel : [d, nq, T] (Bk, Q) → (Ev)` calls the kernel and ignores Q; bridges: IsRandomSmallEig law s β φ I → RandomSmallEigContract law β φ kmax T S qs smallEigKernel I (any kmax, T, S, qs) and → TerminatingSmallEig | Eigensolvers/ShiftedQR/RoundedKernels.lean | S | — | 0 | refactor |
-| RF2a | `NLAlib.ShiftedQR.solveRoundedWith, liftLeaf; solveRounded as a wrapper` — `solveRoundedWith D L : [N, k, np, F, T] (A, Thr, P) → (Out, Fl)`, leaf call `run L.body [d, np, T] (W, P, Out[2 lo])`; `liftLeaf L : [d, np, T] (Bk, P) → (Ev) := run L.body [d] (Bk, Ev)`; `solveRounded D L := opsImpl% [N,k,np,F] … { run (solveRoundedWith D (liftLeaf L)).body [N,k,np,F,0] … }` (interface and every merged statement unchanged); contracts `RandomLeafRoutineContract law β φ kmax Nmax ps T L I`, `BackwardLeafRoutineContract`, `TerminatingLeafRoutine` (leaf frame [d, ps.length, T] [w, p, o], d ≤ kmax, norm ≤ Nmax) with bridges from the merged ones through liftLeaf | Eigensolvers/ShiftedQR/RoundedSolve.lean | M | RF1 | 1 | refactor |
-| RF3 | `regularizeWith, regularizeWithScratchWith, shIterationWith, roundedDecoupleLoopWith, roundedDecoupleWith; merged names as wrappers` — Each program gains the routine `SE : Impl O Q`, the operand `Q` (the view `P[np - nq]`: the SmallEig words are the tail of P; `nq` is the fixed word count of `smallEigParams`, a literal; review B2: the merged `roundedDecoupleParams` has length 10 + 2·\|excNet ε\|, not a literal) and the dimension `T`; `run smallEigLeaf.body [k] (B, S)` becomes `run SE.body [k, nq, T] (B, Q, S)`; the merged `regularize`, `shIteration`, `roundedDecouple` are wrappers at `SE := smallEigKernel`, `nq = T = 0` | Eigensolvers/ShiftedQR/RoundedRegularize.lean, RoundedIteration.lean, RoundedDecouple.lean | M | RF1 | 1 | refactor |
+| RF1 | `NLAlib.ShiftedQR.RandomSmallEigContract, TerminatingSmallEig, smallEigKernel, IsRandomSmallEig.randomSmallEigContract, IsRandomSmallEig.terminatingSmallEig` — `RandomSmallEigContract law β φ kmax T S qs SE I`: ∀ d ≤ kmax, B Hessenberg, specNorm B ≤ S, PWrites law I SE (frame [d, qs.length, T] [w, q, o]) (inBlock o (2d)) (B, qs stored, live, room, apart) (∃ roots ev, IsEigenvalueListing B ev ∧ ∀ i, ‖roots i - ev i‖ ≤ β ∧ HoldsMatrix o (col roots)) φ; `TerminatingSmallEig kmax T qs SE I` the all-tape total run on orders ≤ kmax (elaboration: an unbounded order would need exact natural literals of every size); `smallEigKernel : [d, nq, T] (Bk, Q) → (Ev)` calls the kernel and ignores Q; bridges: IsRandomSmallEig law s β φ I → RandomSmallEigContract law β φ kmax T S qs smallEigKernel I (any kmax, T, S, qs) and → TerminatingSmallEig | Eigensolvers/ShiftedQR/RoundedKernels.lean | S | — | 0 | refactor |
+| RF2a | `NLAlib.ShiftedQR.solveRoundedWith, liftLeaf; solveRounded as a wrapper` — `solveRoundedWith D L : [N, k, np, F, T] (A, Thr, P) → (Out, Fl)`, leaf call `run L [d, np, T] (W, P, Out[2 lo])`; `liftLeaf L : [d, np, T] (Bk, P) → (Ev) := run L [d] (Bk, Ev)`; `solveRounded D L := ops% [N,k,np,F] … { run (solveRoundedWith D (liftLeaf L)) [N,k,np,F,0] … }` (interface and every merged statement unchanged); contracts `RandomLeafRoutineContract law β φ kmax Nmax ps T L I`, `BackwardLeafRoutineContract`, `TerminatingLeafRoutine` (leaf frame [d, ps.length, T] [w, p, o], d ≤ kmax, norm ≤ Nmax) with bridges from the merged ones through liftLeaf | Eigensolvers/ShiftedQR/RoundedSolve.lean | M | RF1 | 1 | refactor |
+| RF3 | `regularizeWith, regularizeWithScratchWith, shIterationWith, roundedDecoupleLoopWith, roundedDecoupleWith; merged names as wrappers` — Each program gains the routine `SE : Stmt O Q`, the operand `Q` (the view `P[np - nq]`: the SmallEig words are the tail of P; `nq` is the fixed word count of `smallEigParams`, a literal; review B2: the merged `roundedDecoupleParams` has length 10 + 2·\|excNet ε\|, not a literal) and the dimension `T`; `run smallEigLeaf [k] (B, S)` becomes `run SE [k, nq, T] (B, Q, S)`; the merged `regularize`, `shIteration`, `roundedDecouple` are wrappers at `SE := smallEigKernel`, `nq = T = 0` | Eigensolvers/ShiftedQR/RoundedRegularize.lean, RoundedIteration.lean, RoundedDecouple.lean | M | RF1 | 1 | refactor |
 | RF2b | `solveRoundedWith_pwrites, solveRoundedWith_backward, solveRoundedWith_terminates; merged solveRounded_* as corollaries` — The worklist theorems for `solveRoundedWith` with `RandomLeafRoutineContract … n N₀ ps T` (the leaf gets blocks of order ≤ k and norm ≤ N₀); `solveRounded_pwrites`, `solveRounded_backward`, `solveRounded_measureReal_not_spectrum_le`, `solveRounded_terminates` re-derived, statements unchanged | Eigensolvers/ShiftedQR/RoundedHeadline.lean, RoundedSolveBackward.lean, RoundedSolveTermination.lean, RoundedWorklistTermination.lean | L | RF2a | 2 | refactor |
 | RF4a | `With versions: regularizeWith_pwrites (P10, P14) with the SmallEig contract at d = k, ‖trailingBlock k H‖ ≤ ‖H‖ ≤ S_it` — regularizeWith_pwrites (P10, P14) with the SmallEig contract at d = k, ‖trailingBlock k H‖ ≤ ‖H‖ ≤ S_it; the parameter list is `roundedDecoupleParams … ++ qs` (review B2); the merged statements are the case `qs = []`, re-derived unchanged | Eigensolvers/ShiftedQR/RoundedRegularize.lean, Eigensolvers/ShiftedQR/RoundedRegularizeTrial.lean | L | RF3, RF1 | 2 | refactor |
 | RF4b | `With versions: shIterationWith contract (P10b) threading SE` — shIterationWith contract (P10b) threading SE; the parameter list is `roundedDecoupleParams … ++ qs` (review B2); the merged statements are the case `qs = []`, re-derived unchanged | Eigensolvers/ShiftedQR/RoundedIteration.lean, Eigensolvers/ShiftedQR/RoundedSh*.lean | L | RF3, RF1 | 2 | refactor |
@@ -644,7 +644,7 @@ are in the JSON only.
 | RF5 | `roundedShQRWith, roundedShQRWith_measureReal_not_spectrum_le, roundedShQRWith_terminates` — `roundedShQRWith SE := solveRoundedWith (roundedDecoupleWith SE) (seLeaf SE)` with dims [n+1, k, np, F, T]; T1c and T1d for it, with the contract at (k, T, 4Σ, βse, φse) in place of `hSE : IsRandomSmallEig` | Eigensolvers/ShiftedQR/RoundedTheorems.lean | M | RF2b, RF4a, RF4b, RF4c, RF4d, RF8 | 3 | refactor |
 | RF6 | `roundedShQR_* re-derived (T1c, T1d, T3, T4, T5)` — `roundedShQR := wrapper of roundedShQRWith smallEigKernel at T = 0`; every merged headline re-proved from RF5, statement text unchanged; T5's witness constant (2011) re-computed by `kernel_rfl` if the wrapper frame changes the static count (the statement is ∃ c, unchanged) | Eigensolvers/ShiftedQR/RoundedTheorems.lean | S | RF5 | 4 | refactor |
 | HL5 | `NLAlib.ShiftedQR.roundedShQRSmallEig_work_le` — ∃ c, static count of roundedShQRSmallEig at [n+1, k, np, F, T] ≤ c (n+1)^4 (k+1)^5 (np+1)(F+1)(T+1)^2 — SmallEig's cost now counted | Eigensolvers/ShiftedQR/RoundedSmallEig.lean (new) | M | RF5, TH5 | 4 | stage |
-| RF7 | `shqrSpecification constants re-checked; roundedShQRAlgorithm unchanged in shape` — The explicit work polynomial `196218(n+1)^3(k+1)^3(np+1)(F+1) + 8b^4 w̄` (was `196017`) and the kernel-call polynomial are recomputed by `kernel_rfl` for the wrapper body; if a numeral changes, the change is the only statement change of this stage in merged code (recorded in the PR read-back) | Eigensolvers/ShiftedQR/RoundedCertificate.lean | M | RF6 | 5 | refactor |
+| RF7 | `shqrSpecification constants re-checked; shqrAlgorithm unchanged in shape` — The explicit work polynomial `196218(n+1)^3(k+1)^3(np+1)(F+1) + 8b^4 w̄` (was `196017`) and the kernel-call polynomial are recomputed by `kernel_rfl` for the wrapper body; if a numeral changes, the change is the only statement change of this stage in merged code (recorded in the PR read-back) | Eigensolvers/ShiftedQR/RoundedCertification.lean | M | RF6 | 5 | refactor |
 | OL1 | `NLAlib.Ops.Interp.TapeAdapted, TapeLocal.tapeAdapted, run_follows_of_tapeAdapted` — def Interp.TapeAdapted I o := ∀ d ins outs τ τ', Follows τ τ' (I.call o d ins outs τ) (I.call o d ins outs τ'); TapeLocal ⇒ TapeAdapted; `run_follows` from ∀ o, TapeAdapted | Ops/Tape.lean | M | — | opt | optional |
 | OL4 | `NLAlib.Ops.PWrites.link_iff, PWrites.call_link` — PWrites law I (s.link T) ρ F Pre Post φ ↔ PWrites law (I.link T) s ρ F Pre Post φ; a call of a substituted operation meets the PWrites spec of its implementation body | Ops/Logic/Probabilistic.lean | S | — | opt | optional |
 | HL3 | `NLAlib.ShiftedQR.roundedShQRSmallEig_terminates` — Every tape; no u, class or RMT hypothesis; needs `hin` only (the stored words satisfy SmallEigCaps by PA2), as the merged `roundedShQR_terminates` | Eigensolvers/ShiftedQR/RoundedSmallEig.lean (new) | S | RF5, SE2, PA2 | 8 | stage |
@@ -653,7 +653,7 @@ are in the JSON only.
 | HL1 | `NLAlib.ShiftedQR.shqrSmallEigParams, uShQRSmallEig, shqrSmallEigCap` — words := shqrParams ++ smallEigForwardParams at (k, 4Σ, βse = shqrSmallEigAccuracy, φse = shqrSmallEigFailure); uShQRSmallEig := min (uShQR …) (uSmallEigForward k (4Σ) βse φse c₁ c₂); T := smallEigCap; positivity | Eigensolvers/ShiftedQR/RoundedSmallEig.lean (new) | M | PA3, PA5 | 9 | stage |
 | HL2 | `NLAlib.ShiftedQR.roundedShQRSmallEig_measureReal_not_spectrum_le` — Headline (c), §1.3 | Eigensolvers/ShiftedQR/RoundedSmallEig.lean (new) | M | HL1, TH3, RF5, SE2 | 10 | stage |
 | HL4 | `NLAlib.ShiftedQR.logb_inv_uShQRSmallEig_le, shqrDegree_le_log` — ∃ c₁ c₂ c₃, log₂(1/uShQRSmallEig) ≤ c₁ k log₂ Y + c₂ k² (log₂ Y)² + c₃, Y = 4(n+1)BS²K/(δ min(Γ,S) φ); with k ≤ c (log₂ 4B + 1)(log₂ log₂ 16B + 1) this is O(log⁴ Y) up to (log log)² | Eigensolvers/ShiftedQR/RoundedSmallEig.lean (new) | M | HL1, PA4 | 10 | stage |
-| HL6 | `NLAlib.ShiftedQR.roundedShQRSmallEigAlgorithm, …_measureReal_not_accepts_le` — Certificate without a SmallEig oracle (the model is scalar + index + samples + polar sampler) | Eigensolvers/ShiftedQR/RoundedSmallEigCertificate.lean (new) | M | HL2, HL5, TH6 | 11 | stage |
+| HL6 | `NLAlib.ShiftedQR.shqrSmallEigAlgorithm, …_measureReal_not_accepts_le` — Certificate without a SmallEig oracle (the model is scalar + index + samples + polar sampler) | Eigensolvers/ShiftedQR/RoundedSmallEigCertification.lean (new) | M | HL2, HL5, TH6 | 11 | stage |
 | HL7 | `NLAlib.ShiftedQR.roundedShQRSmallEig_relative, _hermitian` — Optional: the T3/T4 corollaries for the unconditional program | Eigensolvers/ShiftedQR/RoundedSmallEig.lean (new) | S | HL2 | 11 | stage |
 
 **Totals.**
@@ -693,9 +693,9 @@ worklist, `DistSpec`'s pieces and the sampler are reused and the sphere sampler 
 | `Eigensolvers/HessenbergReduction.lean` (new) | HR1–HR3 | a general rounded program (consumers: SmallEig, any dense eigensolver); the merged exact `hessenbergReduction` (`Matrix/Factorizations/Hessenberg.lean:239`) is top-down, fixes $\mathbf{e}_1$ and is not a program, so any exact bottom-up statement goes next to it (review S11) |
 | `RandomMatrix/Shattering/GinibreClass.lean` (new) | RM1–RM4, RMn, RM9, the instances `boundsGinibreGap_ginibreGapTail`, `boundsGinibreCondition_ginibreConditionTail` | the solver-facing records; the tails that discharge them are in `RandomMatrix/Shattering/` (design note `RandomMatrix-Shattering.md`) |
 | `RandomMatrix/Gaussian/Complex.lean`, `…/LeastSingularValue.lean`, `…/Gaussian/Tape.lean` | RM6, RM7, RM8 | Gaussian facts |
-| `Eigensolvers/SmallEig/` (new folder): `Draws`, `Perturb`, `OneEigMath`, `RandomHessenberg`, `DistSpec`, `OneEig`, `Decouple`, `Decoupler`, `Leaf`, `Core`, `Program`, `Parameters`, `Precision`, `Theorems`, `Certificate` | GD1 … TH6, M4a–c, M5, M6, M17, RM5 | the algorithm |
+| `Eigensolvers/SmallEig/` (new folder): `Draws`, `Perturb`, `OneEigMath`, `RandomHessenberg`, `DistSpec`, `OneEig`, `Decouple`, `Decoupler`, `Leaf`, `Core`, `Program`, `Parameters`, `Precision`, `Theorems`, `Certification` | GD1 … TH6, M4a–c, M5, M6, M17, RM5 | the algorithm |
 | `Eigensolvers/ShiftedQR/Rounded*.lean` (merged) | RF1–RF7 | the refactor |
-| `Eigensolvers/ShiftedQR/RoundedSmallEig.lean`, `RoundedSmallEigCertificate.lean` (new) | HL1–HL7 | the linked headline |
+| `Eigensolvers/ShiftedQR/RoundedSmallEig.lean`, `RoundedSmallEigCertification.lean` (new) | HL1–HL7 | the linked headline |
 | `Ops/Tape.lean`, `Ops/Logic/Probabilistic.lean` | OL1–OL4 (optional) | the general rule |
 
 Placement flags: M3 is a statement about points of $\mathbb{C}$ only (a P9 review warning); its
@@ -719,7 +719,7 @@ notions).
 
 | repeated argument | handled by | status |
 |---|---|---|
-| a randomized routine in a merged program | the routine parameter `SE : Impl` + `RandomSmallEigContract` (RF1–RF4) | new |
+| a randomized routine in a merged program | the routine parameter `SE : Stmt` + `RandomSmallEigContract` (RF1–RF4) | new |
 | merged name kept, body generalized | wrapper frame + bridge (one lemma per program, `PWrites.in_frame`) | new pattern, RF2a/RF3 |
 | union bound over calls and rounds | `PWrites.seq`, `.whileFuel` | merged |
 | a call whose bad event is a window | `PWrites.of_window` with a **closed** class set (M12) | merged + M12 |
@@ -792,7 +792,7 @@ Per statement, to be checked in the skeleton (the Part II lessons in brackets):
 * **D1 Precision model.** (a) One `StdModel u`, $\boldsymbol{u} \le \min(\boldsymbol{u}_{\mathrm{ShQR}},
   \boldsymbol{u}_{\mathsf{SmallEig}})$, bits $O(k^2\log^2 Y) = O(\log^4 Y)$ up to $(\log\log)^2$; (b) two
   precisions (§2.3). **Recommend (a)**; (b) later as its own stage if the bit count matters.
-* **D2 Substitution mechanism.** (a) Routine parameter `SE : Impl` with wrappers (RF1–RF7), no new
+* **D2 Substitution mechanism.** (a) Routine parameter `SE : Stmt` with wrappers (RF1–RF7), no new
   Ops logic; (b) `Stmt.link` + the general rule OL1–OL4 and the merged chain restated over
   `TapeAdapted` (about 28 theorems' `hloc`). Both need the parameter operand (§2.1). **Recommend
   (a)**; OL1–OL4 are specified and optional: land them when a second adaptive routine must be
@@ -899,7 +899,7 @@ new definitions are stubs, proofs `sorry` (except RM9, proved by repackaging). E
 `exists_complexGaussianGapTail_iff` (RM9: the spec's `exists_forall_…` statement, verbatim, ↔ the
 record form; proved), the preferred Theorem A and RM3's statement, M12, M11c;
 `RandomSmallEigContract`, `TerminatingSmallEig`, `RandomLeafRoutineContract`, `smallEigKernel`
-(an `opsImpl%` program), `IsRandomSmallEig.randomSmallEigContract`, `seLeaf` (an `opsImpl%`
+(an `ops%` program), `IsRandomSmallEig.randomSmallEigContract`, `seLeaf` (an `ops%`
 program with the view `P[np - 12]`), `RandomSmallEigContract.randomLeafRoutineContract`;
 signatures of `solveRoundedWith`, `regularizeWith`, `roundedDecoupleWith`, `roundedShQRWith`;
 headline (a) `smallEig_measureReal_not_spectrum_le`, headline (b)
@@ -960,7 +960,7 @@ The certificates' constants are larger than TH5 and HL5 because they also count 
 program. HL5's exponent of $k + 1$ is $4$, not the $5$ of the target row.
 
 The random-matrix tails (RM1, RM2) are proved (`NLAlib.boundsGinibreGap_ginibreGapTail`,
-`NLAlib.boundsGinibreCondition_ginibreConditionTail` at the records $(10000e, 5, 1/2, 2)$ and $(128e, 3, 2, 2)$), so
+`NLAlib.boundsGinibreCondition_ginibreConditionTail` at the records $(2048e, 11/3, 2/3, 2)$ and $(128e, 3, 2, 2)$), so
 every headline has an `_unconditional` form without the tail hypotheses.
 
 ### 14.1 Changes after the stage review (Fable, `Review-Fable-SMALLEIG-Stage.md`)

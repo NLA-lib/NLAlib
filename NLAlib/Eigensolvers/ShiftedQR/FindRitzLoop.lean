@@ -28,9 +28,11 @@ open Ops
 variable {Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op]
   [Has CmpTst Tst] [Has IdxTst Tst]
 
-/-- The actual level loop reaches the mathematical selected index while retaining the
-source blocks. Every runtime natural-index bound follows from the power-of-two window.
-[BanksGarzaVargasSrivastava2021, §4.3]. -/
+/-- The actual level loop reaches the mathematical selected index while retaining the source blocks.
+Every runtime natural-index bound follows from the power-of-two window.
+[BanksGarzaVargasSrivastava2021, §4.3]. A fragment: its tree runs only inside the tree of
+`NLAlib.ShiftedQR.findRitzSearchWithScratch`.
+A fragment of the tree `NLAlib.ShiftedQR.findRitzSearchWithScratch`. -/
 theorem findRitzLevels_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I)
     (hCmp : IsCmp id I) (hToNat : IsToNat id I)
@@ -42,7 +44,7 @@ theorem findRitzLevels_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hdet : ∀ shift ∈ shifts, (H - shift • 1).det ≠ 0)
     (hra : r.1 ≠ b.1) (hrs : r.1 ≠ ss.1) (hl : m.Live [b, ss, r, r])
     (hr : r.2 + 6 ≤ m.store.len r.1) :
-    Writes .total I τ findRitzLevels.body (Env.frame [n + 1, levels, k] [b, ss, r, r])
+    Writes .total I τ findRitzLevels (Env.frame [n + 1, levels, k] [b, ss, r, r])
       (Store.inBlock r.1 r.2 6)
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix b H m'.store ∧
         HoldsShifts (k := k) ss shifts m'.store ∧

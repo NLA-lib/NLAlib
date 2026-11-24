@@ -10,6 +10,8 @@ public import NLAlib.Ops.Logic.Builder
 public import NLAlib.Ops.Logic.VectorUpdate
 public import NLAlib.Ops.Logic.EntryLayout
 public import NLAlib.Ops.Blas.HermitianEntry
+public import NLAlib.Ops.Logic.RoutineIntro
+public import NLAlib.Ops.RoutineSyntax
 
 /-!
 # Copy and identity kernels for interleaved matrices
@@ -20,8 +22,11 @@ components; its diagonal uses the machine literal one. No matrix-valued primitiv
 
 ## Main results
 
-* `NLAlib.Ops.PairMatrix.copy` copies an interleaved rectangular matrix.
-* `NLAlib.Ops.PairMatrix.identity` initializes a complete interleaved square identity.
+* `NLAlib.Ops.PairMatrix.copy` copies an interleaved rectangular matrix;
+  `NLAlib.Ops.PairMatrix.copyRoutine` is the routine callers run.
+* `NLAlib.Ops.PairMatrix.identity` initializes a complete interleaved square identity;
+  `NLAlib.Ops.PairMatrix.identityRoutine` is the routine callers run, with the judgment
+  `NLAlib.Ops.PairMatrix.identityRoutine_meets`.
 * `NLAlib.Ops.PairMatrix.stmtCost_identity` counts every initialized scalar word and diagonal.
 -/
 
@@ -32,29 +37,34 @@ namespace NLAlib.Ops.PairMatrix
 variable {Op Tst : Type} [Has ScalarOp Op]
 
 /-- Copy an interleaved rectangular matrix with one scalar copy per stored word. -/
-def copy : Impl Op Tst := opsImpl% [rows, cols] (X) → (Y) {
-  run (unaryMap (Has.inj ScalarOp.copy)).body [2 * (rows * cols)] (X, Y)
+def copy : Stmt Op Tst := ops% [rows, cols] (X) → (Y) {
+  run (unaryMap (Has.inj ScalarOp.copy)) [2 * (rows * cols)] (X, Y)
 }
 
 /-- The named copy program is definitionally the generic unary-map frame, so the builder
 introduces no new execution mechanism and retains the caller's explicit offsets. -/
 theorem body_copy_eq_frame :
-    (copy (Op := Op) (Tst := Tst)).body =
+    (copy (Op := Op) (Tst := Tst)) =
       .frame [.const 2 * (.var 0 * .var 1)] [⟨0, .var 2⟩, ⟨1, .var 3⟩]
-        (unaryMap (Has.inj ScalarOp.copy)).body := rfl
+        (unaryMap (Has.inj ScalarOp.copy)) := rfl
+
+/-- Copy an interleaved matrix: `[rows, cols] (X : 2 rows cols) → (Y : 2 rows cols)`, the two
+blocks apart. Callers run it by its interface. -/
+def copyRoutine : Routine Op Tst :=
+  routine% [rows, cols] (X : 2 * (rows * cols)) → (Y : 2 * (rows * cols)) by blocks := copy
 
 /-- Conjugate-transpose an interleaved rectangular matrix by scalar copies and negations. -/
-def conjTranspose : Impl Op Tst := opsImpl% [rows, cols] (X) → (Y) {
+def conjTranspose : Stmt Op Tst := ops% [rows, cols] (X) → (Y) {
   for j < cols {
     for i < rows {
-      run (Hermitian.conjugatePair).body []
+      run (Hermitian.conjugatePair) []
         (X[2 * (j * rows + i)], Y[2 * (i * cols + j)])
     }
   }
 }
 
 /-- Accumulate the real diagonal by the machine's additions, starting from literal zero. -/
-def traceRe : Impl Op Tst := opsImpl% [n] (X) → (out) {
+def traceRe : Stmt Op Tst := ops% [n] (X) → (out) {
   call (Has.inj (ScalarOp.lit 0)) [] () → (out);
   for i < n { call (Has.inj ScalarOp.add) [] (out, X[2 * (i * n + i)]) → (out) }
 }
@@ -66,12 +76,13 @@ def traceReF {K : Type} (M : Machine K) (n : ℕ) (v : ℕ → K) : ℕ → K
   | i + 1 => M.add (traceReF M n v i) (v (2 * (i * n + i)))
 
 /-- The real trace executes its actual left-to-right rounded recurrence on the stored matrix.
-Readable input and a disjoint writable accumulator suffice; no accuracy hypothesis is used. -/
-theorem writes_traceRe {K : Type} {M : Machine K} {I : Interp Op Tst K}
+Readable input and a disjoint writable accumulator suffice; no accuracy hypothesis is used.
+A step in the proof of `NLAlib.Ops.PairMatrix.traceReRoutine_meets`; callers use that judgment. -/
+private theorem traceRe_writes {K : Type} {M : Machine K} {I : Interp Op Tst K}
     (hI : IsScalar M I) {τ : Tape K} {m : Mem K} {n : ℕ} {x y : ℕ × ℕ} {v : ℕ → K}
     (hx : m.store.HoldsVec x.1 x.2 (2 * (n * n)) v) (hy : y.2 < m.store.len y.1)
     (hdisj : Fp.Disj (Store.inBlock y.1 y.2 1) (Store.inBlock x.1 x.2 (2 * (n * n)))) :
-    Writes .total I τ (traceRe (Op := Op) (Tst := Tst)).body (Env.frame [n] [x, y])
+    Writes .total I τ (traceRe (Op := Op) (Tst := Tst)) (Env.frame [n] [x, y])
       (Store.inBlock y.1 y.2 1)
       (fun m' => m'.store.get y.1 y.2 = some (traceReF M n v n) ∧ m'.pos = m.pos) m := by
   have hzero : Writes .total I τ
@@ -93,19 +104,47 @@ theorem writes_traceRe {K : Type} {M : Machine K} {I : Interp Op Tst K}
   exact ⟨(Store.EqOff.refl _ _).upd ⟨rfl, le_rfl, by omega⟩ _,
     Store.get_upd_self hz _, hpos⟩
 
+/-- The rounded real trace: `[n] (X : 2 n n) → (out : 1)`, the two blocks apart. Callers run it
+by its interface. -/
+def traceReRoutine : Routine Op Tst :=
+  routine% [n] (X : 2 * (n * n)) → (out : 1) by blocks := traceRe
+
+/-- The written cell is the left-to-right rounded sum `NLAlib.Ops.PairMatrix.traceReF` of the
+real diagonal words read. -/
+def traceReSpec {K : Type} [Inhabited K] (M : Machine K) : Routine.Spec K :=
+  spec% [n] (xs) → (ys) ensures ys = [traceReF M n (vec xs) n]
+
+/-- The real trace meets its specification on every scalar machine: the stored word is the
+actual rounded recurrence, with no accuracy hypothesis. -/
+theorem traceReRoutine_meets {K : Type} [Inhabited K] {M : Machine K} {I : Interp Op Tst K}
+    (hI : IsScalar M I) : (traceReRoutine (Op := Op) (Tst := Tst)).Meets I (traceReSpec M) := by
+  routine_intro [n] (x, y) reads (xs)
+  have hd : Fp.Disj (Store.inBlock y.1 y.2 1) (Store.inBlock x.1 x.2 (2 * (n * n))) := by
+    have h : Fp.Disj (Fp.blocks [y] [1]) (Fp.blocks [x] [2 * (n * n)]) := hsep.2.1
+    simpa [Fp.blocks] using h
+  have hy : y.2 < m.store.len y.1 := by
+    have h := hrooms.1
+    omega
+  refine (traceRe_writes hI (Store.holdsVec_of_readBlock hxs) hy hd).mono (by fp_sub) ?_
+  rintro m' - ⟨hg, hpos⟩
+  refine ⟨hpos, [[_]], Mem.readBlocks_of_cons ?_ rfl, rfl⟩
+  rw [BlockFn.readBlock_one, hg]
+  rfl
+
 /-- Extract the real diagonal words of an interleaved square matrix. -/
-def diagonalReal : Impl Op Tst := opsImpl% [n] (X) → (Y) {
+def diagonalReal : Stmt Op Tst := ops% [n] (X) → (Y) {
   for i < n { call (Has.inj ScalarOp.copy) [] (X[2 * (i * n + i)]) → (Y[i]) }
 }
 
 /-- Real-diagonal extraction succeeds on a readable source and disjoint output capacity,
-returning the actual stored diagonal words and preserving the tape position. -/
-theorem writes_diagonalReal {K : Type} {M : Machine K} {I : Interp Op Tst K}
+returning the actual stored diagonal words and preserving the tape position.
+A fragment of the tree `NLAlib.SpectralBisection.leafValues`. -/
+theorem diagonalReal_writes {K : Type} {M : Machine K} {I : Interp Op Tst K}
     (hI : IsScalar M I) {τ : Tape K} {m : Mem K} {n : ℕ} {x y : ℕ × ℕ} {v : ℕ → K}
     (hx : m.store.HoldsVec x.1 x.2 (2 * (n * n)) v)
     (hy : y.2 + n ≤ m.store.len y.1)
     (hdisj : Fp.Disj (Store.inBlock y.1 y.2 n) (Store.inBlock x.1 x.2 (2 * (n * n)))) :
-    Writes .total I τ (diagonalReal (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (diagonalReal (Op := Op) (Tst := Tst))
       (Env.frame [n] [x, y]) (Store.inBlock y.1 y.2 n)
       (fun m' => m'.store.HoldsVec y.1 y.2 n (fun i => v (2 * (i * n + i))) ∧
         m'.pos = m.pos) m := by
@@ -120,18 +159,20 @@ theorem writes_diagonalReal {K : Type} {M : Machine K} {I : Interp Op Tst K}
     Store.get_upd_self hz _, hpos⟩
 
 /-- Initialize an interleaved square identity using explicit scalar literals. -/
-def identity : Impl Op Tst := opsImpl% [n] () → (Y) {
+def identity : Stmt Op Tst := ops% [n] () → (Y) {
   for q < 2 * (n * n) { call (Has.inj (ScalarOp.lit 0)) [] () → (Y[q]) };
   for i < n { call (Has.inj (ScalarOp.lit 1)) [] () → (Y[2 * (i * n + i)]) }
 }
 
 /-- Identity initialization succeeds from output capacity alone and writes every word. Real
 diagonal positions contain the machine literal one; every other position contains literal zero.
-The statement concerns the actual machine words and does not assume exact arithmetic. -/
-theorem writes_identity {K : Type} {M : Machine K} {I : Interp Op Tst K}
+The statement concerns the actual machine words and does not assume exact arithmetic.
+The proof of `NLAlib.Ops.PairMatrix.identityRoutine_meets`, in operand form; the fragments of
+`NLAlib.Schur.schurPipelineWith` compose it by frame, and other callers use the judgment. -/
+theorem identity_writes {K : Type} {M : Machine K} {I : Interp Op Tst K}
     (hI : IsScalar M I) {τ : Tape K} {m : Mem K} {n b off : ℕ}
     (hroom : off + 2 * (n * n) ≤ m.store.len b) :
-    Writes .total I τ (identity (Op := Op) (Tst := Tst)).body (Env.frame [n] [(b, off)])
+    Writes .total I τ (identity (Op := Op) (Tst := Tst)) (Env.frame [n] [(b, off)])
       (Store.inBlock b off (2 * (n * n)))
       (fun m' => m'.store.HoldsVec b off (2 * (n * n))
         (fun q => if ∃ j < n, q = 2 * (j * n + j) then M.lit 1 else M.lit 0) ∧
@@ -183,6 +224,35 @@ theorem writes_identity {K : Type} {M : Machine K} {I : Interp Op Tst K}
   · intro m'' _ ⟨hv', hp'⟩
     exact ⟨hv', hp'.trans hp⟩
 
+/-- Initialize an interleaved square identity: `[n] () → (Y : 2 n n)`. Callers run it by its
+interface. -/
+def identityRoutine : Routine Op Tst :=
+  routine% [n] ( ) → (Y : 2 * (n * n)) := identity
+
+/-- The written block has the literal one at the real part of each diagonal entry and the
+literal zero at every other word. -/
+def identitySpec {K : Type} (M : Machine K) : Routine.Spec K :=
+  spec% [n] ( ) → (ys) ensures ys = (List.range (2 * (n * n))).map fun q =>
+    if ∃ j < n, q = 2 * (j * n + j) then M.lit 1 else M.lit 0
+
+/-- The identity initialization meets its specification on every scalar machine: the words are
+the machine's literals, with no assumption of exact arithmetic. -/
+theorem identityRoutine_meets {K : Type} {M : Machine K} {I : Interp Op Tst K}
+    (hI : IsScalar M I) : (identityRoutine (Op := Op) (Tst := Tst)).Meets I (identitySpec M) := by
+  routine_intro [n] (y) reads ()
+  refine (identity_writes hI hroom).mono (by fp_sub) ?_
+  rintro m' - ⟨hv, hpos⟩
+  exact ⟨hpos, [_], Mem.readBlocks_of_cons (Store.holdsVec_iff_readBlock.mp hv) rfl, rfl⟩
+
+/-- A block read as the words of `NLAlib.Ops.PairMatrix.identitySpec` holds them as a vector. -/
+theorem holdsVec_of_identitySpec {K : Type} {M : Machine K} {s : Store K} {n b off : ℕ}
+    {ys : List K} (h : s.readBlock b off (2 * (n * n)) = some ys)
+    (hys : ys = (List.range (2 * (n * n))).map fun q =>
+      if ∃ j < n, q = 2 * (j * n + j) then M.lit 1 else M.lit 0) :
+    s.HoldsVec b off (2 * (n * n))
+      (fun q => if ∃ j < n, q = 2 * (j * n + j) then M.lit 1 else M.lit 0) :=
+  Store.holdsVec_iff_readBlock.mpr (hys ▸ h)
+
 /-- The complete initialized word vector is the column-major matrix with literal one on the
 real diagonal and literal zero in every other real or imaginary component. -/
 theorem holdsEntries_of_holdsVec {K : Type} {M : Machine K} {s : Store K} {n b off : ℕ}
@@ -219,14 +289,14 @@ theorem holdsEntries_of_holdsVec {K : Type} {M : Machine K} {s : Store K} {n b o
 
 /-- Identity writes one zero literal per word and one one literal per diagonal entry. -/
 theorem stmtCost_identity (n y : ℕ) :
-    stmtCost (identity (Op := Op) (Tst := Tst)).body [n, y] =
+    stmtCost (identity (Op := Op) (Tst := Tst)) [n, y] =
       (2 * (n * n)) • Count.one (Has.inj (ScalarOp.lit 0)) [] +
         n • Count.one (Has.inj (ScalarOp.lit 1)) [] := by
   simp [identity, stmtCost, useCost]
 
 /-- Identity needs only the larger literal implementation workspace, with no allocated buffer. -/
 theorem stmtPeak_identity_le (W : Op → List ℕ → ℕ) (n y : ℕ) :
-    stmtPeak W (identity (Op := Op) (Tst := Tst)).body [n, y] ≤
+    stmtPeak W (identity (Op := Op) (Tst := Tst)) [n, y] ≤
       max (W (Has.inj (ScalarOp.lit 0)) []) (W (Has.inj (ScalarOp.lit 1)) []) := by
   simp only [identity, stmtPeak]
   exact max_le (Finset.sup_le fun _ _ => le_max_left _ _)

@@ -17,7 +17,7 @@ of $\mathbf{M} + \mathbf{E}$ for some $\|\mathbf{E}\|_2 \le \delta$, at the unit
 $\boldsymbol{u} \le \boldsymbol{u}_{\mathrm{SmallEig}}$, conditional on the two random-matrix
 theorems (`NLAlib.PolyLogTail.BoundsGinibreGap`, `NLAlib.PolyLogTail.BoundsGinibreCondition`),
 which are hypotheses here and proved at the records
-`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$,
+`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(2048e, 11/3, 2/3, 2)$,
 `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$ (the
 `_unconditional` corollaries). The error is absolute: $\Sigma$ is an input, the paper's relative
 form is the corollary `NLAlib.SmallEig.smallEig_relative`. [BanksGarzaVargasSrivastava2025,
@@ -98,8 +98,8 @@ $$\mathbb{P}\bigl[\mathsf{smallEigProg}(\mathbf{M}) \text{ fails, or writes outs
   or lists no } \operatorname{spec}(\mathbf{M} + \mathbf{E}),\ \|\mathbf{E}\|_2 \le \delta\bigr]
   \le \varphi\,.$$
 Here $\boldsymbol{u}_{\mathrm{SmallEig}}$ is `NLAlib.SmallEig.uSmallEig` at $n_{\max}$.
-[BanksGarzaVargasSrivastava2025, Theorem 1.1]; there $\Sigma$ is not an input (its errata P9,
-N4) and the error is relative.
+[BanksGarzaVargasSrivastava2025, Theorem 1.1]; there $\Sigma$ is not an input and the error
+is relative.
 
 Note: The run terminates on every tape (`NLAlib.SmallEig.smallEigProg_terminates`). The failure
 is split in four: the gap, the condition, the norm of the perturbation, and the worklist.
@@ -118,7 +118,7 @@ theorem smallEig_measureReal_not_spectrum_le {Mch : Machine ℝ} {I : Interp O Q
     (hu : u ≤ uSmallEig nmax S δ φ c₁ c₂)
     {w q o : ℕ × ℕ} {μ : Mem ℝ} (hin : SmallEigInput nmax S δ φ c₁ c₂ w q o M μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG)
       (Env.frame (smallEigDims n nmax S δ φ c₁ c₂) [w, q, w, o])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock o.1 o.2 (2 * ((n + 1) * (n + 1)))) (SmallEigSpectrum w o M δ) μ} ≤ φ :=
@@ -136,8 +136,8 @@ $\delta = \varepsilon\Sigma/c$,
 $$\mathbb{P}\bigl[\mathsf{smallEigProg}(\mathbf{M}) \text{ fails, or writes outside its output,
   or lists no } \operatorname{spec}(\mathbf{M} + \mathbf{E}),\
   \|\mathbf{E}\|_2 \le \varepsilon\|\mathbf{M}\|_2\bigr] \le \varphi\,.$$
-[BanksGarzaVargasSrivastava2025, Theorem 1.1]; the bound $\Sigma$ of the norm is an input there
-too (its errata P9, N4).
+[BanksGarzaVargasSrivastava2025, Theorem 1.1], adapted: the bound $\Sigma$ of the norm is an
+input.
 Result: small-eig-backward-error -/
 theorem smallEig_relative {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     {n : ℕ} (hS : IsScalar Mch I) (hM : StdModel u id Mch) (hL : IsIndexLit Mch I)
@@ -153,7 +153,7 @@ theorem smallEig_relative {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hφ1 : φ ≤ 1) (hu : u ≤ uSmallEig nmax S (ε * S / c) φ c₁ c₂)
     {w q o : ℕ × ℕ} {μ : Mem ℝ} (hin : SmallEigInput nmax S (ε * S / c) φ c₁ c₂ w q o M μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG)
       (Env.frame (smallEigDims n nmax S (ε * S / c) φ c₁ c₂) [w, q, w, o])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock o.1 o.2 (2 * ((n + 1) * (n + 1))))
@@ -195,7 +195,7 @@ theorem smallEig_measureReal_not_forward_le {Mch : Machine ℝ} {I : Interp O Q 
     {M : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} (hMS : specNorm M ≤ S) {w q o : ℕ × ℕ}
     {μ : Mem ℝ} (hin : SmallEigInput kmax S (forwardBackwardError kmax S β) φ c₁ c₂ w q o M μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG)
       (Env.frame (smallEigDims n kmax S (forwardBackwardError kmax S β) φ c₁ c₂) [w, q, w, o])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock o.1 o.2 (2 * ((n + 1) * (n + 1))))
@@ -213,14 +213,14 @@ Theorem 1.1], running time, on every tape): the instrumented static count
 (`NLAlib.Ops.stmtCost` of `NLAlib.Ops.Stmt.instrument`, every structural instruction counted) of
 `NLAlib.SmallEig.smallEigProg` at the order $n + 1$, $n_q$ words, the cap $T$ and the zero
 offsets of its four operands is at most $80390(n + 1)^4(T + 1)^2$. The count holds on every
-tape: the loops are capped by $T$ ($m, t, m_2 \le T$, $q \le m$). The paper's count has the factor
-$n$ in its last term (its erratum N5). The constant is the monomial bound of the instrumented
+tape: the loops are capped by $T$ ($m, t, m_2 \le T$, $q \le m$). This count is adapted from the
+printed one. The constant is the monomial bound of the instrumented
 tree (`NLAlib.Ops.size_stmtCost_le_stmtWorkMono`); the certificate's
 `NLAlib.SmallEig.smallEigWork` also counts the frame of the program. -/
 theorem smallEig_work_le (sG n nq T : ℕ) :
-    Count.size (stmtCost (smallEigProg (O := O) (Q := Q) sG).body.instrument
+    Count.size (stmtCost (smallEigProg (O := O) (Q := Q) sG).instrument
       [n + 1, nq, T, 0, 0, 0, 0]) ≤ 80390 * (n + 1) ^ 4 * (T + 1) ^ 2 := by
-  have hw : stmtWorkMono (smallEigProg (O := O) (Q := Q) sG).body.instrument
+  have hw : stmtWorkMono (smallEigProg (O := O) (Q := Q) sG).instrument
       ([⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩] ++ List.replicate 4 (WorkMono.const 0)) =
         ⟨80390, [4, 0, 2]⟩ := by
     rw [stmtWorkMono_instrument]; kernel_rfl
@@ -228,7 +228,7 @@ theorem smallEig_work_le (sG n nq T : ℕ) :
       ([⟨1, [1]⟩, ⟨1, [0, 1]⟩, ⟨1, [0, 0, 1]⟩] ++ List.replicate 4 (WorkMono.const 0)) := by
     simp [SlotsLe, WorkMono.eval, WorkMono.const]
   have h := size_stmtCost_le_stmtWorkMono (by simp)
-    (smallEigProg (O := O) (Q := Q) sG).body.instrument hσ
+    (smallEigProg (O := O) (Q := Q) sG).instrument hσ
   rw [hw] at h
   simpa [WorkMono.eval, mul_assoc] using h
 
@@ -314,7 +314,7 @@ theorem smallEigProg_randomSchurLeafContract {Mch : Machine ℝ} {I : Interp O Q
 The unconditional form of `NLAlib.SmallEig.smallEig_measureReal_not_spectrum_le`
 ([BanksGarzaVargasSrivastava2025, Theorem 1.1]): the eigenvalue-gap and eigenvector-condition tails
 of a complex Ginibre perturbation are proved, at the records
-`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ and
+`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(2048e, 11/3, 2/3, 2)$ and
 `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$.
 Result: small-eig-backward-error -/
 theorem smallEig_measureReal_not_spectrum_le_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u
@@ -331,7 +331,7 @@ theorem smallEig_measureReal_not_spectrum_le_unconditional {Mch : Machine ℝ} {
     {w q o : ℕ × ℕ} {μ : Mem ℝ} (hin : SmallEigInput nmax S δ φ ginibreGapTail
       ginibreConditionTail w q o M μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG)
       (Env.frame (smallEigDims n nmax S δ φ ginibreGapTail
         ginibreConditionTail) [w, q, w, o])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
@@ -344,7 +344,7 @@ theorem smallEig_measureReal_not_spectrum_le_unconditional {Mch : Machine ℝ} {
 The unconditional form of `NLAlib.SmallEig.smallEig_relative` ([BanksGarzaVargasSrivastava2025,
 Theorem 1.1]): the eigenvalue-gap and eigenvector-condition tails of a complex Ginibre perturbation
 are proved, at the records `NLAlib.ginibreGapTail` <!-- value ginibreGapTail -->
-$(10000e, 5, 1/2, 2)$ and `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail -->
+$(2048e, 11/3, 2/3, 2)$ and `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail -->
 $(128e, 3, 2, 2)$.
 Result: small-eig-backward-error -/
 theorem smallEig_relative_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
@@ -361,7 +361,7 @@ theorem smallEig_relative_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ}
     {w q o : ℕ × ℕ} {μ : Mem ℝ} (hin : SmallEigInput nmax S (ε * S / c) φ
       ginibreGapTail ginibreConditionTail w q o M μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG)
       (Env.frame (smallEigDims n nmax S (ε * S / c) φ ginibreGapTail
         ginibreConditionTail) [w, q, w, o])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
@@ -375,7 +375,7 @@ theorem smallEig_relative_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ}
 The unconditional form of `NLAlib.SmallEig.smallEig_measureReal_not_forward_le`
 ([BanksGarzaVargasSrivastava2025, Corollary 1.3]): the eigenvalue-gap and eigenvector-condition
 tails of a complex Ginibre perturbation are proved, at the records
-`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ and
+`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(2048e, 11/3, 2/3, 2)$ and
 `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$.
 Result: small-eig-forward-error -/
 theorem smallEig_measureReal_not_forward_le_unconditional {Mch : Machine ℝ} {I : Interp O Q ℝ} {u :
@@ -392,7 +392,7 @@ theorem smallEig_measureReal_not_forward_le_unconditional {Mch : Machine ℝ} {I
     {μ : Mem ℝ} (hin : SmallEigInput kmax S (forwardBackwardError kmax S β) φ
       ginibreGapTail ginibreConditionTail w q o M μ)
     {Ω : Type} [MeasurableSpace Ω] {P : Measure Ω} {ξ : Ω → Tape ℝ} (hξ : IsTapeLaw law P ξ) :
-    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG).body
+    P.real {ω | ¬ Writes .total I (ξ ω) (smallEigProg (O := O) (Q := Q) sG)
       (Env.frame (smallEigDims n kmax S (forwardBackwardError kmax S β) φ
         ginibreGapTail ginibreConditionTail) [w, q, w, o])
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔

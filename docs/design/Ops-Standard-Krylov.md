@@ -37,7 +37,7 @@ configuration and every dimension. This is a kernel-checked fact, independent of
 Canonical `Ops.exec` enforces these signatures and counts primitive, query and structural
 instructions. A full resource certificate is an `Ops.Algorithm`; a `ConditionalRuns` theorem is
 proof infrastructure and is not presented as that certificate. Ordinary Lanczos and its
-full-reorthogonalized variant have canonical constructors in their `Certificate.lean` modules.
+full-reorthogonalized variant have canonical constructors in their `Certification.lean` modules.
 Those fixed abstract BLAS trees certify the numerical output together with the mandatory
 full instruction manifest, declared work/span, scoped scratch and supplied resident payload.
 
@@ -82,7 +82,7 @@ needs a representation bridge.
 
 The solver model wrappers use the model's actual declared workspace. Linked-profile results
 transfer primitive counts through sequential/pairwise BLAS lowering. Ordinary Lanczos also
-has `SequentialCertification.algorithm` for the actual sequential scalar tree, with a fresh
+has `Linked.Certification.algorithm` for the actual sequential scalar tree, with a fresh
 full canonical instrumented manifest, work/span and payload bounds. Its reduction-error
 budgets are derived from the scalar unit roundoff independently of the high-level BLAS scheme.
 A conditional profile-transfer theorem alone is not that canonical certificate.

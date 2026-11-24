@@ -73,8 +73,8 @@ theorem downLevel_kernelWeight_le_of_exec (hS : IsScalar M I) (hL : IsIndexLit M
   have hGeo := hGeometry inner.mem.store (by simpa using hlength) ht hBelow
   have hLevel' : StoresLevel M F n fuel R0 beta root d ma sz lv inner.mem :=
     hLevel.of_below hBelow (hl ma (by simp)) (hl sz (by simp)) (hl lv (by simp))
-  have hBody := evalCounted_frame_body (body := (downLevelImpl
-      (node (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))).body)
+  have hBody := evalCounted_frame_body (body := (downLevelBody
+      (node (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))))
     (d := [n, L, fuel, d])
     (as := [par, lv, su, sg, ma, ua, qa, ea, sz, kd, kp, c, (a.mem.store.length, 0)])
     rfl rfl hInner
@@ -82,7 +82,7 @@ theorem downLevel_kernelWeight_le_of_exec (hS : IsScalar M I) (hL : IsIndexLit M
     have h := nodeAtSlot_k_le F n fuel R0 eps0 beta L A d lo
     change (nodes lo).k ≤ n - lo at h
     omega
-  have hWork := downLevelImpl_kernelWeight_sum_le_of_exec M dec mm qr
+  have hWork := downLevelBody_kernelWeight_sum_le_of_exec M dec mm qr
     hS hL hC hMM hQR hQ hSample (fun lo => (nodes lo).k) (fun lo => (nodes lo).A)
     R0 eps0 beta (eighLevelParams F R0 eps0 L d).1 (eighLevelParams F R0 eps0 L d).2
     hslot hexact (fun lo hlo => hLevel'.nodeAtSlot_size hlo)

@@ -72,8 +72,7 @@ theorem Matrix.IsHermitian.eigenvalue_add_le ...
    `run model` [A1]. A declaration belongs to at most one algorithm [A3]: a shared building block
    (`galerkinInverse`, `gramSchmidtQ` inside Hutch++) carries the tag of the algorithm it
    defines, or none, and is found through dependencies. Several declarations of one algorithm are
-   expected (`cgState` and `cgIterate`; `rsvd` and `earlyTruncatedRSVD`; `hutchpp` and
-   `hutchppProg`). A variant with a different definition has its own id (`pcg`).
+   expected (`cgState` and `cgIterate`; `rsvd` and `earlyTruncatedRSVD`). A variant with a different definition has its own id (`pcg`).
 5. **Mathematics is LaTeX**: `$…$` inline and `$$…$$` displayed, as doc-gen4
    and the explorer render it with KaTeX. Standard LaTeX only, no custom macros [M12]. A named
    bound's value is written inside the equation in place of the constant ([statements](statements.md) §2 rule 2), and the

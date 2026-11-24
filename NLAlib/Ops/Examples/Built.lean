@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Logic.Builder
+public import NLAlib.Ops.Logic.RoutineIntro
 public import NLAlib.Ops.Examples.GramSchmidt
 public import NLAlib.Ops.Examples.Gemm
 public import NLAlib.Ops.Examples.CgsQR
@@ -45,17 +46,6 @@ def mgsB : Stmt Op Tst := ops% [n, k] (Q, w) → (w, R) {
 }
 
 example : (mgsB : Stmt Op Tst) = mgs := rfl
-
-/-- The implementation, with its numbers of dimensions and operands. -/
-example : (opsImpl% [n, k] (Q, w) → (w, R) {
-    let t ← alloc 1;
-    for j < k {
-      call (Has.inj Blas1Op.dot) [n] (Q[j * n], w) → (R[j]);
-      call (Has.inj ScalarOp.neg) [] (R[j]) → (t);
-      call (Has.inj Blas1Op.axpy) [n] (t, Q[j * n], w) → (w)
-    };
-    call (Has.inj Blas1Op.nrm2) [n] (w) → (R[k])
-  } : Impl Op Tst) = mgsImpl := rfl
 
 /-- The matrix product with names. -/
 example : (ops% [m, n, p] (A, B) → (C) {
@@ -126,14 +116,21 @@ example {K : Type} {I : Interp Op Tst K} (τ : Tape K) (μ : Mem K) :
   have : s_t.len t = 0 := ht
   exact wp_skip ⟨Store.EqOff.refl _ _, fun _ _ _ => True.intro⟩
 
--- A caller read crosses allocation, two named calls, and release of the scratch buffer.
+/-- Copy a cell through a scratch cell: `[] (x : 1) → (y : 1)`. -/
+def copyTwice : Routine Op Tst := routine% [] (x : 1) → (y : 1) {
+  let t ← alloc 1;
+  call (Has.inj ScalarOp.copy) [] (x) → (t);
+  call (Has.inj ScalarOp.copy) [] (t) → (y)
+}
+
+-- A caller read crosses allocation, two named calls, and release of the scratch buffer, in the
+-- judgment of a routine.
 example {K : Type} {M : Machine K} {J : Interp Op Tst K} (hS : IsScalar M J) :
-    (opsImpl% [] (x) → (y) {
-      let t ← alloc 1;
-      call (Has.inj ScalarOp.copy) [] (x) → (t);
-      call (Has.inj ScalarOp.copy) [] (t) → (y)
-    }).Triple J .total ((BlockFn.un fun a : K => some a).rel.spec AnyOperands) := by
-  cert_intro [] (x) → (y) reads (xs)
+    (copyTwice (Op := Op) (Tst := Tst)).Meets J
+      (Routine.Spec.ofRel (BlockFn.un fun a : K => some a).rel fun _ => True) := by
+  routine_intro [] (x, y) reads (xs) memory μ
+  have hz := hroom
+  change Writes .total J τ _ (Env.frame [] [x, y]) (Fp.blocks [y] [1]) _ μ
   obtain ⟨a, rfl⟩ := List.length_eq_one_iff.mp (Store.length_of_readBlock hxs)
   alloc as t
   step (hS .copy) as m₁ hfr₁ ⟨hpos₁, a₁, ha₁, hcopy₁⟩
@@ -141,9 +138,9 @@ example {K : Type} {M : Machine K} {J : Interp Op Tst K} (hS : IsScalar M J) :
   have : copied.store.get t 0 = some a₁ := ha₁
   step (hS .copy) as m₂ hfr₂ ⟨hpos₂, a₂, ha₂, hcopy₂⟩
   intro s₂ hs₂ hB₂
-  exact ⟨by simp [hpos₂, hpos₁], [[a₂]],
+  exact ⟨by change _ = μ.pos + 0; simp [hpos₂, hpos₁], [[a₂]],
     Mem.readBlocks_of_cons (Store.readBlock_one_of_get (by keep)) rfl,
-    by simp [BlockFn.rel, BlockFn.un, hcopy₁, hcopy₂]⟩
+    by simp [Routine.Spec.ofRel, BlockFn.rel, BlockFn.un, hcopy₁, hcopy₂]⟩
 
 -- A repeated copy keeps a decoded invariant at a fresh memory in every round.
 example {K : Type} {M : Machine K} {J : Interp Op Tst K} (hS : IsScalar M J)
@@ -223,18 +220,6 @@ example {x r p n : ℕ} (hxr : x ≠ r) (hxp : x ≠ p) (hrp : r ≠ p) :
 -- Distinct offsets in one buffer are allowed, including empty blocks.
 example (b n : ℕ) : Fp.Apart [(b, 0), (b, n), (b, 2 * n)] [n, n, n] := by
   disjoint
-
--- Four state blocks can be named and read back, with independent dimension lengths.
-example {K : Type} {I : Interp Op Tst K} :
-    (opsImpl% [a, b, c, d] (w, x, y, z) → (w', x', y', z') { skip }).Triple I .total
-      (({ nd := 4, inLens := id, outLens := id,
-          rel := fun _ X _ Y => Y = X } : BlockRel K).spec
-        (fun _ ins outs => ins = outs)) := by
-  cert_intro [a, b, c, d] (w, x, y, z) → (w', x', y', z') reads (ws, xs, ys, zs)
-  obtain ⟨rfl, rfl, rfl, rfl⟩ := hadm
-  refine wp_skip ⟨Store.EqOff.refl _ _, ?_⟩
-  exact ⟨by simp, [ws, xs, ys, zs],
-    by simp [Mem.readBlocks, hws, hxs, hys, hzs], rfl⟩
 
 end NLAlib.Ops.Examples
 

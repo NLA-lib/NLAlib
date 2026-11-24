@@ -16,11 +16,11 @@ public import NLAlib.Ops.Catalog.Scalar
   products,
   as a function `NLAlib.Ops.Examples.dotF` of a machine, has the error `(1 + u) ^ (2 n) - 1`
   relative to the sum of the absolute values of the products. No program.
-* Program logic (`NLAlib.Ops.Examples.wp_dotLoop`): the accumulation loop
+* Program logic (`NLAlib.Ops.Examples.dotLoop_wp`): the accumulation loop
   `NLAlib.Ops.Examples.dotLoop` computes `dotF` in the cell `z`, with a scratch cell on top of the
   store. It is stated for arbitrary operands whose offsets may depend on the loop variable, so
   that the matrix product reuses it.
-* The exact certificate (`NLAlib.Ops.Examples.dot_cert`): the run of the implementation
+* Exact satisfaction (`NLAlib.Ops.Examples.dot_satisfies`): the run of the implementation
   `NLAlib.Ops.Examples.dotImpl` is the block function `NLAlib.Ops.Examples.dotFn`.
 -/
 
@@ -109,7 +109,7 @@ def dotLoop (n : IExp) (x y z t : Operand) : Stmt ScalarOp Empty :=
 
 /-- **The accumulation loop computes `dotF`** in the cell `z`, for a store with one scratch cell
 on top (the operand `t`), input cells in other buffers than `z`. -/
-theorem wp_dotLoop {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {md : Mode}
+theorem dotLoop_wp {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {md : Mode}
     {τ : Tape K}
     {ρ : Env} {n : IExp} {x y z t : Operand} {N bx by' bz oz : ℕ} {fx fy : ℕ → ℕ} {s : Store K}
     {tb : Buf K} {p : ℕ} {a b : ℕ → K} (hn : n.eval ρ.idx = some N)
@@ -167,7 +167,7 @@ theorem wp_dotLoop {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M
     simp only [Mem.upd]
     rw [Store.upd_append_of_lt (hlen ▸ hbz), Store.upd_upd, dotF_succ]
 
-/-! ### The implementation and its exact certificate -/
+/-! ### The implementation and its exact satisfaction -/
 
 variable [Inhabited K]
 
@@ -201,7 +201,9 @@ def DisjointBufs : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop
   fun _ ins outs => ∀ a ∈ ins, ∀ z ∈ outs, a.1 ≠ z.1
 
 /-- **The implementation of `dot`** over scalar arithmetic: a scratch cell and the accumulation
-loop. Index variables: `n`, the offsets of `x`, `y`, `z`, then the loop variable. -/
+loop. Index variables: `n`, the offsets of `x`, `y`, `z`, then the loop variable. This example
+writes the table entry directly and proves its contract by computing its run as the block
+function of `dot`, the linking layer on which routine judgments are built. -/
 def dotImpl : Impl ScalarOp Empty where
   nd := 1
   nin := 2
@@ -209,17 +211,17 @@ def dotImpl : Impl ScalarOp Empty where
   body := .alloc (.const 1)
     (dotLoop (.var 0) ⟨0, .var 1 + .var 4⟩ ⟨1, .var 2 + .var 4⟩ ⟨2, .var 3⟩ ⟨3, .const 0⟩)
 
-/-- **The exact certificate of `dotImpl`**: where the block function of `dot` succeeds on
+/-- Exact satisfaction by `dotImpl`: where the block function of `dot` succeeds on
 operands in other buffers than the output, the run of the implementation is the block function.
 A statement about words, with no error analysis. -/
-theorem dot_cert {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {d : List ℕ}
+theorem dot_satisfies {M : Machine K} {I : Interp ScalarOp Empty K} (hI : IsArith M I) {d : List ℕ}
     {ins outs : List (ℕ × ℕ)} {τ : Tape K} {m m' : Mem K} (hadm : DisjointBufs d ins outs)
     (h : (dotFn M).apply d ins outs τ m = some m') :
     dotImpl.Fits d.length ins.length outs.length ∧
       eval I τ dotImpl.body (Env.frame d (ins ++ outs)) m = some m' := by
   obtain ⟨n, x, y, z, xs, ys, rfl, rfl, rfl, hx, hy, hz, rfl⟩ := dotFn_apply h
   refine ⟨⟨rfl, rfl, rfl⟩, run_of_wp (wp_alloc rfl ?_)⟩
-  exact wp_dotLoop hI (s := m.store) (tb := List.replicate 1 none) (fx := fun k => x.2 + k)
+  exact dotLoop_wp hI (s := m.store) (tb := List.replicate 1 none) (fx := fun k => x.2 + k)
     (fy := fun k => y.2 + k) rfl rfl (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) (fun _ => rfl)
     rfl (hadm x (by simp) z (by simp)) (hadm y (by simp) z (by simp)) hz
     (fun k hk => Store.get_of_readBlock hx hk default)

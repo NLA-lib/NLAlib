@@ -28,6 +28,7 @@ error $\varepsilon_U$ and a backward error $\varepsilon_T$), so that the stages 
   stage contracts.
 * `NLAlib.Schur.TerminatingSchurCore`: the all-tape companion of a core.
 * `NLAlib.Schur.HoldsSchurPair`: the stored pair $(\widehat{\mathbf{U}}, \mathbf{T})$.
+* `NLAlib.Schur.EigenvectorStageContract`: an eigenvector stage after a Schur solver.
 -/
 
 @[expose] public section
@@ -35,6 +36,7 @@ error $\varepsilon_U$ and a backward error $\varepsilon_T$), so that the stages 
 namespace NLAlib.Schur
 
 open Ops MeasureTheory
+open scoped Matrix
 
 variable {O Q : Type} [Inhabited ℝ]
 
@@ -47,11 +49,11 @@ def HoldsSchurPair {n : ℕ} (a uo : ℕ × ℕ) (U T : Matrix (Fin n) (Fin n) �
 `[N] (A) → (S)`, the output in another buffer, stores $x$ with
 $c_1\|\mathbf{A}\|_{\mathsf F} \le x \le c_2\|\mathbf{A}\|_{\mathsf F}$. A rounded estimate has
 constants that depend on the order, so the order is bounded outside the quantifier. -/
-def FrobNormEstimateContract (c₁ c₂ : ℝ) (nmax : ℕ) (Nm : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+def FrobNormEstimateContract (c₁ c₂ : ℝ) (nmax : ℕ) (Nm : Stmt O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ {N : ℕ} {a s : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ} (A : Matrix (Fin N) (Fin N) ℂ),
     N ≤ nmax → HoldsMatrix a A μ.store → μ.Live [a, s] → s.2 + 1 ≤ μ.store.len s.1 →
     a.1 ≠ s.1 →
-    Writes .total I tape Nm.body (Env.frame [N] [a, s]) (Store.inBlock s.1 s.2 1)
+    Writes .total I tape Nm (Env.frame [N] [a, s]) (Store.inBlock s.1 s.2 1)
       (fun μ' => ∃ x : ℝ, μ'.store.get s.1 s.2 = some x ∧ c₁ * frobNorm A ≤ x ∧
         x ≤ c₂ * frobNorm A) μ
 
@@ -61,10 +63,10 @@ $\varphi$ the stored matrix is $\mathbf{A} + \mathbf{E}$ with $\|\mathbf{E}\|_2 
 `C (A + E)`. -/
 def RandomRegularizerContract (law : ℕ → Measure ℝ) (δ φ : ℝ)
     (C : ∀ {n : ℕ}, Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ → Prop) (nmax : ℕ) (S : ℝ)
-    (ps : List ℝ) (Reg : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+    (ps : List ℝ) (Reg : Stmt O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ {n : ℕ} {a q : ℕ × ℕ} (A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), n + 1 ≤ nmax →
     specNorm A ≤ S →
-    PWrites law I Reg.body (Env.frame [n + 1, ps.length] [a, q, a])
+    PWrites law I Reg (Env.frame [n + 1, ps.length] [a, q, a])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
       (fun μ => HoldsMatrix a A μ.store ∧ μ.store.readBlock q.1 q.2 ps.length = some ps ∧
         μ.Live [a, q] ∧
@@ -78,12 +80,12 @@ $N \le N_{\max}$, `[N] (A, U) → (A, U)` stores an upper Hessenberg $\mathbf{H}
 accumulator, tracked from $(\mathbf{U}, \mathbf{A})$ with the relative accumulator error
 $\varepsilon_U$ and the backward error $\varepsilon_T\|\mathbf{A}\|_2$. A rounded reducer has
 errors that grow with the order, so the order is bounded outside the quantifier. -/
-def HessenbergReducerContract (εU εT : ℝ) (nmax : ℕ) (Red : Impl O Q) (I : Interp O Q ℝ) :
+def HessenbergReducerContract (εU εT : ℝ) (nmax : ℕ) (Red : Stmt O Q) (I : Interp O Q ℝ) :
     Prop :=
   ∀ {N : ℕ} {a uo : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ} (A U : Matrix (Fin N) (Fin N) ℂ),
     N ≤ nmax → HoldsSchurPair a uo U A μ.store → μ.Live [a, uo] →
     Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N))) (Store.inBlock uo.1 uo.2 (2 * (N * N))) →
-    Writes .total I tape Red.body (Env.frame [N] [a, uo, a, uo])
+    Writes .total I tape Red (Env.frame [N] [a, uo, a, uo])
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock uo.1 uo.2 (2 * (N * N)))
       (fun μ' => ∃ U' H : Matrix (Fin N) (Fin N) ℂ, HoldsSchurPair a uo U' H μ'.store ∧
         IsUpperHessenberg H ∧ IsTrackedUnitarySimilar εU (εT * specNorm A) U A U' H) μ
@@ -95,10 +97,10 @@ flag is $0$, the stored matrix is upper triangular, and the pair is tracked from
 \mathbf{H})$ with $(\varepsilon_U, \varepsilon_T)$. Any threshold is among the words `ps`. -/
 def RandomSchurCoreContract (law : ℕ → Measure ℝ) (εU εT φ : ℝ)
     (C' : ∀ {n : ℕ}, Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ → Prop) (k F T nmax : ℕ)
-    (S : ℝ) (ps : List ℝ) (Core : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+    (S : ℝ) (ps : List ℝ) (Core : Stmt O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ {n : ℕ} {a p uo f : ℕ × ℕ} (H U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ),
     n + 1 ≤ nmax → IsUpperHessenberg H → specNorm H ≤ S → C' H →
-    PWrites law I Core.body (Env.frame [n + 1, ps.length, k, F, T] [a, p, uo, a, uo, f])
+    PWrites law I Core (Env.frame [n + 1, ps.length, k, F, T] [a, p, uo, a, uo, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (fun μ => HoldsSchurPair a uo U H μ.store ∧
@@ -112,14 +114,14 @@ def RandomSchurCoreContract (law : ℕ → Measure ℝ) (εU εT φ : ℝ)
 /-- **The all-tape companion of a core**: for every order at most `nmax`, on every tape the core
 is total and the accumulator stays within $\varepsilon_U\|\mathbf{U}\|_2$ of $\mathbf{U}\mathbf{V}$
 for an exact unitary $\mathbf{V}$, whatever the shifts. -/
-def TerminatingSchurCore (εU : ℝ) (k F T nmax : ℕ) (ps : List ℝ) (Core : Impl O Q)
+def TerminatingSchurCore (εU : ℝ) (k F T nmax : ℕ) (ps : List ℝ) (Core : Stmt O Q)
     (I : Interp O Q ℝ) : Prop :=
   ∀ {n : ℕ} {a p uo f : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ}
     (H U : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ), n + 1 ≤ nmax →
     HoldsSchurPair a uo U H μ.store → μ.store.readBlock p.1 p.2 ps.length = some ps →
     μ.Live [a, p, uo, f] → f.2 + 1 ≤ μ.store.len f.1 →
     Fp.Apart [a, p, uo, f] [2 * ((n + 1) * (n + 1)), ps.length, 2 * ((n + 1) * (n + 1)), 1] →
-    Writes .total I tape Core.body (Env.frame [n + 1, ps.length, k, F, T] [a, p, uo, a, uo, f])
+    Writes .total I tape Core (Env.frame [n + 1, ps.length, k, F, T] [a, p, uo, a, uo, f])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (fun μ' => ∃ U' Tm V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
@@ -131,14 +133,46 @@ of order at most `kmax` and norm at most `Nmax`: `[d, np, T] (Bk, P) → (Bk, Ub
 with probability $\varphi$, an upper triangular $\mathbf{T}_b$ and an accumulator tracked from
 $(\mathbf{I}, \mathbf{B})$ with $(\varepsilon_U, \varepsilon_T)$. -/
 def RandomSchurLeafContract (law : ℕ → Measure ℝ) (εU εT φ : ℝ) (kmax : ℕ) (Nmax : ℝ)
-    (ps : List ℝ) (T : ℕ) (L : Impl O Q) (I : Interp O Q ℝ) : Prop :=
+    (ps : List ℝ) (T : ℕ) (L : Stmt O Q) (I : Interp O Q ℝ) : Prop :=
   ∀ {d : ℕ} {w p ub : ℕ × ℕ} (B : Matrix (Fin d) (Fin d) ℂ), d ≤ kmax → specNorm B ≤ Nmax →
-    PWrites law I L.body (Env.frame [d, ps.length, T] [w, p, w, ub])
+    PWrites law I L (Env.frame [d, ps.length, T] [w, p, w, ub])
       (Store.inBlock w.1 w.2 (2 * (d * d)) ⊔ Store.inBlock ub.1 ub.2 (2 * (d * d)))
       (fun μ => HoldsMatrix w B μ.store ∧ μ.store.readBlock p.1 p.2 ps.length = some ps ∧
         μ.Live [w, p, ub] ∧ ub.2 + 2 * (d * d) ≤ μ.store.len ub.1 ∧
         Fp.Apart [w, p, ub] [2 * (d * d), ps.length, 2 * (d * d)])
       (fun μ' => ∃ Ub Tb : Matrix (Fin d) (Fin d) ℂ, HoldsSchurPair w ub Ub Tb μ'.store ∧
         Tb.IsUpperTriangular ∧ IsTrackedUnitarySimilar εU εT 1 B Ub Tb) φ
+
+/-- **An eigenvector stage**: for every order $N \le N_{\max}$, `[N, ne] (T, U, Pe) → (V, G)`
+with its $n_e$ words `ps` at `Pe`, deterministic and total for any stored pair, stores a matrix
+$\mathbf{V}$ and a flag $0$ or $1$. For $\mathbf{T} = \mathbf{0}$ it stores
+$\mathbf{V} = \mathbf{U}$ exactly and the flag $0$. For an upper triangular $\mathbf{T}$ it stores
+$\mathbf{V}$ within $c_V\|\mathbf{U}\|_{\mathsf F}\|\mathbf{Y}\|_{\mathsf F}$ of
+$\mathbf{U}\mathbf{Y}$, where the columns of $\mathbf{Y}$ have norms within $c_N$ of $1$ and
+residuals $\|(\mathbf{T} - t_{jj}\mathbf{I})\mathbf{y}_j\| \le c\|\mathbf{T}\|_{\mathsf F}
+\|\mathbf{y}_j\|$, $c = c_{R,0}$ when the flag is $0$ and $c = c_R$ otherwise; and the flag is $0$
+when the diagonal gaps exceed $g_0\|\mathbf{T}\|_{\mathsf F}$. The contract is normwise and names
+no method; the constants are fixed outside the quantifier over orders and memories. -/
+def EigenvectorStageContract (cR₀ cR cV cN g₀ : ℝ) (nmax : ℕ) (ps : List ℝ) (Ev : Stmt O Q)
+    (I : Interp O Q ℝ) : Prop :=
+  ∀ {N : ℕ} {a uo pe v g : ℕ × ℕ} {tape : Tape ℝ} {μ : Mem ℝ} (U T : Matrix (Fin N) (Fin N) ℂ),
+    N ≤ nmax → HoldsSchurPair a uo U T μ.store →
+    μ.store.readBlock pe.1 pe.2 ps.length = some ps → μ.Live [a, uo, pe, v, g] →
+    μ.Room [v, g] [2 * (N * N), 1] →
+    Fp.Apart [a, uo, pe, v, g] [2 * (N * N), 2 * (N * N), ps.length, 2 * (N * N), 1] →
+    Writes .total I tape Ev (Env.frame [N, ps.length] [a, uo, pe, v, g])
+      (Store.inBlock v.1 v.2 (2 * (N * N)) ⊔ Store.inBlock g.1 g.2 1)
+      (fun μ' => ∃ V : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix v V μ'.store ∧
+        (μ'.store.get g.1 g.2 = some 0 ∨ μ'.store.get g.1 g.2 = some 1) ∧
+        (T = 0 → V = U ∧ μ'.store.get g.1 g.2 = some 0) ∧
+        (T.IsUpperTriangular →
+          (∃ Y : Matrix (Fin N) (Fin N) ℂ,
+            (∀ j, |‖WithLp.toLp 2 (Y.col j)‖ - 1| ≤ cN ∧
+              ‖WithLp.toLp 2 ((T - T j j • 1) *ᵥ Y.col j)‖ ≤
+                (if μ'.store.get g.1 g.2 = some 0 then cR₀ else cR) * frobNorm T *
+                  ‖WithLp.toLp 2 (Y.col j)‖) ∧
+            specNorm (V - U * Y) ≤ cV * frobNorm U * frobNorm Y) ∧
+          ((∀ i j, i ≠ j → g₀ * frobNorm T < ‖T i i - T j j‖) →
+            μ'.store.get g.1 g.2 = some 0))) μ
 
 end NLAlib.Schur

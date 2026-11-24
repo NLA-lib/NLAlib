@@ -17,8 +17,8 @@ public import NLAlib.Ops.Catalog.Operator
 # The rounded contract of the column-wise two-pass Gram–Schmidt extension
 
 Under the standard model of rounded arithmetic and the level-1 contracts, the implementation
-`NLAlib.CGS2.cgs2ExtendImpl` with a threshold $\tau > 0$ meets the rounded contract
-`NLAlib.Ops.extendRel` of a basis extension with the parameters
+`NLAlib.CGS2.cgs2ExtendRoutine` with a threshold $\tau > 0$ meets the rounded specification
+`NLAlib.Ops.extendSpec` of a basis extension with the parameters
 `NLAlib.cgs2ExtendMu` and `NLAlib.cgs2ExtendEps` at the constants of two classical passes. The
 stored basis has zero columns where earlier columns were dropped: a rounded dot product with a
 stored zero column decodes to zero, and the update with a zero coefficient is one more link of
@@ -36,10 +36,10 @@ with the pass coefficient of the full number of stored columns. Design:
   scaling.
 * `NLAlib.CGS2.colOut_rounded`, `NLAlib.CGS2.isBasisExtensionErr_of_colsDone`: the words of the
   rounds, decoded, give a rounded extension.
-* `NLAlib.CGS2.meets_nrm2RelOf`, `NLAlib.CGS2.meets_scalRelOf`: the contracts of the norm and of
-  the scaling in the form used by a round.
-* `NLAlib.CGS2.cgs2Extend_spec`: the implementation meets the rounded contract of a basis
-  extension.
+* `NLAlib.CGS2.satisfies_nrm2RelOf`, `NLAlib.CGS2.satisfies_scalRelOf`: the contracts of the norm
+  and of the scaling in the form used by a round.
+* `NLAlib.CGS2.cgs2ExtendRoutine_meets`: the implementation satisfies the rounded contract of a
+  basis extension.
 -/
 
 @[expose] public section
@@ -341,10 +341,10 @@ variable [Has ScalarOp Op] [Has Blas1Op Op] [Has CmpTst Tst]
 
 omit [Has ScalarOp Op] [Has CmpTst Tst] in
 /-- The norm contract of the level-1 operations, in the form used by a round. -/
-theorem meets_nrm2RelOf {dec : K → ℝ} {ed : ℕ → ℝ} {es : ℝ} {ok : ℕ → Prop}
+theorem satisfies_nrm2RelOf {dec : K → ℝ} {ed : ℕ → ℝ} {es : ℝ} {ok : ℕ → Prop}
     {I : Interp Op Tst K}
-    (h : I.Meets .total (Has.inj Blas1Op.nrm2) ((nrm2Rel dec ed es).spec (OutApart ok))) :
-    I.Meets .total (Has.inj Blas1Op.nrm2)
+    (h : I.Satisfies .total (Has.inj Blas1Op.nrm2) ((nrm2Rel dec ed es).spec (OutApart ok))) :
+    I.Satisfies .total (Has.inj Blas1Op.nrm2)
       ((nrm2RelOf fun n => IsNrm2Err dec (ed n) es n).spec (OutApart ok)) := by
   refine h.mono (fun _ _ _ _ _ hp => hp) ?_
   intro d ins outs τ m m' _ hpost
@@ -357,9 +357,9 @@ theorem meets_nrm2RelOf {dec : K → ℝ} {ed : ℕ → ℝ} {es : ℝ} {ok : �
 
 omit [Has ScalarOp Op] [Has CmpTst Tst] in
 /-- The scaling contract of the level-1 operations, in the form used by a round. -/
-theorem meets_scalRelOf {dec : K → ℝ} {e : ℝ} {ok : ℕ → Prop} {I : Interp Op Tst K}
-    (h : I.Meets .total (Has.inj Blas1Op.scal) ((scalRel dec e).spec (InPlace ok))) :
-    I.Meets .total (Has.inj Blas1Op.scal)
+theorem satisfies_scalRelOf {dec : K → ℝ} {e : ℝ} {ok : ℕ → Prop} {I : Interp Op Tst K}
+    (h : I.Satisfies .total (Has.inj Blas1Op.scal) ((scalRel dec e).spec (InPlace ok))) :
+    I.Satisfies .total (Has.inj Blas1Op.scal)
       ((scalRelOf fun n => IsScalErr dec e n).spec (InPlace ok)) := by
   refine h.mono (fun _ _ _ _ _ hp => hp) ?_
   intro d ins outs τ m m' _ hpost
@@ -370,8 +370,8 @@ theorem meets_scalRelOf {dec : K → ℝ} {e : ℝ} {ok : ℕ → Prop} {I : Int
   · exact hrel
   · contradiction
 
-/-- **Column-wise two-pass classical Gram–Schmidt with threshold deflation meets the rounded
-contract of a basis extension.** Assume the standard model of rounded arithmetic at the unit
+/-- Column-wise two-pass classical Gram–Schmidt with threshold deflation satisfies the rounded
+contract of a basis extension. Assume the standard model of rounded arithmetic at the unit
 roundoff $u$, the level-1 contracts with dot error $e_d(n)$, update error $e_a$, square-root
 error $e_s$ and scaling error $e_c$, and exact comparisons. Let $0 \le \eta_0 \le 1/100$,
 $c \le 1/100$, $u \ge 0$, $4u \le c$, $0 \le E \le 1/100$, and let $\tau > 0$ be the rational
@@ -383,7 +383,7 @@ and that the computed norms are accurate to $E$, $e_d(n) + e_s(1 + e_d(n)) \le E
 $e_c \le E$. Then the implementation runs on all admitted operands and its decoded output is a
 rounded extension with the window $\eta_0$ and the parameters
 $\mu = 4c + 8(\eta_0 + c)^2/\tau + 5E$ and $\varepsilon = 3c + 2E + 2\tau$. -/
-theorem cgs2Extend_spec {M : Machine K} {dec : K → ℝ} {u η₀ c E : ℝ} {τ : ℚ} {ε : Blas1Err}
+theorem cgs2ExtendRoutine_meets {M : Machine K} {dec : K → ℝ} {u η₀ c E : ℝ} {τ : ℚ} {ε : Blas1Err}
     {okB : ℕ → Prop} {ok : ℕ → ℕ → ℕ → Prop} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hM : StdModel u dec M) (hB : IsBlas1 dec ε okB I) (hCmp : IsCmp dec I)
     (hu : 0 ≤ u) (hu₁ : 4 * u ≤ c) (hη₀ : 0 ≤ η₀) (hη : η₀ ≤ 1 / 100) (hc : c ≤ 1 / 100)
@@ -393,14 +393,14 @@ theorem cgs2Extend_spec {M : Machine K} {dec : K → ℝ} {u η₀ c E : ℝ} {�
     (hbudget : ∀ n k b, ok n k b → ((k + b : ℕ) + 1) * ε.dot n * (1 + η₀) ^ 2 +
       ((1 + ε.axpy) ^ (k + b) - 1) * (1 + (k + b : ℕ) * (1 + ε.dot n) * (1 + η₀) ^ 2) ≤ c)
     (hnorm : ∀ n k b, ok n k b → ε.dot n + ε.sqrt * (1 + ε.dot n) ≤ E) :
-    (cgs2ExtendImpl (Op := Op) (Tst := Tst) τ).Triple I .total
-      ((extendRel dec η₀ (cgs2ExtendMu (2 * c) (2 * (η₀ + c) ^ 2) E τ)
-        (cgs2ExtendEps (3 * c) E τ) ok).spec ExtendOperands) := by
+    (cgs2ExtendRoutine (Op := Op) (Tst := Tst) τ).Meets I
+      (extendSpec dec η₀ (cgs2ExtendMu (2 * c) (2 * (η₀ + c) ^ 2) E τ)
+        (cgs2ExtendEps (3 * c) E τ) ok) := by
   have ops : ColOps M dec ε.dot ε.axpy (fun n => IsNrm2Err dec (ε.dot n) ε.sqrt n)
       (fun n => IsScalErr dec ε.scal n) okB I :=
-    ⟨hS, hB.dot, hB.axpy, hM.neg, meets_nrm2RelOf hB.nrm2, meets_scalRelOf hB.scal, hB.copy,
+    ⟨hS, hB.dot, hB.axpy, hM.neg, satisfies_nrm2RelOf hB.nrm2, satisfies_scalRelOf hB.scal, hB.copy,
       hCmp⟩
-  exact cgs2Extend_triple_of ops hokB fun n k b qs ws qn wd cs hok hqs _ _ _ _ hdone =>
+  exact cgs2ExtendRoutine_meets_of ops hokB fun n k b qs ws qn wd cs hok hqs _ _ _ _ hdone =>
     isBasisExtensionErr_of_colsDone hM hu hu₁ hη₀ hη hc hE hE' hτ (hdot n k b hok) ha hs hscal
       (hbudget n k b hok) (hnorm n k b hok) hqs hdone
 

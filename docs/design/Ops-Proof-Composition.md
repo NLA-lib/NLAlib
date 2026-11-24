@@ -25,7 +25,7 @@ The purpose is to expose the mathematical transition and nonbreakdown, not raw s
 
 Inspect duplicated step_writes adapters and the bridge from total block contracts to fixed
 Program certificates. Add shared rules only where at least two concrete programs use them.
-Use existing Writes/Impl.Triple.writes and Algorithm.ofWp rather than introduce another
+Use existing Writes/Impl.Satisfies.writes and Algorithm.ofWp rather than introduce another
 certification layer. Where actual canonical solver certification remains cumbersome, record
 specific missing machinery and implement shared infrastructure before repeating it.
 
@@ -40,7 +40,7 @@ kernel/axiom checks, report legacy check failures explicitly.
 
 ## Implemented trials
 
-`Impl.Triple.writes_blocks` turns a block contract into the stored-output relation and an
+`Impl.Satisfies.writes_blocks` turns a block contract into the stored-output relation and an
 unchanged-store frame. Output blocks must be pairwise apart; inputs may alias outputs as
 permitted by the original contract. It preserves the actual random-tape window and position.
 CG, PCG, residual reorthogonalization and Lanczos normalization all use the same rule.

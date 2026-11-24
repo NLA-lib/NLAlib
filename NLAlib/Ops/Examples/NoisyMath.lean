@@ -30,7 +30,7 @@ uses.
   mean zero given the history, and its variance `σ² ‖v_j‖² n` depends on the history.
 * `NLAlib.Ops.Examples.integral_noisyIter`: `𝔼 v_j = A^j v₀`.
 * `NLAlib.Ops.Examples.isNoisyMv_noiseFn`, `NLAlib.Ops.Examples.exists_isNoisyMv`: the function
-  `A v + σ ‖v‖ dec w` meets the contract
+  `A v + σ ‖v‖ dec w` satisfies the contract
   when the draws decode to a standard law.
 -/
 
@@ -220,7 +220,8 @@ noncomputable def noiseFn (dec : K → ℝ) (A : Matrix (Fin n) (Fin n) ℝ) (σ
     (v : Fin n → ℝ) (w : Fin n → K) : Fin n → ℝ :=
   fun i => A.mulVec v i + σ * √(sqNorm v) * dec (w i)
 
-/-- **The noisy product by a drawn probe meets the contract** when the draws decode to a standard
+/-- **The noisy product by a drawn probe satisfies the contract** when the draws decode to a
+standard
 law: the noise is the decoded probe, which is isotropic. -/
 theorem isNoisyMv_noiseFn {dec : K → ℝ} (hdec : Measurable dec) {μ : Measure K}
     (hstd : IsStdLaw (μ.map dec)) (A : Matrix (Fin n) (Fin n) ℝ) (σ : ℝ) :
@@ -237,7 +238,7 @@ theorem isNoisyMv_noiseFn {dec : K → ℝ} (hdec : Measurable dec) {μ : Measur
     rfl
 
 /-- **Witness**: for every matrix, every `σ` and every law of the draws that decodes to a
-standard law, there are an isotropic noise law and a noise function meeting the contract. -/
+standard law, there are an isotropic noise law and a noise function satisfying the contract. -/
 theorem exists_isNoisyMv {dec : K → ℝ} (hdec : Measurable dec) {μ : Measure K}
     (hstd : IsStdLaw (μ.map dec)) (A : Matrix (Fin n) (Fin n) ℝ) (σ : ℝ) :
     ∃ (ν : Measure (Fin n → ℝ)) (N : (Fin n → ℝ) → (Fin n → K) → Fin n → ℝ),

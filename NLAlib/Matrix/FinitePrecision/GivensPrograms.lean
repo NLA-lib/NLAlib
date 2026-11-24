@@ -9,6 +9,8 @@ public import NLAlib.Matrix.FinitePrecision.GivensRotation
 public import NLAlib.Ops.Logic.IndependentLoop
 public import NLAlib.Ops.Logic.Allocation
 public import NLAlib.Matrix.FinitePrecision.StoredMatrix
+public import NLAlib.Ops.Logic.RoutineIntro
+public import NLAlib.Ops.RoutineSyntax
 
 /-!
 # Scalar Givens row and column loops
@@ -30,6 +32,9 @@ scratch block is reused by every entry-pair rotation in a row or column loop.
   loops on any machine; the exact theorems are their corollaries.
 * `NLAlib.rotateRows_writes`: the exact left Givens product with scoped scratch.
 * `NLAlib.rotateColumns_writes`: the exact right adjoint product with scoped scratch.
+* `NLAlib.rotateRowsRoutine`, `NLAlib.rotateColumnsRoutine`: the two scoped rotations as
+  routines `[n, k] (A : 2 n n, C : 2, S : 2) → (A)`, with their judgments
+  `NLAlib.rotateRowsRoutine_meets`, `NLAlib.rotateColumnsRoutine_meets` on any machine.
 -/
 
 @[expose] public section
@@ -43,9 +48,9 @@ variable {Op Tst : Type} [Has ScalarOp Op]
 
 /-- Apply one Givens rotation to adjacent rows of an interleaved square matrix, using ten
 caller-owned scratch words. The dimension and first row are the two size arguments. -/
-def rotateRowsWithScratch : Impl Op Tst := opsImpl% [n, k] (A, C, S, T) → (A) {
+def rotateRowsWithScratch : Stmt Op Tst := ops% [n, k] (A, C, S, T) → (A) {
   for j < n {
-    run rotateLeftWithScratch.body []
+    run rotateLeftWithScratch []
       (C, S, A[2 * (j * n + k)], A[2 * (j * n + k + 1)], T,
         A[2 * (j * n + k)], A[2 * (j * n + k + 1)])
   }
@@ -53,32 +58,32 @@ def rotateRowsWithScratch : Impl Op Tst := opsImpl% [n, k] (A, C, S, T) → (A) 
 
 /-- Apply the adjoint Givens rotation on the right to adjacent columns, using ten caller-owned
 scratch words. The dimension and first column are the two size arguments. -/
-def rotateColumnsWithScratch : Impl Op Tst := opsImpl% [n, k] (A, C, S, T) → (A) {
+def rotateColumnsWithScratch : Stmt Op Tst := ops% [n, k] (A, C, S, T) → (A) {
   for i < n {
-    run rotateRightWithScratch.body []
+    run rotateRightWithScratch []
       (C, S, A[2 * (k * n + i)], A[2 * ((k + 1) * n + i)], T,
         A[2 * (k * n + i)], A[2 * ((k + 1) * n + i)])
   }
 }
 
 /-- A row rotation allocates and releases one ten-word scratch block for the entire loop. -/
-def rotateRows : Impl Op Tst := opsImpl% [n, k] (A, C, S) → (A) {
+def rotateRows : Stmt Op Tst := ops% [n, k] (A, C, S) → (A) {
   let T ← alloc 10;
-  run rotateRowsWithScratch.body [n, k] (A, C, S, T, A)
+  run rotateRowsWithScratch [n, k] (A, C, S, T, A)
 }
 
 /-- A column rotation allocates and releases one ten-word scratch block for the entire loop. -/
-def rotateColumns : Impl Op Tst := opsImpl% [n, k] (A, C, S) → (A) {
+def rotateColumns : Stmt Op Tst := ops% [n, k] (A, C, S) → (A) {
   let T ← alloc 10;
-  run rotateColumnsWithScratch.body [n, k] (A, C, S, T, A)
+  run rotateColumnsWithScratch [n, k] (A, C, S, T, A)
 }
 
 /-- Rotate rows `r, r + 1` of the leading-dimension-`ld` matrix over the columns
 `j0, …, j0 + nc - 1`: `[ld, r, j0, nc] (A, C, S, T) → (A)`. `NLAlib.rotateRowsWithScratch` is
 the full range `[n, k, 0, n]`. -/
-def rotateRowsOn : Impl Op Tst := opsImpl% [ld, r, j0, nc] (A, C, S, T) → (A) {
+def rotateRowsOn : Stmt Op Tst := ops% [ld, r, j0, nc] (A, C, S, T) → (A) {
   for j < nc {
-    run rotateLeftWithScratch.body []
+    run rotateLeftWithScratch []
       (C, S, A[2 * ((j0 + j) * ld + r)], A[2 * ((j0 + j) * ld + r + 1)], T,
         A[2 * ((j0 + j) * ld + r)], A[2 * ((j0 + j) * ld + r + 1)])
   }
@@ -86,9 +91,9 @@ def rotateRowsOn : Impl Op Tst := opsImpl% [ld, r, j0, nc] (A, C, S, T) → (A) 
 
 /-- Rotate columns `c, c + 1` over the rows `i0, …, i0 + nr - 1`:
 `[ld, c, i0, nr] (A, C, S, T) → (A)`. -/
-def rotateColumnsOn : Impl Op Tst := opsImpl% [ld, c, i0, nr] (A, C, S, T) → (A) {
+def rotateColumnsOn : Stmt Op Tst := ops% [ld, c, i0, nr] (A, C, S, T) → (A) {
   for i < nr {
-    run rotateRightWithScratch.body []
+    run rotateRightWithScratch []
       (C, S, A[2 * (c * ld + i0 + i)], A[2 * ((c + 1) * ld + i0 + i)], T,
         A[2 * (c * ld + i0 + i)], A[2 * ((c + 1) * ld + i0 + i)])
   }
@@ -325,9 +330,11 @@ private theorem rotationPair_live {m : Mem ℝ} {c s x y t : ℕ × ℕ} {cv sv 
   rcases hz with rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> assumption
 
 omit [Has ScalarOp Op] in
-/-- Collect independent pair updates and reconstruct the entire matrix. The body theorem
-uses the actual prefix frame, while unchanged entries are retained by that same frame. -/
-private theorem writes_rotationLoop {I : Interp Op Tst ℝ} {τ : Tape ℝ} {m : Mem ℝ}
+/-- Collect independent pair updates and reconstruct the entire matrix. The body theorem uses the
+actual prefix frame, while unchanged entries are retained by that same frame.
+A step in the proof of `rotateRowsWithScratch_writes_word`,
+`rotateColumnsWithScratch_writes_word`. -/
+private theorem rotationLoop_writes {I : Interp Op Tst ℝ} {τ : Tape ℝ} {m : Mem ℝ}
     {ρ : Env} {bound : IExp} {body : Stmt Op Tst} {n k : ℕ} {a : ℕ × ℕ}
     {H G : Matrix (Fin n) (Fin n) ℂ} (p q : Fin k → Fin n × Fin n)
     (scratch : Fp) (hH : HoldsMatrix a H m.store)
@@ -452,7 +459,11 @@ theorem machineColRotation_eq {n : ℕ} {M : Machine ℝ} {i j : Fin n} {c s : �
 /-- Scalar pair rotations on any machine store the machine row rotation
 (`NLAlib.machineRowRotation`) of the rows $k, k + 1$. The matrix and coefficients are
 disjoint, and a separate ten-word buffer is reused for all columns. The two coefficient views may
-overlap each other. [GolubVanLoan2013, §5.1.8]. -/
+overlap each other. [GolubVanLoan2013, §5.1.8].
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
+`NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem rotateRowsWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {n k : ℕ} {a c s t : ℕ × ℕ} {H : Matrix (Fin n) (Fin n) ℂ} {cv sv : ℂ}
@@ -463,7 +474,7 @@ theorem rotateRowsWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst �
     (hsa : Fp.Disj (Store.inBlock a.1 a.2 (2 * (n * n))) (Store.inBlock s.1 s.2 2))
     (hta : t.1 ≠ a.1) (htc : t.1 ≠ c.1) (hts : t.1 ≠ s.1)
     (ht : t.2 + 10 ≤ m.store.len t.1) :
-    Writes .total I τ rotateRowsWithScratch.body (Env.frame [n, k] [a, c, s, t, a])
+    Writes .total I τ rotateRowsWithScratch (Env.frame [n, k] [a, c, s, t, a])
       (Store.inBlock a.1 a.2 (2 * (n * n)) ⊔ Store.inBlock t.1 t.2 10)
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a
         (machineRowRotation M (⟨k, by omega⟩ : Fin n) ⟨k + 1, hk⟩ cv sv H) m'.store) m := by
@@ -471,7 +482,7 @@ theorem rotateRowsWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst �
   let r' : Fin n := ⟨k + 1, hk⟩
   have hrr : r ≠ r' := by intro h; have := congrArg Fin.val h; dsimp [r, r'] at this; omega
   change Writes .total I τ (.loop _ _) _ _ _ m
-  refine writes_rotationLoop (fun j => (r, j)) (fun j => (r', j))
+  refine rotationLoop_writes (fun j => (r, j)) (fun j => (r', j))
     (Store.inBlock t.1 t.2 10) hH rfl (rotationRows_disjoint r r')
     (Fp.disj_inBlock_of_ne hta) ?_ ?_
   · intro i j hne
@@ -482,7 +493,7 @@ theorem rotateRowsWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst �
     obtain ⟨hc', hs', hx, hy, ht', hxl, hyl⟩ := rotationLoop_inputs hH hc hs hca hsa
       hta htc hts ht (fun i hi => rotationRows_disjoint r r' j i (by
         intro he; have := congrArg Fin.val he; omega)) hfr
-    have hw := writes_rotateLeftWithScratch_word (τ := τ) (m := m')
+    have hw := rotateLeftWithScratch_writes_word (τ := τ) (m := m')
       (x := rotationEntry a n (r, j)) (y := rotationEntry a n (r', j))
       hS htc hts hta hta
       (rotationEntry_disj (fun h => hrr (congrArg Prod.fst h)))
@@ -503,7 +514,11 @@ theorem rotateRowsWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst �
 
 /-- Exact scalar pair rotations implement multiplication by the Givens matrix on the left.
 The matrix and coefficients are disjoint, and a separate ten-word buffer is reused for all
-columns. The two coefficient views may overlap each other. [GolubVanLoan2013, §5.1.8]. -/
+columns. The two coefficient views may overlap each other. [GolubVanLoan2013, §5.1.8].
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
+`NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem rotateRowsWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {n k : ℕ} {a c s t : ℕ × ℕ} {H : Matrix (Fin n) (Fin n) ℂ} {cv sv : ℂ}
@@ -514,7 +529,7 @@ theorem rotateRowsWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hsa : Fp.Disj (Store.inBlock a.1 a.2 (2 * (n * n))) (Store.inBlock s.1 s.2 2))
     (hta : t.1 ≠ a.1) (htc : t.1 ≠ c.1) (hts : t.1 ≠ s.1)
     (ht : t.2 + 10 ≤ m.store.len t.1) :
-    Writes .total I τ rotateRowsWithScratch.body (Env.frame [n, k] [a, c, s, t, a])
+    Writes .total I τ rotateRowsWithScratch (Env.frame [n, k] [a, c, s, t, a])
       (Store.inBlock a.1 a.2 (2 * (n * n)) ⊔ Store.inBlock t.1 t.2 10)
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a
         (givens (⟨k, by omega⟩ : Fin n) ⟨k + 1, hk⟩ cv sv * H) m'.store) m := by
@@ -525,7 +540,10 @@ theorem rotateRowsWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 /-- Scalar pair rotations on any machine store the machine column rotation
 (`NLAlib.machineColRotation`) of the columns $k, k + 1$. The matrix and coefficients
 are disjoint, and a separate ten-word buffer is reused for all rows. The two coefficient views
-may overlap each other. [GolubVanLoan2013, §5.1.8]. -/
+may overlap each other. [GolubVanLoan2013, §5.1.8].
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
+`NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem rotateColumnsWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {n k : ℕ} {a c s t : ℕ × ℕ} {H : Matrix (Fin n) (Fin n) ℂ} {cv sv : ℂ}
@@ -536,7 +554,7 @@ theorem rotateColumnsWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Ts
     (hsa : Fp.Disj (Store.inBlock a.1 a.2 (2 * (n * n))) (Store.inBlock s.1 s.2 2))
     (hta : t.1 ≠ a.1) (htc : t.1 ≠ c.1) (hts : t.1 ≠ s.1)
     (ht : t.2 + 10 ≤ m.store.len t.1) :
-    Writes .total I τ rotateColumnsWithScratch.body (Env.frame [n, k] [a, c, s, t, a])
+    Writes .total I τ rotateColumnsWithScratch (Env.frame [n, k] [a, c, s, t, a])
       (Store.inBlock a.1 a.2 (2 * (n * n)) ⊔ Store.inBlock t.1 t.2 10)
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a
         (machineColRotation M (⟨k, by omega⟩ : Fin n) ⟨k + 1, hk⟩ cv sv H) m'.store) m := by
@@ -544,7 +562,7 @@ theorem rotateColumnsWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Ts
   let r' : Fin n := ⟨k + 1, hk⟩
   have hrr : r ≠ r' := by intro h; have := congrArg Fin.val h; dsimp [r, r'] at this; omega
   change Writes .total I τ (.loop _ _) _ _ _ m
-  refine writes_rotationLoop (fun j => (j, r)) (fun j => (j, r'))
+  refine rotationLoop_writes (fun j => (j, r)) (fun j => (j, r'))
     (Store.inBlock t.1 t.2 10) hH rfl (rotationColumns_disjoint r r')
     (Fp.disj_inBlock_of_ne hta) ?_ ?_
   · intro i j hne
@@ -555,7 +573,7 @@ theorem rotateColumnsWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Ts
     obtain ⟨hc', hs', hx, hy, ht', hxl, hyl⟩ := rotationLoop_inputs hH hc hs hca hsa
       hta htc hts ht (fun i hi => rotationColumns_disjoint r r' j i (by
         intro he; have := congrArg Fin.val he; omega)) hfr
-    have hw := writes_rotateRightWithScratch_word (τ := τ) (m := m')
+    have hw := rotateRightWithScratch_writes_word (τ := τ) (m := m')
       (x := rotationEntry a n (j, r)) (y := rotationEntry a n (j, r'))
       hS htc hts hta hta
       (rotationEntry_disj (fun h => hrr (congrArg Prod.snd h)))
@@ -576,7 +594,10 @@ theorem rotateColumnsWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Ts
 
 /-- Exact scalar pair rotations implement multiplication by the adjoint Givens matrix on the right.
 The matrix and coefficients are disjoint, and a separate ten-word buffer is reused for all
-rows. The two coefficient views may overlap each other. [GolubVanLoan2013, §5.1.8]. -/
+rows. The two coefficient views may overlap each other. [GolubVanLoan2013, §5.1.8].
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
+`NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem rotateColumnsWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {n k : ℕ} {a c s t : ℕ × ℕ} {H : Matrix (Fin n) (Fin n) ℂ} {cv sv : ℂ}
@@ -587,7 +608,7 @@ theorem rotateColumnsWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ
     (hsa : Fp.Disj (Store.inBlock a.1 a.2 (2 * (n * n))) (Store.inBlock s.1 s.2 2))
     (hta : t.1 ≠ a.1) (htc : t.1 ≠ c.1) (hts : t.1 ≠ s.1)
     (ht : t.2 + 10 ≤ m.store.len t.1) :
-    Writes .total I τ rotateColumnsWithScratch.body (Env.frame [n, k] [a, c, s, t, a])
+    Writes .total I τ rotateColumnsWithScratch (Env.frame [n, k] [a, c, s, t, a])
       (Store.inBlock a.1 a.2 (2 * (n * n)) ⊔ Store.inBlock t.1 t.2 10)
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a
         (H * (givens (⟨k, by omega⟩ : Fin n) ⟨k + 1, hk⟩ cv sv)ᴴ) m'.store) m := by
@@ -611,7 +632,8 @@ def machineColRotationOn {n : ℕ} (M : Machine ℝ) (i j : Fin n) (c s : ℂ) (
 
 /-- Scalar pair rotations of the rows $k, k + 1$ over the columns $j_0, \dots, j_0 + n_c - 1$
 store `NLAlib.machineRowRotationOn`, on any machine; the conditions are those of
-`NLAlib.rotateRowsWithScratch_writes_word`. [GolubVanLoan2013, §5.1.8]. -/
+`NLAlib.rotateRowsWithScratch_writes_word`. [GolubVanLoan2013, §5.1.8].
+Shared by the trees of `NLAlib.givensReplayWith`, `NLAlib.givensReplayRows`. -/
 theorem rotateRowsOn_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {n k j0 nc : ℕ} {a c s t : ℕ × ℕ} {H : Matrix (Fin n) (Fin n) ℂ} {cv sv : ℂ}
@@ -622,7 +644,7 @@ theorem rotateRowsOn_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hsa : Fp.Disj (Store.inBlock a.1 a.2 (2 * (n * n))) (Store.inBlock s.1 s.2 2))
     (hta : t.1 ≠ a.1) (htc : t.1 ≠ c.1) (hts : t.1 ≠ s.1)
     (ht : t.2 + 10 ≤ m.store.len t.1) :
-    Writes .total I τ rotateRowsOn.body (Env.frame [n, k, j0, nc] [a, c, s, t, a])
+    Writes .total I τ rotateRowsOn (Env.frame [n, k, j0, nc] [a, c, s, t, a])
       (Store.inBlock a.1 a.2 (2 * (n * n)) ⊔ Store.inBlock t.1 t.2 10)
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a
         (machineRowRotationOn M (⟨k, by omega⟩ : Fin n) ⟨k + 1, hk⟩ cv sv j0 nc H) m'.store) m := by
@@ -633,7 +655,7 @@ theorem rotateRowsOn_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
   have hcol : ∀ i j : Fin nc, i ≠ j → col i ≠ col j := fun i j hij h =>
     hij (Fin.ext (by have := congrArg Fin.val h; simp [col] at this; omega))
   change Writes .total I τ (.loop _ _) _ _ _ m
-  refine writes_rotationLoop (fun j => (r, col j)) (fun j => (r', col j))
+  refine rotationLoop_writes (fun j => (r, col j)) (fun j => (r', col j))
     (Store.inBlock t.1 t.2 10) hH rfl
     (fun i j hij => rotationRows_disjoint r r' _ _ (hcol i j hij))
     (Fp.disj_inBlock_of_ne hta) ?_ ?_
@@ -651,7 +673,7 @@ theorem rotateRowsOn_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (p := fun j => (r, col j)) (q := fun j => (r', col j)) (i := j) hH hc hs hca hsa
       hta htc hts ht (fun i hi => rotationRows_disjoint r r' _ _ (hcol j i (by
         intro he; rw [he] at hi; exact lt_irrefl _ hi))) hfr
-    have hw := writes_rotateLeftWithScratch_word (τ := τ) (m := m')
+    have hw := rotateLeftWithScratch_writes_word (τ := τ) (m := m')
       (x := rotationEntry a n (r, col j)) (y := rotationEntry a n (r', col j))
       hS htc hts hta hta
       (rotationEntry_disj (fun h => hrr (congrArg Prod.fst h)))
@@ -675,7 +697,8 @@ theorem rotateRowsOn_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 /-- Scalar pair rotations of the columns $k, k + 1$ over the rows $i_0, \dots, i_0 + n_r - 1$
 store `NLAlib.machineColRotationOn`, on any machine; the conditions are those of
-`NLAlib.rotateColumnsWithScratch_writes_word`. [GolubVanLoan2013, §5.1.8]. -/
+`NLAlib.rotateColumnsWithScratch_writes_word`. [GolubVanLoan2013, §5.1.8].
+Shared by the trees of `NLAlib.givensReplayRows`, `NLAlib.givensReplayColumns`. -/
 theorem rotateColumnsOn_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {n k i0 nr : ℕ} {a c s t : ℕ × ℕ} {H : Matrix (Fin n) (Fin n) ℂ} {cv sv : ℂ}
@@ -686,7 +709,7 @@ theorem rotateColumnsOn_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hsa : Fp.Disj (Store.inBlock a.1 a.2 (2 * (n * n))) (Store.inBlock s.1 s.2 2))
     (hta : t.1 ≠ a.1) (htc : t.1 ≠ c.1) (hts : t.1 ≠ s.1)
     (ht : t.2 + 10 ≤ m.store.len t.1) :
-    Writes .total I τ rotateColumnsOn.body (Env.frame [n, k, i0, nr] [a, c, s, t, a])
+    Writes .total I τ rotateColumnsOn (Env.frame [n, k, i0, nr] [a, c, s, t, a])
       (Store.inBlock a.1 a.2 (2 * (n * n)) ⊔ Store.inBlock t.1 t.2 10)
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a
         (machineColRotationOn M (⟨k, by omega⟩ : Fin n) ⟨k + 1, hk⟩ cv sv i0 nr H) m'.store) m := by
@@ -697,7 +720,7 @@ theorem rotateColumnsOn_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
   have hrow : ∀ i j : Fin nr, i ≠ j → row i ≠ row j := fun i j hij h =>
     hij (Fin.ext (by have := congrArg Fin.val h; simp [row] at this; omega))
   change Writes .total I τ (.loop _ _) _ _ _ m
-  refine writes_rotationLoop (fun j => (row j, r)) (fun j => (row j, r'))
+  refine rotationLoop_writes (fun j => (row j, r)) (fun j => (row j, r'))
     (Store.inBlock t.1 t.2 10) hH rfl
     (fun i j hij => rotationColumns_disjoint r r' _ _ (hrow i j hij))
     (Fp.disj_inBlock_of_ne hta) ?_ ?_
@@ -715,7 +738,7 @@ theorem rotateColumnsOn_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (p := fun j => (row j, r)) (q := fun j => (row j, r')) (i := j) hH hc hs hca hsa
       hta htc hts ht (fun i hi => rotationColumns_disjoint r r' _ _ (hrow j i (by
         intro he; rw [he] at hi; exact lt_irrefl _ hi))) hfr
-    have hw := writes_rotateRightWithScratch_word (τ := τ) (m := m')
+    have hw := rotateRightWithScratch_writes_word (τ := τ) (m := m')
       (x := rotationEntry a n (row j, r)) (y := rotationEntry a n (row j, r'))
       hS htc hts hta hta
       (rotationEntry_disj (fun h => hrr (congrArg Prod.snd h)))
@@ -739,7 +762,14 @@ theorem rotateColumnsOn_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 /-- A scoped row rotation on any machine stores the machine row rotation
 (`NLAlib.machineRowRotation`) and releases its scratch. The matrix and each coefficient
-view are spatially disjoint; the coefficient views may overlap. [GolubVanLoan2013, §5.1.8]. -/
+view are spatially disjoint; the coefficient views may overlap. [GolubVanLoan2013, §5.1.8].
+
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
+`NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and `NLAlib.SmallEig.smallEigRoutine`, on their scratch.
+The run stated on a named matrix: a step in the proof of
+`NLAlib.rotateRowsRoutine_meets`, and the form in which the trees above, which hold the matrix as
+`NLAlib.HoldsMatrix`, use it. -/
 theorem rotateRows_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {n k : ℕ} {a c s : ℕ × ℕ} {H : Matrix (Fin n) (Fin n) ℂ} {cv sv : ℂ}
@@ -748,7 +778,7 @@ theorem rotateRows_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hs : m.store.readBlock s.1 s.2 2 = some [sv.re, sv.im])
     (hca : Fp.Disj (Store.inBlock a.1 a.2 (2 * (n * n))) (Store.inBlock c.1 c.2 2))
     (hsa : Fp.Disj (Store.inBlock a.1 a.2 (2 * (n * n))) (Store.inBlock s.1 s.2 2)) :
-    Writes .total I τ rotateRows.body (Env.frame [n, k] [a, c, s, a])
+    Writes .total I τ rotateRows (Env.frame [n, k] [a, c, s, a])
       (Store.inBlock a.1 a.2 (2 * (n * n)))
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a
         (machineRowRotation M (⟨k, by omega⟩ : Fin n) ⟨k + 1, hk⟩ cv sv H) m'.store) m := by
@@ -787,7 +817,11 @@ theorem rotateRows_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 /-- A scoped row rotation computes the exact left Givens product and releases its scratch.
 The matrix and each coefficient view are spatially disjoint; the coefficient views may overlap.
-[GolubVanLoan2013, §5.1.8]. -/
+[GolubVanLoan2013, §5.1.8].
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
+`NLAlib.ShiftedQR.scalarDecouple`, `NLAlib.ShiftedQR.shiftedStepRoutine`,
+`NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem rotateRows_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {n k : ℕ} {a c s : ℕ × ℕ} {H : Matrix (Fin n) (Fin n) ℂ} {cv sv : ℂ}
@@ -796,7 +830,7 @@ theorem rotateRows_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hs : m.store.readBlock s.1 s.2 2 = some [sv.re, sv.im])
     (hca : Fp.Disj (Store.inBlock a.1 a.2 (2 * (n * n))) (Store.inBlock c.1 c.2 2))
     (hsa : Fp.Disj (Store.inBlock a.1 a.2 (2 * (n * n))) (Store.inBlock s.1 s.2 2)) :
-    Writes .total I τ rotateRows.body (Env.frame [n, k] [a, c, s, a])
+    Writes .total I τ rotateRows (Env.frame [n, k] [a, c, s, a])
       (Store.inBlock a.1 a.2 (2 * (n * n)))
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a
         (givens (⟨k, by omega⟩ : Fin n) ⟨k + 1, hk⟩ cv sv * H) m'.store) m := by
@@ -807,7 +841,13 @@ theorem rotateRows_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 /-- A scoped column rotation on any machine stores the machine column rotation
 (`NLAlib.machineColRotation`) and releases its scratch. The matrix and each
 coefficient view are spatially disjoint; the coefficient views may overlap.
-[GolubVanLoan2013, §5.1.8]. -/
+[GolubVanLoan2013, §5.1.8].
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
+`NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch.
+The run stated on a named matrix: a step in the proof of
+`NLAlib.rotateColumnsRoutine_meets`, and the form in which the trees above, which hold the matrix as
+`NLAlib.HoldsMatrix`, use it. -/
 theorem rotateColumns_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ}
     {n k : ℕ} {a c s : ℕ × ℕ} {H : Matrix (Fin n) (Fin n) ℂ} {cv sv : ℂ}
@@ -816,7 +856,7 @@ theorem rotateColumns_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hs : m.store.readBlock s.1 s.2 2 = some [sv.re, sv.im])
     (hca : Fp.Disj (Store.inBlock a.1 a.2 (2 * (n * n))) (Store.inBlock c.1 c.2 2))
     (hsa : Fp.Disj (Store.inBlock a.1 a.2 (2 * (n * n))) (Store.inBlock s.1 s.2 2)) :
-    Writes .total I τ rotateColumns.body (Env.frame [n, k] [a, c, s, a])
+    Writes .total I τ rotateColumns (Env.frame [n, k] [a, c, s, a])
       (Store.inBlock a.1 a.2 (2 * (n * n)))
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a
         (machineColRotation M (⟨k, by omega⟩ : Fin n) ⟨k + 1, hk⟩ cv sv H) m'.store) m := by
@@ -856,7 +896,10 @@ theorem rotateColumns_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
 /-- A scoped column rotation computes the exact right adjoint Givens product and releases
 its scratch.
 The matrix and each coefficient view are spatially disjoint; the coefficient views may overlap.
-[GolubVanLoan2013, §5.1.8]. -/
+[GolubVanLoan2013, §5.1.8].
+Shared by the trees of `NLAlib.ShiftedQR.deflationRoutine`, `NLAlib.hessenbergReduceLast`,
+`NLAlib.ShiftedQR.shiftedStepRoutine`, `NLAlib.ShiftedQR.shqrSmallEigRoutine` and
+`NLAlib.SmallEig.smallEigRoutine`, on their scratch. -/
 theorem rotateColumns_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {n k : ℕ} {a c s : ℕ × ℕ} {H : Matrix (Fin n) (Fin n) ℂ} {cv sv : ℂ}
@@ -865,12 +908,83 @@ theorem rotateColumns_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hs : m.store.readBlock s.1 s.2 2 = some [sv.re, sv.im])
     (hca : Fp.Disj (Store.inBlock a.1 a.2 (2 * (n * n))) (Store.inBlock c.1 c.2 2))
     (hsa : Fp.Disj (Store.inBlock a.1 a.2 (2 * (n * n))) (Store.inBlock s.1 s.2 2)) :
-    Writes .total I τ rotateColumns.body (Env.frame [n, k] [a, c, s, a])
+    Writes .total I τ rotateColumns (Env.frame [n, k] [a, c, s, a])
       (Store.inBlock a.1 a.2 (2 * (n * n)))
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix a
         (H * (givens (⟨k, by omega⟩ : Fin n) ⟨k + 1, hk⟩ cv sv)ᴴ) m'.store) m := by
   refine (rotateColumns_writes_word hS hk hH hc hs hca hsa).mono le_rfl
     fun _ _ ⟨hp, hm⟩ => ⟨hp, ?_⟩
   rwa [machineColRotation_eq hE (Fin.ne_of_val_ne (Nat.succ_ne_self k).symm)] at hm
+
+/-- Rotate rows `k, k + 1` of a stored square matrix in place by two stored coefficients:
+`[n, k] (A : 2 n n, C : 2, S : 2) → (A)`, the matrix apart from each coefficient; the
+coefficients may overlap each other. The scratch is allocated and released by the tree
+`NLAlib.rotateRows`. -/
+def rotateRowsRoutine : Routine Op Tst :=
+  routine% [n, k] (A : 2 * (n * n), C : 2, S : 2) → (A) by blocks := rotateRows
+
+/-- Rotate columns `k, k + 1` of a stored square matrix in place by two stored coefficients:
+`[n, k] (A : 2 n n, C : 2, S : 2) → (A)`, with the separation of
+`NLAlib.rotateRowsRoutine`. -/
+def rotateColumnsRoutine : Routine Op Tst :=
+  routine% [n, k] (A : 2 * (n * n), C : 2, S : 2) → (A) by blocks := rotateColumns
+
+/-- For `k + 1 < n`, the words of a matrix `H` become the words of its machine row rotation
+`NLAlib.machineRowRotation` by the coefficients read. -/
+def rotateRowsSpec (M : Machine ℝ) : Routine.Spec ℝ :=
+  spec% [n, k] (as, [cr, ci], [sr, si]) → (zs) requires k + 1 < n ensures
+    ∀ (hk : k + 1 < n) (H : Matrix (Fin n) (Fin n) ℂ), as = matrixWords H →
+      zs = matrixWords
+        (machineRowRotation M (⟨k, by omega⟩ : Fin n) ⟨k + 1, hk⟩ ⟨cr, ci⟩ ⟨sr, si⟩ H)
+
+/-- For `k + 1 < n`, the words of a matrix `H` become the words of its machine column rotation
+`NLAlib.machineColRotation` by the coefficients read. -/
+def rotateColumnsSpec (M : Machine ℝ) : Routine.Spec ℝ :=
+  spec% [n, k] (as, [cr, ci], [sr, si]) → (zs) requires k + 1 < n ensures
+    ∀ (hk : k + 1 < n) (H : Matrix (Fin n) (Fin n) ℂ), as = matrixWords H →
+      zs = matrixWords
+        (machineColRotation M (⟨k, by omega⟩ : Fin n) ⟨k + 1, hk⟩ ⟨cr, ci⟩ ⟨sr, si⟩ H)
+
+/-- The row rotation meets its specification on any scalar machine. -/
+theorem rotateRowsRoutine_meets {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsScalar M I) :
+    (rotateRowsRoutine (Op := Op) (Tst := Tst)).Meets I (rotateRowsSpec M) := by
+  routine_intro [n, k] (a, c, s) reads (as, cs, ss)
+  obtain ⟨cr, ci, rfl⟩ := List.length_eq_two.mp (Store.length_of_readBlock hcs)
+  obtain ⟨sr, si, rfl⟩ := List.length_eq_two.mp (Store.length_of_readBlock hss)
+  have hk : k + 1 < n := hpre
+  have hH : HoldsMatrix a (storedMatrix a n n m.store) m.store :=
+    holdsMatrix_storedMatrix fun j hj => by simp [Store.get_of_readBlock has hj 0]
+  have hd : Fp.Disj (Store.inBlock a.1 a.2 (2 * (n * n))) (Store.inBlock c.1 c.2 2) ∧
+      Fp.Disj (Store.inBlock a.1 a.2 (2 * (n * n))) (Store.inBlock s.1 s.2 2) := by
+    have h : Fp.Disj (Fp.blocks [a] [2 * (n * n)]) (Fp.blocks [c, s] [2, 2]) := hblocks.2.1
+    exact Fp.disj_sup_right.mp (by simpa [Fp.blocks] using h)
+  refine (rotateRows_writes_word (cv := ⟨cr, ci⟩) (sv := ⟨sr, si⟩) hS hk hH hcs hss
+    hd.1 hd.2).mono (by fp_sub) fun m' _ ⟨hp, hm⟩ =>
+      ⟨hp, [_], Mem.readBlocks_of_cons hm rfl, ?_⟩
+  intro hk' H hH'
+  obtain rfl : H = storedMatrix a n n m.store :=
+    HoldsMatrix.eq_storedMatrix (show HoldsMatrix a H m.store by rw [HoldsMatrix, has, hH'])
+  rfl
+
+/-- The column rotation meets its specification on any scalar machine. -/
+theorem rotateColumnsRoutine_meets {M : Machine ℝ} {I : Interp Op Tst ℝ} (hS : IsScalar M I) :
+    (rotateColumnsRoutine (Op := Op) (Tst := Tst)).Meets I (rotateColumnsSpec M) := by
+  routine_intro [n, k] (a, c, s) reads (as, cs, ss)
+  obtain ⟨cr, ci, rfl⟩ := List.length_eq_two.mp (Store.length_of_readBlock hcs)
+  obtain ⟨sr, si, rfl⟩ := List.length_eq_two.mp (Store.length_of_readBlock hss)
+  have hk : k + 1 < n := hpre
+  have hH : HoldsMatrix a (storedMatrix a n n m.store) m.store :=
+    holdsMatrix_storedMatrix fun j hj => by simp [Store.get_of_readBlock has hj 0]
+  have hd : Fp.Disj (Store.inBlock a.1 a.2 (2 * (n * n))) (Store.inBlock c.1 c.2 2) ∧
+      Fp.Disj (Store.inBlock a.1 a.2 (2 * (n * n))) (Store.inBlock s.1 s.2 2) := by
+    have h : Fp.Disj (Fp.blocks [a] [2 * (n * n)]) (Fp.blocks [c, s] [2, 2]) := hblocks.2.1
+    exact Fp.disj_sup_right.mp (by simpa [Fp.blocks] using h)
+  refine (rotateColumns_writes_word (cv := ⟨cr, ci⟩) (sv := ⟨sr, si⟩) hS hk hH hcs hss
+    hd.1 hd.2).mono (by fp_sub) fun m' _ ⟨hp, hm⟩ =>
+      ⟨hp, [_], Mem.readBlocks_of_cons hm rfl, ?_⟩
+  intro hk' H hH'
+  obtain rfl : H = storedMatrix a n n m.store :=
+    HoldsMatrix.eq_storedMatrix (show HoldsMatrix a H m.store by rw [HoldsMatrix, has, hH'])
+  rfl
 
 end NLAlib

@@ -17,7 +17,7 @@ root then compute the remaining words using the same scalar machine.
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_initialConstants`: the five actual stored constant words.
+* `NLAlib.SpectralBisection.initialConstants_writes`: the five actual stored constant words.
 -/
 
 @[expose] public section
@@ -28,17 +28,17 @@ open Ops
 
 variable {K Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op] {M : Machine K}
 
-private def constantTail : Impl Op Tst := opsImpl% [] () → (c) {
+private def constantTail : Stmt Op Tst := ops% [] () → (c) {
   call (Has.inj ScalarOp.div) [] (c, c[1]) → (c[2]);
   call (Has.inj ScalarOp.neg) [] (c) → (c[3]);
   call (Has.inj ScalarOp.sqrt) [] (c[2]) → (c[4])
 }
 
 omit [Has IndexOp Op] in
-private theorem writes_constantTail {I : Interp Op Tst K} (hS : IsScalar M I) {τ : Tape K}
+private theorem constantTail_writes {I : Interp Op Tst K} (hS : IsScalar M I) {τ : Tape K}
     {b off : ℕ} {m : Mem K} (h0 : m.store.get b off = some (M.lit 1))
     (h1 : m.store.get b (off + 1) = some (M.lit 2)) (hroom : off + 5 ≤ m.store.len b) :
-    Writes .total I τ constantTail.body (Env.frame [] [(b, off)])
+    Writes .total I τ constantTail (Env.frame [] [(b, off)])
       (Store.inBlock b off 5)
       (fun μ => μ.pos = m.pos ∧ μ.store.readBlock b off 5 =
         some [M.lit 1, M.lit 2, M.div (M.lit 1) (M.lit 2), M.neg (M.lit 1),
@@ -59,7 +59,7 @@ private theorem writes_constantTail {I : Interp Op Tst K} (hS : IsScalar M I) {�
     simp only [ws, List.mem_cons, List.not_mem_nil, or_false] at hz
     rcases hz with rfl | rfl | rfl <;> dsimp <;> omega
   have hw := writes_machineScalarBlock (τ := τ) hS hev hcap
-  change Writes .total I τ constantTail.body _ _ _ m at hw
+  change Writes .total I τ constantTail _ _ _ m at hw
   refine hw.mono ?_ ?_
   · intro cb i hi
     simp only [ws, List.map_cons, List.map_nil, Fp.cells, List.mem_cons, List.not_mem_nil,
@@ -93,11 +93,12 @@ private theorem writes_constantTail {I : Interp Op Tst K} (hS : IsScalar M I) {�
     | simpa [ws, half] using hg4
 
 /-- Capacity alone suffices to compute the actual constants; exactness of their decoding is a
-separate numerical hypothesis. The operations consume no random words. -/
-theorem writes_initialConstants {I : Interp Op Tst K} (hS : IsScalar M I)
+separate numerical hypothesis. The operations consume no random words.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem initialConstants_writes {I : Interp Op Tst K} (hS : IsScalar M I)
     (hIndex : IsIndexLit M I) {τ : Tape K} {b off : ℕ} {m : Mem K}
     (hroom : off + 5 ≤ m.store.len b) :
-    Writes .total I τ initialConstants.body (Env.frame [] [(b, off)]) (Store.inBlock b off 5)
+    Writes .total I τ initialConstants (Env.frame [] [(b, off)]) (Store.inBlock b off 5)
       (fun μ => μ.pos = m.pos ∧ μ.store.readBlock b off 5 =
         some [M.lit 1, M.lit 2, M.div (M.lit 1) (M.lit 2), M.neg (M.lit 1),
           M.sqrt (M.div (M.lit 1) (M.lit 2))]) m := by
@@ -110,7 +111,7 @@ theorem writes_initialConstants {I : Interp Op Tst K} (hS : IsScalar M I)
     (by rw [hfr0.len_eq]; dsimp; omega)
   refine htwo.seq_le (Fp.inBlock_le_inBlock (by omega) (by omega)) fun ν hfr1 h1 => ?_
   have h0' := hfr1.keep (Store.readsOnly_get b off (M.lit 1)) (by disjoint) h0.2
-  exact (writes_constantTail (τ := τ) hS h0' h1.2
+  exact (constantTail_writes (τ := τ) hS h0' h1.2
     (by rw [hfr1.len_eq, hfr0.len_eq]; exact hroom)).mono le_rfl
     fun _ _ h => ⟨h.1.trans (h1.1.trans h0.1), h.2⟩
 

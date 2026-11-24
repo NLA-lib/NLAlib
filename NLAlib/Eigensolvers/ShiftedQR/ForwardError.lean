@@ -22,7 +22,7 @@ fixed program, operation model, and every resource bound.
 
 * `NLAlib.ShiftedQR.deflation_good_forward_error`: actual output and raw-parameter forward error.
 * `NLAlib.ShiftedQR.deflationForwardSpecification`: backward and forward output guarantees.
-* `NLAlib.ShiftedQR.exactForwardAlgorithm`: total certification of the unchanged scalar program.
+* `NLAlib.ShiftedQR.forwardDeflationAlgorithm`: total certification of the unchanged scalar program.
 -/
 
 @[expose] public section
@@ -51,9 +51,9 @@ not a one-to-one matching. The complete backward output retains algebraic multip
 def DeflationForwardOutput (d : Fin 5 → ℕ) (x : deflationProblem.Input d) (μ : Mem ℝ) : Prop :=
   ∃ roots : Fin (d 0 + 1) → ℂ,
     HoldsMatrix (2, 0) (Matrix.of fun i (_ : Fin 1) => roots i) μ.store ∧
-    ∀ i, ∃ z : ℂ, z ∈ spectrum ℂ (x.val.1.matrix d) ∧
-      ‖z - roots i‖ ≤ (vec x.val.1.parameterWords 0 / 2) *
-        ((d 0 : ℝ) * (vec x.val.1.parameterWords 4 * frobNorm (x.val.1.matrix d)))
+    ∀ i, ∃ z : ℂ, z ∈ spectrum ℂ (deflationInputMatrix d x) ∧
+      ‖z - roots i‖ ≤ (deflationInputParams d x 0 / 2) *
+        ((d 0 : ℝ) * (deflationInputParams d x 4 * frobNorm (deflationInputMatrix d x)))
 
 /-- The original backward postcondition and raw input hypotheses imply a forward error for
 actual output words. The estimate is Bauer–Fike with the input's eigenvector condition at
@@ -65,13 +65,13 @@ theorem deflation_good_forward_error
     (hGood : (deflationSpecification scalarDecouple kernelWork kernelWorkspace).good
       d x tape count μ) : DeflationForwardOutput d x μ := by
   obtain ⟨_, _, roots, E, hStored, hE, hRoots⟩ := hGood
-  obtain ⟨V, eigen, hV, hHV, hκ, _⟩ := x.property.1.2.2.2.2.1.1
+  obtain ⟨V, eigen, hV, hHV, hκ, _⟩ := (deflationInputs.accepts_data x).2.2.1.choose_spec.1
   have hListing := isEigenvalueListing_of_mul_eq_mul_diagonal
     ((Matrix.isUnit_iff_isUnit_det _).mp hV) hHV
-  have hκ' : pseudoConditionNumber V ≤ vec x.val.1.parameterWords 0 / 2 := by
+  have hκ' : pseudoConditionNumber V ≤ deflationInputParams d x 0 / 2 := by
     linarith
   have hε : 0 ≤ (d 0 : ℝ) *
-      (vec x.val.1.parameterWords 4 * frobNorm (x.val.1.matrix d)) :=
+      (deflationInputParams d x 4 * frobNorm (deflationInputMatrix d x)) :=
     (specNorm_nonneg E).trans hE
   refine ⟨roots, hStored, fun i => ?_⟩
   obtain ⟨j, hj⟩ := roots_exists_norm_sub_le hV hHV hRoots i
@@ -96,11 +96,11 @@ scalar program runs under the same exact scalar/index/local-spectral operation m
 admissibility supplies every numerical premise and no successful-execution premise is added.
 [GolubVanLoan2013, Theorem 7.2.2].
 Algorithm: shifted-qr (run model) -/
-noncomputable def exactForwardAlgorithm
+noncomputable def forwardDeflationAlgorithm
     (kernelWork kernelWorkspace : EigenvalueKernelOp → List ℕ → ℕ) :
     Algorithm (model deflationProblem exactRoutines (resources kernelWork kernelWorkspace))
       (deflationForwardSpecification kernelWork kernelWorkspace) :=
-  (exactAlgorithm kernelWork kernelWorkspace).mapPost _
+  (exactDeflationAlgorithm kernelWork kernelWorkspace).mapPost _
     (fun _ _ _ _ _ _ hGood => ⟨hGood, deflation_good_forward_error hGood⟩)
 
 end NLAlib.ShiftedQR

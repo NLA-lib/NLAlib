@@ -6,7 +6,7 @@ blocks and processes a deflation worklist. Complex entries use adjacent real and
 words, stored by columns.
 
 The [closed exact certificate](../../NLAlib/Eigensolvers/ShiftedQR/Exact.lean),
-`NLAlib.ShiftedQR.exactAlgorithm`, proves total execution, actual stored output and all five
+`NLAlib.ShiftedQR.exactDeflationAlgorithm`, proves total execution, actual stored output and all five
 resource bounds for one fixed Ops program. The
 [single-step certificate](../../NLAlib/Eigensolvers/ShiftedQR/Certification.lean),
 `exactStepAlgorithm`, separately certifies the mathematical `shiftedQRStep H s` for every raw
@@ -72,7 +72,7 @@ bound and a positive eigenvalue-separation promise. Its quantitative hypotheses 
 positive tolerance, admissible Ritz depth and factors, contraction parameter, iteration cap
 and grid size. The precise inequalities are
 [`ShiftedQRHyps`](../../NLAlib/Matrix/QRIteration/DeflationHypotheses.lean) and
-`DeflationAdmissible`. The program computes `tau` itself from the raw tolerance and matrix.
+the admission of `deflationInputs`. The program computes `tau` itself from the raw tolerance and matrix.
 
 Under these mathematical input assumptions, execution is total and all output slots are
 initialized. No premise assumes a successful run, an accepted candidate or an already
@@ -89,20 +89,20 @@ spectral_norm(E) <= (N - 1) * delta * frobenius_norm(H).
 ```
 
 The [forward certificate](../../NLAlib/Eigensolvers/ShiftedQR/ForwardError.lean),
-`exactForwardAlgorithm`, also proves that every stored output lies within
+`forwardDeflationAlgorithm`, also proves that every stored output lies within
 `(B/2)*(N-1)*delta*frobenius_norm(H)` of some eigenvalue of H. This is the directed
 Bauer–Fike bound (HD9), using the raw input condition `2*kappa(V) <= B`.
 It retains the complete backward guarantee and the same resource bounds. It does not assert
 a bijective matching of individual eigenvalues or reverse coverage of the original spectrum.
 
-The [canonical specification](../../NLAlib/Eigensolvers/ShiftedQR/DeflationCertificate.lean)
+The [canonical specification](../../NLAlib/Eigensolvers/ShiftedQR/DeflationCertification.lean)
 uses the full instruction manifest `staticCost` of the actual program. Modeled work and
 sequential span evaluate that same manifest with the declared kernel charges. Scratch uses
 `staticPeak`, including local primitive workspace; resident payload adds the supplied
 `2N² + 5 + 2N` real-word cells. Scoped buffers are released and the tape position is unchanged.
 
 The [readable full-work certificate](../../NLAlib/Eigensolvers/ShiftedQR/Cost.lean),
-`exactAlgorithmWithPolynomialWork`, combines both numerical guarantees with
+`countedDeflationAlgorithm`, combines both numerical guarantees with
 
 ```text
 work, sequential span <= 17109 * b^14 * (1 + K(b^5)),

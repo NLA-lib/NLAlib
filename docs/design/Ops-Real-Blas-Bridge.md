@@ -9,7 +9,7 @@ contracts without adding an algorithm predicate or another operation implementat
 The admission implication must use the actual precondition. `OutApart` and `InPlace` describe
 buffer relationships without constraining list arity. A bare implication from those predicates
 to a shape-matching functional admission is false on malformed operands. Successful block reads
-and output capacity supply the missing arities. The generic `Interp.IsFn.meets_rel_of_pre` rule
+and output capacity supply the missing arities. The generic `Interp.IsFn.satisfies_rel_of_pre` rule
 therefore exposes those two facts when proving admission, while retaining the existing local
 functional-call semantics and relational output proof.
 

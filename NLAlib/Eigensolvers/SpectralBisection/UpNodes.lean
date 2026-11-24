@@ -18,7 +18,7 @@ no output cells.
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_upNodes`: total reconstruction of all mathematical node results.
+* `NLAlib.SpectralBisection.upNodes_writes`: total reconstruction of all mathematical node results.
 -/
 
 @[expose] public section
@@ -29,8 +29,9 @@ open Ops
 
 /-- Actual upward iteration returns every node's assembled mathematical result. The spatial
 hypotheses protect sizes, shifts, future node inputs and child outputs from earlier parent
-writes. All node operation contracts and metadata bounds are explicit. -/
-theorem writes_upNodes {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
+writes. All node operation contracts and metadata bounds are explicit.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem upNodes_writes {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     [Has MatrixOp Op] [Has IdxTst Tst] {M : Machine K} {dec : K → ℝ}
     (mm : MatMulMap (K × K)) (qr : QRMap (K × K)) (unif : K → Su → K) (normal : Sg → K × K)
     {I : Interp Op Tst K} (hS : IsScalar M I) (hQ : IsToNat dec I)
@@ -66,7 +67,7 @@ theorem writes_upNodes {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
       Fp.Disj (resultLevelFootprint n d ks ua ea)
         (Fp.blocks (resultOperands n (d + 1) ((steps lo).childSlot lo b) ua ea)
           (resultLengths ((steps lo).childSize b)))) :
-    Writes .total I τ (upNodesImpl (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (upNodes (Op := Op) (Tst := Tst))
       (Env.frame [n, d] [ua, qa, ea, sz, kd, kp, t]) (resultLevelFootprint n d ks ua ea)
       (fun m' => m'.pos = m.pos ∧ ∀ lo < n,
         StoresResult n d lo ua ea
@@ -99,7 +100,7 @@ theorem writes_upNodes {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
         StoresResult n (d + 1) ((steps lo).childSlot lo b) ua ea (children lo b) m'.store := by
       intro b hb
       exact (hChildren lo hlo hpos b hb).of_eqOff hfrAll (hChildProtect lo hlo b hb)
-    exact writes_frame rfl rfl (by room) (writes_upNode mm qr unif normal hS hQ hMM
+    exact writes_frame rfl rfl (by room) (upNode_writes mm qr unif normal hS hQ hMM
       (steps lo) (children lo) hStep hChild hLit (by have := hBound lo hlo; omega)
       (by room) ht' ((hRoom lo hlo).congr hfr.len_eq) (hApart lo hlo))
   · exact ⟨rfl, storesResult_of_eq_zero (by omega) n d lo ua ea _ m'.store⟩

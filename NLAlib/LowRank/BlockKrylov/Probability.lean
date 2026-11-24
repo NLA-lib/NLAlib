@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.Ops.Randomized
 public import NLAlib.LowRank.BlockKrylov.Samples
 public import NLAlib.LowRank.Gaussian.SmallBlock
 public import NLAlib.Ops.Probability
@@ -77,9 +78,7 @@ theorem measureReal_not_accepts_le (alg : Algorithm L S) (stream : ℕ)
     [IsFiniteMeasure P] (X : Ω' → Matrix (Fin (d 1)) (Fin (d 2)) ℝ)
     (Φ : Matrix (Fin (d 0)) (Fin (d 1)) ℝ → Prop) {δ : ℝ}
     (hΦ : P.real {ω | ¬ Φ (rbki (matrix input) (X ω) (d 3))} ≤ δ) :
-    P.real {ω | ¬ S.Accepts L.resources d input
-      (exec alg.program I L.resources problem.formats (packedSampleTape stream (X ω)) d
-        (problem.initial d input))
+    P.real {ω | ¬ S.Accepts alg.program I L.resources (packedSampleTape stream (X ω)) d input
       (fun c μ => S.good d input (packedSampleTape stream (X ω)) c μ ∧
         Φ (storedProduct (d 0) (d 1) (d 2) (d 3) μ))} ≤ δ := by
   refine alg.measureReal_failure_le (P := problem) trivial input I hI
@@ -116,9 +115,7 @@ theorem measureReal_not_accepts_le_of_hasLaw_gaussianMatrix (alg : Algorithm L S
     (hrt : r ≤ t) (hq : t ≤ d 3) {Δ δ : ℝ} (hΔ : 0 < Δ) (hδ : 0 < δ)
     (hgap : ∀ i, i + 1 < t →
       singularValues (matrix input) (i + 1) ^ 2 ≤ (1 - Δ) * singularValues (matrix input) i ^ 2) :
-    P.real {ω | ¬ S.Accepts L.resources d input
-      (exec alg.program I L.resources problem.formats (packedSampleTape stream (X ω)) d
-        (problem.initial d input))
+    P.real {ω | ¬ S.Accepts alg.program I L.resources (packedSampleTape stream (X ω)) d input
       (fun c μ => S.good d input (packedSampleTape stream (X ω)) c μ ∧
         specNorm ((matrix input) - storedProduct (d 0) (d 1) (d 2) (d 3) μ) ^ 2 ≤
           singularValues (matrix input) r ^ 2 +
@@ -164,7 +161,7 @@ theorem storedOutput_eq_rbki (alg : Algorithm L S) (stream : ℕ)
     (hI : L.contracts d input I) (X : Matrix (Fin (d 1)) (Fin (d 2)) ℝ) :
     storedOutput alg stream input I X = rbki (matrix input) X (d 3) := by
   obtain ⟨st, hrun, -, -, -, -, -, hg⟩ :=
-    alg.correct d trivial input I hI (packedSampleTape stream X)
+    alg.correct_exec d trivial input I hI (packedSampleTape stream X)
   simp only [storedOutput, hrun]
   exact storedProduct_eq_rbki_of_packedSampleTape (hgood d input _ _ _ hg)
 
@@ -217,5 +214,35 @@ theorem integral_specNorm_sub_storedOutput_sq_le_singularGapRatio_of_hasLaw_gaus
   rw [integral_comp_storedOutput alg stream hgood input I hI P X
     (fun B => specNorm ((matrix input) - B) ^ 2)]
   simpa only [Fintype.card_fin] using h
+
+/-! ### The randomized claim -/
+
+/-- **The randomized claim of a block Golub–Kahan certificate** ([MeyerMuscoMusco2023,
+Theorem 6]). The tape is the packing of a standard Gaussian start block of `d 2 ≥ 1` columns on
+the stream `stream`. For a head of $r = h + 1$ singular values, a tail index $t \ge r$, depth
+`d 3` at least $t$ and a gap $\Delta$ with $\sigma_{i+1}^2 \le (1 - \Delta)\sigma_i^2$ for
+$i + 1 < t$, the counted run satisfies the output condition of the specification and its stored
+product is within the gapped bound of the input matrix, except with probability at most
+$\delta$. -/
+noncomputable def gaussianClaim (alg : Algorithm L S) (stream : ℕ)
+    (hgood : ∀ d (x : problem.Input d) τ c μ, S.good d x τ c μ → Good stream d (matrix x) τ μ)
+    {h r t : ℕ} (hr : h + 1 = r) (hrt : r ≤ t) {Δ δ : ℝ} (hΔ : 0 < Δ) (hδ : 0 < δ) :
+    RandomizedClaim alg where
+  law d _ := TapeModel.packed (gaussianMatrix (Fin (d 1)) (Fin (d 2))) (packedSampleTape stream)
+  admits d x := 0 < d 2 ∧ t ≤ d 3 ∧ ∀ i, i + 1 < t →
+    singularValues (matrix x) (i + 1) ^ 2 ≤ (1 - Δ) * singularValues (matrix x) i ^ 2
+  interprets _ _ _ := True
+  event d x τ c μ := S.good d x τ c μ ∧
+    specNorm ((matrix x) - storedProduct (d 0) (d 1) (d 2) (d 3) μ) ^ 2 ≤
+      singularValues (matrix x) r ^ 2 +
+        32 * Real.exp (-8 * ((d 3 : ℝ) - t) * Real.sqrt (singularGapRatio (matrix x) h t)) *
+          Δ⁻¹ ^ (2 * (t - 1)) * ((t : ℝ) ^ 3 / δ ^ 3) *
+          frobNorm ((matrix x) - truncatedSVD (matrix x) t) ^ 2
+  bound _ _ := δ
+  realizable _ _ _ _ := TapeModel.realizable_packed _ _
+  holds := fun d _ x hx I hI _ Ω _ μ _ tape hlaw => by
+    obtain ⟨X, hX, rfl⟩ := hlaw
+    exact measureReal_not_accepts_le_of_hasLaw_gaussianMatrix alg stream hgood hx.1 x I hI μ X
+      hX hr hrt hx.2.1 hΔ hδ hx.2.2
 
 end NLAlib.BlockKrylov

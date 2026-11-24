@@ -22,20 +22,20 @@ interpreter. `Dense.laws_functionalModel` supplies exactly the scalar, dimension
 multiplication, QR, sampling and query interfaces used by the proofs. It does not assume a
 whole-program postcondition or an execution-success predicate.
 
-[`writes_solve`](../../NLAlib/Eigensolvers/SpectralBisection/Solve.lean)
+[`solve_writes`](../../NLAlib/Eigensolvers/SpectralBisection/Solve.lean)
 is total under explicit primitive, readable-input, live-handle, output capacity and separation
 premises. Exact decoding of natural literals through `max n 4` is
 also explicit. Source blocks must be separate and output blocks must be separate; outputs
 may overlap sources because their final copies occur after the source reads. The result
 includes the exact tape position and preservation of the caller's storage shape.
 
-[`workCertifiedAlgorithm`](../../NLAlib/Eigensolvers/SpectralBisection/WorkCertification.lean)
+[`matrixWorkBisectionAlgorithm`](../../NLAlib/Eigensolvers/SpectralBisection/WorkCertification.lean)
 uses the raw four-buffer problem: matrix words, three scalar parameters, and initially empty
 output capacity. `Problem.initial` supplies raw buffers without numerical preprocessing.
 The certificate covers every admitted input and tape under the generated model, with exact
 word output, tape use, cleanup and the resource bounds below. Its admitted root dimensions
 are at least two. No public premise assumes a WP or successful execution.
-The general `certifiedAlgorithm` and conservative `manifestAlgorithm` remain separate entrypoints.
+The general `boundedBisectionAlgorithm` and conservative `bisectionAlgorithm` remain separate entrypoints.
 
 These choices remain visible: contributors specify the problem's admissibility relation,
 primitive meanings, numerical assumptions and resource profile. The core `Algorithm`
@@ -89,8 +89,8 @@ developments supply the shared pure algorithms, tape functions and numerical fac
 
 ## Full counts, independent storage and matrix work
 
-`manifestAlgorithm` certifies the conservative `staticBudget` and `staticPeak` of the complete
-instrumented tree. The specialized `workCertifiedAlgorithm` keeps that full instruction budget
+`bisectionAlgorithm` certifies the conservative `staticBudget` and `staticPeak` of the complete
+instrumented tree. The specialized `matrixWorkBisectionAlgorithm` keeps that full instruction budget
 and refines storage and work using proofs about the same program and actual counted outcome.
 `Algorithm.ofWpActual` supports a work bound independently of weighting the count budget.
 

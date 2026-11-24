@@ -13,8 +13,9 @@ public import NLAlib.Matrix.Factorizations.CGS2.BasisExtension
 /-!
 # The exact contract of the column-wise two-pass Gram–Schmidt extension
 
-In exact arithmetic, the implementation `NLAlib.CGS2.cgs2ExtendImpl` with the threshold $0$
-meets the exact contract `NLAlib.Ops.exactExtendRel` of a basis extension, for an arbitrary
+In exact arithmetic, the routine `NLAlib.CGS2.cgs2ExtendRoutine` with the threshold $0$
+meets the exact specification `NLAlib.Ops.exactExtendSpec` of a basis extension, for an
+arbitrary
 stored basis: with the threshold $0$ the deflation test drops exactly the columns whose reduced
 vector is zero, which is the zero guard of rank-revealing Gram–Schmidt. The mathematics is
 `NLAlib.isBasisExtension_of_two_passes`. Design: `docs/design/LowRank-BlockLanczos.md` §3.5,
@@ -25,10 +26,10 @@ statement E4 of §5.
 * `NLAlib.CGS2.colOut_exact`, `NLAlib.CGS2.exact_column`,
   `NLAlib.CGS2.isBasisExtension_of_colsDone`: the words of the exact rounds, decoded, give an
   exact extension.
-* `NLAlib.CGS2.meets_nrm2RelOf_exact`, `NLAlib.CGS2.meets_scalRelOf_exact`,
-  `NLAlib.CGS2.meets_axpyRel_zero`: the exact contracts in the form used by a round.
-* `NLAlib.CGS2.cgs2Extend_exact_spec`: the implementation with the threshold $0$ meets the exact
-  contract of a basis extension in exact arithmetic.
+* `NLAlib.CGS2.satisfies_nrm2RelOf_exact`, `NLAlib.CGS2.satisfies_scalRelOf_exact`,
+  `NLAlib.CGS2.satisfies_axpyRel_zero`: the exact contracts in the form used by a round.
+* `NLAlib.CGS2.cgs2ExtendRoutine_meets_exact`: the routine with the threshold $0$ meets the
+  exact specification of a basis extension in exact arithmetic.
 -/
 
 @[expose] public section
@@ -232,9 +233,9 @@ variable [Has ScalarOp Op] [Has Blas1Op Op] [Has CmpTst Tst]
 
 omit [Has ScalarOp Op] [Has CmpTst Tst] in
 /-- The exact norm contract, in the form used by a round. -/
-theorem meets_nrm2RelOf_exact {dec : K → ℝ} {ok : ℕ → Prop} {I : Interp Op Tst K}
-    (h : I.Meets .total (Has.inj Blas1Op.nrm2) ((nrm2ExactRel dec).spec (OutApart ok))) :
-    I.Meets .total (Has.inj Blas1Op.nrm2)
+theorem satisfies_nrm2RelOf_exact {dec : K → ℝ} {ok : ℕ → Prop} {I : Interp Op Tst K}
+    (h : I.Satisfies .total (Has.inj Blas1Op.nrm2) ((nrm2ExactRel dec).spec (OutApart ok))) :
+    I.Satisfies .total (Has.inj Blas1Op.nrm2)
       ((nrm2RelOf fun n x v => dec v = √(∑ i ∈ Finset.range n, dec (x i) ^ 2)).spec
         (OutApart ok)) := by
   refine h.mono (fun _ _ _ _ _ hp => hp) ?_
@@ -248,9 +249,9 @@ theorem meets_nrm2RelOf_exact {dec : K → ℝ} {ok : ℕ → Prop} {I : Interp 
 
 omit [Has ScalarOp Op] [Has CmpTst Tst] in
 /-- The exact scaling contract, in the form used by a round. -/
-theorem meets_scalRelOf_exact {dec : K → ℝ} {ok : ℕ → Prop} {I : Interp Op Tst K}
-    (h : I.Meets .total (Has.inj Blas1Op.scal) ((scalExactRel dec).spec (InPlace ok))) :
-    I.Meets .total (Has.inj Blas1Op.scal)
+theorem satisfies_scalRelOf_exact {dec : K → ℝ} {ok : ℕ → Prop} {I : Interp Op Tst K}
+    (h : I.Satisfies .total (Has.inj Blas1Op.scal) ((scalExactRel dec).spec (InPlace ok))) :
+    I.Satisfies .total (Has.inj Blas1Op.scal)
       ((scalRelOf fun n a x z => dec a ≠ 0 → ∀ i < n, dec (z i) = dec (x i) / dec a).spec
         (InPlace ok)) := by
   refine h.mono (fun _ _ _ _ _ hp => hp) ?_
@@ -264,9 +265,9 @@ theorem meets_scalRelOf_exact {dec : K → ℝ} {ok : ℕ → Prop} {I : Interp 
 
 omit [Has ScalarOp Op] [Has CmpTst Tst] in
 /-- An exact update satisfies the relative-error contract with zero error. -/
-theorem meets_axpyRel_zero {dec : K → ℝ} {ok : ℕ → Prop} {I : Interp Op Tst K}
-    (h : I.Meets .total (Has.inj Blas1Op.axpy) ((axpyExactRel dec).spec (InPlace ok))) :
-    I.Meets .total (Has.inj Blas1Op.axpy) ((axpyRel dec 0).spec (InPlace ok)) := by
+theorem satisfies_axpyRel_zero {dec : K → ℝ} {ok : ℕ → Prop} {I : Interp Op Tst K}
+    (h : I.Satisfies .total (Has.inj Blas1Op.axpy) ((axpyExactRel dec).spec (InPlace ok))) :
+    I.Satisfies .total (Has.inj Blas1Op.axpy) ((axpyRel dec 0).spec (InPlace ok)) := by
   refine h.mono (fun _ _ _ _ _ hp => hp) ?_
   intro d ins outs τ m m' _ hpost
   obtain ⟨X, hread, hroom, Y, hlen, hrel, hm⟩ := hpost
@@ -276,24 +277,23 @@ theorem meets_axpyRel_zero {dec : K → ℝ} {ok : ℕ → Prop} {I : Interp Op 
   · simpa [axpyRel, IsAxpyErr, sub_eq_zero] using hrel
   · contradiction
 
-/-- **Exact column-wise two-pass classical Gram–Schmidt meets the exact contract of a basis
-extension.** Under exact scalar arithmetic, exact level-1 operations at every length and exact
+/-- Exact column-wise two-pass classical Gram–Schmidt satisfies the exact contract of a basis
+extension. Under exact scalar arithmetic, exact level-1 operations at every length and exact
 comparisons, the implementation with the deflation threshold $0$ runs on all admitted operands
 of `NLAlib.Ops.OrthOp.extend` and the decoded basis $\mathbf{Q}$, block $\mathbf{W}$, new block
 $\mathbf{Q}'$ and coefficients $\mathbf{H}$, $\mathbf{R}$ satisfy `NLAlib.IsBasisExtension`. The
 stored basis is arbitrary: it may have zero columns and need not be orthonormal on its
 support. -/
-theorem cgs2Extend_exact_spec {M : Machine K} {dec : K → ℝ} {okB : ℕ → Prop}
+theorem cgs2ExtendRoutine_meets_exact {M : Machine K} {dec : K → ℝ} {okB : ℕ → Prop}
     {I : Interp Op Tst K} (hS : IsScalar M I) (hM : ExactModel dec M)
     (hB : IsExactBlas1 dec okB I) (hok : ∀ n, okB n) (hCmp : IsCmp dec I) :
-    (cgs2ExtendImpl (Op := Op) (Tst := Tst) 0).Triple I .total
-      ((exactExtendRel dec).spec ExtendOperands) := by
+    (cgs2ExtendRoutine (Op := Op) (Tst := Tst) 0).Meets I (exactExtendSpec dec) := by
   have ops : ColOps M dec (fun _ => 0) 0
       (fun n x v => dec v = √(∑ i ∈ Finset.range n, dec (x i) ^ 2))
       (fun n a x z => dec a ≠ 0 → ∀ i < n, dec (z i) = dec (x i) / dec a) okB I :=
-    ⟨hS, hB.dot_zero, meets_axpyRel_zero hB.axpy, hM.neg, meets_nrm2RelOf_exact hB.nrm2,
-      meets_scalRelOf_exact hB.scal, hB.copy, hCmp⟩
-  exact cgs2Extend_triple_of ops (fun n _ _ _ => hok n)
+    ⟨hS, hB.dot_zero, satisfies_axpyRel_zero hB.axpy, hM.neg, satisfies_nrm2RelOf_exact hB.nrm2,
+      satisfies_scalRelOf_exact hB.scal, hB.copy, hCmp⟩
+  exact cgs2ExtendRoutine_meets_of ops (fun n _ _ _ => hok n)
     fun n k b qs ws qn wd cs _ hqs _ _ _ _ hdone => isBasisExtension_of_colsDone hM hqs hdone
 
 end NLAlib.CGS2

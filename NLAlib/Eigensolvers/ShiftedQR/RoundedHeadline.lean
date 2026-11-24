@@ -145,13 +145,13 @@ perturbed similarity of $\mathbf{H}$ **by the exact unitary of the log's valid e
 backward error $\varepsilon(N)$ and one of its bottom $k$ subdiagonal entries of modulus at most
 $\omega$. -/
 def RandomDecouplingRoutineContract (law : ℕ → Measure ℝ) (B g φ : ℝ) (k F T nmax : ℕ)
-    (Nmax : ℝ) (ps : List ℝ) (ns w : ℕ) (ω : ℝ) (ε : ℝ → ℝ) (D : Impl O Q)
+    (Nmax : ℝ) (ps : List ℝ) (ns w : ℕ) (ω : ℝ) (ε : ℝ → ℝ) (D : Stmt O Q)
     (I : Interp O Q ℝ) : Prop :=
   ∀ {n : ℕ} {N : ℝ} {w₀ q f lg : ℕ × ℕ} (H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ)
     (V : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ) (d : Fin (n + 1) → ℂ),
     k ≤ n → n ≤ nmax → N ≤ Nmax → IsUpperHessenberg H → specNorm H ≤ N → IsUnit V →
     H * V = V * Matrix.diagonal d → pseudoConditionNumber V ≤ B → (∀ i j, i ≠ j → g ≤ ‖d i - d j‖) →
-    PWrites law I D.body (Env.frame [n + 1, k, ps.length, F, T, ns, w] [w₀, q, w₀, f, lg])
+    PWrites law I D (Env.frame [n + 1, k, ps.length, F, T, ns, w] [w₀, q, w₀, f, lg])
       (Store.inBlock w₀.1 w₀.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
         Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (fun μ => HoldsMatrix w₀ H μ.store ∧ μ.store.readBlock q.1 q.2 ps.length = some ps ∧

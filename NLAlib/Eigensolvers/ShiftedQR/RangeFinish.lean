@@ -28,7 +28,8 @@ open Ops
 variable {O Q : Type} [Has EigenvalueKernelOp O]
 
 /-- Finishing the popped first range uses the actual local block, writes every root with
-multiplicity, and advances the progress measure. No output for unfinished ranges is assumed. -/
+multiplicity, and advances the progress measure. No output for unfinished ranges is assumed.
+A step in the proof of `processRange_writes`. -/
 theorem finishActive_writes {θ : ℝ} {K : KernelRoutines θ} {I : Interp O Q ℝ}
     (hK : IsEigenvalueKernels K I) {tape : Tape ℝ} {μ : Mem ℝ} {n lo d j : ℕ}
     {a p stack out w r : ℕ × ℕ} {H A : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
@@ -39,7 +40,7 @@ theorem finishActive_writes {θ : ℝ} {K : KernelRoutines θ} {I : Interp O Q �
     (hOut : FinishedHolds out done roots μ.store) (hSt : StackHolds stack rest.reverse μ.store)
     (hε : ε = (((((lo, d) :: rest) ++ done).length - 1 : ℕ) : ℝ) * τ)
     (hj : 2 * done.length + ((lo, d) :: rest).length = j + 1) :
-    Writes .total I tape (finishRange (O := O) (Q := Q)).body
+    Writes .total I tape (finishRange (O := O) (Q := Q))
       (Env.frame [n + 1, lo, d] [w, out])
       (Store.inBlock out.1 (out.2 + 2 * lo) (2 * d))
       (fun μ' => μ'.pos = μ.pos ∧ WorklistInv H τ a stack out (j + 1) μ') μ := by

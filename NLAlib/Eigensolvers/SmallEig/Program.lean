@@ -66,18 +66,18 @@ triangular block $\widehat{\mathbf{T}}_b$ in `Bk` and its accumulator $\widehat{
 `Ub`; the eigenvalues are the diagonal of $\widehat{\mathbf{T}}_b$. The interface is
 `[d, nq, T] (Bk, Q) → (Bk, Ub)`, that of a Schur leaf (`NLAlib.Schur.RandomSchurLeafContract`).
 Algorithm: small-eig -/
-def smallEigProg (sG : ℕ) : Impl O Q := opsImpl% [d, nq, T] (Bk, Qw) → (Bk, Ub) {
-  run (identityLeaf (O := O) (Q := Q)).body [d, nq, T] (Bk, Qw, Bk, Ub);
+def smallEigProg (sG : ℕ) : Stmt O Q := ops% [d, nq, T] (Bk, Qw) → (Bk, Ub) {
+  run (identityLeaf (O := O) (Q := Q)) [d, nq, T] (Bk, Qw, Bk, Ub);
   ifPos d - 1 {
     let Fl ← alloc 1;
     let Th ← alloc 1;
     let Lg ← alloc (d * (1 + 5 * d));
     call (Has.inj ScalarOp.copy) [] (Qw[6]) → (Th);
-    run (ginibrePerturb (O := O) (Q := Q) sG).body [d, nq] (Bk, Qw, Bk);
-    run (slottedLogOpen (O := O) (Q := Q)).body [d, d] (Lg);
-    run (hessenbergReduceLast (O := O) (Q := Q)).body [d, d, 0] (Bk, Bk, Lg);
-    run (givensReplayColumns (O := O) (Q := Q)).body [d, 0, 0, d, d, d] (Lg, Ub, Ub);
-    run (smallEigCore (O := O) (Q := Q) sG).body [d, 1, nq, T, T, T + d, d]
+    run (ginibrePerturb (O := O) (Q := Q) sG) [d, nq] (Bk, Qw, Bk);
+    run (slottedLogOpen (O := O) (Q := Q)) [d, d] (Lg);
+    run (hessenbergReduceLast (O := O) (Q := Q)) [d, d, 0] (Bk, Bk, Lg);
+    run (givensReplayColumns (O := O) (Q := Q)) [d, 0, 0, d, d, d] (Lg, Ub, Ub);
+    run (smallEigCore (O := O) (Q := Q) sG) [d, 1, nq, T, T, T + d, d]
       (Bk, Th, Qw, Ub, Bk, Ub, Fl)
   }
 }
@@ -208,13 +208,12 @@ theorem smallEigProg_core_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {u :
     {H X' V₁ : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ} {thr : ℝ} (hl : μ.Live [a, t, p, uo, f])
     (hr : μ.Room [a, t, p, uo, f]
       [2 * ((n + 1) * (n + 1)), 1, qs.length, 2 * ((n + 1) * (n + 1)), 1])
-    (hap : Fp.Apart [a, t, p, uo, f]
-      [2 * ((n + 1) * (n + 1)), 1, qs.length, 2 * ((n + 1) * (n + 1)), 1])
+    (hap : ShQRViewsApart (n + 1) qs.length a t p uo f)
     (hA : HoldsMatrix a H μ.store) (hX : HoldsMatrix uo X' μ.store)
     (ht : μ.store.get t.1 t.2 = some thr) (hp : μ.store.readBlock p.1 p.2 qs.length = some qs)
     (hV₁ : HasOrthonormalCols V₁)
     (hX'b : P → specNorm (X' - V₁) ≤ (1 + 24 * u) ^ ((n + 1) * (n + 1)) - 1) :
-    Writes .total I tape (.frame ds args (smallEigCore (O := O) (Q := Q) sG).body) ρ
+    Writes .total I tape (.frame ds args (smallEigCore (O := O) (Q := Q) sG)) ρ
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock uo.1 uo.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1)
       (fun μ' => ∃ Tb Ub : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix a Tb μ'.store ∧
@@ -254,8 +253,7 @@ def SmallEigCoreReady {n : ℕ} (qs : List ℝ) (w p ub : ℕ × ℕ) (L : ℕ)
   μ.Live [w, (L + 1, 0), p, ub, (L, 0)] ∧
     μ.Room [w, (L + 1, 0), p, ub, (L, 0)]
       [2 * ((n + 1) * (n + 1)), 1, qs.length, 2 * ((n + 1) * (n + 1)), 1] ∧
-    Fp.Apart [w, (L + 1, 0), p, ub, (L, 0)]
-      [2 * ((n + 1) * (n + 1)), 1, qs.length, 2 * ((n + 1) * (n + 1)), 1] ∧
+    ShQRViewsApart (n + 1) qs.length w (L + 1, 0) p ub (L, 0) ∧
     HoldsMatrix w H μ.store ∧ HoldsMatrix ub X μ.store ∧
     μ.store.get (L + 1) 0 = some (qs.getD 6 0) ∧ μ.store.readBlock p.1 p.2 qs.length = some qs
 
@@ -268,7 +266,9 @@ accumulator and the scratch above `L`, stores the rounded Hessenberg form
 $(1 + 24\boldsymbol{u})^{(n+1)^2} - 1$ of the exact unitary of the recorded rotations, and leaves
 the memory of the core call (`NLAlib.SmallEig.SmallEigCoreReady`). The frames are given by their
 evaluations. The accumulator bound is claimed only if `P`, which gives the standard model at
-$\boldsymbol{u} \le 1/100$; the run itself needs no rounding model. -/
+$\boldsymbol{u} \le 1/100$; the run itself needs no rounding model.
+A step in the proof of `NLAlib.SmallEig.smallEigProg_reduce_writes`,
+`NLAlib.SmallEig.smallEigProg_reduce_terminates`. -/
 theorem smallEigProg_reduce_writes_if {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) {P : Prop} (hP : P → StdModel u id M ∧ u ≤ 1 / 100) (hL : IsIndexLit M I)
     {n : ℕ} (hn1 : 1 ≤ n) (hNat : IsExactNatLit id M (n + 1))
@@ -294,9 +294,9 @@ theorem smallEigProg_reduce_writes_if {M : Machine ℝ} {I : Interp O Q ℝ} {u 
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1))))) :
     Writes .total I tape
-      (.seq (.frame ds₁ as₁ (slottedLogOpen (O := O) (Q := Q)).body)
-        (.seq (.frame ds₂ as₂ (hessenbergReduceLast (O := O) (Q := Q)).body)
-          (.frame ds₃ as₃ (givensReplayColumns (O := O) (Q := Q)).body))) ρ
+      (.seq (.frame ds₁ as₁ (slottedLogOpen (O := O) (Q := Q)))
+        (.seq (.frame ds₂ as₂ (hessenbergReduceLast (O := O) (Q := Q)))
+          (.frame ds₃ as₃ (givensReplayColumns (O := O) (Q := Q))))) ρ
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1))) ⊔ Fp.above L)
       (fun μ' => ∃ X' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
@@ -349,7 +349,8 @@ theorem smallEigProg_reduce_writes_if {M : Machine ℝ} {I : Interp O Q ℝ} {u 
     refine ⟨Store.le_len_of_readBlock hH₅ (by positivity), by simp [hlenB, hTh],
       Store.le_len_of_readBlock hp₅ (by omega), Store.le_len_of_readBlock hX' (by positivity),
       by simp [hlenB, hFl], trivial⟩
-  · simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
+  · refine ShQRViewsApart.of_apart ?_
+    simp only [Fp.Apart, Fp.blocks_cons, Fp.blocks_nil, Fp.disj_sup_right, Fp.disj_bot_right,
       and_true]
     exact ⟨⟨hnew hwL (by omega), hdwp, hwu, hnew hwL le_rfl⟩,
       ⟨(hnew hpL (by omega)).symm, (hnew huL (by omega)).symm, Fp.disj_inBlock_of_ne (by omega)⟩,
@@ -366,7 +367,9 @@ theorem smallEigProg_reduce_writes_if {M : Machine ℝ} {I : Interp O Q ℝ} {u 
 
 omit [Has SampleOp O] [Has DiskSampleOp O] in
 /-- `NLAlib.SmallEig.smallEigProg_reduce_writes_if` under the standard model at
-$\boldsymbol{u} \le 1/100$: the reduction and the replay with the accumulator bound. -/
+$\boldsymbol{u} \le 1/100$: the reduction and the replay with the accumulator bound.
+A step in the proof of `NLAlib.SmallEig.SmallEigScratch.of_alloc`,
+`NLAlib.SmallEig.smallEigProg_tail_pwrites`, `NLAlib.SmallEig.smallEigProg_pwrites_schur`. -/
 theorem smallEigProg_reduce_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ}
     (hS : IsScalar M I) (hM : StdModel u id M) (hu : u ≤ 1 / 100) (hL : IsIndexLit M I)
     {n : ℕ} (hn1 : 1 ≤ n) (hNat : IsExactNatLit id M (n + 1))
@@ -392,9 +395,9 @@ theorem smallEigProg_reduce_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : �
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1))))) :
     Writes .total I tape
-      (.seq (.frame ds₁ as₁ (slottedLogOpen (O := O) (Q := Q)).body)
-        (.seq (.frame ds₂ as₂ (hessenbergReduceLast (O := O) (Q := Q)).body)
-          (.frame ds₃ as₃ (givensReplayColumns (O := O) (Q := Q)).body))) ρ
+      (.seq (.frame ds₁ as₁ (slottedLogOpen (O := O) (Q := Q)))
+        (.seq (.frame ds₂ as₂ (hessenbergReduceLast (O := O) (Q := Q)))
+          (.frame ds₃ as₃ (givensReplayColumns (O := O) (Q := Q))))) ρ
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1))) ⊔ Fp.above L)
       (fun μ' => ∃ X' : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ,
@@ -439,10 +442,10 @@ theorem smallEigProg_reduce_terminates {M : Machine ℝ} {I : Interp O Q ℝ} {u
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1))))) :
     Writes .total I tape
-      (.seq (.frame ds₁ as₁ (slottedLogOpen (O := O) (Q := Q)).body)
-        (.seq (.frame ds₂ as₂ (hessenbergReduceLast (O := O) (Q := Q)).body)
-          (.seq (.frame ds₃ as₃ (givensReplayColumns (O := O) (Q := Q)).body)
-            (.frame ds₄ as₄ (smallEigCore (O := O) (Q := Q) sG).body)))) ρ
+      (.seq (.frame ds₁ as₁ (slottedLogOpen (O := O) (Q := Q)))
+        (.seq (.frame ds₂ as₂ (hessenbergReduceLast (O := O) (Q := Q)))
+          (.seq (.frame ds₃ as₃ (givensReplayColumns (O := O) (Q := Q)))
+            (.frame ds₄ as₄ (smallEigCore (O := O) (Q := Q) sG))))) ρ
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock ub.1 ub.2 (2 * ((n + 1) * (n + 1))) ⊔ Fp.above L)
       (fun μ' => ∃ Tb Ub : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ, HoldsMatrix w Tb μ'.store ∧

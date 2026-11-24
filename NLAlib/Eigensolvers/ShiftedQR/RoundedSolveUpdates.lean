@@ -108,11 +108,11 @@ private theorem leafUpdate_accumulator {M : Machine ℝ} {I : Interp O Q ℝ} (h
           IExp.const 0]
           [{ buf := 2, off := IExp.var 5 + IExp.const 2 * (IExp.var 1 * IExp.var 0) },
             { buf := 0, off := IExp.var 3 }, { buf := 3, off := IExp.const 0 }]
-          (matMulOn (O := O) (Q := Q)).body).seq
+          (matMulOn (O := O) (Q := Q))).seq
         (Stmt.frame [IExp.var 0, IExp.var 2, IExp.var 0, IExp.var 0]
           [{ buf := 3, off := IExp.const 0 },
             { buf := 2, off := IExp.var 5 + IExp.const 2 * (IExp.var 1 * IExp.var 0) }]
-          (copyStrided (Op := O) (Tst := Q)).body))
+          (copyStrided (Op := O) (Tst := Q))))
       (leafEnv N lo d Lc ub a uo) (Store.inBlock uo.1 uo.2 (2 * (N * N)) ⊔ Fp.above Lc)
       (fun m' => m'.pos = m.pos ∧ HoldsMatrix uo (leafUpdateAccumulator M lo Ub U) m'.store) m := by
   obtain ⟨-, hLlen, -, -, hul, -, hru⟩ := id hc
@@ -156,20 +156,20 @@ private theorem leafUpdate_top {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSc
           IExp.const 0]
           [{ buf := 1, off := IExp.var 4 + IExp.const 2 * (IExp.var 1 * IExp.var 0) },
             { buf := 0, off := IExp.var 3 }, { buf := 3, off := IExp.const 0 }]
-          (matMulOn (O := O) (Q := Q)).body).seq
+          (matMulOn (O := O) (Q := Q))).seq
         ((Stmt.frame [IExp.var 1, IExp.var 2, IExp.var 1, IExp.var 0]
             [{ buf := 3, off := IExp.const 0 },
               { buf := 1, off := IExp.var 4 + IExp.const 2 * (IExp.var 1 * IExp.var 0) }]
-            (copyStrided (Op := O) (Tst := Q)).body).seq
+            (copyStrided (Op := O) (Tst := Q))).seq
           ((Stmt.frame [IExp.var 0, IExp.var 2, IExp.var 2, IExp.var 0, IExp.var 2, IExp.var 0,
               IExp.const 0]
               [{ buf := 2, off := IExp.var 5 + IExp.const 2 * (IExp.var 1 * IExp.var 0) },
                 { buf := 0, off := IExp.var 3 }, { buf := 3, off := IExp.const 0 }]
-              (matMulOn (O := O) (Q := Q)).body).seq
+              (matMulOn (O := O) (Q := Q))).seq
             (Stmt.frame [IExp.var 0, IExp.var 2, IExp.var 0, IExp.var 0]
               [{ buf := 3, off := IExp.const 0 },
                 { buf := 2, off := IExp.var 5 + IExp.const 2 * (IExp.var 1 * IExp.var 0) }]
-              (copyStrided (Op := O) (Tst := Q)).body))))
+              (copyStrided (Op := O) (Tst := Q))))))
       (leafEnv N lo d Lc ub a uo)
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock uo.1 uo.2 (2 * (N * N)) ⊔ Fp.above Lc)
       (fun m' => m'.pos = m.pos ∧
@@ -217,7 +217,9 @@ omit [Has IndexOp O] [Has CmpTst Q] [Has IdxTst Q] in
 for the block $[lo, lo + d)$ of order-$N$ matrices $\mathbf{A}$ at `a` and $\mathbf{U}$ at `uo` and
 the leaf accumulator $\mathbf{U}_b$ at `ub` (three blocks apart), `roundedLeafUpdate` writes only
 the matrix and the accumulator, and stores `NLAlib.ShiftedQR.leafUpdateMatrix` and
-`NLAlib.ShiftedQR.leafUpdateAccumulator`. -/
+`NLAlib.ShiftedQR.leafUpdateAccumulator`.
+Shared by the trees of `NLAlib.ShiftedQR.roundedProcessLargeWith`,
+`NLAlib.ShiftedQR.roundedProcessRangeWith`, `NLAlib.ShiftedQR.roundedLeafRest`. -/
 theorem roundedLeafUpdate_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     {τ : Tape ℝ} {μ : Mem ℝ} {N lo d : ℕ} (hN : lo + d ≤ N)
     {ub a uo : ℕ × ℕ} {Ub : Matrix (Fin d) (Fin d) ℂ} {A U : Matrix (Fin N) (Fin N) ℂ}
@@ -226,7 +228,7 @@ theorem roundedLeafUpdate_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : Is
     (hru : uo.2 + 2 * (N * N) ≤ μ.store.len uo.1)
     (hba : Fp.Disj (Store.inBlock ub.1 ub.2 (2 * (d * d))) (Store.inBlock a.1 a.2 (2 * (N * N))))
     (hau : Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N))) (Store.inBlock uo.1 uo.2 (2 * (N * N)))) :
-    Writes .total I τ (roundedLeafUpdate (O := O) (Q := Q)).body (Env.frame [N, lo, d] [ub, a, uo])
+    Writes .total I τ (roundedLeafUpdate (O := O) (Q := Q)) (Env.frame [N, lo, d] [ub, a, uo])
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock uo.1 uo.2 (2 * (N * N)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix a (leafUpdateMatrix M lo Ub A) μ'.store ∧
         HoldsMatrix uo (leafUpdateAccumulator M lo Ub U) μ'.store) μ := by
@@ -286,7 +288,9 @@ log at `lg` of `ns` slots of `w` entries whose entries have their two planes `lo
 inside the order $N$, and the order-$N$ matrices $\mathbf{A}$ at `a` and $\mathbf{U}$ at `uo`
 (three blocks apart), `roundedDecoupleUpdate` writes only the matrix and the accumulator and
 stores `NLAlib.ShiftedQR.decoupleUpdateMatrix` and the log replayed on the columns of
-$\mathbf{U}$. -/
+$\mathbf{U}$.
+Shared by the trees of `NLAlib.ShiftedQR.roundedLeafUpdate`,
+`NLAlib.ShiftedQR.roundedProcessLargeWith`, `NLAlib.ShiftedQR.roundedLargeRest`. -/
 theorem roundedDecoupleUpdate_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hQ : IsToNat id I) (hC : IsCmp id I) {τ : Tape ℝ} {μ : Mem ℝ} {N lo d i ns w : ℕ}
     (hN : lo + d ≤ N) (hi : i + 1 < d) {L : List (Option (List GivensEntry))}
@@ -300,7 +304,7 @@ theorem roundedDecoupleUpdate_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS 
     (hgu : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (Store.inBlock uo.1 uo.2 (2 * (N * N))))
     (hau : Fp.Disj (Store.inBlock a.1 a.2 (2 * (N * N))) (Store.inBlock uo.1 uo.2 (2 * (N * N)))) :
-    Writes .total I τ (roundedDecoupleUpdate (O := O) (Q := Q)).body
+    Writes .total I τ (roundedDecoupleUpdate (O := O) (Q := Q))
       (Env.frame [N, lo, d, i, ns, w] [lg, a, uo])
       (Store.inBlock a.1 a.2 (2 * (N * N)) ⊔ Store.inBlock uo.1 uo.2 (2 * (N * N)))
       (fun μ' => μ'.pos = μ.pos ∧

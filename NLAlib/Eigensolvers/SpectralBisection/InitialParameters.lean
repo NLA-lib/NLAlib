@@ -17,7 +17,7 @@ shared scalar-block rule and spatial separation, including views of the same buf
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_initialParameters`: the root level stores its supplied words.
+* `NLAlib.SpectralBisection.initialParameters_writes`: the root level stores its supplied words.
 -/
 
 @[expose] public section
@@ -28,13 +28,14 @@ open Ops
 
 variable {K Op Tst : Type} [Has ScalarOp Op] {M : Machine K}
 
-/-- The actual supplied radius and tolerance are copied into the root level pair. -/
-theorem writes_initialParameters {I : Interp Op Tst K} (hS : IsScalar M I)
+/-- The actual supplied radius and tolerance are copied into the root level pair.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem initialParameters_writes {I : Interp Op Tst K} (hS : IsScalar M I)
     {τ : Tape K} {pb po lb lo : ℕ} {m : Mem K} (R eps : K)
     (hPar : m.store.readBlock pb po 2 = some [R, eps])
     (hdis : Fp.Disj (Store.inBlock pb po 2) (Store.inBlock lb lo 2))
     (hroom : lo + 2 ≤ m.store.len lb) :
-    Writes .total I τ initialParameters.body (Env.frame [] [(pb, po), (lb, lo)])
+    Writes .total I τ initialParameters (Env.frame [] [(pb, po), (lb, lo)])
       (Store.inBlock lb lo 2)
       (fun μ => μ.pos = m.pos ∧ μ.store.readBlock lb lo 2 = some [R, eps]) m := by
   let xs : List (ScalarIns ScalarOp) :=
@@ -56,7 +57,7 @@ theorem writes_initialParameters {I : Interp Op Tst K} (hS : IsScalar M I)
     simp only [ws, List.mem_cons, List.not_mem_nil, or_false] at hz
     rcases hz with rfl | rfl <;> dsimp <;> omega
   have hw := writes_machineScalarBlock (τ := τ) hS hev hcap
-  change Writes .total I τ initialParameters.body _ _ _ m at hw
+  change Writes .total I τ initialParameters _ _ _ m at hw
   refine hw.mono ?_ ?_
   · intro b i hi
     simp only [ws, List.map_cons, List.map_nil, Fp.cells, List.mem_cons, List.not_mem_nil,

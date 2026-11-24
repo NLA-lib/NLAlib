@@ -17,7 +17,7 @@ explicit; reconstruction returns the existing pure recursion with one more unit 
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_upLevel_eighAux`: total recursive result reconstruction.
+* `NLAlib.SpectralBisection.upLevel_writes_eighAux`: total recursive result reconstruction.
 -/
 
 @[expose] public section
@@ -40,8 +40,9 @@ local notation "ST" => (fun lo => eighStep F n fuel R0 beta (EighNode.A (X lo))
 local notation "KS" => (fun lo => EighNode.k (X lo))
 
 /-- One actual upward level computes the existing pure recursion at every reached node.
-No execution premise or numerical quality assumption is required. -/
-theorem writes_upLevel_eighAux (unif : K → Su → K) (normal : Sg → K × K)
+No execution premise or numerical quality assumption is required.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem upLevel_writes_eighAux (unif : K → Su → K) (normal : Sg → K × K)
     {I : Interp Op Tst K} (hS : IsScalar M I) (hQ : IsToNat dec I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) {m : Mem K}
     {ma lv ua qa ea sz kd kp c : ℕ × ℕ}
@@ -76,7 +77,7 @@ theorem writes_upLevel_eighAux (unif : K → Su → K) (normal : Sg → K × K)
       (fun m' => m'.pos = m.pos ∧ StoresLevelResults F n fuel R0 beta
         ⟨n, A, R0, eps, ell⟩ (budget + 1) d ua ea m'.store) m := by
   have hBound := nodeAtSlot_k_le F n fuel R0 eps beta ell A d
-  have hw := writes_upLevel (τ := τ) (m := m) mm qr unif normal hS hQ hMM KS
+  have hw := upLevel_writes (τ := τ) (m := m) mm qr unif normal hS hQ hMM KS
     (fun lo => M.lit (KS lo : ℚ)) ST
     (fun lo => eighNodeChildren F n fuel R0 beta budget d lo (X lo))
     hl hLevel.radius_read hTwo hLevel.nodeAtSlot_sizes

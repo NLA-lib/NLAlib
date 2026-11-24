@@ -29,7 +29,7 @@ format only when it is at most the largest finite number in magnitude. The contr
 bounds for the scalar operations, the matrix product, the QR factorization and the normal
 sampler apply only up to that range. Its exactness clauses, the uniform sampler's support and
 error bounds (at every scale $s \ge 0$) and the exact Hermitian symmetry of a product with its
-conjugate transpose have no range guard, and the machine meets them at every scale. It meets
+conjugate transpose have no range guard, and the machine meets them at every scale. It satisfies
 the contract
 `NLAlib.FloatMachine.IsAccurate` with $u = 2^{-p}$, floor $\tau = 2^{e_{\min} + p - 1}$, range
 the largest finite number, $\mu_{\mathrm{MM}}(d) = \mu_{\mathrm{QR}}(d) = 2d$ and
@@ -255,10 +255,10 @@ private theorem isQRErr_binaryFloatMachine
     rw [hsub, hQ.specNorm_mul_left, ← hR]
     exact specNorm_sub_map_le hu hτ hround hmn (le_max_right m n) Rm
 
-/-- The binary-format machine meets the contract (`NLAlib.FloatMachine.IsAccurate`): for a
+/-- The binary-format machine satisfies the contract (`NLAlib.FloatMachine.IsAccurate`): for a
 binary format `fmt` with precision $p$, smallest exponent $e_{\min}$ and smallest normal number
 $\tau = 2^{e_{\min} + p - 1} \le 1$, and an odd nearest selector `r` (half-unit error,
-$r(-x) = -r(x)$), the machine `NLAlib.binaryFloatMachine` meets the contract with the identity
+$r(-x) = -r(x)$), the machine `NLAlib.binaryFloatMachine` satisfies the contract with the identity
 decoding, unit roundoff $u = 2^{-p}$, floor $\tau$, range the largest finite number,
 $\mu_{\mathrm{MM}}(d) = \mu_{\mathrm{QR}}(d) = 2d$ and $c_{\mathrm N} = \sqrt2$. Entrywise
 rounding errs by $\sqrt2\,u\max(\|\mathbf{X}\|_2, \tau)$ per entry, hence by $2du\max(\cdot)$ in

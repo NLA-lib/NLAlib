@@ -6,7 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Eigensolvers.SpectralBisection.Node
-public import NLAlib.Eigensolvers.Sign.Solve
+public import NLAlib.Eigensolvers.Sign.Routine
 public import NLAlib.Matrix.FinitePrecision.OpsHermitianShiftNegate
 public import NLAlib.Ops.Logic.BlockSequence
 
@@ -20,7 +20,7 @@ under the separate numerical hypotheses.
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_nodeProjectors` stores both mathematical rounded projectors.
+* `NLAlib.SpectralBisection.nodeProjectors_writes` stores both mathematical rounded projectors.
 -/
 
 @[expose] public section
@@ -34,15 +34,15 @@ variable {K Su Sg Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has MatrixOp O
   {mm : MatMulMap (K × K)} {qr : QRMap (K × K)}
   {unif : K → Su → K} {normal : Sg → K × K}
 
-private def projectorTail : Impl Op Tst := opsImpl% [k, F] (W, sp, c) → (B, T, Pp, Pm) {
-  run Hermitian.shift.body [k] (B, c[3], T);
-  run Hermitian.scale.body [k] (T, c[1], Pp);
-  run Hermitian.shiftNegate.body [k] (B, c, T);
-  run Hermitian.scale.body [k] (T, c[1], Pm)
+private def projectorTail : Stmt Op Tst := ops% [k, F] (W, sp, c) → (B, T, Pp, Pm) {
+  run Hermitian.shift [k] (B, c[3], T);
+  run Hermitian.scale [k] (T, c[1], Pp);
+  run Hermitian.shiftNegate [k] (B, c, T);
+  run Hermitian.scale [k] (T, c[1], Pm)
 }
 
 omit [Has MatrixOp Op] [Has IndexOp Op] [Has CmpTst Tst] in
-private theorem writes_projectorTail {I : Interp Op Tst K} (hS : IsScalar M I)
+private theorem projectorTail_writes {I : Interp Op Tst K} (hS : IsScalar M I)
     {τ : Tape K} {k fuel : ℕ} (B : Matrix (Fin k) (Fin k) (K × K))
     {w sp c b t pp pm : ℕ × ℕ} {m : Mem K} (hl : m.Live [w, sp, c, b, t, pp, pm])
     (hAP : Fp.Apart [c, b, t, pp, pm] [4, 2 * (k * k), 2 * (k * k),
@@ -54,7 +54,7 @@ private theorem writes_projectorTail {I : Interp Op Tst K} (hS : IsScalar M I)
     (ht : t.2 + 2 * (k * k) ≤ m.store.len t.1)
     (hp : pp.2 + 2 * (k * k) ≤ m.store.len pp.1)
     (hm : pm.2 + 2 * (k * k) ≤ m.store.len pm.1) :
-    Writes .total I τ projectorTail.body (Env.frame [k, fuel] [w, sp, c, b, t, pp, pm])
+    Writes .total I τ projectorTail (Env.frame [k, fuel] [w, sp, c, b, t, pp, pm])
       (Store.inBlock t.1 t.2 (2 * (k * k)) ⊔ Store.inBlock pp.1 pp.2 (2 * (k * k)) ⊔
         Store.inBlock pm.1 pm.2 (2 * (k * k)))
       (fun μ => μ.pos = m.pos ∧ μ.readBlocks [pp, pm] [2 * (k * k), 2 * (k * k)] =
@@ -85,7 +85,7 @@ private theorem writes_projectorTail {I : Interp Op Tst K} (hS : IsScalar M I)
     ((EntryCodec.pair K).packFinMatrix B)).and
       (Store.readsOnly_readBlock c.1 c.2 4
         [M.lit 1, M.lit 2, M.div (M.lit 1) (M.lit 2), M.neg (M.lit 1)])
-  have h1 := Hermitian.writes_shift_packed (x := b) (y := t)
+  have h1 := Hermitian.shift_writes_packed (x := b) (y := t)
     (c := (c.1, c.2 + 3)) (dec := dec) (mm := mm) (qr := qr)
     (unif := unif) (normal := normal) (τ := τ) hS B (M.neg (M.lit 1))
     (hd 1 2 (by simp)) (hct.mono (Fp.inBlock_le_inBlock (by omega) (by omega)) le_rfl)
@@ -95,7 +95,7 @@ private theorem writes_projectorTail {I : Interp Op Tst K} (hS : IsScalar M I)
   have hSrc := hfr1.keep hRead (Fp.disj_sup_right.mpr ⟨hd 2 1 (by simp), hct.symm⟩) ⟨hB, hc⟩
   have hc1 : μ.store.get c.1 (c.2 + 1) = some (M.lit 2) := by
     simpa using Store.get_of_readBlock hSrc.2 (j := 1) (by simp) (M.lit 1)
-  have h2 := Hermitian.writes_scale_packed (x := t) (y := pp)
+  have h2 := Hermitian.scale_writes_packed (x := t) (y := pp)
     (c := (c.1, c.2 + 1)) (dec := dec) (mm := mm) (qr := qr)
     (unif := unif) (normal := normal) (τ := τ) hS _ (M.lit 2)
     (hd 2 3 (by simp)) (hcp.mono (Fp.inBlock_le_inBlock (by omega) (by omega)) le_rfl)
@@ -108,7 +108,7 @@ private theorem writes_projectorTail {I : Interp Op Tst K} (hS : IsScalar M I)
       Fp.disj_sup_right.mpr ⟨hd 3 1 (by simp), hcp.symm⟩⟩) ⟨hB, hc⟩
   have hc0 : ν.store.get c.1 c.2 = some (M.lit 1) := by
     simpa using Store.get_of_readBlock hSrc'.2 (j := 0) (by simp) (M.lit 1)
-  have h3 := Hermitian.writes_shiftNegate_packed (x := b) (y := t) (c := c)
+  have h3 := Hermitian.shiftNegate_writes_packed (x := b) (y := t) (c := c)
     (dec := dec) (mm := mm) (qr := qr)
     (unif := unif) (normal := normal) (τ := τ) hS B (M.lit 1)
     (hd 1 2 (by simp)) (hct.mono (Fp.inBlock_le_inBlock (by omega) (by omega)) le_rfl)
@@ -122,7 +122,7 @@ private theorem writes_projectorTail {I : Interp Op Tst K} (hS : IsScalar M I)
     (Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨hct.symm, hcp.symm⟩, hct.symm⟩) hc
   have hc1χ : χ.store.get c.1 (c.2 + 1) = some (M.lit 2) := by
     simpa using Store.get_of_readBlock hc1' (j := 1) (by simp) (M.lit 1)
-  have h4 := (Hermitian.writes_scale_packed (x := t) (y := pm)
+  have h4 := (Hermitian.scale_writes_packed (x := t) (y := pm)
     (c := (c.1, c.2 + 1)) (dec := dec) (mm := mm) (qr := qr)
     (unif := unif) (normal := normal) (τ := τ) hS _ (M.lit 2)
     (hd 2 4 (by simp)) (hcm.mono (Fp.inBlock_le_inBlock (by omega) (by omega)) le_rfl)
@@ -147,8 +147,9 @@ private theorem apart_sign {k : ℕ} {w sp c b t pp pm : ℕ × ℕ}
 
 /-- The actual capped sign matrix yields both actual rounded projector matrices. Functional
 operation contracts, readable inputs, writable separated regions and distinguishable zero/one
-flags suffice for total execution; convergence assumptions are reserved for numerical bounds. -/
-theorem writes_nodeProjectors {I : Interp Op Tst K}
+flags suffice for total execution; convergence assumptions are reserved for numerical bounds.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem nodeProjectors_writes {I : Interp Op Tst K}
     (hS : IsScalar M I) (hC : IsCmp dec I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) (hIndex : IsIndexLit M I)
     {τ : Tape K} {k fuel : ℕ} (A : Matrix (Fin k) (Fin k) (K × K)) (eps scale : K)
@@ -165,7 +166,7 @@ theorem writes_nodeProjectors {I : Interp Op Tst K}
     (ht : t.2 + 2 * (k * k) ≤ m.store.len t.1)
     (hp : pp.2 + 2 * (k * k) ≤ m.store.len pp.1)
     (hm : pm.2 + 2 * (k * k) ≤ m.store.len pm.1) :
-    Writes .total I τ nodeProjectors.body (Env.frame [k, fuel] [w, sp, c, b, t, pp, pm])
+    Writes .total I τ nodeProjectors (Env.frame [k, fuel] [w, sp, c, b, t, pp, pm])
       (Fp.blocks [b, t, pp, pm]
         [2 * (k * k), 2 * (k * k), 2 * (k * k), 2 * (k * k)])
       (fun μ => μ.pos = m.pos ∧ μ.readBlocks [pp, pm] [2 * (k * k), 2 * (k * k)] =
@@ -184,13 +185,39 @@ theorem writes_nodeProjectors {I : Interp Op Tst K}
       b.1 < m.store.length ∧ t.1 < m.store.length ∧ pp.1 < m.store.length ∧
       pm.1 < m.store.length := by simpa [Mem.Live] using hl
   rcases hLive with ⟨hlw, hlsp, hlc, hlb, hlt, hlpp, hlpm⟩
-  have hs := Sign.writes_program dec mm qr unif normal (cap := fuel) (τ := τ)
-    hS hC hMM hIndex A eps scale h01 (by room) (apart_sign hAP) hA hSp hb
-  refine (writes_frame rfl rfl (by room) hs).seq_le (by fp_sub) fun μ hfr hsign => ?_
+  have hSign := apart_sign hAP
+  have hbw : Fp.Disj (Store.inBlock b.1 b.2 (2 * (k * k)))
+      (Store.inBlock w.1 w.2 (2 * (k * k))) := by
+    simpa using hSign.disj_getD (i := 2) (j := 0) (by simp) (by simp) (by simp)
+  have hbs : Fp.Disj (Store.inBlock b.1 b.2 (2 * (k * k))) (Store.inBlock sp.1 sp.2 2) := by
+    simpa using hSign.disj_getD (i := 2) (j := 1) (by simp) (by simp) (by simp)
+  -- the sign iteration is a routine: its judgment, at the operands `w`, `sp`, `b`
+  have hs := (Sign.signRoutine_meets (Op := Op) (Tst := Tst) dec mm qr unif normal hS hC hMM
+    hIndex h01).call (ρ := Env.frame [k, fuel] [w, sp, c, b, t, pp, pm])
+    (ds := [.var 0, .var 1]) (ops := [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨3, .var 5⟩])
+    (d := [k, fuel]) (args := [w, sp, b]) (τ := τ) (m := m)
+    (xs := [(EntryCodec.pair K).packFinMatrix A, [eps, scale]]) rfl rfl rfl rfl (by room)
+    (by routine_sep) (Mem.readBlocks_of_cons hA (Mem.readBlocks_of_cons hSp rfl)) trivial
+    (by routine_nf; simpa [Mem.Room] using hb)
+  refine hs.seq_le (by fp_sub) fun μ hfr₀ hpost => ?_
+  have hfr : m.store.EqOff (Store.inBlock b.1 b.2 (2 * (k * k))) μ.store :=
+    hfr₀.mono (by routine_nf; fp_sub)
+  obtain ⟨hpos, ys, hys, hrel⟩ := hpost
+  routine_nf at hys
+  obtain ⟨b', zs, hb', hzs, rfl⟩ := Mem.readBlocks_one hys
+  obtain rfl : b = b' := by simpa using hb'
+  have hsign : μ.pos = m.pos ∧ μ.store.readBlock b.1 b.2 (2 * (k * k)) =
+      some ((EntryCodec.pair K).packFinMatrix
+        (newtonSchulzSign (M.toFloatMachine dec mm qr unif normal) eps scale fuel A)) := by
+    refine ⟨hpos.eq_of_draws rfl, hzs.trans (congrArg some ?_)⟩
+    have h : zs = (EntryCodec.pair K).packFinMatrix
+        (newtonSchulzSign (M.toFloatMachine dec mm qr unif normal) eps scale fuel
+          ((EntryCodec.pair K).matrix k k ((EntryCodec.pair K).packFinMatrix A))) := hrel
+    rwa [EntryCodec.matrix_packFinMatrix] at h
   have hcb : Fp.Disj (Store.inBlock b.1 b.2 (2 * (k * k))) (Store.inBlock c.1 c.2 4) := by
     simpa using (hAP.disj_getD (i := 3) (j := 2) (by simp) (by simp) (by simp))
   have hc' := hfr.keep (Store.readsOnly_readBlock c.1 c.2 4 _) hcb hc
-  have htail := writes_projectorTail (w := w) (sp := sp) (dec := dec) (mm := mm) (qr := qr)
+  have htail := projectorTail_writes (w := w) (sp := sp) (dec := dec) (mm := mm) (qr := qr)
     (unif := unif) (normal := normal) (fuel := fuel) (τ := τ) hS _
     (by room) hAP.2.2 hsign.2 hc'
     (by rw [hfr.len_eq]; exact ht) (by rw [hfr.len_eq]; exact hp)

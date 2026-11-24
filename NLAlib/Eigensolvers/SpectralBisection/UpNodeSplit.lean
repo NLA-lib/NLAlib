@@ -17,7 +17,7 @@ operand assumptions, and the finite sum packing bridge returns one mathematical 
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_upNode_splitResult`: total mathematical split assembly.
+* `NLAlib.SpectralBisection.upNode_writes_splitResult`: total mathematical split assembly.
 -/
 
 @[expose] public section
@@ -28,8 +28,9 @@ open Ops
 
 /-- A stored split returns its two projected child bases and shifted eigenvalues in the
 pure recursion's finite sum order. Actual metadata decoding, child reads, parent capacities
-and the common arena separation invariant suffice for total execution. -/
-theorem writes_upNode_splitResult {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
+and the common arena separation invariant suffice for total execution.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem upNode_writes_splitResult {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
     [Has MatrixOp Op] [Has IdxTst Tst] {M : Machine K} {dec : K → ℝ}
     {I : Interp Op Tst K} (hS : IsScalar M I) (hQ : IsToNat dec I)
     (mm : MatMulMap (K × K)) (hMM : IsMatrixMul (EntryCodec.pair K) mm I)
@@ -50,7 +51,7 @@ theorem writes_upNode_splitResult {K Op Tst : Type} [Inhabited K] [Has ScalarOp 
     (hap : Fp.Apart (upNodeRegions n d lo ua qa ea kd kp t) (upNodeRegionLengths n k)) :
     let index : Fin k ≃ Fin r ⊕ Fin (k - r) :=
       (finCongr (Nat.add_sub_of_le hr).symm).trans finSumFinEquiv.symm
-    Writes .total I τ (upNodeImpl (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (upNode (Op := Op) (Tst := Tst))
       (Env.frame [n, d, lo, k] [ua, qa, ea, kd, kp, t])
       (Fp.blocks (resultOperands n d lo ua ea) (resultLengths k))
       (fun m' => m'.pos = m.pos ∧ StoresResult n d lo ua ea
@@ -80,12 +81,12 @@ theorem writes_upNode_splitResult {K Op Tst : Type} [Inhabited K] [Has ScalarOp 
   have hRoom := room_upSplit (m := m)
     (u := (ua.1, ua.2 + 2 * (n * n) * d + 2 * n * lo))
     (e := (ea.1, ea.2 + n * d + lo)) hr hroom.1 hroom.2
-  have hRun := writes_upSplitResult (τ := τ) hS mm hMM Qp Qm cp.1 cm.1
+  have hRun := upSplitResult_writes (τ := τ) hS mm hMM Qp Qm cp.1 cm.1
     (List.ofFn cp.2) (List.ofFn cm.2) sigma hLive hreads hRoom
     (by simpa using hparts.1) (by simpa [Nat.mul_add, Nat.add_assoc] using hparts.2.2)
   unfold Writes Wp
   rw [hev]
-  change Writes .total I τ upSplitResultImpl.body _ _ _ m
+  change Writes .total I τ upSplitResult _ _ _ m
   refine hRun.mono (le_of_eq ?_) ?_
   · simpa only [resultOperands, resultLengths] using fp_upSplit_eq hr
       (ua.1, ua.2 + 2 * (n * n) * d + 2 * n * lo) (ea.1, ea.2 + n * d + lo)

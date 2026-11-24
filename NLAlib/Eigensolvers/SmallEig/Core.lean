@@ -49,7 +49,7 @@ the rounded worklist `NLAlib.ShiftedQR.solveRoundedWith` with the decoupler
 in Schur mode. Run at the bottom width $k = 1$. The interface is
 `[N, k, np, F, T, ns, w] (A, Thr, P, U) → (A, U, Fl)`.
 Algorithm: small-eig -/
-def smallEigCore (sG : ℕ) : Impl O Q :=
+def smallEigCore (sG : ℕ) : Stmt O Q :=
   solveRoundedWith (smallEigDecoupler (O := O) (Q := Q) sG) (identityLeaf (O := O) (Q := Q))
 
 end Program

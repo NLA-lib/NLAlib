@@ -7,17 +7,28 @@ module
 
 public import NLAlib.Eigensolvers.SpectralBisection.SolveBody
 public import NLAlib.Ops.Logic.Allocation
+public import NLAlib.Ops.RoutineSyntax
+public import NLAlib.Ops.Logic.RoutineIntro
 
 /-!
-# Total allocated spectral-bisection solver
+# Spectral bisection as a routine
 
-The solver allocates its eleven arenas, executes the checked traversal, copies the root
-result and releases all arenas. The mathematical result uses the actual tape at its initial
-position. All inputs are ordinary stored words; scratch contains no supplied numerical data.
+`NLAlib.SpectralBisection.bisectionRoutine` is
+`[n, L, c] (A : 2 n², par : 3) → (X : 2 n², w : n)`, drawing `(L + 1) (n + 4 n²)` tape positions.
+It allocates its eleven arenas, executes the checked traversal, copies the root result and
+releases all arenas. It reads two streams, uniform and Gaussian, at the shared position; its
+specification names both relative to the position of the call, through the mathematical machine
+`NLAlib.SpectralBisection.tapeMachine` at base zero. All inputs are ordinary stored words;
+scratch contains no supplied numerical data. Numerical accuracy is separate.
+
+## Main definitions
+
+* `NLAlib.SpectralBisection.bisectionRoutine`, `NLAlib.SpectralBisection.bisectionSpec`.
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_solve`: total stored output with scoped arena cleanup.
+* `NLAlib.SpectralBisection.tapeMachine_shift`: the machine of a tape seen from a position.
+* `NLAlib.SpectralBisection.bisectionRoutine_meets`: the routine meets its specification.
 -/
 
 @[expose] public section
@@ -26,12 +37,14 @@ namespace NLAlib.SpectralBisection
 
 open Ops
 
-/-- The complete allocated solver returns the existing mathematical word algorithm under
-local primitive contracts and exact bounded dimension literals. Source inputs are readable;
-the two output regions have capacity and are separated. Outputs may overlap source regions
-because their final copies follow every traversal read. Numerical accuracy is separate. -/
-theorem writes_solve {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
-    [Has SampleOp Op] [Has MatrixOp Op] [Has CmpTst Tst] [Has IdxTst Tst]
+/-- The allocated solver on its four operands: the body of
+`NLAlib.SpectralBisection.bisectionRoutine_meets`, separate only to keep each proof short. It
+allocates the eleven arenas, runs the traversal of `NLAlib.SpectralBisection.solveBody_writes`
+in them, copies the root result and releases them. Outputs may overlap source regions because
+their final copies follow every traversal read.
+A step in the proof of `NLAlib.SpectralBisection.bisectionRoutine_meets`. -/
+private theorem allocatedSolve_writes {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op]
+    [Has IndexOp Op] [Has SampleOp Op] [Has MatrixOp Op] [Has CmpTst Tst] [Has IdxTst Tst]
     (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K)) (qr : QRMap (K × K))
     (R0 eps beta : K) {n : ℕ} (A : Matrix (Fin n) (Fin n) (K × K))
     {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp dec I)
@@ -43,7 +56,6 @@ theorem writes_solve {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has Inde
       some ((EntryCodec.pair K).packFinMatrix A))
     (hPar : μ.store.readBlock par.1 par.2 3 = some [R0, eps, beta])
     (hRoom : μ.Room [u, dv] [2 * (n * n), n])
-    (hSource : Fp.Disj (Store.inBlock a.1 a.2 (2 * (n * n))) (Store.inBlock par.1 par.2 3))
     (hOutput : Fp.Disj (Store.inBlock u.1 u.2 (2 * (n * n))) (Store.inBlock dv.1 dv.2 n)) :
     let F := tapeMachine M dec mm qr n μ.pos τ
     let result := eigh F fuel L A R0 eps beta
@@ -94,7 +106,7 @@ theorem writes_solve {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has Inde
   have hsProtect : Fp.Disj (Fp.blocks arenas (arenaLengths n L))
       (Fp.blocks [a, par, u, dv] [2 * (n * n), 3, 2 * (n * n), n]) :=
     (Fp.blocks_disj_above hl).symm.mono hsAbove le_rfl
-  have hbody := writes_solveBody (μ := ⟨store, μ.pos⟩) (τ := τ)
+  have hbody := solveBody_writes (μ := ⟨store, μ.pos⟩) (τ := τ)
     (n := n) (L := L) (fuel := fuel) (base := μ.pos) (a := a) (par := par) (u := u) (dv := dv)
     (c := z 0) (ma := z 1) (ua := z 2) (qa := z 3) (ea := z 4) (sz := z 5)
     (kd := z 6) (kp := z 7) (lv := z 8) (su := z 9) (sg := z 10)
@@ -102,10 +114,73 @@ theorem writes_solve {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has Inde
     ((hBelow.readBlock (hl a (by simp)) _ _).trans hA)
     ((hBelow.readBlock (hl par (by simp)) _ _).trans hPar) hsRoom
     (by rw [Mem.room_eq_of_below hBelow hLiveOut]; exact hRoom)
-    hsApart hSource hOutput hsProtect
+    hsApart hOutput hsProtect
   simp only [eigh] at hResult
   rw [hResult] at hbody
   exact (hbody.in_frame rfl rfl hlBody).mono
     (sup_le (hsAbove.trans le_sup_right) le_sup_left) (fun _ _ h => h)
+
+section Routine
+
+variable {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has IndexOp Op]
+  [Has SampleOp Op] [Has MatrixOp Op] [Has CmpTst Tst] [Has IdxTst Tst]
+
+omit [Inhabited K] in
+/-- The machine of a tape seen from a position, at base zero, is the machine of the tape at
+that base. -/
+theorem tapeMachine_shift (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K))
+    (qr : QRMap (K × K)) (n base : ℕ) (τ : Tape K) :
+    tapeMachine M dec mm qr n 0 (τ.shift base) = tapeMachine M dec mm qr n base τ := by
+  simp only [tapeMachine, Tape.shift_apply, Nat.zero_add]
+
+/-- Spectral bisection: `[n, L, c] (A : 2 n², par : 3) → (X : 2 n², w : n)`, drawing
+`(L + 1) (n + 4 n²)` tape positions; `c` is the fuel of each traversal. The matrix and the three
+parameters are only read, so they may share a buffer. -/
+def bisectionRoutine : Routine Op Tst :=
+  routine% [n, L, c] (A : 2 * (n * n), par : 3) → (X : 2 * (n * n), w : n)
+    draws ↑((L + 1) * levelSampleSize n) := solve node
+
+/-- For the packed matrix $\mathbf{A}$ of order $n$ and the three parameter words, the two
+written blocks are the packed result of the mathematical word algorithm on the machine whose
+samples are the draws of the call. -/
+noncomputable def bisectionSpec (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K))
+    (qr : QRMap (K × K)) (R0 eps beta : K) {n : ℕ} (A : Matrix (Fin n) (Fin n) (K × K)) :
+    Routine.Spec K :=
+  spec% [n', L, fuel] tape ω (ws, ps) → (us, ds)
+    requires n' = n ∧ IsExactNatLit dec M (max n 4) ∧
+      ws = (EntryCodec.pair K).packFinMatrix A ∧ ps = [R0, eps, beta]
+    ensures
+      let F := tapeMachine M dec mm qr n 0 ω
+      let result := eigh F fuel L A R0 eps beta
+        (eighSlotTree F n fuel R0 beta 0 0 (EighNode.mk n A R0 eps L))
+      us = (EntryCodec.pair K).packFinMatrix result.1 ∧ ds = List.ofFn result.2
+
+/-- Spectral bisection meets its specification for every interpretation satisfying the local
+primitive contracts. -/
+theorem bisectionRoutine_meets (M : Machine K) (dec : K → ℝ) (mm : MatMulMap (K × K))
+    (qr : QRMap (K × K)) (R0 eps beta : K) {n : ℕ} (A : Matrix (Fin n) (Fin n) (K × K))
+    {I : Interp Op Tst K} (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp dec I)
+    (hMM : IsMatrixMul (EntryCodec.pair K) mm I) (hQR : IsMatrixQR (EntryCodec.pair K) qr I)
+    (hQ : IsToNat dec I) (hSample : IsSample I) :
+    (bisectionRoutine (Op := Op) (Tst := Tst)).Meets I
+      (bisectionSpec M dec mm qr R0 eps beta A) := by
+  routine_intro [n', L, fuel] (a, par, u, dv) reads (ws, ps)
+  obtain ⟨hn, hLit, rfl, rfl⟩ := hpre
+  obtain rfl : n' = n := hn
+  have hRun := allocatedSolve_writes (Op := Op) (Tst := Tst) M dec mm qr R0 eps beta A (τ := τ)
+    (L := L) (fuel := fuel) hS hL hC hMM hQR hQ hSample hLit
+    hlive hws hps
+    hrooms
+    (Fp.disj_inBlock_of_ne hudv)
+  refine hRun.mono le_rfl ?_
+  rintro ν - ⟨hpos, hres⟩
+  have h := storesResult_iff_readBlocks.mp hres
+  simp only [resultOperands, resultLengths, Nat.mul_zero, Nat.add_zero] at h
+  refine ⟨hpos, _, h, ?_⟩
+  change _ = _ ∧ _ = _
+  rw [tapeMachine_shift]
+  exact ⟨rfl, rfl⟩
+
+end Routine
 
 end NLAlib.SpectralBisection

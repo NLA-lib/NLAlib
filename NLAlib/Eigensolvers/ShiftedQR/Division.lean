@@ -19,6 +19,7 @@ complex denominator is the mathematical hypothesis ensuring the real divisions a
 
 * `NLAlib.ShiftedQR.complexDivideWithScratch`: eleven scalar instructions and four scratch words.
 * `NLAlib.ShiftedQR.complexDivideWithScratch_writes`: exact quotient under the exact scalar model.
+* `NLAlib.ShiftedQR.complexDivideWithScratch_writes_word`: the stored words on any scalar machine.
 -/
 
 @[expose] public section
@@ -48,8 +49,8 @@ def divisionInstructions : List (ScalarIns ScalarOp) :=
 variable {Op Tst : Type} [Has ScalarOp Op]
 
 /-- Compute a complex quotient with four caller-owned scratch words. -/
-def complexDivideWithScratch : Impl Op Tst :=
-  ⟨0, 3, 1, .scalarBlock (divisionInstructions.map ScalarIns.lift)⟩
+def complexDivideWithScratch : Stmt Op Tst :=
+  .scalarBlock (divisionInstructions.map ScalarIns.lift)
 
 private def divisionPrefix (M : Machine ℝ) (t : ℕ × ℕ) (x y : ℝ × ℝ) :=
   let d₀ := M.mul y.1 y.1
@@ -122,7 +123,9 @@ private theorem decode_divisionWords {M : Machine ℝ} (hM : ExactModel id M)
 
 /-- Eleven actual scalar instructions compute the exact quotient whenever the complex
 input denominator is nonzero. Both inputs may exactly alias the output pair, since the
-numerators are retained before either output is written. [GolubVanLoan2013, §1.1.3]. -/
+numerators are retained before either output is written. [GolubVanLoan2013, §1.1.3].
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem complexDivideWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hI : IsScalar M I) (hM : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {x y t z : ℕ × ℕ} {xv yv : ℂ}
@@ -132,7 +135,7 @@ theorem complexDivideWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ
     (hy0 : m.store.get y.1 y.2 = some yv.re)
     (hy1 : m.store.get y.1 (y.2 + 1) = some yv.im)
     (ht : t.2 + 4 ≤ m.store.len t.1) (hz : z.2 + 2 ≤ m.store.len z.1) :
-    Writes .total I τ complexDivideWithScratch.body (Env.frame [] [x, y, t, z])
+    Writes .total I τ complexDivideWithScratch (Env.frame [] [x, y, t, z])
       (Fp.blocks [t, z] [4, 2])
       (fun μ => μ.pos = m.pos ∧ μ.store.readBlock z.1 z.2 2 =
         some [(xv / yv).re, (xv / yv).im]) m := by
@@ -146,7 +149,7 @@ theorem complexDivideWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ
     rcases hw with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
       dsimp <;> omega
   have hwrite := writes_machineScalarBlock (τ := τ) hI hev hroom
-  change Writes .total I τ complexDivideWithScratch.body _ _ _ m at hwrite
+  change Writes .total I τ complexDivideWithScratch _ _ _ m at hwrite
   refine hwrite.mono ?_ ?_
   · intro b i hi
     simp only [divisionTrace, divisionPrefix, List.map_append, List.map_cons, List.map_nil,
@@ -164,5 +167,40 @@ theorem complexDivideWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ
       (v := divisionWords M (xv.re, xv.im) (yv.re, yv.im)) hz
     exact ⟨rfl, by simpa only [divisionTrace, hr, hi] using hout⟩
 
+/-- **The words of the complex division on any scalar machine**: the eleven instructions store
+in `z` the words `NLAlib.Ops.Pair.divideWords` of the stored pairs `x` and `y`, writing only the
+scratch and `z`. No model of the arithmetic and no condition on the divisor. -/
+theorem complexDivideWithScratch_writes_word {M : Machine ℝ} {I : Interp Op Tst ℝ}
+    (hI : IsScalar M I) {τ : Tape ℝ} {m : Mem ℝ} {x y t z : ℕ × ℕ} {xv yv : ℝ × ℝ}
+    (htx : t.1 ≠ x.1) (hty : t.1 ≠ y.1) (htz : t.1 ≠ z.1)
+    (hx0 : m.store.get x.1 x.2 = some xv.1)
+    (hx1 : m.store.get x.1 (x.2 + 1) = some xv.2)
+    (hy0 : m.store.get y.1 y.2 = some yv.1)
+    (hy1 : m.store.get y.1 (y.2 + 1) = some yv.2)
+    (ht : t.2 + 4 ≤ m.store.len t.1) (hz : z.2 + 2 ≤ m.store.len z.1) :
+    Writes .total I τ complexDivideWithScratch (Env.frame [] [x, y, t, z])
+      (Fp.blocks [t, z] [4, 2])
+      (fun μ => μ.pos = m.pos ∧ μ.store.readBlock z.1 z.2 2 =
+        some [(Pair.divideWords M xv yv).1, (Pair.divideWords M xv yv).2]) m := by
+  have hev := eval_division (M := M) (m := m) (xv := xv) (yv := yv) htx hty htz hx0 hx1 hy0 hy1
+  have hroom : ∀ w ∈ divisionTrace M t z xv yv, w.1.2 < m.store.len w.1.1 := by
+    intro w hw
+    simp only [divisionTrace, divisionPrefix, List.mem_append, List.mem_cons,
+      List.not_mem_nil, or_false, or_assoc] at hw
+    rcases hw with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
+      dsimp <;> omega
+  have hwrite := writes_machineScalarBlock (τ := τ) hI hev hroom
+  change Writes .total I τ complexDivideWithScratch _ _ _ m at hwrite
+  refine hwrite.mono ?_ ?_
+  · intro b i hi
+    simp only [divisionTrace, divisionPrefix, List.map_append, List.map_cons, List.map_nil,
+      Fp.cells, List.mem_append, List.mem_cons, List.not_mem_nil, or_false, Prod.mk.injEq,
+      or_assoc] at hi
+    rcases hi with h | h | h | h | h | h | h | h | h | h | h <;>
+      obtain ⟨rfl, rfl⟩ := h <;> fp_mem
+  · rintro μ _ rfl
+    have hout := Pair.readBlock_updCells_pair (m := m)
+      (prior := divisionPrefix M t xv yv) (v := divisionWords M xv yv) hz
+    exact ⟨rfl, by simp only [divisionTrace] at hout ⊢; exact hout⟩
 
 end NLAlib.ShiftedQR

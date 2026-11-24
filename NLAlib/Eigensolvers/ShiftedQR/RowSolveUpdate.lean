@@ -43,8 +43,8 @@ def subtractProductInstructions : List (ScalarIns ScalarOp) :=
 variable {Op Tst : Type} [Has ScalarOp Op]
 
 /-- Subtract a complex product from an accumulator, reusing three scratch words. -/
-def subtractProductWithScratch : Impl Op Tst :=
-  ⟨0, 4, 1, .scalarBlock (subtractProductInstructions.map ScalarIns.lift)⟩
+def subtractProductWithScratch : Stmt Op Tst :=
+  .scalarBlock (subtractProductInstructions.map ScalarIns.lift)
 
 private def subtractProductWords (M : Machine ℝ) (x y z : ℝ × ℝ) : ℝ × ℝ :=
   (M.sub z.1 (M.sub (M.mul x.1 y.1) (M.mul x.2 y.2)),
@@ -99,7 +99,9 @@ private theorem eval_subtractProduct {M : Machine ℝ} {m : Mem ℝ}
 
 /-- The actual scalar program subtracts a complex product from the accumulator. Inputs and
 accumulator may overlap because both product components are captured before the output writes.
-The scratch buffer is separate. [GolubVanLoan2013, §3.1.2]. -/
+The scratch buffer is separate. [GolubVanLoan2013, §3.1.2].
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem subtractProductWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) {τ : Tape ℝ} {m : Mem ℝ}
     {x y t z : ℕ × ℕ} {xv yv zv : ℂ}
@@ -111,7 +113,7 @@ theorem subtractProductWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst �
     (hz0 : m.store.get z.1 z.2 = some zv.re)
     (hz1 : m.store.get z.1 (z.2 + 1) = some zv.im)
     (ht : t.2 + 3 ≤ m.store.len t.1) (hz : z.2 + 2 ≤ m.store.len z.1) :
-    Writes .total I τ subtractProductWithScratch.body (Env.frame [] [x, y, t, z, z])
+    Writes .total I τ subtractProductWithScratch (Env.frame [] [x, y, t, z, z])
       (Fp.blocks [t, z] [3, 2])
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock z.1 z.2 2 =
         some [(zv - xv * yv).re, (zv - xv * yv).im]) m := by
@@ -124,7 +126,7 @@ theorem subtractProductWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst �
       List.not_mem_nil, or_false, or_assoc] at hw
     rcases hw with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> dsimp <;> omega
   have hw := writes_machineScalarBlock (τ := τ) hS hev hroom
-  change Writes .total I τ subtractProductWithScratch.body _ _ _ m at hw
+  change Writes .total I τ subtractProductWithScratch _ _ _ m at hw
   refine hw.mono ?_ ?_
   · intro b i hi
     simp only [subtractProductTrace, subtractProductPrefix, List.map_append, List.map_cons,

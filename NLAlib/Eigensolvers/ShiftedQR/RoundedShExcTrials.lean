@@ -107,7 +107,8 @@ $\|\mathbf{H}\|_2 \le \Sigma$ and the forward-error conditions $\omega > 0$, $C 
 $x = 300(n+1)^2\boldsymbol{u} \le (16B)^{-1}(d/((2 + 2C)\Sigma))^k$ and
 $(66 + 2C)B\Sigma((2 + 2C)\Sigma/d)^k\sqrt{n + 1}\,x \le 0.001\,\omega$, from the state
 `NLAlib.ShiftedQR.ShExcMid2` the trials end in `NLAlib.ShiftedQR.ShOutcome` with the backward error
-$(1 + C)\|\mathbf{H}\|_2((1 + x)^k - 1)$, $x = 300(n+1)^2\boldsymbol{u}$. -/
+$(1 + C)\|\mathbf{H}\|_2((1 + x)^k - 1)$, $x = 300(n+1)^2\boldsymbol{u}$.
+A step in the proof of `NLAlib.ShiftedQR.shExc_pwrites`. -/
 theorem shExcTrials_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS : IsScalar M I)
     (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I)
     (hNat : IsExactNatLit id M (n + 1)) (hC : IsCmp id I) {τ : Tape ℝ} {m : Mem ℝ} {L k q : ℕ}
@@ -127,7 +128,7 @@ theorem shExcTrials_writes {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hS 
     (hlog : HoldsSlottedLog lg ns w LL [] m.store) (hj : LL.length + (excNet ε).length ≤ ns)
     (hw : k * n ≤ w) (hlgL : lg.1 < L) (hlgv : ∀ b ∈ [a, s, wg, wr, ww, wp, g, thr, f],
       b.1 ≠ lg.1) :
-    Writes .total I τ (shTrials (O := O) (Q := Q)).body
+    Writes .total I τ (shTrials (O := O) (Q := Q))
       (Env.frame [n + 1, k, q, (excNet ε).length, w, LL.length] [a, (L + 10, 0), thr, (L + 2, 0),
         (L + 5, 0),
         (L + 6, 0), (L + 7, 0), (L + 8, 0), (L + 9, 0), a, (L + 11, 0), f, lg])
@@ -229,7 +230,8 @@ $x = 300(n+1)^2\boldsymbol{u} \le (16B)^{-1}(d/((2 + 2C)\Sigma))^k$ and
 $(66 + 2C)B\Sigma((2 + 2C)\Sigma/d)^k\sqrt{n + 1}\,x \le 0.001\,\omega$. From the state
 `NLAlib.ShiftedQR.ShExcPre` the branch `NLAlib.ShiftedQR.shExc` writes only the matrix, the flag and
 the scratch, and ends in `NLAlib.ShiftedQR.ShOutcome` except with probability at most $\varphi$ (the
-random translate). -/
+random translate).
+Shared by the trees of `NLAlib.ShiftedQR.shPrefix`, `NLAlib.ShiftedQR.shDecide`. -/
 theorem shExc_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hI : I.IsMeasurable)
     {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) (hS : IsScalar M I)
     (hM : StdModel u id M) (hu1 : u ≤ 1) (hL : IsIndexLit M I)
@@ -265,7 +267,7 @@ theorem shExc_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hI : I.I
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))} (hj : LL.length + (excNet
       ε).length ≤ ns) (hw : k * n ≤ w)
     (hlgL : lg.1 < L) (hlgv : ∀ b ∈ [a, s, wg, wr, ww, wp, g, thr, f], b.1 ≠ lg.1) :
-    PWrites law I (shExc (O := O) (Q := Q)).body
+    PWrites law I (shExc (O := O) (Q := Q))
       (Env.frame [n + 1, k, q, (excNet ε).length, w, LL.length] [a, (L, 0), wr, ww, wp, g, thr,
         (L + 1, 0),
         (L + 2, 0), (L + 5, 0), (L + 6, 0), (L + 7, 0), (L + 8, 0), (L + 9, 0), (L + 10, 0), a,

@@ -31,7 +31,7 @@ local notation "mw" => Dense.matrixWeight (MatrixOp.dimensionWeight T)
 local notation "qz" => (fun (_ : CmpTst ⊕ IdxTst) (_ : List ℕ) => 0)
 
 private theorem deflate_work (n k r lo side : ℕ) (offs : List ℕ) :
-    stmtWeightedCost mw qz (deflate (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body
+    stmtWeightedCost mw qz (deflate (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))
       ([n, k, r, lo, side] ++ offs) ≤ 2 * T k := by
   calc
     _ ≤ 0 + (T k + (T k + 0)) := Nat.add_le_add
@@ -45,7 +45,7 @@ private theorem deflate_work (n k r lo side : ℕ) (offs : List ℕ) :
     simp
 
 private theorem compress_work (k r : ℕ) (offs : List ℕ) (hr : r ≤ k) :
-    stmtWeightedCost mw qz (compress (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body
+    stmtWeightedCost mw qz (compress (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))
       ([k, r] ++ offs) ≤ 2 * T k := by
   calc
     _ ≤ 0 + (T k + (T k + 0)) := Nat.add_le_add
@@ -59,7 +59,7 @@ private theorem compress_work (k r : ℕ) (offs : List ℕ) (hr : r ≤ k) :
     simp [max_eq_left hr, max_eq_right hr]
 
 private theorem projectors_work (k cap : ℕ) (offs : List ℕ) :
-    stmtWeightedCost mw qz (nodeProjectors (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body
+    stmtWeightedCost mw qz (nodeProjectors (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))
       ([k, cap] ++ offs) ≤ (2 * cap + 1) * T k := by
   calc
     _ ≤ (2 * cap + 1) * T k + 0 := Nat.add_le_add ?_

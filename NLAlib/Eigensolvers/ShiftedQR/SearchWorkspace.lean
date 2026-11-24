@@ -32,14 +32,14 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op] [Has CmpTst Tst]
 omit [Has IndexOp Op] [Has CmpTst Tst] in
 /-- The product loop allocates three scratch words once for the entire subdiagonal. -/
 theorem subdiagProduct_storedWorkspace_le (idx : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (subdiagProduct (Tst := Tst)).body idx ≤ 3 := by
+    stmtPeak (fun (_ : Op) _ => 0) (subdiagProduct (Tst := Tst)) idx ≤ 3 := by
   change 3 + _ ≤ 3 + 0
   exact Nat.add_le_add_left (stmtPeak_frame_le_uniform
     (fun i => (stmtPeak_zero_of_allocationFree (by rfl) i).le) _ _ idx) _
 
 /-- Acceptance uses the caller-owned scan and product buffers and three transient words. -/
 theorem acceptTrialWithScratch_storedWorkspace_le (idx : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (acceptTrialWithScratch (Tst := Tst)).body idx ≤ 3 := by
+    stmtPeak (fun (_ : Op) _ => 0) (acceptTrialWithScratch (Tst := Tst)) idx ≤ 3 := by
   change max _ (max _ _) ≤ 3
   refine max_le ?_ (max_le ?_ ?_)
   · exact (stmtPeak_zero_of_allocationFree (by rfl) idx).le.trans (Nat.zero_le _)
@@ -48,14 +48,14 @@ theorem acceptTrialWithScratch_storedWorkspace_le (idx : List ℕ) :
 
 /-- The six retained scan/product words coexist with at most three transient words. -/
 theorem acceptTrial_storedWorkspace_le (idx : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (acceptTrial (Tst := Tst)).body idx ≤ 9 := by
+    stmtPeak (fun (_ : Op) _ => 0) (acceptTrial (Tst := Tst)) idx ≤ 9 := by
   change 5 + (1 + _) ≤ 5 + (1 + 3)
   exact Nat.add_le_add_left (Nat.add_le_add_left
     (stmtPeak_frame_le_uniform acceptTrialWithScratch_storedWorkspace_le _ _ idx) 1) 5
 
 /-- A trial shares its QR and acceptance arenas sequentially, for any repetition count. -/
 theorem trial_storedWorkspace_le (n k : ℕ) (offs : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (trial (Tst := Tst)).body (n :: k :: offs) ≤
+    stmtPeak (fun (_ : Op) _ => 0) (trial (Tst := Tst)) (n :: k :: offs) ≤
       4 * (n * n) + 14 := by
   change max _ (max _ _) ≤ _
   refine max_le ?_ (max_le ?_ ?_)
@@ -68,7 +68,7 @@ theorem trial_storedWorkspace_le (n k : ℕ) (offs : List ℕ) :
 
 /-- Guarding a candidate with the persistent acceptance flag adds no stored workspace. -/
 theorem tryCandidate_storedWorkspace_le (n k : ℕ) (offs : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (tryCandidate (Tst := Tst)).body (n :: k :: offs) ≤
+    stmtPeak (fun (_ : Op) _ => 0) (tryCandidate (Tst := Tst)) (n :: k :: offs) ≤
       4 * (n * n) + 14 := by
   change max _ 0 ≤ _
   exact max_le (stmtPeak_frame_le (by rfl)
@@ -77,14 +77,14 @@ theorem tryCandidate_storedWorkspace_le (n k : ℕ) (offs : List ℕ) :
 omit [Has CmpTst Tst] in
 /-- Forming one complex grid point uses nine transient real words. -/
 theorem gridPoint_storedWorkspace_le (idx : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (gridPoint (Tst := Tst)).body idx ≤ 9 := by
+    stmtPeak (fun (_ : Op) _ => 0) (gridPoint (Tst := Tst)) idx ≤ 9 := by
   change 9 + _ ≤ 9 + 0
   exact Nat.add_le_add_left (stmtPeak_frame_le_uniform
     (fun i => (stmtPeak_zero_of_allocationFree (by rfl) i).le) _ _ idx) _
 
 /-- Coordinate formation and trial computation reuse their transient storage. -/
 theorem gridCandidate_storedWorkspace_le (n k D i j : ℕ) (offs : List ℕ) :
-    stmtPeak (fun (_ : Op) _ => 0) (gridCandidate (Tst := Tst)).body
+    stmtPeak (fun (_ : Op) _ => 0) (gridCandidate (Tst := Tst))
       (n :: k :: D :: i :: j :: offs) ≤ 4 * (n * n) + 14 := by
   change max _ _ ≤ _
   refine max_le ?_ ?_
@@ -97,7 +97,7 @@ theorem gridCandidate_storedWorkspace_le (n k D i j : ℕ) (offs : List ℕ) :
 independently of its `(D+1)^2` candidates and of the repetition count `k`. -/
 theorem searchGridWithScratch_storedWorkspace_le (n k D : ℕ) (offs : List ℕ)
     (hOffsets : offs.length = 9) :
-    stmtPeak (fun (_ : Op) _ => 0) (searchGridWithScratch (Tst := Tst)).body
+    stmtPeak (fun (_ : Op) _ => 0) (searchGridWithScratch (Tst := Tst))
       (n :: k :: D :: offs) ≤ 4 * (n * n) + 14 := by
   apply Finset.sup_le
   intro i _
@@ -115,11 +115,11 @@ theorem searchGridWithScratch_workspace_le
     (kernelWork kernelWorkspace : EigenvalueKernelOp → List ℕ → ℕ)
     (n k D primitiveWorkspace : ℕ) (offs : List ℕ) (hOffsets : offs.length = 9)
     (hPrimitive : (stmtCost (searchGridWithScratch
-      (Op := NLAlib.ShiftedQR.Op) (Tst := NLAlib.ShiftedQR.Tst)).body
+      (Op := NLAlib.ShiftedQR.Op) (Tst := NLAlib.ShiftedQR.Tst))
       (n :: k :: D :: offs)).BoundsWorkspace
       (resources kernelWork kernelWorkspace).workspace primitiveWorkspace) :
     stmtPeak (resources kernelWork kernelWorkspace).workspace
-      (searchGridWithScratch (Op := NLAlib.ShiftedQR.Op) (Tst := NLAlib.ShiftedQR.Tst)).body
+      (searchGridWithScratch (Op := NLAlib.ShiftedQR.Op) (Tst := NLAlib.ShiftedQR.Tst))
       (n :: k :: D :: offs) ≤ 4 * (n * n) + 14 + primitiveWorkspace := by
   exact (stmtPeak_le_zero_add_on_support _ primitiveWorkspace _ _ hPrimitive).trans
     (Nat.add_le_add_right (searchGridWithScratch_storedWorkspace_le n k D offs hOffsets) _)

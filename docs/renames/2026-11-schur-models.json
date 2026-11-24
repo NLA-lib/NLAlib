@@ -1,0 +1,17 @@
+{
+ "date": "2026-11-23",
+ "note": "Two model lemmas of the rounded shifted QR certificate renamed by the dense Schur work (PR 153) without an entry.",
+ "renames": [
+  {
+   "old": "NLAlib.ShiftedQR.confined_shqrModel",
+   "new": "NLAlib.ShiftedQR.confined_model",
+   "rule": "naming"
+  },
+  {
+   "old": "NLAlib.ShiftedQR.uniform_shqrModel",
+   "new": "NLAlib.ShiftedQR.uniform_model",
+   "rule": "naming"
+  }
+ ],
+ "statementChanged": []
+}

@@ -39,18 +39,18 @@ theorem isExact (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hStar : RCLikeStar.IsExact I) : RCLikeBlas.IsExact (I.link table) := by
   intro o
   cases o
-  · exact Interp.link_meets rfl (RCLikeScalar.meets_sum hS)
-  · exact Interp.link_meets rfl (RCLikeScalar.meets_dot hS hStar)
-  · exact Interp.link_meets rfl (RCLikeScalar.meets_axpy hS)
-  · exact Interp.link_meets rfl (RCLikeScalar.meets_nrm2 hS hStar)
-  · exact Interp.link_meets rfl (RCLikeScalar.meets_scal hS)
-  · exact Interp.link_meets rfl (RCLikeScalar.meets_copy hS)
+  · exact Interp.link_satisfies rfl (RCLikeScalar.satisfies_sum hS)
+  · exact Interp.link_satisfies rfl (RCLikeScalar.satisfies_dot hS hStar)
+  · exact Interp.link_satisfies rfl (RCLikeScalar.satisfies_axpy hS)
+  · exact Interp.link_satisfies rfl (RCLikeScalar.satisfies_nrm2 hS hStar)
+  · exact Interp.link_satisfies rfl (RCLikeScalar.satisfies_scal hS)
+  · exact Interp.link_satisfies rfl (RCLikeScalar.satisfies_copy hS)
 
 /-- Renaming preserves scalar field arithmetic without adding a lower vector assumption. -/
 theorem isScalar (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I) :
     IsScalar (RCLikeBlas.machine : Machine 𝕜) (I.link table) := by
   intro o
-  exact Interp.link_meets_kept rfl (hS o)
+  exact Interp.link_satisfies_kept rfl (hS o)
 
 /-- The scalar implementation preserves every other declared group and supplies all vector
 contracts through actual scalar executions. Matrix representation remains a local choice. -/
@@ -64,9 +64,9 @@ theorem laws {dataLength : ℕ → ℕ → ℕ}
       StoredOperator.IsExact dataLength matrix (I.link table) ∧ IsSample (I.link table) ∧
         IsIndexLit RCLikeBlas.machine (I.link table) ∧ IsCmp RCLike.re (I.link table) := by
   refine ⟨isScalar hS, isExact hS hStar, ?_, ?_, ?_, hCmp⟩
-  · exact Interp.link_meets_kept rfl hA
+  · exact Interp.link_satisfies_kept rfl hA
   · intro stream
-    exact Interp.link_meets_kept rfl (hDraw stream)
-  · exact Interp.link_meets_kept rfl hIndex
+    exact Interp.link_satisfies_kept rfl (hDraw stream)
+  · exact Interp.link_satisfies_kept rfl hIndex
 
 end NLAlib.Ops.ExactLinearScalar

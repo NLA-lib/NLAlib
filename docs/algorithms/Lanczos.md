@@ -33,7 +33,7 @@ arithmetic.
 
 ### Lanczos without reorthogonalization
 
-[`exec_scalarProgram_work_le_and_ritzResidual`](../../NLAlib/Krylov/Lanczos/RoundedScalarTheorem.lean).
+[`exec_scalarProgram_work_le_and_ritzResidual`](../../NLAlib/Krylov/Lanczos/Rounded/ScalarTheorem.lean).
 
 **Theorem.** Every run of the Lanczos recurrence (Paige's ordering) started from b succeeds,
 and:
@@ -66,10 +66,10 @@ proof q is the number m of steps performed; the statement does not record that.
         33 * d 0 ^ 2 * d 1 + 153 * d 0 * d 1 + 302 * d 1 + 58 * d 0 + 179 ∧
       ∃ vs cs, st.mem.store.readBlock 2 0 ((d 1 + 1) * d 0) = some vs ∧
         st.mem.store.readBlock 3 0 (2 * d 1 + 2) = some cs ∧
-        Lanczos.Rounded.Output id (StoredProblem.matrix x) (decv id (d 0) x.val.1.2) (E d) (d 1)
+        Lanczos.Rounded.Output id x.val.1.1 x.val.1.2 (E d) (d 1)
           vs cs ∧
-        (0 < d 1 → decv id (d 0) x.val.1.2 ≠ 0 → (d 1 : ℝ) * E d ≤ 1 / 100 →
-          Lanczos.Rounded.RitzResidual id (StoredProblem.matrix x) (E d) (d 1) vs cs)
+        (0 < d 1 → x.val.1.2 ≠ 0 → (d 1 : ℝ) * E d ≤ 1 / 100 →
+          Lanczos.Rounded.RitzResidual id x.val.1.1 (E d) (d 1) vs cs)
 ```
 
 **Translation notes.**
@@ -77,21 +77,21 @@ proof q is the number m of steps performed; the statement does not record that.
 | In the theorem | In the Lean | Where |
 |---|---|---|
 | n, k | `d 0`, `d 1`; the covered sizes are the parameter `domain` | |
-| A, b | `StoredProblem.matrix x` (buffer 0), `decv id (d 0) x.val.1.2` (buffer 1) | [`StoredProblem.lean`](../../NLAlib/Krylov/Lanczos/StoredProblem.lean) |
-| A symmetric | part of being an input (`StoredProblem.extra true`) | same file |
-| the conditions on E | `Lanczos.Rounded.Precision em u E e n` with `em = ScalarProducts.roundoff u n * √n` and `e = Blas.seq.err u`; it also asks `e.dot n + u * (1 + e.dot n) < 1` | [`RoundedPrecision.lean`](../../NLAlib/Krylov/Lanczos/RoundedPrecision.lean) |
-| the stored vectors and coefficients | `vs` is buffer 2, (k+1)·n words, vector j at offset (j−1)·n; `cs` is buffer 3, 2k+2 words: α at 0…k−1, β₀…β_k at k…2k, the norm of b at 2k+1 (`PackedOutput`) | [`RoundedOutput.lean`](../../NLAlib/Krylov/Lanczos/RoundedOutput.lean) |
-| item 2 | `Lanczos.Rounded.Output`: `∃ done ≤ cap, ∃ z, Outcome A rhs E done z ∧ PackedOutput … ∧ (done < cap → … = 0)`; `Outcome` holds the `LanczosRun` | [`RoundedState.lean`](../../NLAlib/Krylov/Lanczos/RoundedState.lean), [`LanczosRun.lean`](../../NLAlib/Krylov/FinitePrecision/LanczosRun.lean) |
-| item 3 | `Lanczos.Rounded.RitzResidual`; `6·q·√q` is `lanczosResidualFactor q` | [`RoundedRitz.lean`](../../NLAlib/Krylov/Lanczos/RoundedRitz.lean) |
+| A, b | `x.val.1.1` (stored column by column in buffer 0), `x.val.1.2` (buffer 1): the inputs of the problem | `inputs` in [`Rounded/StoredCertification.lean`](../../NLAlib/Krylov/Lanczos/Rounded/StoredCertification.lean) |
+| A symmetric | the acceptance predicate of the inputs (`accepts`: `x.1.IsHermitian`) | same file |
+| the conditions on E | `Lanczos.Rounded.Precision em u E e n` with `em = ScalarProducts.roundoff u n * √n` and `e = Blas.seq.err u`; it also asks `e.dot n + u * (1 + e.dot n) < 1` | [`Rounded/Precision.lean`](../../NLAlib/Krylov/Lanczos/Rounded/Precision.lean) |
+| the stored vectors and coefficients | `vs` is buffer 2, (k+1)·n words, vector j at offset (j−1)·n; `cs` is buffer 3, 2k+2 words: α at 0…k−1, β₀…β_k at k…2k, the norm of b at 2k+1 (`PackedOutput`) | [`Rounded/Output.lean`](../../NLAlib/Krylov/Lanczos/Rounded/Output.lean) |
+| item 2 | `Lanczos.Rounded.Output`: `∃ done ≤ cap, ∃ z, Outcome A rhs E done z ∧ PackedOutput … ∧ (done < cap → … = 0)`; `Outcome` holds the `LanczosRun` | [`Rounded/State.lean`](../../NLAlib/Krylov/Lanczos/Rounded/State.lean), [`LanczosRun.lean`](../../NLAlib/Krylov/FinitePrecision/LanczosRun.lean) |
+| item 3 | `Lanczos.Rounded.RitzResidual`; `6·q·√q` is `lanczosResidualFactor q` | [`Rounded/Ritz.lean`](../../NLAlib/Krylov/Lanczos/Rounded/Ritz.lean) |
 | V_q, T_q | `basisMatrix id n vs q`, `tridiagonalMatrix id k cs q` | [`Spec.lean`](../../NLAlib/Krylov/Lanczos/Spec.lean) |
 
 The theorem joins the certificate
-[`scalarCountedAlgorithm`](../../NLAlib/Krylov/Lanczos/RoundedOperationCount.lean) with
+[`scalarCountedAlgorithm`](../../NLAlib/Krylov/Lanczos/Rounded/OperationCount.lean) with
 `Lanczos.Rounded.Output.ritzResidual` applied to the output of the same run.
 
 ### Lanczos with full reorthogonalization
 
-[`exec_scalarProgram_work_le_and_spectral`](../../NLAlib/Krylov/Lanczos/Reorth/RoundedScalarTheorem.lean).
+[`exec_scalarProgram_work_le_and_spectral`](../../NLAlib/Krylov/Lanczos/Reorth/Rounded/ScalarTheorem.lean).
 
 **Theorem.** Every run of the Lanczos recurrence started from b, in which each new vector is
 orthogonalized twice against all stored vectors before it is normalized, succeeds, and:
@@ -141,8 +141,8 @@ and coefficient block `3 * d 1 + 2`), the conclusion is, verbatim:
           Real.sqrt (3 * ((d 1 : ℝ) + 1)) * (2 * (2 * c + 2 * (η + c) ^ 2 / thr + E d)) ≤ η →
           2 * (2 * c + 2 * (η + c) ^ 2 / thr + E d) + E d + 3 * c ≤ 1 / 100 →
           ∃ done ≤ d 1, ∃ z : Lanczos.Rounded.Values (d 0), ∃ nus : ℕ → ℝ,
-            Lanczos.Reorth.Rounded.History id (StoredProblem.matrix x)
-              (decv id (d 0) x.val.1.2) (ScalarProducts.roundoff u (d 0) * Real.sqrt (d 0)) u
+            Lanczos.Reorth.Rounded.History id x.val.1.1
+              x.val.1.2 (ScalarProducts.roundoff u (d 0) * Real.sqrt (d 0)) u
               (E d) (Blas.seq.err u) done z nus ∧
             Lanczos.Reorth.Rounded.PackedOutput id (d 1) done z nus vs cs ∧
             (done < d 1 → (if done = 0 then z.initialNorm else z.beta done) = 0) ∧
@@ -152,16 +152,16 @@ and coefficient block `3 * d 1 + 2`), the conclusion is, verbatim:
                 (specNorm ((Lanczos.basisMatrix id (d 0) vs r)ᵀ *
                     Lanczos.basisMatrix id (d 0) vs r - 1) ≤ η ∧
                   ∀ i < r,
-                    eigenvalue (StoredProblem.matrix x) (i + (d 0 - r)) -
+                    eigenvalue x.val.1.1 (i + (d 0 - r)) -
                         100 * ((r : ℝ) + 1) *
                           (2 * (2 * c + 2 * (η + c) ^ 2 / thr + E d) + E d + 3 * c) *
-                          specNorm (StoredProblem.matrix x) ≤
+                          specNorm x.val.1.1 ≤
                       eigenvalue (Lanczos.tridiagonalMatrix id (d 1) cs r) i ∧
                     eigenvalue (Lanczos.tridiagonalMatrix id (d 1) cs r) i ≤
-                      eigenvalue (StoredProblem.matrix x) i +
+                      eigenvalue x.val.1.1 i +
                         100 * ((r : ℝ) + 1) *
                           (2 * (2 * c + 2 * (η + c) ^ 2 / thr + E d) + E d + 3 * c) *
-                          specNorm (StoredProblem.matrix x)))
+                          specNorm x.val.1.1))
 ```
 
 **Translation notes.** As for the first theorem, and:
@@ -170,14 +170,14 @@ and coefficient block `3 * d 1 + 2`), the conclusion is, verbatim:
 |---|---|---|
 | m, the steps performed | `done` | |
 | τ | `thr` (the tape is `τ` in the Lean) | |
-| αⱼ, βⱼ, νⱼ, vⱼ | `z.alpha j`, `z.beta j`, `nus j`, `z.v j`, tied to the stored words `vs`, `cs` by `PackedOutput` | [`Reorth/RoundedOutput.lean`](../../NLAlib/Krylov/Lanczos/Reorth/RoundedOutput.lean) |
-| item 2 | `History`: the initialization followed by `done` executed steps, each with its local rounding witnesses | [`Reorth/RoundedState.lean`](../../NLAlib/Krylov/Lanczos/Reorth/RoundedState.lean) |
+| αⱼ, βⱼ, νⱼ, vⱼ | `z.alpha j`, `z.beta j`, `nus j`, `z.v j`, tied to the stored words `vs`, `cs` by `PackedOutput` | [`Reorth/Rounded/Output.lean`](../../NLAlib/Krylov/Lanczos/Reorth/Rounded/Output.lean) |
+| item 2 | `History`: the initialization followed by `done` executed steps, each with its local rounding witnesses | [`Reorth/Rounded/State.lean`](../../NLAlib/Krylov/Lanczos/Reorth/Rounded/State.lean) |
 | r is the longest admissible prefix | the two clauses `∀ j < r, thr * nus (j+1) < z.beta (j+1)` and `r < done → z.beta (r+1) ≤ thr * nus (r+1)` | |
 | the three conditions | the three implications before `∃ done`; `(Blas.seq.err u).dot n` is ε_dot and `.axpy` is ε_axpy | [`Profiles/BlasCert.lean`](../../NLAlib/Ops/Profiles/BlasCert.lean) |
 | λᵢ(A), θᵢ | `eigenvalue A i`, `eigenvalue (tridiagonalMatrix id k cs r) i` | |
 
 The theorem joins the certificate
-[`scalarCountedAlgorithm`](../../NLAlib/Krylov/Lanczos/Reorth/RoundedOperationCount.lean)
+[`scalarCountedAlgorithm`](../../NLAlib/Krylov/Lanczos/Reorth/Rounded/OperationCount.lean)
 with `Lanczos.Reorth.Rounded.Output.exists_spectral_prefix` and, for the run it exhibits,
 `NLAlib.LanczosReorthRun.specNorm_transpose_mul_self_sub_one_le` and
 `NLAlib.LanczosReorthRun.eigenvalue_sub_le_eigenvalue_tridiagonal`.
@@ -257,8 +257,8 @@ though the program discards their words.
 
 ## Operation models and stored implementations
 
-The [ordinary](../../NLAlib/Krylov/Lanczos/StoredCertificate.lean) and
-[reorthogonalized](../../NLAlib/Krylov/Lanczos/Reorth/StoredCertificate.lean) exact stored
+The [ordinary](../../NLAlib/Krylov/Lanczos/StoredCertification.lean) and
+[reorthogonalized](../../NLAlib/Krylov/Lanczos/Reorth/StoredCertification.lean) exact stored
 certificates declare four raw buffers: the dense matrix, right-hand side, basis capacity and
 coefficient capacity. A fixed context transformation forwards the matrix capability through
 every procedure. Each matrix application executes scalar multiply/add loops; the target
@@ -350,6 +350,14 @@ chains, with an explicit small-error budget. A small residual-representation def
 does not prove strong mutual orthogonality or justify substituting a different matrix-update
 implementation's constants. Stronger numerical conclusions use their proved hypotheses.
 
+The ordinary rounded output also has
+[`RitzValues` and `FunctionApprox`](../../NLAlib/Krylov/Lanczos/Rounded/RunAnalysis.lean), joined
+for the scalar program in `exec_scalarProgram_ritzValues`. Under `k·E ≤ 1/100`, each stored Ritz
+value is within `β_q|y_q|` plus the backward radius of an eigenvalue of A, and Paige's bound holds
+for the stored vectors. The stored factors `s·V f(T) e₁` approximate `f(A)b`, including the error
+of the computed start. The small matrix function and final products are exact in that statement:
+no program forms this vector.
+
 ## Source map
 
 - [Ordinary program](../../NLAlib/Krylov/Lanczos/Alg.lean)
@@ -357,29 +365,29 @@ implementation's constants. Stronger numerical conclusions use their proved hypo
 - [Packed exact outputs](../../NLAlib/Krylov/Lanczos/Spec.lean)
 - [Exact total solver](../../NLAlib/Krylov/Lanczos/Exact.lean)
 - [Exact reorthogonalized total solver](../../NLAlib/Krylov/Lanczos/Reorth/Exact.lean)
-- [Rounded ordinary total solver](../../NLAlib/Krylov/Lanczos/RoundedSolve.lean)
-- [Standard operation model](../../NLAlib/Krylov/Lanczos/RoundedModels.lean)
-- [Rounded backward error](../../NLAlib/Krylov/Lanczos/RoundedStability.lean)
+- [Rounded ordinary total solver](../../NLAlib/Krylov/Lanczos/Rounded/Solve.lean)
+- [Standard operation model](../../NLAlib/Krylov/Lanczos/Rounded/Models.lean)
+- [Rounded backward error](../../NLAlib/Krylov/Lanczos/Rounded/Stability.lean)
 
 - [Exact stored-output Ritz bounds](../../NLAlib/Krylov/Lanczos/Basis.lean)
 - [Exact reorthogonalized stored-output bounds](../../NLAlib/Krylov/Lanczos/Reorth/Basis.lean)
-- [Rounded physical Ritz residual](../../NLAlib/Krylov/Lanczos/RoundedRitz.lean)
-- [Rounded reorthogonalized total solver](../../NLAlib/Krylov/Lanczos/Reorth/RoundedSolve.lean)
-- [Reorthogonalized standard models](../../NLAlib/Krylov/Lanczos/Reorth/RoundedModels.lean)
-- [Actual two-pass error bound](../../NLAlib/Krylov/Lanczos/Reorth/RoundedOrthogonality.lean)
+- [Rounded physical Ritz residual](../../NLAlib/Krylov/Lanczos/Rounded/Ritz.lean)
+- [Rounded reorthogonalized total solver](../../NLAlib/Krylov/Lanczos/Reorth/Rounded/Solve.lean)
+- [Reorthogonalized standard models](../../NLAlib/Krylov/Lanczos/Reorth/Rounded/Models.lean)
+- [Actual two-pass error bound](../../NLAlib/Krylov/Lanczos/Reorth/Rounded/Orthogonality.lean)
 
 ## Canonical certificates
 
 The exact stored endpoints are `Lanczos.Stored.algorithm` and
-`Lanczos.Stored.Reorth.algorithm`. Their specifications identify the actual packed outputs
+`Lanczos.Reorth.Stored.algorithm`. Their specifications identify the actual packed outputs
 with the existing exact `Output` relations, preserve tape position, and assert cleanup back
 to four buffers. Their complete count, work, sequential-span and scratch budgets are computed
 from the actual transformed syntax. Resident bounds include matrix data, RHS, every basis
 slot and every coefficient slot. These full manifests are conservative size-only accounting;
 they are not a sharp adaptive-work bound.
 
-The rounded stored endpoints are `Lanczos.Stored.Rounded.scalarAlgorithm` and
-`Lanczos.Stored.Reorth.Rounded.scalarAlgorithm`. Both target a signature containing only scalar
+The rounded stored endpoints are `Lanczos.Rounded.Stored.scalarAlgorithm` and
+`Lanczos.Reorth.Rounded.Stored.scalarAlgorithm`. Both target a signature containing only scalar
 operations. Matrix words remain explicit inputs; every matvec and sequential BLAS operation
 executes its scalar implementation. The matvec allowance follows from the actual streamed
 multiply/add recurrence and the scalar roundoff, rather than a separate accuracy callback.
@@ -399,20 +407,20 @@ The ordinary `Certification.ritzAlgorithm` strengthens the numerical postconditi
 physical Ritz residual result using `Algorithm.mapPost`. It retains the same program and every
 resource bound. Zero cap and zero input have their explicit original outcomes.
 
-- [Exact stored ordinary certificate](../../NLAlib/Krylov/Lanczos/StoredCertificate.lean)
-- [Exact stored reorthogonalized certificate](../../NLAlib/Krylov/Lanczos/Reorth/StoredCertificate.lean)
-- [Ordinary canonical certificate](../../NLAlib/Krylov/Lanczos/Certificate.lean)
-- [Reorthogonalized canonical certificate](../../NLAlib/Krylov/Lanczos/Reorth/Certificate.lean)
-- [Canonical Ritz consequence](../../NLAlib/Krylov/Lanczos/RitzCertificate.lean)
+- [Exact stored ordinary certificate](../../NLAlib/Krylov/Lanczos/StoredCertification.lean)
+- [Exact stored reorthogonalized certificate](../../NLAlib/Krylov/Lanczos/Reorth/StoredCertification.lean)
+- [Ordinary canonical certificate](../../NLAlib/Krylov/Lanczos/Certification.lean)
+- [Reorthogonalized canonical certificate](../../NLAlib/Krylov/Lanczos/Reorth/Certification.lean)
+- [Canonical Ritz consequence](../../NLAlib/Krylov/Lanczos/RitzCertification.lean)
 
 These base certificates describe the abstract BLAS trees. Proved BLAS implementations derive
 the model's accuracy contracts, while a canonical certificate for a scalar lowering separately
 checks the fully lowered tree and recomputes its full instruction/workspace manifest.
 
-The [actual sequential scalar certificate](../../NLAlib/Krylov/Lanczos/LinkedCertificate.lean)
+The [actual sequential scalar certificate](../../NLAlib/Krylov/Lanczos/LinkedCertification.lean)
 checks the precise tree produced by the sequential implementation table. Its reduction error
 budgets come from the scalar unit roundoff, independently of the high-level BLAS scheme. Its
-Ritz postcondition is strengthened by `SequentialCertification.ritzAlgorithm`, preserving that
+Ritz postcondition is strengthened by `Linked.Certification.ritzAlgorithm`, preserving that
 lowered tree's own full resource specification. Pairwise profile transfer retains its explicit
 applicability and conditional budgets; this sequential certificate does not certify a different
 pairwise scalar tree.
@@ -425,8 +433,8 @@ The prefix may be empty or shorter than the executed history. The next excluded 
 sequence refers to the same archived data. Size-only fixed-point and recurrence precision
 windows support spectral bounds for the nonempty selected tridiagonal.
 
-- [Actual admissible-prefix run](../../NLAlib/Krylov/Lanczos/Reorth/RoundedStability.lean)
-- [Actual rounded prefix spectral bound](../../NLAlib/Krylov/Lanczos/Reorth/RoundedSpectral.lean)
+- [Actual admissible-prefix run](../../NLAlib/Krylov/Lanczos/Reorth/Rounded/Stability.lean)
+- [Actual rounded prefix spectral bound](../../NLAlib/Krylov/Lanczos/Reorth/Rounded/Spectral.lean)
 
-- [Rounded stored scalar ordinary certificate](../../NLAlib/Krylov/Lanczos/RoundedStoredCertificate.lean)
-- [Rounded stored scalar reorthogonalized certificate](../../NLAlib/Krylov/Lanczos/Reorth/RoundedStoredCertificate.lean)
+- [Rounded stored scalar ordinary certificate](../../NLAlib/Krylov/Lanczos/Rounded/StoredCertification.lean)
+- [Rounded stored scalar reorthogonalized certificate](../../NLAlib/Krylov/Lanczos/Reorth/Rounded/StoredCertification.lean)

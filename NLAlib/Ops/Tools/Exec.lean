@@ -120,6 +120,7 @@ def execC (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K) :
   | .frame ds args body, ρ, st =>
       (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ args).bind fun a =>
         if st.mem.Live a then execC I W τ body (Env.frame d a) st else none
+  | .note _ s, ρ, st => execC I W τ s ρ st
 
 theorem map_testC (I : Interp Op Tst K) (q : Tst) (ds : List IExp) (ins : List Operand) (ρ : Env)
     (c : CSt Op Tst K) :
@@ -198,6 +199,7 @@ theorem map_toSt_execC (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ :
     split_ifs
     · exact ih _ _
     · rfl
+  | note _ _ ih => exact ih ..
 
 /-- The computable counted run from the start state is `evalCounted` from `St.init`. -/
 theorem map_toSt_execC_init (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K)
@@ -238,6 +240,7 @@ def staticAt : Stmt Op Tst → List ℕ → Key Op Tst → ℕ
       match IExp.evalList idx ds, IExp.evalList idx (args.map Operand.off) with
       | some d, some o => staticAt body (d ++ o) k
       | _, _ => 0
+  | .note _ s, idx, k => staticAt s idx k
 
 theorem useCost_apply (o : Op) (ds : List IExp) (idx : List ℕ) (k : Key Op Tst) :
     useCost o ds idx k = useAt (.inl o) ds idx k := by
@@ -276,6 +279,7 @@ theorem staticAt_eq (s : Stmt Op Tst) (idx : List ℕ) (k : Key Op Tst) :
   | frame ds args body ih =>
     simp only [staticAt, stmtCost]
     cases IExp.evalList idx ds <;> cases IExp.evalList idx (args.map Operand.off) <;> simp [ih]
+  | note _ _ ih => exact ih ..
 
 end Static
 
@@ -306,6 +310,7 @@ def staticKeys : Stmt Op Tst → List ℕ → List (Key Op Tst)
       match IExp.evalList idx ds, IExp.evalList idx (args.map Operand.off) with
       | some d, some o => staticKeys body (d ++ o)
       | _, _ => []
+  | .note _ s, idx => staticKeys s idx
 
 theorem useAt_eq_zero [DecidableEq Op] [DecidableEq Tst] {x : Op ⊕ Tst} {ds : List IExp}
     {idx : List ℕ} {k : Key Op Tst} (h : k ∉ useKeys x ds idx) : useAt x ds idx k = 0 := by
@@ -358,5 +363,6 @@ theorem staticAt_eq_zero [DecidableEq Op] [DecidableEq Tst] (s : Stmt Op Tst) (i
       cases ho : IExp.evalList idx (args.map Operand.off) <;>
       simp only [hd, ho] at h ⊢
     exact ih _ h
+  | note _ _ ih => exact ih _ h
 
 end NLAlib.Ops.Tools

@@ -37,18 +37,19 @@ private theorem cgsProject_congr_basis {n k : ℕ} {Q Q' : ℕ → Fin n → ℝ
 computes the current vector and coupling coefficient of the old pure reorthogonalized step. -/
 theorem TwoPassOut.next_eq {K : Type} [Inhabited K] {dec : K → ℝ} {n j : ℕ}
     {A : Matrix (Fin n) (Fin n) ℝ} {s : LanczosReorthState ℝ (Fin n)}
-    {qs raw reduced initial out : List K} {σ β₀ β : K}
+    {qs raw reduced out : List K} {β : K}
     (hQ : ∀ l < j + 1, (fun i : Fin n => dec (vec qs (l * n + i))) = s.vecs l)
     (hraw : decv dec n raw = A *ᵥ s.cur - s.beta • s.prev -
       lanczosAlpha A s.toLanczosState • s.cur)
     (hp : TwoPassOut dec 0 0 n (j + 1) qs raw reduced)
-    (hn : (normalizeRel dec n).rel [n] [reduced,[σ],initial,[β₀]] [] [out,[β]]) :
+    (hn : decv dec n out =
+        ‖WithLp.toLp 2 (decv dec n reduced)‖⁻¹ • decv dec n reduced ∧
+      dec β = ‖WithLp.toLp 2 (decv dec n reduced)‖) :
     decv dec n out = (lanczosReorthStep A j s).cur ∧
       dec β = (lanczosReorthStep A j s).beta := by
   have hred : decv dec n reduced = cgsProject s.vecs (j + 1)
       (cgsProject s.vecs (j + 1) (decv dec n raw)) := by
     rw [hp.decv_eq_cgsProject, cgsProject_congr_basis hQ, cgsProject_congr_basis hQ]
-  change decv dec n out = _ ∧ dec β = _ at hn
   simpa [lanczosReorthStep, hred, hraw] using hn
 
 end NLAlib.Krylov.Lanczos.Reorth

@@ -40,7 +40,7 @@ its own contract, and one generic composition theorem covers any components that
   (and rotation-equivalents) accumulated on $\widehat{\mathbf{U}}$. **On every tape** the run
   terminates and the orthogonality bound holds. There is no hypothesis on $\mathbf{A}$; exact
   naturals are needed only up to $n + 1$. Static count
-  $384547(n+1)^3(k+1)^4(n_r+n_q+1)(F+1)(T+1)^2 \le C(n+1)^3L^{15}$.
+  $384547(n+1)^3(k+1)^4(n_r+n_q+1)(F+1)(T+1)^2 \le C(n+1)^3L^9(\log_2 L + 1)^6$.
 * **Modular (§2).** Four pipeline stages (norm estimate, regularizer, Hessenberg reducer, Schur
   core), each a routine parameter with a contract, and one generic composition theorem (backward
   errors add, accumulator errors compose as $(1 + a)(1 + b) - 1$, failures and static counts add).
@@ -56,7 +56,8 @@ its own contract, and one generic composition theorem covers any components that
 * **Constants that moved (§1, §15, §16).** $\delta' = \delta/(16\sqrt{n+1})$ (design:
   $\delta/(32\sqrt{n+1})$); norm bounds $4$ (regularizer) and $8$ (core) after normalization by an
   estimate with constants $(1/2, 2)$; a nine-term precision threshold; the power of $k + 1$ in the
-  static count is $4$ (design: $5$); the polylog exponent is $p = 15$ (design: about $12$).
+  static count is $4$ (design: $5$); the polylog factor is $L^9(\log_2 L + 1)^6$ (design: about $L^{12}$; $L^{15}$ before
+  `schur-tighten`).
 
 ## 1. The headlines, in Lean
 
@@ -120,12 +121,14 @@ Companions, all in the `NLAlib.Schur` namespace:
   c_1L^4(\log_2L + 1)^2 + c_2$ (the shift degree is $\Theta(L\log L)$).
 * **HD6** `denseSchur_work_le`: the instrumented static count at `[n + 1, nr, nq, k, F, T]` and zero
   offsets is $\le 384547(n+1)^3(k+1)^4(n_r+n_q+1)(F+1)(T+1)^2$; **HD7**
-  `denseSchur_work_le_polylog`: $\exists C, p$ with count $\le C(n+1)^3L^p$; the proof finds $p = 15$
-  ($(k+1)^4 \le (KL^2)^4$, $F + 1 \le KL$, $(T+1)^2 \le (KL^3)^2$; the paper's is $2$ for the
-  eigenvalues alone, with a run-time count over the deflation tree).
+  `denseSchur_work_le_polylog`: $\exists C$ with count $\le C(n+1)^3L^9(\log_2 L + 1)^6$
+  ($(k+1)^4 \le (KL(\log_2 L + 1))^4$, $F + 1 \le KL$, $(T+1)^2 \le (KL^2(\log_2 L + 1))^2$; the
+  paper's exponent is $2$ for the eigenvalues alone, with a run-time count over the deflation
+  tree); `denseSchur_work_le_pow` keeps the cruder $C(n+1)^3L^{15}$.
 * **CT2** `denseSchurAlgorithm`, `denseSchur_algorithm_measureReal_not_accepts_le` (Result:
   dense-schur-certificate-accuracy): one counted run over `SmallEig.smallEigModel`, work and span
-  `denseSchurWork` (§6), the Schur output with probability $\ge 1 - \varphi$.
+  `denseSchurWork` (§6), the Schur output with probability $\ge 1 - \varphi$. The randomized claim of
+  the certificate is `denseSchurClaim`.
 
 **The parameters** depend on $(n, \delta, \varphi)$ only. $\delta' =$ `denseSchurDelta n δ`
 $= \delta/(16\sqrt{n+1})$. The regularizer runs at the words `smallEigParams (n+1) 4 δ' (φ/2)`
@@ -519,7 +522,7 @@ hold on every tape.
 The power of $k + 1$ is $4$, that of the eigenvalue solver: the replays on the couplings and on the
 accumulator cost no more than a step (the design expected $5$). No amortization over the deflation
 tree is used; a run-time count (the paper's constant) would need the `Accepts` route and is not
-planned. The polylog form (HD7) has $p = 15$.
+planned. The polylog form (HD7) is $L^9(\log_2 L + 1)^6$.
 
 ## 7. Edge cases and junk values
 
@@ -549,7 +552,7 @@ planned. The polylog form (HD7) has $p = 15$.
 | `Matrix/Perturbation/UnitarySimilarity` | MW1–MW6 |
 | `Matrix/Perturbation/EigenvalueBackward` | MC1 |
 | `Matrix/Factorizations/Givens` | MG1 |
-| `Ops` | `StdModel` zeros (MS1) and the `nrm2` bounds (`RoundedScalarBlas.writes_nrm2_stdModel`) |
+| `Ops` | `StdModel` zeros (MS1) and the `nrm2` bounds (`RoundedScalarBlas.nrm2_writes_stdModel`) |
 | `Eigensolvers/HessenbergReduction` | the reduction with its log, `hessenbergReduceQ` and its contract |
 | `Eigensolvers/ShiftedQR` | the chain in Schur mode; the Schur-mode worklist (steps, updates, rounds); the core and its contract; the certificate |
 | `Eigensolvers/SmallEig` | Part III in Schur mode; `identityLeaf`; the leaf contract; the certificate |
@@ -647,7 +650,7 @@ applied in the sections above.
 * **Modularity (S2).** Class predicates, the threshold among the core's words, the pipeline's `nr`
   a dim, the norm estimate two-sided.
 * **Library first (S3, O7).** The norm stage is the merged `nrm2` with its `StdModel` bound
-  (`RoundedScalarBlas.writes_nrm2_stdModel`); the regularizer stage is the merged
+  (`RoundedScalarBlas.nrm2_writes_stdModel`); the regularizer stage is the merged
   `ginibrePerturb_pwrites`.
 * **S4.** PP2's glue condition is $8(n+1)\boldsymbol{u} \le 1/4$; the core states $0 < \Gamma$.
 
@@ -689,7 +692,7 @@ replacement.
 **Deleted** (rename map `docs/renames/2026-11-schur.json`): the oracle-leaf Part II program
 `roundedShQR` with its theorems (`_measureReal_not_spectrum_le`, `_terminates`, `_relative`,
 `_hermitian`, `_work_le`) and its certificate (`shqrProgram`, `stmtWorkMono_shqrProgram`,
-`roundedShQRAlgorithm`, `roundedShQR_algorithm_measureReal_not_accepts_le`, the manifest variants);
+`shqrAlgorithm`, `roundedShQR_algorithm_measureReal_not_accepts_le`, the manifest variants);
 the kernel-instance decoupler `roundedDecouple`, `roundedDecoupleLoop`; the eigenvalue leaf
 contracts and lifts (`RandomLeafContract`, `RandomLeafRoutineContract`, `BackwardLeafContract`,
 `BackwardLeafRoutineContract`, `liftLeaf`, `liftDecoupler`, `seLeaf`); `solveRounded` and its
@@ -707,7 +710,7 @@ multiplies by its rotations (`SmallEig` writes its own identity there and needs 
 
 **Check files.** Two edits of check data were approved by the maintainer on 2026-11-19 (recorded
 in the harness decisions file for SCHUR): `scripts/ops_certificates.txt` regenerated by
-`OPS_CERTIFICATES_WRITE=1` (the line of the deleted `roundedShQRAlgorithm` removed; lines for
+`OPS_CERTIFICATES_WRITE=1` (the line of the deleted `shqrAlgorithm` removed; lines for
 `denseSchurAlgorithm` and `schurPipelineAlgorithm` added; no other line changed), and the kernel
 replay limit of `scripts/stage_check.sh` raised from `-M 8000` to `-M 12000` (the full replay of the
 library with this stage peaks at about 8.6 GB; CI runs the replay without a limit).

@@ -8,6 +8,9 @@ module
 public import NLAlib.Ops.Logic.Count
 public import NLAlib.Ops.Logic.Tactic
 public import NLAlib.Ops.Profiles.BlasCert
+public import NLAlib.Ops.RoutineLink
+public import NLAlib.Ops.Logic.RoutineIntro
+public import NLAlib.Ops.RoutineSyntax
 
 /-!
 # Example: modified Gram–Schmidt over the level-1 operations
@@ -20,8 +23,8 @@ first build, proved in the program logic (`NLAlib.Ops.Logic`) with block specifi
 
 * Mathematics: the postcondition is the recurrence with local errors
   `NLAlib.Ops.Examples.MgsRec`, on decoded values; its analysis is not part of this file.
-* The certificate (`NLAlib.Ops.Examples.mgs_spec`): for every interpretation meeting the
-  contracts, `mgs` meets its contract in operand form (`NLAlib.Ops.Examples.mgsRel`): one
+* The certificate (`NLAlib.Ops.Examples.mgs_satisfies`): for every interpretation satisfying the
+  contracts, `mgs` satisfies its contract in operand form (`NLAlib.Ops.Examples.mgsRel`): one
   allocation, one loop in the standard invariant form, a named step per call.
 * The abstract theorem (`NLAlib.Ops.Examples.runs_mgs_rounded`): the same with the call counts
   `k (dot + neg + axpy) + nrm2`, by evaluating the static cost.
@@ -70,10 +73,6 @@ variables: `Q`, `w`, `w`, `R`, then the scratch cell. -/
 def mgs : Stmt Op Tst :=
   .alloc (.const 1) (.seq (.loop (.var 1) mgsBody)
     (.call (Has.inj Blas1Op.nrm2) [.var 0] [⟨1, .var 3⟩] [⟨3, .var 5 + .var 1⟩]))
-
-/-- **`mgs` as an implementation**: two dimensions `n`, `k`, two inputs `Q`, `w`, two outputs
-`w`, `R`. -/
-def mgsImpl : Impl Op Tst := ⟨2, 2, 2, mgs⟩
 
 /-! ### The contract -/
 
@@ -140,16 +139,26 @@ theorem staticPeak_mgs_le (W : Op → List ℕ → ℕ) (n k a b b' c : ℕ) :
   simp only [mgs, mgsBody, Stmt.alloc, stmtPeak, StorageFormat.bytes_cell, Nat.one_mul, mgsPeak]
   refine Nat.add_le_add_left (max_le_max (Finset.sup_le fun j _ => ?_) ?_) _ <;> simp
 
-/-- **The certificate of `mgs`**: for every interpretation meeting the contracts of scalar
-arithmetic and of the level-1 operations, `mgs` meets its contract, which has two output blocks.
-So `mgs` is an operation (an orthogonalisation step) for the algorithms above it. Proved by block
-specifications. -/
-theorem mgs_spec {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop}
+/-- `mgs` as a routine: `[n, k] (Q : read k n, w : update n) → (R : write k + 1)`. The tree has
+two buffer variables for `w`. -/
+def mgsRoutine : Routine Op Tst :=
+  routine% [n, k] (Q : k * n, w : n) → (w, R : k + 1) := mgs
+
+/-- `mgs` meets the specification read off its relation, for every interpretation satisfying the
+contracts of scalar arithmetic and of the level-1 operations. Proved by block specifications. -/
+theorem mgsRoutine_meets {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop}
     {J : Interp Op Tst K} (hS : IsScalar M J) (hJ : IsBlas1 dec ε ok J)
     (hneg : ∀ a, dec (M.neg a) = -dec a) :
-    (mgsImpl (Op := Op) (Tst := Tst)).Triple J .total ((mgsRel dec ε).spec (MgsOperands ok)) := by
-  cert_intro [n, k] (Q, x) → (w, R) reads (qs, ws)
-  obtain ⟨hok, rfl, hQw, hQR, hwR⟩ := hadm
+    (mgsRoutine (Op := Op) (Tst := Tst)).Meets J
+      (Routine.Spec.ofRel (mgsRel dec ε) fun d => ok (d.headD 0)) := by
+  routine_intro [n, k] (Q, w, R) reads (qs, ws) memory μ
+  have hok : ok n := hpre.1
+  have hz := hroom
+  replace hl : Q.1 < μ.store.length ∧ w.1 < μ.store.length ∧ w.1 < μ.store.length ∧
+      R.1 < μ.store.length := ⟨hl.1, hl.2.1, hl.2.1, hl.2.2⟩
+  change Writes .total J τ mgs (Env.frame [n, k] [Q, w, w, R]) (Fp.blocks [w, R] [n, k + 1])
+    (fun μ' => μ'.pos = μ.pos + 0 ∧ ∃ ys, μ'.readBlocks [w, R] [n, k + 1] = some ys ∧
+      (mgsRel dec ε).rel [n, k] [qs, ws] [] ys) μ
   refine writes_alloc rfl fun s₁ hs₁ ht hB => ?_
   refine Writes.seq_le (writes_loop rfl
     (fun j => Store.inBlock w.1 w.2 n ⊔ Store.inBlock R.1 R.2 j ⊔ Store.inBuf μ.store.length)
@@ -172,8 +181,27 @@ theorem mgs_spec {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ →
       (Mem.readBlocks_of_cons (Store.readBlock_succ_of (by kept) (by kept)) rfl),
       r, ν, rfl, hrec, hνrel⟩
 
+/-- The routine of `mgs` implements its contract: its operands are the inputs followed by the
+second output. -/
+theorem mgsRoutine_implements (dec : K → ℝ) (ε : Blas1Err) (ok : ℕ → Prop) :
+    (mgsRoutine (Op := Op) (Tst := Tst)).Implements (mgsRel dec ε) (MgsOperands ok)
+      (fun ins outs => ins ++ outs.drop 1) := by
+  implements [n, k] (Q, w) → (w, R) with hadm
+
+/-- The certificate of `mgs`: for every interpretation satisfying the contracts of scalar
+arithmetic and of the level-1 operations, `mgs` satisfies its contract, which has two output blocks.
+So `mgs` is an operation (an orthogonalisation step) for the algorithms above it. Proved by block
+specifications. -/
+theorem mgs_satisfies {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop}
+    {J : Interp Op Tst K} (hS : IsScalar M J) (hJ : IsBlas1 dec ε ok J)
+    (hneg : ∀ a, dec (M.neg a) = -dec a) :
+    (mgsRoutine (Op := Op) (Tst := Tst)).impl.Satisfies J .total ((mgsRel dec ε).spec (MgsOperands
+      ok)) :=
+  (mgsRoutine_meets hS hJ hneg).satisfies_ofRel (mgsRoutine_implements dec ε ok)
+    fun _ _ _ h => h.2.1.1
+
 /-- **The abstract theorem of `mgs`**, from its certificate by the bridge: for every
-interpretation meeting the contracts of scalar arithmetic and of the level-1 operations, the run
+interpretation satisfying the contracts of scalar arithmetic and of the level-1 operations, the run
 terminates within `mgsCount n k` calls, and the memory is described by the recurrence with local
 errors. -/
 theorem runs_mgs_rounded {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop}
@@ -186,11 +214,10 @@ theorem runs_mgs_rounded {M : Machine K} {dec : K → ℝ} {ε : Blas1Err} {ok :
     (hR : R.2 + (k + 1) ≤ μ.store.len R.1) :
     ConditionalRuns J W τ mgs (Env.frame [n, k] [Q, w, w, R]) μ (mgsCount n k) (mgsPeak W n)
       (MgsRounded dec ε n k w R qs ws μ) := by
-  refine ((mgs_spec hS hJ hneg).runs_rel W (d := [n, k]) (ins := [Q, w]) (outs := [w, R])
-    (τ := τ) (xs := [qs, ws]) rfl ⟨hok, Q, w, R, rfl, rfl, hQw, hQR, hwR⟩
-    (by simpa using hl) (by simp [Mem.readBlocks, hq, hw]) trivial
-    ⟨hwl, hR, trivial⟩).mono (le_of_eq (staticCost_mgs ..))
-    (staticPeak_mgs_le ..) ?_
+  refine ((mgsRoutine_meets hS hJ hneg).runs_ofRel W (d := [n, k]) (args := [Q, w, R]) (τ := τ)
+    (xs := [qs, ws]) rfl rfl hl (by routine_sep) (by reads) hok trivial
+    (show μ.Room [w, R] [n, k + 1] from ⟨hwl, hR, trivial⟩) rfl rfl).mono
+    (le_of_eq (staticCost_mgs ..)) (staticPeak_mgs_le ..) ?_
   rintro μ' ⟨ys, hlen, hb, rfl⟩
   obtain ⟨ws', rν, rfl, h1, h2⟩ := map_length_eq_two hlen
   exact ⟨ws', rν, h1, h2, hb, rfl⟩

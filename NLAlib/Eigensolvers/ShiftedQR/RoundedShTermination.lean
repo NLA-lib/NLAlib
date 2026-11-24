@@ -85,7 +85,7 @@ theorem shPotentialAccept_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS 
     (hP : ∀ x ∈ P, x.1 + 1 < n + 1) (hj : LL.length + 1 ≤ ns)
     (hlgL : lg.1 < L)
     (hlgv : ∀ b ∈ [a, s, wg, wr, ww, wp, g, thr, f], b.1 ≠ lg.1) :
-    Writes .total I τ (shPotentialAccept (O := O) (Q := Q)).body
+    Writes .total I τ (shPotentialAccept (O := O) (Q := Q))
       (Env.frame [n + 1, k, q, w, LL.length]
           [(L + 2, 0), (L + 5, 0), (L + 9, 0), a, (L + 11, 0), f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 11) 0 1 ⊔
@@ -151,7 +151,7 @@ theorem shTrial_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar
     (hlog : HoldsSlottedLog lg ns w LL [] m.store) (hj : LL.length + 1 ≤ ns) (hw : k * n ≤ w)
     (hlgl : m.Live [lg]) (hlgL : lg.1 < L)
     (hlgv : ∀ b ∈ [a, s, wg, wr, ww, wp, g, thr, f], b.1 ≠ lg.1) :
-    Writes .total I τ (shTrial (O := O) (Q := Q)).body
+    Writes .total I τ (shTrial (O := O) (Q := Q))
       (Env.frame [n + 1, k, q, w, LL.length]
           [a, (L + 10, o), thr, (L + 2, 0), (L + 5, 0), (L + 6, 0),
         (L + 7, 0), (L + 8, 0), (L + 9, 0), a, (L + 11, 0), f, lg])
@@ -234,7 +234,7 @@ theorem shTrials_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScala
     (hlog : HoldsSlottedLog lg ns w LL [] m.store) (hj : LL.length + (excNet ε).length ≤ ns)
     (hw : k * n ≤ w) (hlgL : lg.1 < L)
     (hlgv : ∀ b ∈ [a, s, wg, wr, ww, wp, g, thr, f], b.1 ≠ lg.1) :
-    Writes .total I τ (shTrials (O := O) (Q := Q)).body
+    Writes .total I τ (shTrials (O := O) (Q := Q))
       (Env.frame [n + 1, k, q, (excNet ε).length, w, LL.length]
           [a, (L + 10, 0), thr, (L + 2, 0), (L + 5, 0),
         (L + 6, 0), (L + 7, 0), (L + 8, 0), (L + 9, 0), a, (L + 11, 0), f, lg])
@@ -300,7 +300,7 @@ theorem shExc_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M
     (hlog : HoldsSlottedLog lg ns w LL [] m.store) (hj : LL.length + (excNet ε).length ≤ ns)
     (hw : k * n ≤ w) (hlgL : lg.1 < L)
     (hlgv : ∀ b ∈ [a, s, wg, wr, ww, wp, g, thr, f], b.1 ≠ lg.1) :
-    Writes .total I τ (shExc (O := O) (Q := Q)).body
+    Writes .total I τ (shExc (O := O) (Q := Q))
       (Env.frame [n + 1, k, q, (excNet ε).length, w, LL.length]
           [a, (L, 0), wr, ww, wp, g, thr, (L + 1, 0),
         (L + 2, 0), (L + 5, 0), (L + 6, 0), (L + 7, 0), (L + 8, 0), (L + 9, 0), (L + 10, 0), a,
@@ -387,7 +387,7 @@ theorem shDecide_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScala
     (hj : LL.length + (1 + (excNet ε).length) ≤ ns) (hw : k * n ≤ w)
     (hlgl : m.Live [lg]) (hlgL : lg.1 < L)
     (hlgv : ∀ b ∈ [a, s, wg, wr, ww, wp, g, thr, f], b.1 ≠ lg.1) :
-    Writes .total I τ (shDecide (O := O) (Q := Q)).body
+    Writes .total I τ (shDecide (O := O) (Q := Q))
       (Env.frame [n + 1, k, q, (excNet ε).length, w, LL.length]
           [a, (L, 0), wr, ww, wp, g, thr, (L + 1, 0),
         (L + 2, 0), (L + 3, 0), (L + 4, 0), (L + 5, 0), (L + 6, 0), (L + 7, 0), (L + 8, 0),
@@ -450,7 +450,7 @@ theorem shTestStep_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSca
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
     (hlog : HoldsSlottedLog lg ns w LL [] m.store) (hj : LL.length + 1 ≤ ns) (hw : k * n ≤ w)
     (hlgL : lg.1 < L) (hlgv : ∀ b ∈ [a, s, wg, wr, ww, wp, g, thr, f], b.1 ≠ lg.1) :
-    Writes .total I τ (shTestStep (O := O) (Q := Q)).body
+    Writes .total I τ (shTestStep (O := O) (Q := Q))
       (Env.frame [n + 1, k, w, LL.length]
           [a, (L, 0), wg, (L + 5, 0), (L + 6, 0), (L + 3, 0), (L + 4, 0), lg])
       (Store.inBlock (L + 5) 0 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock (L + 6) 0 (2 * k) ⊔
@@ -513,7 +513,7 @@ theorem shPrefix_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScala
     (hlog : HoldsSlottedLog lg ns w LL [] m.store) (hj : LL.length + 1 ≤ ns) (hw : k * n ≤ w)
     (hlgL : lg.1 < L)
     (hlgv : ∀ b ∈ [a, s, wg, wr, ww, wp, g, thr, f], b.1 ≠ lg.1) :
-    Writes .total I τ (shPrefix (O := O) (Q := Q)).body
+    Writes .total I τ (shPrefix (O := O) (Q := Q))
       (Env.frame [n + 1, q, k, w, LL.length]
           [a, s, wg, (L, 0), (L + 1, 0), (L + 3, 0), (L + 4, 0), (L + 5, 0),
         (L + 6, 0), lg])
@@ -584,7 +584,7 @@ theorem shStepWithScratch_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS 
     (hj : LL.length + (1 + (excNet ε).length) ≤ ns) (hw : k * n ≤ w)
     (hlgL : lg.1 < L)
     (hlgv : ∀ b ∈ [a, s, wg, wr, ww, wp, g, thr, f], b.1 ≠ lg.1) :
-    Writes .total I τ (shStepWithScratch (O := O) (Q := Q)).body
+    Writes .total I τ (shStepWithScratch (O := O) (Q := Q))
       (Env.frame [n + 1, q, k, (excNet ε).length, w, LL.length]
           [a, s, wg, wr, ww, wp, g, thr, (L, 0),
         (L + 1, 0), (L + 2, 0), (L + 3, 0), (L + 4, 0), (L + 5, 0), (L + 6, 0), (L + 7, 0),
@@ -638,7 +638,7 @@ theorem shStep_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar 
     (hlog : HoldsSlottedLog lg ns w LL [] m.store)
     (hj : LL.length + (1 + (excNet ε).length) ≤ ns) (hw : k * n ≤ w)
     (hlgl : m.Live [lg]) (hlgv : ∀ b ∈ [a, s, wg, wr, ww, wp, g, thr, f], b.1 ≠ lg.1) :
-    Writes .total I τ (shStep (O := O) (Q := Q)).body
+    Writes .total I τ (shStep (O := O) (Q := Q))
       (Env.frame [n + 1, q, k, (excNet ε).length, w, LL.length]
           [a, s, wg, wr, ww, wp, g, thr, a, f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock f.1 f.2 1 ⊔
@@ -655,7 +655,7 @@ theorem shStep_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar 
   have hlg1 : lg.1 < m.store.length := hlgl lg (by simp)
   obtain ⟨ss, hssk, hss⟩ := Store.exists_readBlock_flatMap_pair hs
   rw [hssk] at hss
-  have e : (shStep (O := O) (Q := Q)).body = Stmt.allocs [.const 2, .const 1, .const 1,
+  have e : (shStep (O := O) (Q := Q)) = Stmt.allocs [.const 2, .const 1, .const 1,
       .const 1, .const 1, .const 2 * (.var 0 * .var 0), .const 2 * .var 2, .const 2 * .var 2,
       .const 5, .const 1, .const 2 * .var 3, .const 1]
       (.frame [.var 0, .var 1, .var 2, .var 3, .var 4, .var 5] [⟨0, .var 6⟩, ⟨1, .var 7⟩,
@@ -663,7 +663,7 @@ theorem shStep_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar 
         ⟨11, .const 0⟩, ⟨12, .const 0⟩, ⟨13, .const 0⟩, ⟨14, .const 0⟩, ⟨15, .const 0⟩,
         ⟨16, .const 0⟩, ⟨17, .const 0⟩, ⟨18, .const 0⟩, ⟨19, .const 0⟩, ⟨20, .const 0⟩,
         ⟨21, .const 0⟩, ⟨22, .const 0⟩, ⟨0, .var 6⟩, ⟨9, .var 15⟩, ⟨10, .var 16⟩]
-        (shStepWithScratch (O := O) (Q := Q)).body) := rfl
+        (shStepWithScratch (O := O) (Q := Q))) := rfl
   rw [e]
   refine writes_allocs_preserving_post rfl
     (fun hBelow ⟨⟨H', hA'⟩, x, hF', Ls, hLs, hpl, hlog'⟩ => ⟨⟨H', hA'.of_below hBelow h1⟩,

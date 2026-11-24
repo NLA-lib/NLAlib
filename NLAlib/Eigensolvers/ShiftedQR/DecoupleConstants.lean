@@ -29,16 +29,18 @@ open scoped Matrix
 variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q]
 
 /-- Compute actual constant words once, then initialize the scan and run the finite loop. -/
-def decoupleWithConstants (Iter : Impl O Q) : Impl O Q :=
-  opsImpl% [N, m, k, F, M] (W, Params, Const) → (W, R) {
-    run iterationConstants.body [k] (Params, Const, Const[1]);
-    run (decouplePrepared Iter).body [N, m, k, F, M] (W, Params, Const, W, R)
+def decoupleWithConstants (Iter : Stmt O Q) : Stmt O Q :=
+  ops% [N, m, k, F, M] (W, Params, Const) → (W, R) {
+    run iterationConstants [k] (Params, Const, Const[1]);
+    run (decouplePrepared Iter) [N, m, k, F, M] (W, Params, Const, W, R)
   }
 
-/-- Actual scalar constant initialization composes with total finite decoupling. -/
+/-- Actual scalar constant initialization composes with total finite decoupling.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem decoupleWithConstants_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (hE : ExactModel id Mch) (hL : IsIndexLit Mch I)
-    (hC : IsCmp id I) {θ : ℝ} (Iter : Impl O Q) (hIter : IterationContract θ Iter I)
+    (hC : IsCmp id I) {θ : ℝ} (Iter : Stmt O Q) (hIter : IterationContract θ Iter I)
     {tape : Tape ℝ} {μ : Mem ℝ} {n m F M : ℕ} {τ B α γ δ : ℝ} {w p c r : ℕ × ℕ}
     {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     (hyp : RapidDecouplingHyps H τ B θ α γ δ m F) (hHess : IsUpperHessenberg H)
@@ -57,7 +59,7 @@ theorem decoupleWithConstants_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hConstSep : Fp.Disj (Store.inBlock c.1 c.2 2)
       (Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock r.1 r.2 5 ⊔ Store.inBlock p.1 p.2 5)) :
-    Writes .total I tape (decoupleWithConstants Iter).body
+    Writes .total I tape (decoupleWithConstants Iter)
       (Env.frame [n + 1, m, 2 ^ m, F, M] [w, p, c, w, r])
       ((Store.inBlock w.1 w.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock r.1 r.2 5) ⊔
         Store.inBlock c.1 c.2 2)

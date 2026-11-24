@@ -79,7 +79,7 @@ theorem trialStep_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScal
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
     (hlog : HoldsSlottedLog lg ns w LL [] m.store) (hj : LL.length < ns) (hw : k * n ≤ w)
     (hlgl : m.Live [lg]) (hlgb : ∀ b ∈ [a, sp, thr, t, sr, ds, rg], b.1 ≠ lg.1) :
-    Writes .total I τ (trialStep (O := O) (Q := Q)).body
+    Writes .total I τ (trialStep (O := O) (Q := Q))
       (Env.frame [n + 1, k, w, LL.length] [a, sp, thr, t, sr, ds, rg, lg])
       (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock sr.1 sr.2 (2 * k) ⊔
         Store.inBlock ds.1 ds.2 (2 * k) ⊔ Store.inBlock rg.1 rg.2 5 ⊔
@@ -155,7 +155,7 @@ theorem trialAccept_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSc
     (hL : IsIndexLit M I) {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
     {P : List GivensEntry} (hlog : HoldsSlottedLog lg ns w LL P m.store) (hj : LL.length < ns)
     (hlgl : m.Live [lg]) (hlgb : ∀ b ∈ [t, a, g, f], b.1 ≠ lg.1) :
-    Writes .total I τ (trialAccept (O := O) (Q := Q)).body
+    Writes .total I τ (trialAccept (O := O) (Q := Q))
         (Env.frame [n + 1, w, LL.length] [t, a, g, f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
         Store.inBlock f.1 f.2 1 ⊔
@@ -229,7 +229,7 @@ theorem regularizeTrial_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
     (hlog : HoldsSlottedLog lg ns w LL [] m.store) (hj : LL.length < ns) (hw : k * n ≤ w)
     (hlgl : m.Live [lg]) (hlgb : ∀ b ∈ [a, sp, thr, t, sr, ds, rg, g, f], b.1 ≠ lg.1) :
-    Writes .total I τ (regularizeTrial (O := O) (Q := Q)).body
+    Writes .total I τ (regularizeTrial (O := O) (Q := Q))
       (Env.frame [n + 1, k, w, LL.length] [a, sp, thr, t, sr, ds, rg, a, g, f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
         Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
@@ -335,7 +335,7 @@ theorem regularizeTrials_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
     (hlog : HoldsSlottedLog lg ns w LL [] m.store) (hj : LL.length + k ≤ ns) (hw : k * n ≤ w)
     (hlgl : m.Live [lg]) (hlgb : ∀ b ∈ [a, s, thr, t, sr, ds, rg, g, f], b.1 ≠ lg.1) :
-    Writes .total I τ (regularizeTrials (O := O) (Q := Q)).body
+    Writes .total I τ (regularizeTrials (O := O) (Q := Q))
       (Env.frame [n + 1, k, w, LL.length] [a, s, thr, t, sr, ds, rg, a, g, f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock g.1 g.2 1 ⊔
         Store.inBlock f.1 f.2 1 ⊔ (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))) ⊔
@@ -414,7 +414,7 @@ theorem regularizeDecide_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS :
     (hlog : HoldsSlottedLog lg ns w LL [] m.store) (hj : LL.length + k ≤ ns) (hw : k * n ≤ w)
     (hlgl : m.Live [lg]) (hlgL : lg.1 < L)
     (hlgv : ∀ b ∈ [a, rd, c, thr, s, f], b.1 ≠ lg.1) :
-    Writes .total I τ (regularizeDecide (O := O) (Q := Q)).body
+    Writes .total I τ (regularizeDecide (O := O) (Q := Q))
       (Env.frame [n + 1, k, w, LL.length]
           [a, s, c, thr, (L + 3, 0), (L + 4, 0), (L + 5, 0), (L + 6, 0), a,
         (L + 2, 0), f, lg])
@@ -517,7 +517,7 @@ theorem IsRandomSmallEig.smallEigLeaf_terminates {law : ℕ → MeasureTheory.Me
     {β φ : ℝ} {I : Interp O Q ℝ} (h : IsRandomSmallEig law s β φ I) {d : ℕ} {w o : ℕ × ℕ}
     {τ : Tape ℝ} {μ : Mem ℝ} {B : Matrix (Fin d) (Fin d) ℂ} (hH : HoldsMatrix w B μ.store)
     (hl : μ.Live [w, o]) (hroom : o.2 + 2 * d ≤ μ.store.len o.1) :
-    Writes .total I τ (smallEigLeaf (O := O) (Q := Q)).body (Env.frame [d] [w, o])
+    Writes .total I τ (smallEigLeaf (O := O) (Q := Q)) (Env.frame [d] [w, o])
       (Store.inBlock o.1 o.2 (2 * d))
       (fun μ' => ∃ ys, μ'.store.readBlock o.1 o.2 (2 * d) = some ys) μ := by
   obtain ⟨W, Bad, -, -, hI⟩ := h
@@ -546,7 +546,7 @@ theorem regularizeDraws_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : 
     (hzs : Fp.Disj (Store.inBlock z.1 z.2 2) (Store.inBlock s.1 s.2 (2 * k)))
     (hzr : Fp.Disj (Store.inBlock z.1 z.2 2) (Store.inBlock rd.1 rd.2 1))
     (hsr : Fp.Disj (Store.inBlock s.1 s.2 (2 * k)) (Store.inBlock rd.1 rd.2 1)) :
-    Writes .total I τ (regularizeDraws (O := O) (Q := Q)).body (Env.frame [k] [rd, z, s])
+    Writes .total I τ (regularizeDraws (O := O) (Q := Q)) (Env.frame [k] [rd, z, s])
       (Store.inBlock s.1 s.2 (2 * k) ⊔ Store.inBlock z.1 z.2 2)
       (fun m' => ∃ ys, m'.store.readBlock s.1 s.2 (2 * k) = some ys) m := by
   unfold regularizeDraws
@@ -588,14 +588,14 @@ theorem regularizeWithScratchWith_terminates {M : Machine ℝ} {I : Interp O Q �
     {m : Mem ℝ} {k L : ℕ} (hk : k ≤ n) {a rd c thr s f : ℕ × ℕ}
     (hv : RegularizeViews L n k a rd c thr s f) {H : Matrix (Fin (n + 1)) (Fin (n + 1)) ℂ}
     {R cw tv : ℝ} (hctx : RegularizeCtx L k H R cw tv a rd c thr s f m) {nq T : ℕ}
-    {qs : List ℝ} {SE : Impl O Q} (hSE : TerminatingSmallEigAt k nq T qs SE I) {qw : ℕ × ℕ}
+    {qs : List ℝ} {SE : Stmt O Q} (hSE : TerminatingSmallEigAt k nq T qs SE I) {qw : ℕ × ℕ}
     (hqL : qw.1 < L) (hq : m.store.readBlock qw.1 qw.2 qs.length = some qs)
     (hqw : Fp.Disj (Store.inBlock s.1 s.2 (2 * k)) (Store.inBlock qw.1 qw.2 qs.length))
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
     (hlog : HoldsSlottedLog lg ns w LL [] m.store) (hj : LL.length + k ≤ ns) (hw : k * n ≤ w)
     (hlgl : m.Live [lg]) (hlgL : lg.1 < L)
     (hlgv : ∀ b ∈ [a, rd, c, thr, qw, s, f], b.1 ≠ lg.1) :
-    Writes .total I τ (regularizeWithScratchWith SE).body
+    Writes .total I τ (regularizeWithScratchWith SE)
       (Env.frame [n + 1, k, nq, T, w, LL.length] [a, rd, c, thr, qw, (L, 0), (L + 1, 0), (L + 2, 0),
         (L + 3, 0), (L + 4, 0), (L + 5, 0), (L + 6, 0), a, s, f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
@@ -693,7 +693,7 @@ theorem regularizeWith_terminates_at {M : Machine ℝ} {I : Interp O Q ℝ} (hS 
     (hl : m.Live [a, rd, c, thr, s, f]) (hA : HoldsMatrix a H m.store)
     (hrd : m.store.get rd.1 rd.2 = some R) (hc : m.store.get c.1 c.2 = some cw)
     (hthr : m.store.get thr.1 thr.2 = some tv) (hrs : s.2 + 2 * k ≤ m.store.len s.1)
-    (hrf : f.2 < m.store.len f.1) {nq T : ℕ} {qs : List ℝ} {SE : Impl O Q}
+    (hrf : f.2 < m.store.len f.1) {nq T : ℕ} {qs : List ℝ} {SE : Stmt O Q}
     (hSE : TerminatingSmallEigAt k nq T qs SE I) {qw : ℕ × ℕ} (hlq : qw.1 < m.store.length)
     (hq : m.store.readBlock qw.1 qw.2 qs.length = some qs)
     (hqw : Fp.Disj (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
@@ -702,7 +702,7 @@ theorem regularizeWith_terminates_at {M : Machine ℝ} {I : Interp O Q ℝ} (hS 
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
     (hlog : HoldsSlottedLog lg ns w LL [] m.store) (hj : LL.length + k ≤ ns) (hw : k * n ≤ w)
     (hlgl : m.Live [lg]) (hlgb : ∀ b ∈ [a, rd, c, thr, qw, s, f], b.1 ≠ lg.1) :
-    Writes .total I τ (regularizeWith SE).body
+    Writes .total I τ (regularizeWith SE)
       (Env.frame [n + 1, k, nq, T, w, LL.length] [a, rd, c, thr, qw, a, s, f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
         Store.inBlock f.1 f.2 1 ⊔
@@ -713,13 +713,13 @@ theorem regularizeWith_terminates_at {M : Machine ℝ} {I : Interp O Q ℝ} (hS 
         ∃ Ls : List (Option (List GivensEntry)), Ls.length = k ∧
           (∀ x ∈ slotEntries w Ls, x.1 + 1 < n + 1) ∧
               HoldsSlottedLog lg ns w (LL ++ Ls) [] m'.store) m := by
-  have e : (regularizeWith SE).body = Stmt.allocs [.const 2 * (.var 1 * .var 1),
+  have e : (regularizeWith SE) = Stmt.allocs [.const 2 * (.var 1 * .var 1),
       .const 2, .const 1, .const 2 * (.var 0 * .var 0), .const 2 * .var 1, .const 2 * .var 1,
       .const 5] (.frame [.var 0, .var 1, .var 2, .var 3, .var 4, .var 5] [⟨0, .var 6⟩,
         ⟨1, .var 7⟩, ⟨2, .var 8⟩, ⟨3, .var 9⟩, ⟨4, .var 10⟩, ⟨9, .const 0⟩, ⟨10, .const 0⟩,
         ⟨11, .const 0⟩, ⟨12, .const 0⟩, ⟨13, .const 0⟩, ⟨14, .const 0⟩, ⟨15, .const 0⟩,
         ⟨0, .var 6⟩, ⟨6, .var 12⟩, ⟨7, .var 13⟩, ⟨8, .var 14⟩]
-        (regularizeWithScratchWith SE).body) := rfl
+        (regularizeWithScratchWith SE)) := rfl
   have hlv : a.1 < m.store.length ∧ rd.1 < m.store.length ∧ c.1 < m.store.length ∧
       thr.1 < m.store.length ∧ s.1 < m.store.length ∧ f.1 < m.store.length := by
     simpa [Mem.Live] using hl
@@ -780,7 +780,7 @@ theorem regularize_terminates {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsSca
     {ns w : ℕ} {lg : ℕ × ℕ} {LL : List (Option (List GivensEntry))}
     (hlog : HoldsSlottedLog lg ns w LL [] m.store) (hj : LL.length + k ≤ ns) (hw : k * n ≤ w)
     (hlgl : m.Live [lg]) (hlgb : ∀ b ∈ [a, rd, c, thr, s, f], b.1 ≠ lg.1) :
-    Writes .total I τ (regularize (O := O) (Q := Q)).body
+    Writes .total I τ (regularize (O := O) (Q := Q))
       (Env.frame [n + 1, k, w, LL.length] [a, rd, c, thr, a, s, f, lg])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔ Store.inBlock s.1 s.2 (2 * k) ⊔
         Store.inBlock f.1 f.2 1 ⊔

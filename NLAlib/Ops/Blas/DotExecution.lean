@@ -16,7 +16,7 @@ is the sequential sum of the actual rounded products, independently of any error
 
 ## Main results
 
-* `NLAlib.Ops.wp_dotSum_seq`: the scalar-lowered kernel writes its exact word result.
+* `NLAlib.Ops.dotSum_wp_seq`: the scalar-lowered kernel writes its exact word result.
 -/
 
 @[expose] public section
@@ -42,27 +42,28 @@ variable [Has ScalarOp Op] [Has Blas1Op Op] [Apart Blas1Op ScalarOp Op]
   [Inhabited K]
 
 /-- The linked dot tree executes using only scalar contracts. Products and accumulations
-are the actual machine operations; the only caller-visible update is the destination cell. -/
-theorem wp_dotSum_seq {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
+are the actual machine operations; the only caller-visible update is the destination cell.
+Shared by the trees of `NLAlib.Ops.dotSumRoutine`, `NLAlib.Ops.nrm2SumRoutine`. -/
+theorem dotSum_wp_seq {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
     {τ : Tape K} {n : ℕ} {x y z : ℕ × ℕ} {m : Mem K} {xs ys : List K}
     (hl : m.Live [x, y, z])
     (hx : m.store.readBlock x.1 x.2 n = some xs)
     (hy : m.store.readBlock y.1 y.2 n = some ys)
     (hz : z.2 < m.store.len z.1) :
-    Wp .total I τ (dotSum.body.link Blas.sumSeqTable) (Env.frame [n] [x, y, z])
+    Wp .total I τ (dotSum.link Blas.sumSeqTable) (Env.frame [n] [x, y, z])
       (fun m' => m' = m.upd z
         (sumSeqF M (fun i => M.mul (vec xs i) (vec ys i)) n)) m := by
   obtain ⟨hlx, hly, hlz⟩ :
       x.1 < m.store.length ∧ y.1 < m.store.length ∧ z.1 < m.store.length := by
     simpa using hl
-  have hshape : (dotSum (Op := Op) (Tst := Tst)).body.link Blas.sumSeqTable =
+  have hshape : (dotSum (Op := Op) (Tst := Tst)).link Blas.sumSeqTable =
       .alloc (.var 0)
         (.seq (prodLoop (.var 0) ⟨0, .var 1 + .var 4⟩ ⟨1, .var 2 + .var 4⟩ ⟨3, .var 4⟩)
-          (.frame [.var 0] [⟨3, .const 0⟩, ⟨2, .var 3⟩] sumSeq.body)) := by
+          (.frame [.var 0] [⟨3, .const 0⟩, ⟨2, .var 3⟩] sumSeqRoutine.body)) := by
     simp [dotSum, Stmt.alloc, Stmt.link, prodLoop, Blas.sumSeqTable, Apart.proj_inj,
-      Has.proj_inj, Impl.Fits, sumSeq]
+      Has.proj_inj, Impl.Fits, sumSeqRoutine, routineNF]
   rw [hshape]
-  refine wp_alloc rfl (wp_seq (wp_prodLoop hI (a := vec xs) (b := vec ys) rfl
+  refine wp_alloc rfl (wp_seq (prodLoop_wp hI (a := vec xs) (b := vec ys) rfl
     (fun _ => rfl) (fun _ => rfl) (fun _ => rfl) hlx.ne hly.ne (by simp) ?_ ?_
     fun s' hfr hr => ?_))
   · exact fun k hk => by store_simp [Store.get_of_readBlock hx hk default]
@@ -70,14 +71,24 @@ theorem wp_dotSum_seq {M : Machine K} {I : Interp Op Tst K} (hI : IsScalar M I)
   have hlen : s'.length = m.store.length + 1 := by rw [hfr.length_eq, Store.length_push]
   have hlenz : s'.len z.1 = m.store.len z.1 := by
     rw [hfr.len_eq, Store.len_push_of_lt hlz]
-  apply wp_frame rfl rfl (by
-    simp only [Mem.live_cons, Mem.live_nil]
-    exact ⟨by omega,
-      by omega, trivial⟩)
-  refine wp_sumSeq hI (by omega : m.store.length ≠ z.1) hr (by rw [hlenz]; exact hz) ?_
-  have hv := sumSeqF_congr M (n := n)
-    (fun i hi => vec_map_range (fun k => M.mul (vec xs k) (vec ys k)) hi)
-  simp only [hv, Mem.upd]
+  have hzL : z.1 ≠ m.store.length := hlz.ne
+  have hLz : m.store.length ≠ z.1 := hlz.ne'
+  call (sumSeqRoutine_meets_exact (Op := Op) (Tst := Tst) hI) [n] ((m.store.length, 0), z)
+    as ν hfr₂ hp₂ (vs) hv
+  obtain ⟨v, hvs, rfl⟩ := Store.readBlock_one_eq_some.mp hvs
+  have hν : ν.store = s'.upd z.1 z.2 v := by
+    have := Store.EqOff.eq_updBlock (by simpa [Fp.blocks] using hfr₂) hvs
+    simpa [Store.updBlock_singleton] using this
+  have hw : v = sumSeqF M (fun i => M.mul (vec xs i) (vec ys i)) n := by
+    have h : v = sumSeqF M (vec ((List.range n).map fun k => M.mul (vec xs k) (vec ys k))) n :=
+      hv
+    rw [h]
+    exact sumSeqF_congr M (fun i hi => vec_map_range (fun k => M.mul (vec xs k) (vec ys k)) hi)
+  subst hw
+  obtain ⟨store, pos⟩ := ν
+  simp only at hν hp₂
+  subst hν hp₂
+  simp only [Mem.upd]
   rw [Store.pop_upd_of_lt (by omega), hfr.pop_eq]
 
 end NLAlib.Ops

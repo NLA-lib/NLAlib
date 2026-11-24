@@ -6,7 +6,7 @@ RCLike machine. The same fixed syntax now has a word-level theorem for an arbitr
 `ScalarProducts.sumWord M xs ys 0 = M.lit 0` and each successor is the actual rounded addition
 of the previous accumulator and the actual rounded multiplication.
 
-`ScalarProducts.writes_step_word` and `writes_sum_word` expose this output with the existing
+`ScalarProducts.step_writes_word` and `sum_writes_word` expose this output with the existing
 spatial footprint, stride, liveness and capacity assumptions. The exact theorems specialize
 these shared proofs; no second memory proof or execution premise is introduced.
 
@@ -46,7 +46,7 @@ unit scalar work and zero primitive workspace. `contracts_link` supplies the rou
 model contracts for the induced interpreter. Solver certificates can therefore link their
 complete program to actual ScalarOp syntax and recompute full counted resources there.
 
-`Ops/Blas/DotFunction.lean` packages the existing `wp_dotSum_seq` word-execution proof as a
+`Ops/Blas/DotFunction.lean` packages the existing `dotSum_wp_seq` word-execution proof as a
 functional primitive contract. `dotSeqFn M` returns the sequential sum of actual machine
 products. `isFn_dot_seq`, then `RoundedScalarBlas.isFn_dot`, establish that contract from scalar
 functionality alone, independently of any numerical rounding law. PCG uses it when the previous

@@ -18,7 +18,7 @@ reduced probe while reusing its scalar coefficient cell. No rank assumption is n
 
 ## Main results
 
-* `NLAlib.HutchPlusPlus.writes_projectProbes` computes the sweep of every actual probe.
+* `NLAlib.HutchPlusPlus.projectProbes_writes` computes the sweep of every actual probe.
 -/
 
 @[expose] public section
@@ -31,8 +31,10 @@ variable {𝕜 Op Tst : Type} [RCLike 𝕜] [Has ScalarOp Op] [Has Blas1Op Op]
   {I : Interp Op Tst 𝕜} {τ : Tape 𝕜} {m : Mem 𝕜}
 
 /-- A batch of probes is reduced in place against the retained prefix. The exact footprint
-contains only the probe tail and scalar workspace, so the basis remains readable. -/
-theorem writes_projectProbes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+contains only the probe tail and scalar workspace, so the basis remains readable.
+A fragment of `NLAlib.HutchPlusPlus.estimateRoutine`: run only inside its tree, on its
+operands and the buffers it allocates. -/
+theorem projectProbes_writes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hB : RCLikeBlas.IsExact I) {n k ell : ℕ} {b t : ℕ × ℕ}
     (Q G : ℕ → Fin n → 𝕜) (hl : m.Live [b, t])
     (hQ : ∀ i < k, m.store.readBlock b.1 (b.2 + n * i) n = some (List.ofFn (Q i)))
@@ -40,7 +42,7 @@ theorem writes_projectProbes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) 
       some (List.ofFn (G j)))
     (hTB : Fp.Disj (Store.inBlock t.1 t.2 2) (Store.inBlock b.1 b.2 ((k + ell) * n)))
     (ht : t.2 + 2 ≤ m.store.len t.1) (hb : b.2 + (k + ell) * n ≤ m.store.len b.1) :
-    Writes .total I τ projectProbes.body (Env.frame [n, k, ell] [b, t])
+    Writes .total I τ projectProbes (Env.frame [n, k, ell] [b, t])
       (Store.inBlock b.1 (b.2 + n * k) (ell * n) ⊔ Store.inBlock t.1 t.2 2)
       (fun m' => m'.pos = m.pos ∧ ∀ j < ell,
         m'.store.readBlock b.1 (b.2 + n * (k + j)) n =
@@ -60,7 +62,6 @@ theorem writes_projectProbes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) 
     intro j hj
     exact hTB.mono le_rfl (hcol (k + j) (by omega))
   unfold projectProbes
-  dsimp only
   refine writes_loop_disjoint_prefix_scratch region
     (fun j s => s.readBlock b.1 (b.2 + n * (k + j)) n =
       some (List.ofFn (mgsSweep Q (G j) k))) rfl ?_ le_sup_right
@@ -86,7 +87,7 @@ theorem writes_projectProbes (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) 
         (hl.congr hfr.length_eq) t (by simp), trivial⟩
     have ht₀ : Store.inBlock t.1 t.2 1 ≤ Store.inBlock t.1 t.2 2 :=
       Fp.inBlock_le_inBlock le_rfl (by omega)
-    refine ((MGS.writes_sweep hS hB Q (G j) hl' hQ' hG' ?_
+    refine ((MGS.sweep_writes hS hB Q (G j) hl' hQ' hG' ?_
       ((hprotect j hj).mono ht₀ le_rfl) (by rw [hfr.len_eq]; omega)
       (by have hm := Nat.mul_le_mul_left n (Nat.succ_le_of_lt (show k + j < k + ell by omega))
           rw [Nat.mul_succ, Nat.mul_comm n (k + ell)] at hm

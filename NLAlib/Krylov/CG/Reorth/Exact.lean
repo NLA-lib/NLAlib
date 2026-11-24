@@ -9,6 +9,9 @@ public import NLAlib.Krylov.CG.Reorth.Alg
 public import NLAlib.Krylov.CG.Reorth.Math
 public import NLAlib.Ops.Blas.Decoded
 public import NLAlib.Ops.Logic.Tactic
+public import NLAlib.Ops.Logic.RoutineIntro
+public import NLAlib.Ops.RoutineSyntax
+public import NLAlib.Ops.Profiles.BlasCert
 
 /-!
 # Exact residual reorthogonalization
@@ -19,7 +22,8 @@ exact sweep has a total certificate without assuming that its basis has full ran
 
 ## Main results
 
-* `NLAlib.Krylov.CG.Reorth.sweep_spec`: exact total execution of the stored sweep.
+* `NLAlib.Krylov.CG.Reorth.sweepRoutine_meets`: exact total execution of the stored sweep.
+* `NLAlib.Krylov.CG.Reorth.exists_models`: a joint exact-real witness.
 -/
 
 @[expose] public section
@@ -35,33 +39,27 @@ variable {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has Blas1Op Op]
 def column (dec : K → ℝ) (n : ℕ) (qs : List K) (j : ℕ) : Fin n → ℝ :=
   fun i => dec (vec qs (j * n + i))
 
-/-- The residual is updated in place in a buffer different from the basis. -/
-@[admNF] def SweepOperands : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop :=
-  fun _ ins outs => ∃ Q r, ins = [Q, r] ∧ outs = [r] ∧ Q.1 ≠ r.1
+/-- The sweep as a routine: the basis of `k` columns is read and the residual updated in
+place. -/
+def sweepRoutine : Routine Op Tst := routine% [n, k] (Q : k * n, r : n) → (r) := sweep
 
-/-- The residual output is the sequential mathematical projection sweep. -/
-@[simps (attr := storeNF)]
-noncomputable def sweepRel (dec : K → ℝ) : BlockRel K where
-  nd := 2
-  inLens d := [d.getD 1 0 * d.headD 0, d.headD 0]
-  outLens d := [d.headD 0]
-  rel d X _ Y := match X, Y with
-    | [qs, rs], [rs'] => decv dec (d.headD 0) rs' =
-        sweepVec (column dec (d.headD 0) qs) (decv dec (d.headD 0) rs) (d.getD 1 0)
-    | _, _ => False
+/-- The residual written is the sequential projection sweep of the residual read against the
+columns of the basis read. -/
+noncomputable def sweepSpec (dec : K → ℝ) : Routine.Spec K :=
+  spec% [n, k] (qs, rs) → (rs')
+    ensures decv dec n rs' = sweepVec (column dec n qs) (decv dec n rs) k
 
-/-- Exact scalar and BLAS contracts implement the full sweep at all dimensions and ranks. -/
-theorem sweep_spec {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
+/-- The sweep meets its specification under exact scalar and BLAS contracts, at all dimensions
+and ranks, with no rank or nonbreakdown assumption. -/
+theorem sweepRoutine_meets {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hM : ExactModel dec M) (hB : IsExactBlas1 dec (fun _ => True) I) :
-    (sweepImpl (Op := Op) (Tst := Tst)).Triple I .total ((sweepRel dec).spec SweepOperands) := by
-  cert_intro [n, k] (Q, r) → (r') reads (qs, rs)
-  obtain ⟨hr, hQr⟩ := hadm
-  subst r'
+    (sweepRoutine (Op := Op) (Tst := Tst)).Meets I (sweepSpec dec) := by
+  routine_intro [n, k] (Q, r) reads (qs, rs)
   refine writes_alloc rfl fun s₁ hs₁ ht hBelow => ?_
   refine Writes.mono (writes_loop (N := k) rfl
-    (fun _ => Store.inBlock r.1 r.2 n ⊔ Store.inBuf μ.store.length)
+    (fun _ => Store.inBlock r.1 r.2 n ⊔ Store.inBuf m.store.length)
     (fun _ _ => le_rfl)
-    (fun j m' => m'.pos = μ.pos ∧ ∃ vs, m'.store.readBlock r.1 r.2 n = some vs ∧
+    (fun j m' => m'.pos = m.pos ∧ ∃ vs, m'.store.readBlock r.1 r.2 n = some vs ∧
       decv dec n vs = sweepVec (column dec n qs) (decv dec n rs) j)
     ⟨rfl, rs, by kept, rfl⟩ fun j hj m₁ hfr ⟨hpos, vs, hvs, hvec⟩ => ?_)
       (by fp_sub) ?_
@@ -93,6 +91,13 @@ theorem sweep_spec {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     exact ⟨by simp [hpos₆, hpos₅, hpos₄, hpos₃, hpos₂, hpos], zs, hzs,
       by rw [hout, hvec]; rfl⟩
   · intro m₁ hfr ⟨hpos, vs, hvs, hvec⟩ s₂ hs₂ hBelow₂
-    exact ⟨by simpa using hpos, [vs], Mem.readBlocks_of_cons (by kept) rfl, hvec⟩
+    routine_exit
+    exact hvec
+
+omit [Inhabited K] [Has ScalarOp Op] [Has Blas1Op Op] in
+/-- The exact scalar and BLAS assumptions of the sweep hold jointly over real words. -/
+theorem exists_models : ∃ (M : Machine ℝ) (I : Interp (ScalarOp ⊕ Blas1Op) Tst ℝ),
+    ExactModel id M ∧ IsScalar M I ∧ IsExactBlas1 id (fun _ => True) I :=
+  Blas.exists_isExactBlas1 (fun _ => True)
 
 end NLAlib.Krylov.CG.Reorth

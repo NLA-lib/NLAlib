@@ -74,7 +74,7 @@ def Stmt.hasCall (sel : Op → Bool) : Stmt Op Tst → Bool
   | .skip | .abort => false
   | .seq s t | .ite _ _ _ s t | .whileFuel _ _ _ _ s t => s.hasCall sel || t.hasCall sel
   | .call o _ _ _ => sel o
-  | .bindIdx _ _ _ s | .allocAs _ _ s | .loop _ s | .frame _ _ s => s.hasCall sel
+  | .bindIdx _ _ _ s | .allocAs _ _ s | .loop _ s | .frame _ _ s | .note _ s => s.hasCall sel
 
 /-- **The selected calls of a tree**: every unselected call, and every branch, capped loop, index
 binding or loop that contains no selected call, is replaced by `skip`. The tree is used only for
@@ -95,6 +95,7 @@ def Stmt.keepCalls (sel : Op → Bool) : Stmt Op Tst → Stmt Op Tst
   | .allocAs f l s => .allocAs f l (s.keepCalls sel)
   | .loop n s => if s.hasCall sel then .loop n (s.keepCalls sel) else .skip
   | .frame ds a s => .frame ds a (s.keepCalls sel)
+  | .note n s => .note n (s.keepCalls sel)
 
 section Selected
 
@@ -133,6 +134,7 @@ theorem stmtWeightedCost_eq_zero_of_hasCall (hg : ∀ o ds, sel o = false → g 
     split
     · exact stmtWeightedCost_eq_zero_of_hasCall hg s h _
     · rfl
+  | .note _ s, h, idx => stmtWeightedCost_eq_zero_of_hasCall hg s h idx
 
 /-- Removing unselected subtrees keeps the weighted cost of a weight supported on the
 selected calls, with zero query weight. -/
@@ -185,6 +187,7 @@ theorem stmtWeightedCost_keepCalls (hg : ∀ o ds, sel o = false → g o ds = 0)
     split
     · exact stmtWeightedCost_keepCalls hg s _
     · rfl
+  | .note _ s, idx => stmtWeightedCost_keepCalls hg s idx
 
 end Selected
 

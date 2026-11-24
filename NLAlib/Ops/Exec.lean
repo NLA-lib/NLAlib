@@ -80,6 +80,25 @@ theorem Interp.shape_of_callS {I : Interp Op Tst K} {o : Op} {d : List ℕ}
   cases h
   exact hs
 
+/-- The call of the evaluator succeeds with `m'` exactly when the operands are buffers of the
+store, the call of the interpretation gives `m'`, and the shape of the store is unchanged. -/
+theorem Interp.callS_eq_some_iff {I : Interp Op Tst K} {o : Op} {d : List ℕ}
+    {ins outs : List (ℕ × ℕ)} {τ : Tape K} {m m' : Mem K} :
+    I.callS o d ins outs τ m = some m' ↔
+      m.Live (ins ++ outs) ∧ I.call o d ins outs τ m = some m' ∧
+        m'.store.shape = m.store.shape := by
+  constructor
+  · intro h
+    have hl := Interp.live_of_callS h
+    have hs := Interp.shape_of_callS h
+    rw [Interp.callS_of_live hl] at h
+    obtain ⟨m₁, hc, h⟩ := Option.bind_eq_some_iff.mp h
+    split_ifs at h
+    cases h
+    exact ⟨hl, hc, hs⟩
+  · rintro ⟨hl, hc, hs⟩
+    rw [Interp.callS_of_live hl, hc, Option.bind_some, if_pos hs]
+
 /-- Bounded iteration. -/
 def iter {σ : Type} (f : ℕ → σ → Option σ) : ℕ → σ → Option σ
   | 0, s => some s
@@ -136,6 +155,11 @@ def eval (I : Interp Op Tst K) (τ : Tape K) :
   | .frame ds args body, ρ, m =>
       (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ args).bind fun a =>
         if m.Live a then eval I τ body (Env.frame d a) m else none
+  | .note _ s, ρ, m => eval I τ s ρ m
+
+/-- A note is run as the tree it annotates. -/
+@[simp] theorem eval_note (I : Interp Op Tst K) (τ : Tape K) (n : Note) (s : Stmt Op Tst)
+    (ρ : Env) (m : Mem K) : eval I τ (.note n s) ρ m = eval I τ s ρ m := rfl
 
 /-- **Counts**: the number of uses of each operation and of each query at each list of
 dimensions. -/
@@ -252,6 +276,12 @@ noncomputable def evalCounted (I : Interp Op Tst K) (W : Op → List ℕ → ℕ
   | .frame ds args body, ρ, st =>
       (IExp.evalList ρ.idx ds).bind fun d => (Operand.evalList ρ args).bind fun a =>
         if st.mem.Live a then evalCounted I W τ body (Env.frame d a) st else none
+  | .note _ s, ρ, st => evalCounted I W τ s ρ st
+
+/-- A note is counted as the tree it annotates: it adds no count and no scratch. -/
+@[simp] theorem evalCounted_note (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K)
+    (n : Note) (s : Stmt Op Tst) (ρ : Env) (st : St Op Tst K) :
+    evalCounted I W τ (.note n s) ρ st = evalCounted I W τ s ρ st := rfl
 
 /-! ### The counted run and the run agree on the memory -/
 
@@ -373,6 +403,7 @@ theorem map_addHistory_exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) 
     split_ifs
     · exact ih _ _
     · rfl
+  | note _ _ ih => exact ih ..
 
 /-- **The counted run and the run end in the same memory, or both fail.** -/
 theorem map_mem_exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : Tape K) (s : Stmt Op Tst)
@@ -445,6 +476,7 @@ theorem map_mem_exec (I : Interp Op Tst K) (W : Op → List ℕ → ℕ) (τ : T
     split_ifs
     · exact ih _ _
     · rfl
+  | note _ _ ih => exact ih ..
 
 /-- A counted run succeeds exactly when the run does. -/
 theorem exec_eq_some_of_run {I : Interp Op Tst K} {τ : Tape K} {s : Stmt Op Tst} {ρ : Env}
@@ -547,6 +579,7 @@ theorem shape_store_of_run {I : Interp Op Tst K} {τ : Tape K} {s : Stmt Op Tst}
     obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
     split_ifs at h
     exact ih h
+  | note _ _ ih => exact ih h
 
 /-! ### A counted run only adds counts -/
 
@@ -604,6 +637,7 @@ theorem cost_le_of_exec {I : Interp Op Tst K} {W : Op → List ℕ → ℕ} {τ 
     obtain ⟨a, -, h⟩ := Option.bind_eq_some_iff.mp h
     split_ifs at h
     exact ih h
+  | note _ _ ih => exact ih h
 
 /-- The interpretation of instrumented programs: original calls are unchanged and bookkeeping
 calls preserve the memory. Queries are unchanged. -/
@@ -675,6 +709,7 @@ theorem run_instrument (I : Interp Op Tst K) (τ : Tape K) (s : Stmt Op Tst)
     simp only [Stmt.instrument, eval, run_tally, Option.bind_some, ih]
   | frame ds args body ih =>
     simp only [Stmt.instrument, eval, run_tally, Option.bind_some, ih]
+  | note _ _ ih => exact ih ..
 
 
 

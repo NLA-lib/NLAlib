@@ -17,7 +17,7 @@ released before later workspaces are allocated. Execution needs no distributiona
 
 ## Main results
 
-* `NLAlib.HutchPlusPlus.writes_sketch` returns the image of the actual sampled sketch.
+* `NLAlib.HutchPlusPlus.sketch_writes` returns the image of the actual sampled sketch.
 -/
 
 @[expose] public section
@@ -33,8 +33,10 @@ variable {𝕜 Op Tst : Type} [RCLike 𝕜] [Has StoredOperatorOp Op] [Has Sampl
 local instance instInhabitedSketch : Inhabited 𝕜 := ⟨0⟩
 
 /-- Draw and apply a sketch, retaining its exact tape window and removing its scratch.
-The statement includes zero dimensions and does not assume sample independence. -/
-theorem writes_sketch {dataLength : ℕ → ℕ → ℕ}
+The statement includes zero dimensions and does not assume sample independence.
+A fragment of `NLAlib.HutchPlusPlus.estimateRoutine`: run only inside its tree, on its
+operands and the buffers it allocates. -/
+theorem sketch_writes {dataLength : ℕ → ℕ → ℕ}
     {matrix : (m n : ℕ) → List 𝕜 → Matrix (Fin m) (Fin n) 𝕜}
     (hI : StoredOperator.IsExact dataLength matrix I) (hSample : IsSample I) (stream : ℕ)
     {n k : ℕ} {data b : ℕ × ℕ} (as : List 𝕜) (hl : m.Live [data, b])
@@ -42,7 +44,7 @@ theorem writes_sketch {dataLength : ℕ → ℕ → ℕ}
     (hBA : Fp.Disj (Store.inBlock b.1 b.2 (k * n))
       (Store.inBlock data.1 data.2 (dataLength n n)))
     (hb : b.2 + k * n ≤ m.store.len b.1) :
-    Writes .total I τ (sketch stream).body (Env.frame [n, k] [data, b])
+    Writes .total I τ (sketch stream) (Env.frame [n, k] [data, b])
       (Store.inBlock b.1 b.2 (k * n))
       (fun m' => m'.pos = m.pos + n * k ∧ m'.store.readBlock b.1 b.2 (k * n) =
         some ((EntryCodec.scalar 𝕜).packFinMatrix (matrix n n as *
@@ -57,9 +59,14 @@ theorem writes_sketch {dataLength : ℕ → ℕ → ℕ}
   have hLive : (Mem.mk store m.pos).Live [(m.store.length, 0)] := by
     simp only [Mem.live_cons, Mem.live_nil]
     exact ⟨by omega, trivial⟩
-  refine Writes.seq_le ((writes_sampleVector hSample stream (by simpa using hs.ge)).in_frame
-    rfl rfl hLive) (by fp_sub) ?_
-  intro m₁ hfr ⟨hS, hp⟩
+  call (sampleRoutine_meets hSample stream) [n * k] ((m.store.length, 0)) as m₁ hfr hp (ws) hpost
+  have hfr : store.EqOff (Store.inBlock m.store.length 0 (n * k)) m₁.store :=
+    hfr.mono (by fp_sub)
+  have hS : m₁.store.readBlock m.store.length 0 (n * k) =
+      some (τ.window stream m.pos (n * k)) := by
+    have h : ws = (τ.shift m.pos).window stream 0 (n * k) := hpost
+    rw [h, Tape.window_shift] at hws
+    exact hws
   let S := (EntryCodec.scalar 𝕜).matrix n k (τ.window stream m.pos (n * k))
   have hSPack : m₁.store.readBlock m.store.length 0 (k * n) =
       some ((EntryCodec.scalar 𝕜).packFinMatrix S) := by
@@ -73,10 +80,8 @@ theorem writes_sketch {dataLength : ℕ → ℕ → ℕ}
   have hLive₁ : m₁.Live [data, (m.store.length, 0), b] := by
     simp only [Mem.live_cons, Mem.live_nil]
     rw [hfr.length_eq]
-    exact ⟨by change data.1 < store.length; omega,
-      by change m.store.length < store.length; omega,
-      by change b.1 < store.length; omega, trivial⟩
-  refine ((writes_applyColumns hI as S hLive₁ hA₁ hSPack
+    exact ⟨by omega, by omega, by omega, trivial⟩
+  refine ((applyColumns_writes hI as S hLive₁ hA₁ hSPack
     (Fp.disj_inBlock_of_ne (Nat.ne_of_lt hbuf)) hBA
     (by rw [hfr.len_eq]; simpa only [(hBelow b.1 hbuf).1] using hb)).in_frame
       rfl rfl hLive₁).mono (by fp_sub) ?_

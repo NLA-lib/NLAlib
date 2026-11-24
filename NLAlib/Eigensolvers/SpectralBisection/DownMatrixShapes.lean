@@ -25,7 +25,7 @@ namespace NLAlib.SpectralBisection
 open Ops
 
 private theorem downLarge_shape (n L cap d lo k : ℕ) (offs : List ℕ) (hk : k ≤ n) :
-    (stmtCost (downLargeImpl (node (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))).body
+    (stmtCost (downLarge (node (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)))
       ([n, L, cap, d, lo, k] ++ offs)).CallsSatisfy (MatrixShape n) := by
   refine (Count.callsSatisfy_add _ _ (MatrixShape n)).mpr
     ⟨matrixShapes_of_allOps n _ (by rfl) _, ?_⟩
@@ -39,7 +39,7 @@ private theorem downLarge_shape (n L cap d lo k : ℕ) (offs : List ℕ) (hk : k
   · exact fun os => node_matrixShapes n L cap d lo k os hk
 
 private theorem downNode_shape (n L cap d lo k : ℕ) (offs : List ℕ) (hk : k ≤ n) :
-    (stmtCost (downNodeImpl (node (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))).body
+    (stmtCost (downNode (node (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)))
       ([n, L, cap, d, lo, k] ++ offs)).CallsSatisfy (MatrixShape n) := by
   refine (Count.callsSatisfy_add _ _ (MatrixShape n)).mpr
     ⟨matrixShapes_of_allOps n _ (by rfl) _, ?_⟩
@@ -51,7 +51,7 @@ private theorem downNode_shape (n L cap d lo k : ℕ) (offs : List ℕ) (hk : k 
   · exact fun os => downLarge_shape n L cap d lo k os hk
 
 private theorem downNodes_shape (n L cap d : ℕ) (offs : List ℕ) (hlen : offs.length = 13) :
-    (stmtCost (downNodesImpl (node (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))).body
+    (stmtCost (downNodes (node (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)))
       ([n, L, cap, d] ++ offs)).CallsSatisfy (MatrixShape n) := by
   refine (Count.callsSatisfy_sum _ _ (MatrixShape n)).mpr ?_
   intro lo hlo
@@ -70,8 +70,8 @@ private theorem downNodes_shape (n L cap d : ℕ) (offs : List ℕ) (hlen : offs
   · simp [IExp.evalList, IExp.eval, hlen]
   · exact fun os => downNode_shape n L cap d lo k os hkn
 
-private theorem downLevelImpl_shape (n L cap d : ℕ) (offs : List ℕ) :
-    (stmtCost (downLevelImpl (node (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))).body
+private theorem downLevelBody_shape (n L cap d : ℕ) (offs : List ℕ) :
+    (stmtCost (downLevelBody (node (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)))
       ([n, L, cap, d] ++ offs)).CallsSatisfy (MatrixShape n) := by
   refine (Count.callsSatisfy_add _ _ (MatrixShape n)).mpr
     ⟨matrixShapes_of_allOps n _ (by rfl) _, ?_⟩
@@ -85,13 +85,13 @@ private theorem downLevel_shape (n L cap d : ℕ) (offs : List ℕ) :
       ([n, L, cap, d] ++ offs)).CallsSatisfy (MatrixShape n) := by
   refine callsSatisfy_stmtCost_frame (d := [n, L, cap, d]) (P := MatrixShape n) ?_ ?_
   · simp [IExp.evalList, IExp.eval]
-  · exact fun os => downLevelImpl_shape n L cap d os
+  · exact fun os => downLevelBody_shape n L cap d os
 
 /-- Every downward matrix operation has a legal shape bounded by the root dimension.
 The result covers every depth and bounded size-query choice in the static manifest. -/
 theorem downwardPass_matrixShapes (n L cap : ℕ) (offs : List ℕ)
     (hlen : offs.length = 12) :
-    (stmtCost (downwardPass (node (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))).body
+    (stmtCost (downwardPass (node (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)))
       ([n, L, cap] ++ offs)).CallsSatisfy (MatrixShape n) := by
   refine (Count.callsSatisfy_sum _ _ (MatrixShape n)).mpr ?_
   intro d hd

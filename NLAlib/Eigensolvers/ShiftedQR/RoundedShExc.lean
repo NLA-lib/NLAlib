@@ -18,6 +18,9 @@ potential threshold, the random shifts, the trials, and the mathematics that one
 The random shifts are a family of probabilistic blocks, one per centre and radius; their outcome
 is read through a measurable set of memory pairs (`NLAlib.Ops.PWrites.pstep_of_forall`).
 
+The operand-form lemmas of this file are about trees shared by
+`NLAlib.ShiftedQR.shqrSmallEigRoutine`.
+
 ## Main definitions
 
 * `NLAlib.ShiftedQR.shExcInit`, `NLAlib.ShiftedQR.shExc`: the programs.
@@ -167,7 +170,7 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has DiskSampleOp O] [Has
 search word `Gw` is $1$, the threshold $\mathrm{fl}(c_p\tilde\psi)$ of the potential test goes
 to `Pt` and the radius $\mathrm{fl}(c_r\tilde\psi)$ to `Rt` (which held $\tilde\psi$). The
 interface is `[] (Cr, Cp, Rt) → (Rt, Pt, Gw, Fl)`. -/
-def shExcInit : Impl O Q := opsImpl% [] (Cr, Cp, Rt) → (Rt, Pt, Gw, Fl) {
+def shExcInit : Stmt O Q := ops% [] (Cr, Cp, Rt) → (Rt, Pt, Gw, Fl) {
   call (Has.inj (ScalarOp.lit 2)) [] () → (Fl);
   call (Has.inj (ScalarOp.lit 1)) [] () → (Gw);
   call (Has.inj ScalarOp.mul) [] (Cp, Rt) → (Pt);
@@ -181,12 +184,12 @@ Trial $t$ records its rotations in slot $j_0 + t$ of the log `Lg` of slot width 
 interface is
 `[N, k, q, n0, w, j0] (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, T, SR, Ds, Rg, P2, Ss) → (A, Gw, Fl, Lg)`.
 -/
-def shExc : Impl O Q :=
-  opsImpl% [N, k, q, n0, w, j0] (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, T, SR, Ds, Rg, P2, Ss) →
+def shExc : Stmt O Q :=
+  ops% [N, k, q, n0, w, j0] (A, Z, Cr, Cw, Cp, G, Thr, Rt, Pt, T, SR, Ds, Rg, P2, Ss) →
       (A, Gw, Fl, Lg) {
-    run shExcInit.body [] (Cr, Cp, Rt, Rt, Pt, Gw, Fl);
-    run (excShifts (O := O) (Q := Q)).body [n0] (Z, Rt, Cw, G, Ss);
-    run shTrials.body [N, k, q, n0, w, j0] (A, Ss, Thr, Pt, T, SR, Ds, Rg, P2, A, Gw, Fl, Lg)
+    run shExcInit [] (Cr, Cp, Rt, Rt, Pt, Gw, Fl);
+    run (excShifts (O := O) (Q := Q)) [n0] (Z, Rt, Cw, G, Ss);
+    run shTrials [N, k, q, n0, w, j0] (A, Ss, Thr, Pt, T, SR, Ds, Rg, P2, A, Gw, Fl, Lg)
   }
 
 end Program
@@ -200,7 +203,8 @@ omit [Has IndexOp O] [Has DiskSampleOp O] [Has CmpTst Q] [Has IdxTst Q] in
 /-- The start of the exceptional branch on a scalar machine with exact natural literals up to
 $2$: from the words $c_r$, $c_p$ and $p$ at `Cr`, `Cp`, `Rt`, `NLAlib.ShiftedQR.shExcInit`
 stores $\mathrm{fl}(c_r p)$ at `Rt`, $\mathrm{fl}(c_p p)$ at `Pt`, $1$ at `Gw` and $2$ at
-`Fl`, and writes only these. -/
+`Fl`, and writes only these.
+A fragment of the tree `NLAlib.ShiftedQR.shExc`. -/
 theorem shExcInit_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (hNat : IsExactNatLit id M 2) {τ : Tape ℝ} {m : Mem ℝ}
     {cr cp rt pt gw f : ℕ × ℕ} {crv cpv p : ℝ} (hcr : m.store.get cr.1 cr.2 = some crv)
@@ -212,7 +216,7 @@ theorem shExcInit_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M
     (hfg : Fp.Disj (Store.inBlock f.1 f.2 1) (Store.inBlock gw.1 gw.2 1))
     (hfgp : Fp.Disj (Store.inBlock f.1 f.2 1 ⊔ Store.inBlock gw.1 gw.2 1)
       (Store.inBlock pt.1 pt.2 1)) :
-    Writes .total I τ (shExcInit (O := O) (Q := Q)).body
+    Writes .total I τ (shExcInit (O := O) (Q := Q))
       (Env.frame [] [cr, cp, rt, rt, pt, gw, f])
       (Store.inBlock rt.1 rt.2 1 ⊔ Store.inBlock pt.1 pt.2 1 ⊔ Store.inBlock gw.1 gw.2 1 ⊔
         Store.inBlock f.1 f.2 1)
@@ -629,7 +633,8 @@ $6\boldsymbol{u}(1.1\Sigma + 3R_{\mathrm{hi}}) \le
 From the state `NLAlib.ShiftedQR.ShExcMid1` the shifts `NLAlib.ShiftedQR.excShifts` reach the state
 `NLAlib.ShiftedQR.ShExcMid2` except with probability at most $\varphi$. The random shifts form one
 probabilistic block per centre and radius; their outcome is the measurable set
-`NLAlib.ShiftedQR.measurableSet_excOutcome`. -/
+`NLAlib.ShiftedQR.measurableSet_excOutcome`.
+A step in the proof of `NLAlib.ShiftedQR.shExc_pwrites`. -/
 theorem shExcShifts_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hI : I.IsMeasurable)
     {win : O → List ℕ → ℕ} (hloc : ∀ o, I.TapeLocal o (win o)) (hS : IsScalar M I)
     (hM : StdModel u id M) {law : ℕ → Measure ℝ} {s₀ : ℕ} (hD : IsPolarDiskSampler s₀ I)
@@ -654,7 +659,7 @@ theorem shExcShifts_pwrites {M : Machine ℝ} {I : Interp O Q ℝ} {u : ℝ} (hI
       hessenbergPotential k H)) ≤ ε * ((1.998 : ℝ) ^ ((k : ℝ)⁻¹) * θ * α *
         B ^ ((k : ℝ)⁻¹) * hessenbergPotential k H) * √(φ / (11 * ((n + 1 : ℕ) : ℝ))) / 8)
     (hcr : cr = (2 : ℝ) ^ ((k : ℝ)⁻¹) * (θ * α * B ^ ((k : ℝ)⁻¹))) (hcw : cw = ε / 2) :
-    PWrites law I (excShifts (O := O) (Q := Q)).body
+    PWrites law I (excShifts (O := O) (Q := Q))
       (Env.frame [(excNet ε).length] [(L, 0), (L + 1, 0), ww, g, (L + 10, 0)])
       (Store.inBlock (L + 10) 0 (2 * (excNet ε).length))
       (ShExcMid1 M u L k ε H V e ss α γ cg cr cw cp tv a s wg wr ww wp g thr f)

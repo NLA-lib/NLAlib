@@ -18,7 +18,7 @@ output blocks expose the exact two products and two shifted eigenvalue vectors.
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_upSplitResult`: total reconstruction of all four blocks.
+* `NLAlib.SpectralBisection.upSplitResult_writes`: total reconstruction of all four blocks.
 -/
 
 @[expose] public section
@@ -29,8 +29,9 @@ open Ops
 
 /-- The two matrix products and shifted child eigenvalues are the actual four stored blocks.
 The output regions may share arena buffers with other regions; their complete spatial
-separation and capacities are explicit. No spectral or successful-execution premise is used. -/
-theorem writes_upSplitResult {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has MatrixOp Op]
+separation and capacities are explicit. No spectral or successful-execution premise is used.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem upSplitResult_writes {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [Has MatrixOp Op]
     {M : Machine K} {I : Interp Op Tst K} (hS : IsScalar M I)
     (mm : ∀ {l m n : ℕ}, Matrix (Fin l) (Fin m) (K × K) →
       Matrix (Fin m) (Fin n) (K × K) → Matrix (Fin l) (Fin n) (K × K))
@@ -53,7 +54,7 @@ theorem writes_upSplitResult {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [
       (Fp.blocks [qp, qm, up, um, ep, em, sigma]
         [kp * k * 2, (k - kp) * k * 2, kp * kp * 2, (k - kp) * (k - kp) * 2,
           kp, k - kp, 1])) :
-    Writes .total I τ (upSplitResultImpl (Op := Op) (Tst := Tst)).body
+    Writes .total I τ (upSplitResult (Op := Op) (Tst := Tst))
       (Env.frame [k, kp] [qp, qm, up, um, ep, em, sigma, u, e])
       (Fp.blocks [u, (u.1, u.2 + 2 * (k * kp)), e, (e.1, e.2 + kp)]
         [kp * k * 2, (k - kp) * k * 2, kp, k - kp])
@@ -79,7 +80,7 @@ theorem writes_upSplitResult {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [
     (by simpa using Mem.readBlocks_getD hr₁ (i := 3) (by simp)) (by room)).seq_readBlock hd₁ ?_
   intro m₂ hfr₂ _ _
   have hr₂ := Mem.readBlocks_of_eqOff hfr₂ (by simpa using hprot 1) hr₁
-  refine (writes_frame rfl rfl (by room) (writes_scalarBroadcast_readBlock (hS .add)
+  refine (writes_frame rfl rfl (by room) (scalarBroadcast_writes_readBlock (hS .add)
     (by simpa using Mem.readBlocks_getD hr₂ (i := 4) (by simp))
     (by simpa using Mem.get_of_readBlocks_getD hr₂ (i := 6) (by simp) rfl rfl)
     (by room) (Or.inl ?_) ?_)).seq_readBlock hd₂ ?_
@@ -87,7 +88,7 @@ theorem writes_upSplitResult {K Op Tst : Type} [Inhabited K] [Has ScalarOp Op] [
   · exact (hprot 2).mono le_rfl (Fp.inBlock_getD_le_blocks _ _ (i := 6) (by simp)) |>.symm
   intro m₃ hfr₃ _ _
   have hr₃ := Mem.readBlocks_of_eqOff hfr₃ (by simpa using hprot 2) hr₂
-  exact (writes_frame rfl rfl (by room) (writes_scalarBroadcast_readBlock
+  exact (writes_frame rfl rfl (by room) (scalarBroadcast_writes_readBlock
     (x := em) (a := sigma) (y := (e.1, e.2 + kp)) (n := k - kp) (hS .sub)
     (by simpa using Mem.readBlocks_getD hr₃ (i := 5) (by simp))
     (by simpa using Mem.get_of_readBlocks_getD hr₃ (i := 6) (by simp) rfl rfl)

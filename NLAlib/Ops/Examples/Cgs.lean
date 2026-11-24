@@ -20,7 +20,7 @@ matrix stored by columns: the coefficients `r_ij := q_iᵀ a_j` (`cgsDots`), the
 ## Main results
 
 * `NLAlib.Ops.Examples.cgsCol_writes`: the column as one block specification, for every
-  interpretation meeting the contracts: the store changes only in column `j` of `R` (up to the
+  interpretation satisfying the contracts: the store changes only in column `j` of `R` (up to the
   diagonal), column `j` of `Q` and the two scratch buffers, and the new entries are described by
   `NLAlib.Ops.Examples.CgsCol`. Proved in the program logic (`NLAlib.Ops.Logic`): a relational
   fill (the coefficients), a loop of updates and three steps.

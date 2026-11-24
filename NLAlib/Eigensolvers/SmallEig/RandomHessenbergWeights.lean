@@ -10,8 +10,8 @@ public import NLAlib.Eigensolvers.SmallEig.RandomHessenbergRotations
 /-!
 # The eigenvector weights after the random Hessenberg form
 
-The probabilistic half of `RHess` ([BanksGarzaVargasSrivastava2025, Proposition 5.3], corrected
-for its errata P3 and P4): the drawn direction, a standard complex Gaussian vector, is nearly
+The probabilistic half of `RHess` ([BanksGarzaVargasSrivastava2025, Proposition 5.3], adapted
+to a Gaussian draw): the drawn direction, a standard complex Gaussian vector, is nearly
 orthogonal to a unit eigenvector of the input, fixed before the draw, or has a large norm, with
 small probability (`NLAlib.SmallEig.measureReal_rhessBad_le`); off these windows the matrix that
 `RHess` stores has a diagonalization of twice the condition, half the separation and every

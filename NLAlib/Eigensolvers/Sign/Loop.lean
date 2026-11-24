@@ -18,7 +18,7 @@ test at the cap.
 
 ## Main results
 
-* `NLAlib.Sign.writes_loop`: the loop returns the actual capped mathematical iterate and cache.
+* `NLAlib.Sign.loop_writes`: the loop returns the actual capped mathematical iterate and cache.
 -/
 
 @[expose] public section
@@ -35,8 +35,9 @@ variable {K Op Tst Su Sg : Type} [Inhabited K] [Has ScalarOp Op] [Has MatrixOp O
 /-- From an actual initialized matrix/cache/flag representation, the capped loop terminates
 with the existing mathematical capped Newton–Schulz result. It requires only functional
 scalar/multiplication contracts, exact comparison queries, distinct zero/one decodings and
-workspace capacities. No numerical convergence or successful-execution premise is assumed. -/
-theorem writes_loop {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I)
+workspace capacities. No numerical convergence or successful-execution premise is assumed.
+A fragment of `NLAlib.Sign.signRoutine`. -/
+theorem loop_writes {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) {τ : Tape K} {n cap : ℕ}
     (A : Matrix (Fin n) (Fin n) (K × K)) (η : K) {x w v t : ℕ × ℕ} {m : Mem K}
     (hState : LoopState (M.toFloatMachine dec mm qr unif normal) x w t η A m.store)
@@ -45,7 +46,7 @@ theorem writes_loop {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I)
     (hx : x.2 + 2 * (n * n) ≤ m.store.len x.1)
     (hw : w.2 + 2 * (n * n) ≤ m.store.len w.1)
     (hv : v.2 + 2 * (n * n) ≤ m.store.len v.1) (ht : t.2 + 5 ≤ m.store.len t.1) :
-    Writes .total I τ (loop (Has.inj MatrixOp.mul)).body
+    Writes .total I τ (loop (Has.inj MatrixOp.mul))
       (Env.frame [n, cap] [x, w, v, t, x, w, v, t]) (loopFootprint n x w v t)
       (fun μ => LoopState (M.toFloatMachine dec mm qr unif normal) x w t η
         (newtonSchulzLoop (M.toFloatMachine dec mm qr unif normal) η cap A) μ.store ∧
@@ -70,7 +71,7 @@ theorem writes_loop {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I)
     have hw' : w.2 + 2 * (n * n) ≤ μ.store.len w.1 := by rw [hfr.len_eq]; exact hw
     have hv' : v.2 + 2 * (n * n) ≤ μ.store.len v.1 := by rw [hfr.len_eq]; exact hv
     have ht' : t.2 + 5 ≤ μ.store.len t.1 := by rw [hfr.len_eq]; exact ht
-    have hr := writes_round (dec := dec) (mm := mm) (qr := qr)
+    have hr := round_writes (dec := dec) (mm := mm) (qr := qr)
       (unif := unif) (normal := normal) (τ := τ) hS hC hMM _ η hStored.1 hl' hAP hx' hw' hv' ht'
     have hlFrame : μ.Live [x, w, v, t, x, w, v, t] :=
       (Mem.live_append μ _ _).mpr ⟨hl', hl'⟩

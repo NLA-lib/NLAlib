@@ -67,10 +67,163 @@ grouped by module. Run it on a PR's headline theorems to check that they are pro
 library's API for their topic rather than re-derived.
 
 `scripts/OpsPrograms.lean` checks computability of fixed Ops programs and inventories canonical
-algorithm certificates. It rejects imports of the retired execution core. Structural rejection
+algorithm certificates. For each certificate it computes one line and compares it with
+`scripts/ops_certificates.txt` (a recorded certificate may not get weaker; a new one needs a
+confined model, closed-form work and a derived problem, or a reviewed line):
+
+* `uniform`, `confined`, `charged`: `yes`, `no`, or `unknown` when the search for the instance
+  stopped at its limit;
+* `budget`, `work`, `scratch`: `manifest` when the field depends on a function that reads a tree;
+  `closed` when every library definition under it was opened and none does; `unknown` when the
+  search met something it cannot inspect (an axiom, an opaque constant, a non-constructive
+  choice). `unknown` counts as `manifest` wherever `closed` is required;
+* `problem`, `derived`, `unstored`: whether the problem is derived from `Ops.Inputs` (the inputs of a `Routine.Domain`), how
+  many operands hold words computed from the inputs, and whether inputs are held by no buffer;
+* `oracles`: for a model that is not uniform, `declared` when a `Inputs.Oracles`
+  declaration unifies with the domain and the model of this certificate, `related` when one
+  exists for the same domain constant (below `cast` and `castOps`) but does not;
+* `claim`: the `RandomizedClaim`s whose certificate, with the claim's binders instantiated, is
+  this certificate at its own parameters; `related:<name>` when a claim is about the same
+  declaration at other arguments. A certificate whose routine specification is termination
+  only must have a claim that applies. `related` values do not satisfy that rule and do not
+  keep `oracles=declared` or a claim in the ratchet.
+
+`OPS_CERTIFICATES_REPORT=1` (or `=Name`) prints what each certificate states, as written:
+admitted sizes, acceptance predicate, slots, the model with the contracts and weights of its
+operations and queries, every binder of the certificate, resource fields and output condition;
+and for each oracle declaration and randomized claim whether it applies to this instance, the
+binders it fixes, its hypotheses that are not hypotheses of the certificate, and for a claim
+the law (realizable by a field of the claim), `admits`, `interprets`, event and bound. It
+writes nothing;
+`OPS_CERTIFICATES_REPORT_FILE=path` sends the report to a file. `OPS_CERTIFICATES_WRITE=1`
+rewrites the fixture, and `OPS_CERTIFICATES_FILE=path` compares with another file. The supported
+surface of the layer is listed in the [Ops README](../../NLAlib/Ops/README.md), "What client
+code may depend on".
+
+The classification is tested by the script itself, each time it runs (so by the CI step
+`lake env lean scripts/OpsPrograms.lean` and by `scripts/stage_check.sh`). The namespace
+`OpsCertificates.Fixtures` of the script declares artificial certificates, claims and oracle
+declarations, with postulated proofs, one per case: a claim for the certificate, for a
+specialisation of it and with further hypotheses; two models on one domain with oracles for one;
+oracles with a further hypothesis, for no model, and on a domain read through `castOps`;
+resource fields that are explicit, read off a tree (directly and two definitions down),
+non-constructive, an axiom or an opaque constant, and a specification that does not unfold; the
+three answers of the model classes; termination-only certificates with no claim, a related
+claim, a claim and an exemption; derived (also through `cast` and `castOps`) and hand-written
+problems. The table `expectations` gives, for each fixture certificate, its line, the errors it
+gives as an unrecorded certificate and pieces of text its report must contain; the table
+`ratchet` gives, field by field, which changes from a recorded line are errors. A difference is
+an error that names the fixture, what was expected and what was computed, and the run ends with
+`ops report fixtures: N cases`. The fixtures are constants of the script, not of the library:
+the inventory of the library reads imported constants only, so no fixture is in
+`scripts/ops_certificates.txt`.
+
+To add a case, declare the certificate in `OpsCertificates.Fixtures` (`cert _ _` proves any
+certificate; `claim _` and `oracles _ _` give a claim and an oracle declaration) and add its
+row to `expectations`, writing only the fields that differ from a certificate in good order; a
+fixture certificate without a row is an error. Write the row from what the case should give,
+then run the script; to check that the case tests something, change the code it exercises in
+a copy of the script and see the row fail.
+
+**The trusted base.** The same script computes the declarations a reader must believe in order
+to read a certificate, and compares them with `scripts/ops_trusted_base.txt`. Lean's kernel
+checks every proof, so no proof is in the list; what is in it is what the statements are made
+of.
+
+- *Roots.* The forms a claim takes: `Ops.Algorithm` (with `Ops.Program.Certifies`, `Ops.Runs`,
+  `Ops.Specification`, `Ops.Specification.Accepts`, `Ops.Problem`, `Ops.AccessModel` and the
+  execution rules `Ops.Reference.Execution`, by which a run is defined); `Ops.RandomizedClaim`
+  (with
+  `Ops.Algorithm.FailsAtMost`, `Ops.TapeModel.Realizable`); `Ops.Inputs`, its `problem`,
+  `Ops.Inputs.Oracles` and `Ops.Inputs.Checked`; and the three model properties
+  the report prints. What one certificate adds (codecs, a tape law, a machine, the contracts of
+  its operations) is read with that certificate and is not in the list. Routines, their
+  judgment, linking, static bounds and tactics are not in it: they produce certificates.
+- *Closure.* From a declaration, the constants of its type and of its body (for an inductive
+  type or structure, of its constructors). Theorems are not followed. Declarations Lean
+  generates are followed and not listed. Only library declarations are listed.
+- *File.* One line for each declaration: `Name kind=… module=… root=… route=… type=… body=…`.
+  `route` says whether the declaration is reached from the execution rules only
+  (`reference`), from the rules and the evaluator (`execution`: the store, the syntax, the
+  counts), from neither (`claim`), or is used by the evaluator and not by the rules
+  (`evaluator`: it would be in the list for another reason; no declaration has this route, and
+  the check fails if the evaluator or its guarded call `Interp.callS` is reached from a root). `type` and `body` are hashes of
+  the statement and of the content.
+- *Output.* The run prints `ops trusted base: N declarations in M modules, L source lines, …`
+  with the size of what the execution rules reach, and `ops trusted base fixtures: 6 checks` (the closure rule
+  and the comparison, tested on constants of the script).
+
+The check fails when a declaration enters or leaves the list, or when a statement or a
+definition in it changes, and names each. Such a change alters what every certificate means,
+or what must be read to know it, so it needs the sign-off of a reviewer who has read the
+changed declarations; the pull request says what changed and why the base is not larger than
+it needs to be. Then `OPS_TRUSTED_BASE_WRITE=1 lake env lean scripts/OpsPrograms.lean`
+rewrites the file. A change that only moves a declaration, edits a docstring or changes a proof
+does not change the file. The explanation of each declaration, for a reader, is the
+[reviewer's declaration map](../design/Ops-ReferenceReview.md). The aim is a smaller list: a
+definition that can be replaced by a theorem about the others should be.
+
+**Worked instances.** `NLAlib/Ops/Examples/WorkedInstances/` states, for a few trees of the
+library, the exact outcome of one small run under the execution rules. They test the
+definitions of the core against values obtained outside the library:
+`scripts/worked_instances.py` computes the outputs and the numbers of arithmetic operations
+from the textbook formula of each operation, with exact rational arithmetic, and
+`scripts/test_worked_instances.py` (one of the unit tests below) fails if a literal of a Lean
+theorem is not the value the script computes. A change of the core that alters an output or
+an operation count of an instance fails the build of its module; if the theorem is then edited
+to the new value, the unit test fails. The totals that include structural instructions are
+regression values with no outside source: a deliberate change of a charge changes them, and
+the pull request says so. To add an instance, write the computation in the script from the
+mathematics (not from the tree), state the theorem with the literals, and add its assertion to
+the test.
+
+It rejects imports of the retired execution core. Structural rejection
 and accounting regressions are kernel-checked modules in `NLAlib/Ops/Examples/Certification.lean`
 and `NLAlib/Ops/Tools/ProgramFixtures.lean`; the whole-library audit and replay cover them.
 The former E3–E6 and E8–E9 registry/syntax rules are retired, and their identifiers are not reused.
+
+## The explorer build
+
+nla-lib.org/explore is built in the repository `NLA-lib/NLA-lib.github.io`, from the data that
+`scripts/explore_data.sh` extracts here and from that repository's own metadata
+(`explore/results.toml` and the pages under `explore/content/`), which names declarations of
+this library: the headline of a result, the theorems a page presents. A rename or a removal
+here can therefore make the website's build fail, and the website then stays at its last
+successful build without any check of this repository saying so.
+
+`scripts/explore_site_check.py` runs that build on a given extraction, as the website's deploy
+workflow does, and reports two things: whether the build passes, with its first error if not,
+and every name in the website's metadata that is not a declaration of the data, with the target
+of the rename maps when there is one.
+
+```
+bash scripts/explore_data.sh explore-data.json
+python3 scripts/explore_site_check.py --data explore-data.json
+```
+
+It fetches the website's `main` (or reads a local copy: `--site DIR`), installs the website's two
+pinned requirements into a temporary directory (`--no-install` uses the installed ones), and
+exits 1 when the build fails. Names that are stale without failing the build are a warning.
+It is not part of `scripts/stage_check.sh`, which needs no network.
+
+In CI it is the job "Explorer build against website metadata (advisory)", which runs after the
+main job on the extraction that job made, and writes the same report as the job summary. The
+job is advisory, and is not a required check:
+
+- The website's metadata can only follow a library change, because the website builds against
+  the data of `main`. A rename is therefore expected to turn this job red once.
+- The job does not fail the workflow. The publication of the data and the reuse of the build
+  both require the workflow to succeed, and must not wait for the website.
+
+When the job fails on your pull request: prepare the matching change to the website repository
+(the report lists the names and where they are used), say so in the pull request, merge the
+library change first, and then the website's. The job is green again on the next push after
+that. A rename also needs its entry in a rename map ([naming](naming.md) N12), from which the
+website redirects old links.
+
+The job runs code from the website repository's `main`. It is given no secret, a read-only
+token that is not left in the checkout, and the script passes none of its own environment to
+that code.
 
 ## CI build reuse
 

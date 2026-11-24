@@ -49,17 +49,17 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTs
 (planes $k, k + 1$, a range $j_0, \dots, j_0 + n_c - 1$): for the valid slots in order (`ns`
 slots of `w` entries), recompute each entry's coefficients and call `Rot` at the plane
 `lo + r`. The plane is read with the bound `ld`. `[ld, lo, j0, nc, ns, w] (Lg, A) → (A)`. -/
-def givensReplayWith (Rot : Impl O Q) : Impl O Q :=
-    opsImpl% [ld, lo, j0, nc, ns, w] (Lg, A) → (A) {
+def givensReplayWith (Rot : Stmt O Q) : Stmt O Q :=
+    ops% [ld, lo, j0, nc, ns, w] (Lg, A) → (A) {
   let Cf ← alloc 4;
   let T ← alloc 10;
   for s < ns {
     if (Has.inj CmpTst.isPos) [] (Lg[s * (1 + 5 * w)]) {
       for i < w {
         let r ← index (Has.inj IdxTst.toNat) (Lg[s * (1 + 5 * w) + 1 + 5 * i]) ≤ ld;
-        run (coefficients (Op := O) (Tst := Q)).body []
+        run (coefficients (Op := O) (Tst := Q)) []
           (Lg[s * (1 + 5 * w) + 2 + 5 * i], Lg[s * (1 + 5 * w) + 4 + 5 * i], Cf, Cf[2]);
-        run Rot.body [ld, lo + r, j0, nc] (A, Cf, Cf[2], T, A)
+        run Rot [ld, lo + r, j0, nc] (A, Cf, Cf[2], T, A)
       }
     } else { skip }
   }
@@ -67,11 +67,11 @@ def givensReplayWith (Rot : Impl O Q) : Impl O Q :=
 
 /-- **Replay a log on rows**: rotate the rows `lo + r, lo + r + 1` of `A` over the columns
 `j0, …, j0 + nc - 1` (`NLAlib.rotateRowsOn`). `[ld, lo, j0, nc, ns, w] (Lg, A) → (A)`. -/
-def givensReplayRows : Impl O Q := givensReplayWith (rotateRowsOn (Op := O) (Tst := Q))
+def givensReplayRows : Stmt O Q := givensReplayWith (rotateRowsOn (Op := O) (Tst := Q))
 
 /-- **Replay a log on columns** (right multiplication by the computed adjoint rotations) over the
 rows `i0, …, i0 + nr - 1` (`NLAlib.rotateColumnsOn`). `[ld, lo, i0, nr, ns, w] (Lg, A) → (A)`. -/
-def givensReplayColumns : Impl O Q := givensReplayWith (rotateColumnsOn (Op := O) (Tst := Q))
+def givensReplayColumns : Stmt O Q := givensReplayWith (rotateColumnsOn (Op := O) (Tst := Q))
 
 end Replay
 
@@ -337,7 +337,7 @@ variable {O Q : Type} [Has ScalarOp O] [Has IndexOp O] [Has CmpTst Q] [Has IdxTs
 
 /-- The replay of one entry, as it appears in `NLAlib.givensReplayWith`: the plane read with the
 bound `ld`, the coefficients, the rotation. -/
-private def replayEntryStmt (Rot : Impl O Q) : Stmt O Q :=
+private def replayEntryStmt (Rot : Stmt O Q) : Stmt O Q :=
   Stmt.bindIdx (Has.inj IdxTst.toNat)
     [{ buf := 0, off := IExp.var 6 + IExp.var 9 * (IExp.const 1 + IExp.const 5 * IExp.var 5) +
       IExp.const 1 + IExp.const 5 * IExp.var 10 }]
@@ -348,18 +348,19 @@ private def replayEntryStmt (Rot : Impl O Q) : Stmt O Q :=
           { buf := 0, off := IExp.var 6 + IExp.var 9 * (IExp.const 1 + IExp.const 5 * IExp.var 5) +
             IExp.const 4 + IExp.const 5 * IExp.var 10 },
           { buf := 3, off := IExp.const 0 }, { buf := 3, off := IExp.const 2 }]
-        (coefficients (Op := O) (Tst := Q)).body).seq
+        (coefficients (Op := O) (Tst := Q))).seq
       (Stmt.frame [IExp.var 0, IExp.var 1 + IExp.var 11, IExp.var 2, IExp.var 3]
         [{ buf := 1, off := IExp.var 7 }, { buf := 3, off := IExp.const 0 },
           { buf := 3, off := IExp.const 2 }, { buf := 4, off := IExp.const 0 },
           { buf := 1, off := IExp.var 7 }]
-        Rot.body))
+        Rot))
 
 omit [Has IndexOp O] [Inhabited ℝ] in
 /-- The replay of one entry whose two planes are in range stores the rotation word of the
-coefficients rounded from the entry. -/
+coefficients rounded from the entry.
+A step in the proof of `NLAlib.givensReplayWith_writes_word`. -/
 private theorem replayEntryStmt_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
-    (hS : IsScalar Mch I) (hQ : IsToNat id I) (hC : IsCmp id I) {Rot : Impl O Q}
+    (hS : IsScalar Mch I) (hQ : IsToNat id I) (hC : IsCmp id I) {Rot : Stmt O Q}
     {N lo j0 nc ns w : ℕ} {lg x : ℕ × ℕ}
     {rotWord : ℕ → ℂ → ℂ → Matrix (Fin N) (Fin N) ℂ → Matrix (Fin N) (Fin N) ℂ}
     (hRot : ∀ {τ : Tape ℝ} {μ : Mem ℝ} {k : ℕ} {c s t : ℕ × ℕ} {Y : Matrix (Fin N) (Fin N) ℂ}
@@ -369,7 +370,7 @@ private theorem replayEntryStmt_writes {Mch : Machine ℝ} {I : Interp O Q ℝ}
       Fp.Disj (Store.inBlock x.1 x.2 (2 * (N * N))) (Store.inBlock c.1 c.2 2) →
       Fp.Disj (Store.inBlock x.1 x.2 (2 * (N * N))) (Store.inBlock s.1 s.2 2) →
       t.1 ≠ x.1 → t.1 ≠ c.1 → t.1 ≠ s.1 → t.2 + 10 ≤ μ.store.len t.1 →
-      Writes .total I τ Rot.body (Env.frame [N, k, j0, nc] [x, c, s, t, x])
+      Writes .total I τ Rot (Env.frame [N, k, j0, nc] [x, c, s, t, x])
         (Store.inBlock x.1 x.2 (2 * (N * N)) ⊔ Store.inBlock t.1 t.2 10)
         (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix x (rotWord k cv sv Y) μ'.store) μ)
     {ρ : Env} {sl i Lc : ℕ} (hidx : ρ.idx = [N, lo, j0, nc, ns, w, lg.2, x.2, x.2, sl, i])
@@ -429,9 +430,10 @@ omit [Has IndexOp O] [Inhabited ℝ] in
 /-- A replay with any rotation routine stores the replayed word: if `Rot` at the plane $k$
 stores `rotWord k c s` of the matrix for the coefficients $(c, s)$, the replay of a closed log
 whose entries have their two planes in range stores the left fold of `rotWord` over the valid
-entries, with the coefficients rounded from each entry. -/
+entries, with the coefficients rounded from each entry.
+Shared by the trees of `NLAlib.givensReplayRows`, `NLAlib.givensReplayColumns`. -/
 theorem givensReplayWith_writes_word {Mch : Machine ℝ} {I : Interp O Q ℝ}
-    (hS : IsScalar Mch I) (hQ : IsToNat id I) (hC : IsCmp id I) {Rot : Impl O Q}
+    (hS : IsScalar Mch I) (hQ : IsToNat id I) (hC : IsCmp id I) {Rot : Stmt O Q}
     {N lo j0 nc ns w : ℕ} {lg x : ℕ × ℕ}
     (rotWord : ℕ → ℂ → ℂ → Matrix (Fin N) (Fin N) ℂ → Matrix (Fin N) (Fin N) ℂ)
     (hRot : ∀ {τ : Tape ℝ} {μ : Mem ℝ} {k : ℕ} {c s t : ℕ × ℕ} {Y : Matrix (Fin N) (Fin N) ℂ}
@@ -441,7 +443,7 @@ theorem givensReplayWith_writes_word {Mch : Machine ℝ} {I : Interp O Q ℝ}
       Fp.Disj (Store.inBlock x.1 x.2 (2 * (N * N))) (Store.inBlock c.1 c.2 2) →
       Fp.Disj (Store.inBlock x.1 x.2 (2 * (N * N))) (Store.inBlock s.1 s.2 2) →
       t.1 ≠ x.1 → t.1 ≠ c.1 → t.1 ≠ s.1 → t.2 + 10 ≤ μ.store.len t.1 →
-      Writes .total I τ Rot.body (Env.frame [N, k, j0, nc] [x, c, s, t, x])
+      Writes .total I τ Rot (Env.frame [N, k, j0, nc] [x, c, s, t, x])
         (Store.inBlock x.1 x.2 (2 * (N * N)) ⊔ Store.inBlock t.1 t.2 10)
         (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix x (rotWord k cv sv Y) μ'.store) μ)
     {L : List (Option (List GivensEntry))} {P : List GivensEntry}
@@ -451,7 +453,7 @@ theorem givensReplayWith_writes_word {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hX : HoldsMatrix x X μ.store) (hl : μ.Live [lg, x])
     (hd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (Store.inBlock x.1 x.2 (2 * (N * N)))) :
-    Writes .total I τ (givensReplayWith Rot).body
+    Writes .total I τ (givensReplayWith Rot)
       (Env.frame [N, lo, j0, nc, ns, w] [lg, x, x]) (Store.inBlock x.1 x.2 (2 * (N * N)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix x ((slotEntries w L).foldl (fun Y e =>
         rotWord (lo + e.1) (roundedGivensCoeffs Mch e.2.1 e.2.2).1
@@ -563,7 +565,7 @@ theorem givensReplayColumns_specNorm_sub_le {Mch : Machine ℝ} {I : Interp O Q 
     (hX : HoldsMatrix x X μ.store) (hl : μ.Live [lg, x])
     (hd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (Store.inBlock x.1 x.2 (2 * (N * N)))) :
-    Writes .total I τ (givensReplayColumns (O := O) (Q := Q)).body
+    Writes .total I τ (givensReplayColumns (O := O) (Q := Q))
       (Env.frame [N, lo, 0, N, ns, w] [lg, x, x]) (Store.inBlock x.1 x.2 (2 * (N * N)))
       (fun μ' => ∃ X' : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix x X' μ'.store ∧
         specNorm (X' - X * embedBlock lo (givensLog d (slotEntries w L))) ≤
@@ -604,7 +606,7 @@ theorem givensReplayRows_specNorm_sub_le {Mch : Machine ℝ} {I : Interp O Q ℝ
     (hX : HoldsMatrix x X μ.store) (hl : μ.Live [lg, x])
     (hd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (Store.inBlock x.1 x.2 (2 * (N * N)))) :
-    Writes .total I τ (givensReplayRows (O := O) (Q := Q)).body
+    Writes .total I τ (givensReplayRows (O := O) (Q := Q))
       (Env.frame [N, lo, j0, nc, ns, w] [lg, x, x]) (Store.inBlock x.1 x.2 (2 * (N * N)))
       (fun μ' => ∃ X' : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix x X' μ'.store ∧
         (∀ i j : Fin N, ¬(j0 ≤ (j : ℕ) ∧ (j : ℕ) < j0 + nc) → X' i j = X i j) ∧
@@ -666,7 +668,8 @@ omit [Has IndexOp O] in
 /-- **The words of a row replay**: on a scalar machine with exact `toNat` and comparisons and
 every tape, the replay of a closed log whose entries have their two rows `lo + r, lo + r + 1`
 in range, on the columns $j_0, \dots, j_0 + n_c - 1$ of the matrix at `x`, writes only the matrix
-and stores the left fold of `NLAlib.replayRowStep` over the valid entries. -/
+and stores the left fold of `NLAlib.replayRowStep` over the valid entries.
+Shared by the trees of `NLAlib.ShiftedQR.roundedAbort`, `NLAlib.ShiftedQR.roundedDecoupleUpdate`. -/
 theorem givensReplayRows_writes_word {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (hQ : IsToNat id I) (hC : IsCmp id I) {N lo j0 nc ns w : ℕ}
     (hj : j0 + nc ≤ N) {L : List (Option (List GivensEntry))} {P : List GivensEntry}
@@ -676,7 +679,7 @@ theorem givensReplayRows_writes_word {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hX : HoldsMatrix x X μ.store) (hl : μ.Live [lg, x])
     (hd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (Store.inBlock x.1 x.2 (2 * (N * N)))) :
-    Writes .total I τ (givensReplayRows (O := O) (Q := Q)).body
+    Writes .total I τ (givensReplayRows (O := O) (Q := Q))
       (Env.frame [N, lo, j0, nc, ns, w] [lg, x, x]) (Store.inBlock x.1 x.2 (2 * (N * N)))
       (fun μ' => μ'.pos = μ.pos ∧
         HoldsMatrix x ((slotEntries w L).foldl (replayRowStep Mch lo j0 nc) X) μ'.store) μ :=
@@ -688,7 +691,9 @@ theorem givensReplayRows_writes_word {Mch : Machine ℝ} {I : Interp O Q ℝ}
 
 omit [Has IndexOp O] in
 /-- **The words of a column replay**: as `NLAlib.givensReplayRows_writes_word`, on the rows
-$i_0, \dots, i_0 + n_r - 1$, the replay stores the left fold of `NLAlib.replayColumnStep`. -/
+$i_0, \dots, i_0 + n_r - 1$, the replay stores the left fold of `NLAlib.replayColumnStep`.
+Shared by the trees of `NLAlib.hessenbergReduceQ`, `NLAlib.ShiftedQR.roundedAbort`,
+`NLAlib.ShiftedQR.roundedDecoupleUpdate` and 1 more. -/
 theorem givensReplayColumns_writes_word {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hS : IsScalar Mch I) (hQ : IsToNat id I) (hC : IsCmp id I) {N lo i0 nr ns w : ℕ}
     (hi : i0 + nr ≤ N) {L : List (Option (List GivensEntry))} {P : List GivensEntry}
@@ -698,7 +703,7 @@ theorem givensReplayColumns_writes_word {Mch : Machine ℝ} {I : Interp O Q ℝ}
     (hX : HoldsMatrix x X μ.store) (hl : μ.Live [lg, x])
     (hd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (Store.inBlock x.1 x.2 (2 * (N * N)))) :
-    Writes .total I τ (givensReplayColumns (O := O) (Q := Q)).body
+    Writes .total I τ (givensReplayColumns (O := O) (Q := Q))
       (Env.frame [N, lo, i0, nr, ns, w] [lg, x, x]) (Store.inBlock x.1 x.2 (2 * (N * N)))
       (fun μ' => μ'.pos = μ.pos ∧
         HoldsMatrix x ((slotEntries w L).foldl (replayColumnStep Mch lo i0 nr) X) μ'.store) μ :=
@@ -725,7 +730,7 @@ theorem givensReplayColumns_specNorm_sub_le_if {Mch : Machine ℝ} {I : Interp O
     (hX : HoldsMatrix x X μ.store) (hl : μ.Live [lg, x])
     (hd : Fp.Disj (Store.inBlock lg.1 lg.2 (ns * (1 + 5 * w)))
       (Store.inBlock x.1 x.2 (2 * (N * N)))) :
-    Writes .total I τ (givensReplayColumns (O := O) (Q := Q)).body
+    Writes .total I τ (givensReplayColumns (O := O) (Q := Q))
       (Env.frame [N, lo, 0, N, ns, w] [lg, x, x]) (Store.inBlock x.1 x.2 (2 * (N * N)))
       (fun μ' => ∃ X' : Matrix (Fin N) (Fin N) ℂ, HoldsMatrix x X' μ'.store ∧
         (C → specNorm (X' - X * embedBlock lo (givensLog d (slotEntries w L))) ≤

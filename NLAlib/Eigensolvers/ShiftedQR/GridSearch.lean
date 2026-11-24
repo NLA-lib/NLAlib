@@ -31,14 +31,16 @@ variable {Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op] [Has CmpTst Tst]
 
 /-- Compute one grid point in the reusable shift view and consider it while no prior candidate
 has been accepted. Coordinates use actual counted literals and scalar divisions. -/
-def gridCandidate : Impl Op Tst := opsImpl% [n, k, D, i, j]
+def gridCandidate : Stmt Op Tst := ops% [n, k, D, i, j]
     (A, Center, Radius, Threshold, Target, Flag) → (S, Z, Flag) {
-  run gridPoint.body [D, i, j] (Center, Radius, S);
-  run tryCandidate.body [n, k] (A, S, Threshold, Target, Flag, Z, Flag)
+  run gridPoint [D, i, j] (Center, Radius, S);
+  run tryCandidate [n, k] (A, S, Threshold, Target, Flag, Z, Flag)
 }
 
 /-- One streaming point extends the actual first-accepted search state. Positive grid
-resolution justifies its scalar divisions; no acceptance or execution hypothesis is assumed. -/
+resolution justifies its scalar divisions; no acceptance or execution hypothesis is assumed.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem gridCandidate_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {τp : Tape ℝ} {m : Mem ℝ} {n k D i j : ℕ} {a c r t target s z f : ℕ × ℕ}
@@ -56,7 +58,7 @@ theorem gridCandidate_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hapart : Fp.Apart [s, z, f] [2, 2 * ((n + 1) * (n + 1)), 1])
     (hsep : Fp.Disj (Fp.blocks [s, z, f] [2, 2 * ((n + 1) * (n + 1)), 1])
       (Fp.blocks [a, c, r, t, target] [2 * ((n + 1) * (n + 1)), 2, 1, 1, 1])) :
-    Writes .total I τp gridCandidate.body
+    Writes .total I τp gridCandidate
       (Env.frame [n + 1, k, D, i, j] [a, c, r, t, target, f, s, z, f])
       (Fp.blocks [s, z, f] [2, 2 * ((n + 1) * (n + 1)), 1])
       (fun m' => m'.pos = m.pos ∧
@@ -133,16 +135,18 @@ theorem gridVisited_all (center : ℂ) (radius : ℝ) (D : ℕ) :
 
 /-- Stream the complete grid in nested-loop order using only one reusable shift pair. The
 accepted result is retained by each subsequent candidate's actual flag guard. -/
-def searchGridWithScratch : Impl Op Tst := opsImpl% [n, k, D]
+def searchGridWithScratch : Stmt Op Tst := ops% [n, k, D]
     (A, Center, Radius, Threshold, Target, Flag) → (S, Z, Flag) {
   for i < D + 1 { for j < D + 1 {
-    run gridCandidate.body [n, k, D, i, j]
+    run gridCandidate [n, k, D, i, j]
       (A, Center, Radius, Threshold, Target, Flag, S, Z, Flag)
   } }
 }
 
 /-- The actual two-loop grid search extends any earlier search prefix by exactly the standard
-grid order. Its persistent storage is independent of the number of grid candidates. -/
+grid order. Its persistent storage is independent of the number of grid candidates.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem searchGridWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hL : IsIndexLit M I) (hC : IsCmp id I)
     {τp : Tape ℝ} {m : Mem ℝ} {n k D : ℕ} {a c r t target s z f : ℕ × ℕ}
@@ -160,7 +164,7 @@ theorem searchGridWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hapart : Fp.Apart [s, z, f] [2, 2 * ((n + 1) * (n + 1)), 1])
     (hsep : Fp.Disj (Fp.blocks [s, z, f] [2, 2 * ((n + 1) * (n + 1)), 1])
       (Fp.blocks [a, c, r, t, target] [2 * ((n + 1) * (n + 1)), 2, 1, 1, 1])) :
-    Writes .total I τp searchGridWithScratch.body
+    Writes .total I τp searchGridWithScratch
       (Env.frame [n + 1, k, D] [a, c, r, t, target, f, s, z, f])
       (Fp.blocks [s, z, f] [2, 2 * ((n + 1) * (n + 1)), 1])
       (fun m' => m'.pos = m.pos ∧

@@ -29,7 +29,10 @@ open scoped Matrix
 variable {K Op Tst : Type} [Inhabited K]
 variable [Has ScalarOp Op] [Has Blas1Op Op] [Has OperatorOp Op] [Has CmpTst Tst]
 
-/-- Any cap terminates at the smaller of the cap and grade, including initially solved inputs. -/
+/-- Any cap terminates at the smaller of the cap and grade, including initially solved inputs.
+
+A fragment of `NLAlib.Krylov.CG.Reorth.solveRoutine`, not a routine: it runs on the history
+buffer and guard cell that the solver allocates (buffers `L` and `L + 1`). -/
 theorem rounds_writes {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hM : ExactModel dec M) (hB : IsExactBlas1 dec (fun _ => True) I)
     {n cap L : ℕ} {A : Matrix (Fin n) (Fin n) ℝ} (hA : IsExactMatvec dec A I)

@@ -102,9 +102,9 @@ theorem exists_exactContracts [Apart ScalarOp OperatorOp Op] {n : ℕ}
       IsExactBlas1 id (fun _ => True) I ∧ IsExactMatvec id A I := by
   obtain ⟨I, hS, hA⟩ := exists_isScalar_isExactMatvec (Op := Op) (Tst := Tst) A
   obtain ⟨hS', hB⟩ := (Blas.seq_certifies_exact exactModel_exactMachine
-    (fun _ => True)).meets I hS
+    (fun _ => True)).satisfies I hS
   have hA' : IsExactMatvec id A (I.link (Blas.seq (Op := Op) (Tst := Tst)).table) :=
-    Interp.link_meets_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
+    Interp.link_satisfies_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
   exact ⟨_, exactModel_exactMachine, hS', hB, hA'⟩
 
 /-- Choosing sequential BLAS transfers the exact CG state and exposes the scalar operation
@@ -123,9 +123,9 @@ theorem runs_step_seq {M : Machine K} {dec : K → ℝ} {n : ℕ}
       (Env.frame [n] [x, r, p, x, r, p]) μ (seqStepCount n) (3 * n + 5)
       ((stepRel dec A).Post [n] [xs, rs, ps] [x, r, p] [] μ) := by
   have hcert := Blas.seq_certifies_exact (Op := Op) (Tst := Tst) hM (fun _ => True)
-  obtain ⟨hS', hB⟩ := hcert.meets I hS
+  obtain ⟨hS', hB⟩ := hcert.satisfies I hS
   have hA' : IsExactMatvec dec A (I.link (Blas.seq (Op := Op) (Tst := Tst)).table) :=
-    Interp.link_meets_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
+    Interp.link_satisfies_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
   have hrun := runs_step hS' hM hB hA' (Blas.ws 0) (τ := τ) hxr hxp hrp hl hx hr hp hdom hz
   exact (hcert.transfer I τ _ _ _ _ _ _ hrun).mono
     (le_of_eq (push_stepCount_seq n)) (stepPeak_seq_le n) fun _ h => h
@@ -147,9 +147,9 @@ theorem runs_solve_seq {M : Machine K} {dec : K → ℝ} {n : ℕ}
       (fun μ' => μ'.pos = μ.pos ∧ ∃ ys, μ'.store.readBlock x.1 x.2 n = some ys ∧
         decv dec n ys = cgIterate A (decv dec n bs) (decv dec n xs) k) := by
   have hcert := Blas.seq_certifies_exact (Op := Op) (Tst := Tst) hM (fun _ => True)
-  obtain ⟨hS', hB⟩ := hcert.meets I hS
+  obtain ⟨hS', hB⟩ := hcert.satisfies I hS
   have hA' : IsExactMatvec dec A (I.link (Blas.seq (Op := Op) (Tst := Tst)).table) :=
-    Interp.link_meets_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
+    Interp.link_satisfies_kept (Blas.seq_table_kept (Apart.proj_inj OperatorOp.matvec)) hA
   have hrun := runs_solve hS' hM hB hA' hPos (Blas.ws 0) (τ := τ)
     hbx hbr hbp hxr hxp hrp hl hbs hxs hk hz
   exact (hcert.transfer I τ _ _ _ _ _ _ hrun).mono

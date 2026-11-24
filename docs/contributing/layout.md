@@ -14,6 +14,9 @@ NLAlib/
   Polynomial/      scalar approximation theory and the function classes it
                    approximates                                                   (layer 0)
   Krylov/          deterministic Krylov theory                                      (layer 1)
+  LinearSystems/   solvers for linear systems built on factorizations: solves
+                   with computed factors, iterative refinement; the factorizations
+                   and triangular solves themselves are in Matrix/Factorizations  (layer 1)
   Probability/     scalar and vector probability, concentration                  (layer 1.5)
   RandomMatrix/    Gaussian, sub-Gaussian, Haar random matrices                     (layer 2)
   Sketching/       sketch distributions and their embedding guarantees             (layer 3)

@@ -17,7 +17,7 @@ consumes the same two fixed sampling batches and advances the shared tape by the
 
 ## Main results
 
-* `NLAlib.SpectralBisection.writes_downwardPass`: all downward records and input levels.
+* `NLAlib.SpectralBisection.downwardPass_writes`: all downward records and input levels.
 -/
 
 @[expose] public section
@@ -42,8 +42,9 @@ local notation "region" => (fun d => downLevelOutputFp n d lv su sg ma ua qa ea 
 
 /-- The actual counted downward traversal produces all level inputs and all node records.
 Its spatial premises protect earlier records, earlier input levels and future size zeros;
-the fresh-scratch premise concerns only storage shape and capacities. -/
-theorem writes_downwardPass (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp dec I)
+the fresh-scratch premise concerns only storage shape and capacities.
+A fragment of `NLAlib.SpectralBisection.bisectionRoutine`. -/
+theorem downwardPass_writes (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCmp dec I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) (hQR : IsMatrixQR (EntryCodec.pair K) qr I)
     (hQ : IsToNat dec I) (hSample : IsSample I)
     (hexact : IsExactNatLit dec M (max n 4))
@@ -73,7 +74,7 @@ theorem writes_downwardPass (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCm
           (eighStep F n fuel R0 beta x.A x.R x.ε x.ℓ (eighTapeSample n e lo)))
         (stepOutputLengths
           (eighStep F n fuel R0 beta x.A x.R x.ε x.ℓ (eighTapeSample n e lo))))) :
-    Writes .total I τ (downwardPass (node (Op := Op) (Tst := Tst))).body
+    Writes .total I τ (downwardPass (node (Op := Op) (Tst := Tst)))
       (Env.frame [n, L, fuel] [par, lv, su, sg, ma, ua, qa, ea, sz, kd, kp, c])
       (Fp.loopPrefix region (L + 1))
       (fun ν => ν.pos = base + (L + 1) * levelSampleSize n ∧
@@ -104,7 +105,7 @@ theorem writes_downwardPass (hS : IsScalar M I) (hL : IsIndexLit M I) (hC : IsCm
     rcases hInv with ⟨hp, hpar', hc', hLv, hRec, hZeros⟩
     have hLive : ν.Live [par, lv, su, sg, ma, ua, qa, ea, sz, kd, kp, c] := by
       simpa only [Mem.Live, hfr.length_eq] using hl
-    have hW := writes_downLevel M dec mm qr R0 eps0 beta A
+    have hW := downLevel_writes M dec mm qr R0 eps0 beta A
       (τ := τ) (L := L) (fuel := fuel) (d := i) (base := base) hS hL hC hMM hQR hQ hSample
       hexact hLive hp (hLv i le_rfl) hpar' hc' (hZeros (i + 1) le_rfl (by omega))
       (hGeometry i (by omega) ν hfr.length_eq hfr.len_eq)

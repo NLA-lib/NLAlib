@@ -17,7 +17,7 @@ transition is exactly the existing rounded matrix step.
 
 ## Main results
 
-* `NLAlib.Sign.writes_round`: one total round returns the next matrix, cache and actual flag.
+* `NLAlib.Sign.round_writes`: one total round returns the next matrix, cache and actual flag.
 -/
 
 @[expose] public section
@@ -33,8 +33,9 @@ variable {K Op Tst Su Sg : Type} [Inhabited K] [Has ScalarOp Op] [Has MatrixOp O
 
 /-- A complete round returns the actual next iterate, its actual cached square and its actual
 stopping flag. The three control constants are outside the written footprint. The temporary
-literal and unused matrix scratch require capacity but no initial contents. -/
-theorem writes_round {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I)
+literal and unused matrix scratch require capacity but no initial contents.
+A fragment of `NLAlib.Sign.signRoutine`. -/
+theorem round_writes {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I)
     (hMM : IsMatrixMul (EntryCodec.pair K) mm I) {τ : Tape K} {n : ℕ}
     (A : Matrix (Fin n) (Fin n) (K × K)) (η : K) {x w v t : ℕ × ℕ} {m : Mem K}
     (hState : LoopState (M.toFloatMachine dec mm qr unif normal) x w t η A m.store)
@@ -43,7 +44,7 @@ theorem writes_round {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I
     (hx : x.2 + 2 * (n * n) ≤ m.store.len x.1)
     (hw : w.2 + 2 * (n * n) ≤ m.store.len w.1)
     (hv : v.2 + 2 * (n * n) ≤ m.store.len v.1) (ht : t.2 + 5 ≤ m.store.len t.1) :
-    Writes .total I τ (round (Has.inj MatrixOp.mul)).body
+    Writes .total I τ (round (Has.inj MatrixOp.mul))
       (Env.frame [n] [x, w, v, t, x, w, v, t]) (loopFootprint n x w v t)
       (fun μ => LoopState (M.toFloatMachine dec mm qr unif normal) x w t η
         (newtonSchulzRounded (M.toFloatMachine dec mm qr unif normal) A) μ.store ∧
@@ -51,7 +52,7 @@ theorem writes_round {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I
   generalize hB : newtonSchulzRounded (M.toFloatMachine dec mm qr unif normal) A = B
   have hn : n * n * 2 = 2 * (n * n) := Nat.mul_comm _ _
   have hLS : m.Live [x, w, v, (t.1, t.2 + 2)] := by simpa [Mem.Live] using hl
-  have hs := writes_step (dec := dec) (mm := mm) (qr := qr) (unif := unif) (normal := normal)
+  have hs := step_writes (dec := dec) (mm := mm) (qr := qr) (unif := unif) (normal := normal)
     (τ := τ) hS hMM A hLS (apart_step hAP)
     (by simpa only [hn] using hState.matrix)
     (by simpa only [hn, Machine.toFloatMachine] using hState.square)
@@ -91,7 +92,7 @@ theorem writes_round {I : Interp Op Tst K} (hS : IsScalar M I) (hC : IsCmp dec I
     Fp.disj_sup_left.mpr ⟨Fp.disj_sup_left.mpr ⟨hdis 1 0 (by simp),
       hdis 2 0 (by simp)⟩, hTX.mono
         (Fp.inBlock_le_inBlock (by simp) (by simp)) le_rfl⟩
-  have htest := (writes_test (dec := dec) (mm := mm) (qr := qr)
+  have htest := (test_writes (dec := dec) (mm := mm) (qr := qr)
     (unif := unif) (normal := normal) (τ := τ) hS hC hMM _ η hlTest hAPtest hp.2
     hconst.2.1 hconst.2.2 hconst.1 hw' hv' hz').keep
       ((Store.readsOnly_readBlock x.1 x.2 (2 * (n * n)) _).and hread)

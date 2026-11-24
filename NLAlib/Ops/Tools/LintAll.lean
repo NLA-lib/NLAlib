@@ -60,11 +60,13 @@ public import NLAlib.Ops.Catalog.Operator
 public import NLAlib.Ops.Catalog.OperatorPair
 public import NLAlib.Ops.Catalog.Orth
 public import NLAlib.Ops.Catalog.Random
+public import NLAlib.Ops.Catalog.Refinement
 public import NLAlib.Ops.Catalog.Scalar
 public import NLAlib.Ops.Catalog.Tagged
 public import NLAlib.Ops.Cert
 public import NLAlib.Ops.Contract
 public import NLAlib.Ops.Counted
+public import NLAlib.Ops.Dependence
 public import NLAlib.Ops.Examples.Bilinear
 public import NLAlib.Ops.Examples.Certification
 public import NLAlib.Ops.Examples.Resources
@@ -138,6 +140,26 @@ public import NLAlib.Ops.Profiles.RoundedScalarBlas
 public import NLAlib.Ops.Profiles.ContextDenseRounded
 public import NLAlib.Ops.Profiles.ContextLinearRounded
 public import NLAlib.Ops.Profiles.Confined
+public import NLAlib.Ops.Catalog.OrthRoutine
+public import NLAlib.Ops.Examples.Integrator
+public import NLAlib.Ops.Examples.IntegratorLink
+public import NLAlib.Ops.Examples.Notes
+public import NLAlib.Ops.Examples.Routine
+public import NLAlib.Ops.Examples.RoutineCertification
+public import NLAlib.Ops.Examples.RoutineLink
+public import NLAlib.Ops.Examples.RoutineProblem
+public import NLAlib.Ops.Examples.Strided
+public import NLAlib.Ops.Examples.VectorSum
+public import NLAlib.Ops.Examples.WorkedInstances.EarlyExit
+public import NLAlib.Ops.Examples.WorkedInstances.Integrator
+public import NLAlib.Ops.Examples.WorkedInstances.Matvec
+public import NLAlib.Ops.Examples.WorkedInstances.Strided
+public import NLAlib.Ops.Examples.WorkedInstances.VectorSum
+public import NLAlib.Ops.Examples.Reference
+public import NLAlib.Ops.Reference.Probability
+public import NLAlib.Ops.Profiles.ContextLinearGuarded
+public import NLAlib.Ops.Profiles.ContextLinearRoundedGuarded
+public import NLAlib.Ops.Profiles.StandardOracles
 
 /-!
 # Conditional headline guidance over imported Ops modules

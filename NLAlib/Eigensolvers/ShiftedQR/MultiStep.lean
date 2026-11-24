@@ -32,40 +32,43 @@ open Ops
 
 variable {Op Tst : Type} [Has ScalarOp Op] [Has CmpTst Tst]
 
-/-- One exact shifted step with a caller-owned temporary matrix and exactly aliased output. -/
-def stepInPlaceWithScratch : Impl Op Tst := opsImpl% [n] (A, S, T) → (A) {
-  run shiftedStep.body [n] (A, S, T);
-  run (unaryMap (Has.inj ScalarOp.copy)).body [2 * (n * n)] (T, A)
+/-- One exact shifted step with a caller-owned temporary matrix and exactly aliased output: a
+fragment of `NLAlib.ShiftedQR.multiStep`, on the temporary matrix that it allocates. -/
+def stepInPlaceWithScratch : Stmt Op Tst := ops% [n] (A, S, T) → (A) {
+  run shiftedStepRoutine [n] (A, S, T);
+  run (unaryMap (Has.inj ScalarOp.copy)) [2 * (n * n)] (T, A)
 }
 
 /-- Repeat one stored complex shift, retaining the matrix in its exactly aliased view. -/
-def repeatedStepWithScratch : Impl Op Tst := opsImpl% [n, k] (A, S, T) → (A) {
+def repeatedStepWithScratch : Stmt Op Tst := ops% [n, k] (A, S, T) → (A) {
   for j < k {
-    run stepInPlaceWithScratch.body [n] (A, S, T, A)
+    run stepInPlaceWithScratch [n] (A, S, T, A)
   }
 }
 
 /-- Repeated shifted QR allocates one temporary matrix for the complete finite loop. -/
-def repeatedStep : Impl Op Tst := opsImpl% [n, k] (A, S) → (A) {
+def repeatedStep : Stmt Op Tst := ops% [n, k] (A, S) → (A) {
   let T ← alloc (2 * (n * n));
-  run repeatedStepWithScratch.body [n, k] (A, S, T, A)
+  run repeatedStepWithScratch [n, k] (A, S, T, A)
 }
 
 /-- Apply a stored column of `k` complex shifts, in its physical order. -/
-def multiStepWithScratch : Impl Op Tst := opsImpl% [n, k] (A, S, T) → (A) {
+def multiStepWithScratch : Stmt Op Tst := ops% [n, k] (A, S, T) → (A) {
   for j < k {
-    run stepInPlaceWithScratch.body [n] (A, S[2 * j], T, A)
+    run stepInPlaceWithScratch [n] (A, S[2 * j], T, A)
   }
 }
 
 /-- A finite list of stored shifts shares one matrix scratch allocation across all steps. -/
-def multiStep : Impl Op Tst := opsImpl% [n, k] (A, S) → (A) {
+def multiStep : Stmt Op Tst := ops% [n, k] (A, S) → (A) {
   let T ← alloc (2 * (n * n));
-  run multiStepWithScratch.body [n, k] (A, S, T, A)
+  run multiStepWithScratch [n, k] (A, S, T, A)
 }
 
 /-- One actual shifted step followed by scalar copy-back computes the mathematical shifted
-step in place. The temporary matrix and supplied shift are spatially disjoint from outputs. -/
+step in place. The temporary matrix and supplied shift are spatially disjoint from outputs.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem stepInPlaceWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a s t : ℕ × ℕ}
@@ -77,7 +80,7 @@ theorem stepInPlaceWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1)))))
     (hst : Fp.Disj (Store.inBlock s.1 s.2 2)
       (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))) :
-    Writes .total I τ stepInPlaceWithScratch.body (Env.frame [n + 1] [a, s, t, a])
+    Writes .total I τ stepInPlaceWithScratch (Env.frame [n + 1] [a, s, t, a])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
       (fun μ => μ.pos = m.pos ∧ HoldsMatrix a (shiftedQRStep H shift) μ.store) m := by
@@ -85,9 +88,25 @@ theorem stepInPlaceWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     simpa only [Mem.Live, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp,
       forall_eq] using hl
   have ha := Store.le_len_of_readBlock hH (by positivity)
-  have hstep := shiftedStep_writes (τ := τ) hS hE hCmp hl hH hs ht hat hst
-  refine hstep.frame_seq_le rfl rfl hl le_sup_right ?_
-  intro m₁ hfr ⟨hp, hT⟩
+  have hstep := (shiftedStepRoutine_meets (Op := Op) (Tst := Tst) hS hE hCmp).call
+    (ρ := Env.frame [n + 1] [a, s, t, a]) (ds := [.var 0])
+    (ops := [⟨0, .var 1⟩, ⟨1, .var 2⟩, ⟨2, .var 3⟩]) (d := [n + 1]) (args := [a, s, t])
+    (τ := τ) (m := m) (xs := [matrixWords H, [shift.re, shift.im]]) rfl rfl rfl rfl hl
+    (by routine_sep) (Mem.readBlocks_of_cons hH (Mem.readBlocks_of_cons hs rfl))
+    (Nat.succ_pos n) (by routine_nf; simpa [Mem.Room] using ht)
+  refine hstep.seq_le (by routine_nf; fp_sub) fun m₁ hfr₀ hpost => ?_
+  have hfr : m.store.EqOff (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1)))) m₁.store :=
+    hfr₀.mono (by routine_nf; fp_sub)
+  obtain ⟨hp, ys, hys, hpost⟩ := hpost
+  routine_nf at hys
+  obtain ⟨t', zs, ht', hzs, rfl⟩ := Mem.readBlocks_one hys
+  obtain rfl : t = t' := by simpa using ht'
+  have hT : HoldsMatrix t (shiftedQRStep H shift) m₁.store := by
+    have h : zs = matrixWords (shiftedQRStep (matrixOfWords (n + 1) (matrixWords H))
+        ⟨vec [shift.re, shift.im] 0, vec [shift.re, shift.im] 1⟩) := hpost n rfl
+    rw [matrixOfWords_matrixWords] at h
+    rw [HoldsMatrix, hzs, h]
+    rfl
   have hcopy := copyMatrix_writes (τ := τ) hS hT (by rw [hfr.len_eq]; exact ha) hat.symm
   refine (hcopy.in_frame rfl rfl (by simp only [Mem.Live, List.mem_cons,
     List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq]; rw [hfr.length_eq]; omega)).mono
@@ -105,7 +124,9 @@ private theorem multiShiftedQRStep_replicate {n : ℕ}
       Function.iterate_succ_apply] using ih (shiftedQRStep H shift)
 
 /-- Repeating a supplied shift composes the actual in-place step exactly `k` times. No
-convergence, pivot, or successful-execution hypothesis is used. -/
+convergence, pivot, or successful-execution hypothesis is used.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem repeatedStepWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k : ℕ} {a s t : ℕ × ℕ}
@@ -119,7 +140,7 @@ theorem repeatedStepWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))))
     (hst : Fp.Disj (Store.inBlock s.1 s.2 2)
       (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))) :
-    Writes .total I τ repeatedStepWithScratch.body (Env.frame [n + 1, k] [a, s, t, a])
+    Writes .total I τ repeatedStepWithScratch (Env.frame [n + 1, k] [a, s, t, a])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
       (fun μ => μ.pos = m.pos ∧
@@ -129,7 +150,7 @@ theorem repeatedStepWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (transition := fun B => shiftedQRStep B shift) (valid := fun _ => True)
     (s := H) (n := .var 1) (N := k) (md := .total) (I := I) (τ := τ)
     (ρ := Env.frame [n + 1, k] [a, s, t, a])
-    (body := stepInPlaceWithScratch.body) (ds := [.var 0])
+    (body := stepInPlaceWithScratch) (ds := [.var 0])
     (args := [⟨0, .var 2⟩, ⟨1, .var 3⟩, ⟨2, .var 4⟩, ⟨0, .var 2⟩])
     (F := Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
       Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
@@ -152,8 +173,10 @@ private theorem multiShiftedQRStep_take_succ {n : ℕ}
     rfl
   simp only [multiShiftedQRStep, ht, List.foldl_append, List.foldl_cons, List.foldl_nil]
 
-/-- A stored finite shift column composes exactly the mathematical list of shifted QR steps.
-The matrix temporary is reused across the entire list. -/
+/-- A stored finite shift column composes exactly the mathematical list of shifted QR steps. The
+matrix temporary is reused across the entire list. A fragment: its tree runs only inside the tree of
+`NLAlib.ShiftedQR.multiStep`.
+A fragment of the tree `NLAlib.ShiftedQR.multiStep`. -/
 theorem multiStepWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a s t : ℕ × ℕ} {ss : List ℂ}
@@ -167,7 +190,7 @@ theorem multiStepWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1)))))
     (hst : Fp.Disj (Store.inBlock s.1 s.2 (2 * ss.length))
       (Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))) :
-    Writes .total I τ multiStepWithScratch.body
+    Writes .total I τ multiStepWithScratch
       (Env.frame [n + 1, ss.length] [a, s, t, a])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))) ⊔
         Store.inBlock t.1 t.2 (2 * ((n + 1) * (n + 1))))
@@ -202,7 +225,9 @@ theorem multiStepWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
 
 
 /-- The scoped repeated-shift program returns the exact repeated mathematical QR step in
-its original matrix view and releases its one temporary matrix. -/
+its original matrix view and releases its one temporary matrix.
+A fragment of the exact decoupler `NLAlib.ShiftedQR.scalarDecouple`, which exact shifted QR
+(`NLAlib.ShiftedQR.deflationRoutine`) takes as its decoupler. -/
 theorem repeatedStep_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n k : ℕ} {a s : ℕ × ℕ}
@@ -211,7 +236,7 @@ theorem repeatedStep_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hs : m.store.readBlock s.1 s.2 2 = some [shift.re, shift.im])
     (hsa : Fp.Disj (Store.inBlock s.1 s.2 2)
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))) :
-    Writes .total I τ repeatedStep.body (Env.frame [n + 1, k] [a, s, a])
+    Writes .total I τ repeatedStep (Env.frame [n + 1, k] [a, s, a])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
       (fun μ => μ.pos = m.pos ∧
         HoldsMatrix a (multiShiftedQRStep H (List.replicate k shift)) μ.store) m := by
@@ -238,8 +263,9 @@ theorem repeatedStep_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (sup_le le_sup_left (Fp.inBlock_le_sup_above (by dsimp [t]; omega)))
     (fun _ _ hp => hp)
 
-/-- The scoped finite-list program returns the mathematical multi-shifted QR matrix and
-releases the single temporary matrix used by every round. -/
+/-- The scoped finite-list program returns the mathematical multi-shifted QR matrix and releases the
+single temporary matrix used by every round.
+Stated in operand form; it is a statement about a tree, not the contract of a routine. -/
 theorem multiStep_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     {τ : Tape ℝ} {m : Mem ℝ} {n : ℕ} {a s : ℕ × ℕ} {ss : List ℂ}
@@ -248,7 +274,7 @@ theorem multiStep_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hSS : HoldsMatrix s (shiftColumn ss) m.store)
     (hsa : Fp.Disj (Store.inBlock s.1 s.2 (2 * ss.length))
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))) :
-    Writes .total I τ multiStep.body (Env.frame [n + 1, ss.length] [a, s, a])
+    Writes .total I τ multiStep (Env.frame [n + 1, ss.length] [a, s, a])
       (Store.inBlock a.1 a.2 (2 * ((n + 1) * (n + 1))))
       (fun μ => μ.pos = m.pos ∧ HoldsMatrix a (multiShiftedQRStep H ss) μ.store) m := by
   have hlive : a.1 < m.store.length ∧ s.1 < m.store.length := by

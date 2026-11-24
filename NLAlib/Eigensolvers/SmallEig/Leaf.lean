@@ -14,7 +14,7 @@ public import NLAlib.Ops.Blas.Matrix
 
 The worklist of the small-eigenvalue solver runs at the bottom width $k = 1$, so its leaves are
 blocks of order $0$ or $1$, whose eigenvalue is the entry itself ([BanksGarzaVargasSrivastava2025,
-§6], the base case, the paper's erratum P13). In Schur mode the leaf keeps the block, which is
+§6], with the base case at order $1$). In Schur mode the leaf keeps the block, which is
 already upper triangular, and writes the identity accumulator: exact on
 every tape, with backward error $0$ and failure $0$ on orders at most $1$.
 
@@ -46,7 +46,7 @@ kept and its accumulator `Ub` is the identity of order $d$ (column-major pairs).
 `NLAlib.ShiftedQR.solveRoundedWith`; the block, the words and the cap are not read. At any order
 it writes the identity.
 Algorithm: small-eig -/
-def identityLeaf : Impl O Q := opsImpl% [d, np, T] (Bk, P) → (Bk, Ub) {
+def identityLeaf : Stmt O Q := ops% [d, np, T] (Bk, P) → (Bk, Ub) {
   for j < d {
     for i < d {
       call (Has.inj (ScalarOp.lit 0)) [] () → (Ub[2 * (j * d + i)]);
@@ -60,11 +60,12 @@ def identityLeaf : Impl O Q := opsImpl% [d, np, T] (Bk, P) → (Bk, Ub) {
 
 /-- `NLAlib.SmallEig.identityLeaf` on a scalar machine with the literal $0$ exact, and $1$ exact
 when $d > 0$, at any order $d$: with room for $2d^2$ words at `ub`, on every tape, it writes only
-those words and stores the identity of order $d$. -/
+those words and stores the identity of order $d$.
+Shared by the trees of `NLAlib.SmallEig.smallEigCore`, `NLAlib.SmallEig.smallEigProg`. -/
 theorem identityLeaf_writes {M : Machine ℝ} {I : Interp O Q ℝ} (hS : IsScalar M I)
     (h0 : M.lit 0 = 0) {d : ℕ} (h1 : 0 < d → M.lit 1 = 1) {τ : Tape ℝ} {μ : Mem ℝ}
     {w p ub : ℕ × ℕ} {ps : List ℝ} {T : ℕ} (hroom : ub.2 + 2 * (d * d) ≤ μ.store.len ub.1) :
-    Writes .total I τ (identityLeaf (O := O) (Q := Q)).body
+    Writes .total I τ (identityLeaf (O := O) (Q := Q))
         (Env.frame [d, ps.length, T] [w, p, w, ub])
       (Store.inBlock ub.1 ub.2 (2 * (d * d)))
       (fun μ' => μ'.pos = μ.pos ∧ HoldsMatrix ub (1 : Matrix (Fin d) (Fin d) ℂ) μ'.store) μ := by

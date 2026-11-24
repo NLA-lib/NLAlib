@@ -57,7 +57,7 @@ frame, memory-layout execution or spectral proof is planned. No open design ques
 
 ## Actual sequential-AXPY reorthogonalization
 
-`Reorth/RoundedOrthogonality.lean` bridges the actual `PassOut`/`TwoPassOut` witnesses to the
+`Reorth/Rounded/Orthogonality.lean` bridges the actual `PassOut`/`TwoPassOut` witnesses to the
 existing `IsOrthErr` interface. It imports the pure `isOrthErr_of_two_passes` algebra and
 reuses it with exact ghost coefficient addition (`u = 0`), not the old matrix-update program.
 For dot allowance `ed ≥ 0`, axpy allowance `ea ≥ 0`, `B = 1 + eta`, and `k` columns, a safe
@@ -80,7 +80,7 @@ It does not derive strict `tau * nu_j < beta_j` for a complete Lanczos run. Such
 selects a genuine prefix of actual history and can fail near breakdown; exposing that selection
 and transferring global reorthogonalized spectral bounds remains a separate mathematical step.
 
-`Reorth/RoundedAnalysis.lean` exposes the same local orthogonalization theorem from the final
+`Reorth/Rounded/Analysis.lean` exposes the same local orthogonalization theorem from the final
 executed `History`. The witness preserves the actual first/raw/reduced vector words, computed
 pre/post norm words, normalized output words, update bounds, both norm contracts, scaling
 contract and the ghost coefficient vector. Its basis is exactly
@@ -107,7 +107,7 @@ retains an explicit zero-prefix alternative; it does not assume full-run admissi
 
 `IsNrm2Err.norm_error_bounds` in `Lanczos/Math/NormGuard.lean` extracts nonnegativity and the
 relative norm bound from actual dot/sqrt witnesses. `Precision.norm_error_le` in
-`RoundedPrecision.lean` proves the derived norm allowance is at most the common error envelope,
+`Rounded/Precision.lean` proves the derived norm allowance is at most the common error envelope,
 and its actual-word corollary provides the `RoundedStep` norm fields. Existing numerical
 statements and algorithms are preserved.
 

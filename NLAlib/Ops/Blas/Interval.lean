@@ -20,7 +20,7 @@ No exactness or distinguishability of the machine's zero and one literals is ass
 ## Main results
 
 * `NLAlib.Ops.intervalScan`: a scalar/comparison implementation for a vector of words.
-* `NLAlib.Ops.writes_intervalScan`: its exact output flag and frame on spatially disjoint inputs.
+* `NLAlib.Ops.intervalScan_writes`: its exact output flag and frame on spatially disjoint inputs.
 -/
 
 @[expose] public section
@@ -31,7 +31,7 @@ variable {K Op Tst : Type} [Has ScalarOp Op] [Has CmpTst Tst]
 
 /-- Write literal zero if all words lie between the stored endpoints and literal one
 otherwise. Every comparison is an ordinary counted query on the actual word cells. -/
-def intervalScan : Impl Op Tst := opsImpl% [n] (X, lo, hi) → (flag) {
+def intervalScan : Stmt Op Tst := ops% [n] (X, lo, hi) → (flag) {
   call (Has.inj (ScalarOp.lit 0)) [] () → (flag);
   for w < n {
     if (Has.inj CmpTst.le) [] (lo, X[w]) {
@@ -67,8 +67,9 @@ open Classical in
 /-- The scan returns its actual machine literal for the all-words interval predicate. Inputs
 are spatially disjoint from the output flag; they may share its buffer at other offsets.
 The output cell needs capacity, and no output initialization or scalar literal exactness is
-assumed. Every other cell and the tape position are preserved. -/
-theorem writes_intervalScan {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
+assumed. Every other cell and the tape position are preserved.
+A fragment of the tree `NLAlib.Ops.Hermitian.boxTest`. -/
+theorem intervalScan_writes {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst K}
     (hS : IsScalar M I) (hC : IsCmp dec I) {md : Mode} {τ : Tape K} {m : Mem K}
     {n : ℕ} {x lo hi z : ℕ × ℕ} {a b : K} (v : ℕ → K)
     (hx : m.store.HoldsVec x.1 x.2 n v)
@@ -77,7 +78,7 @@ theorem writes_intervalScan {M : Machine K} {dec : K → ℝ} {I : Interp Op Tst
     (hXz : Fp.Disj (Store.inBlock x.1 x.2 n) (Store.inBlock z.1 z.2 1))
     (hloz : Fp.Disj (Store.inBlock lo.1 lo.2 1) (Store.inBlock z.1 z.2 1))
     (hhiz : Fp.Disj (Store.inBlock hi.1 hi.2 1) (Store.inBlock z.1 z.2 1)) :
-    Writes md I τ (intervalScan (Op := Op) (Tst := Tst)).body
+    Writes md I τ (intervalScan (Op := Op) (Tst := Tst))
       (Env.frame [n] [x, lo, hi, z]) (Store.inBlock z.1 z.2 1)
       (fun m' => m'.pos = m.pos ∧ m'.store.get z.1 z.2 =
         some (M.lit (if InInterval dec a b v n then 0 else 1))) m := by

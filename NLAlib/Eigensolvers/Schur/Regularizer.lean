@@ -55,16 +55,16 @@ theorem ginibrePerturb_randomRegularizerContract {M : Machine ℝ} {I : Interp O
 $n + 1$, $p$ words and zero offsets is at most $201(n + 1)^2$ (the monomial bound, by
 `kernel_rfl`). -/
 theorem size_stmtCost_ginibrePerturb_le (sG n p : ℕ) :
-    Count.size (stmtCost (ginibrePerturb (O := O) (Q := Q) sG).body.instrument
+    Count.size (stmtCost (ginibrePerturb (O := O) (Q := Q) sG).instrument
         [n + 1, p, 0, 0, 0]) ≤ 201 * (n + 1) ^ 2 := by
-  have hw : stmtWorkMono (ginibrePerturb (O := O) (Q := Q) sG).body.instrument
+  have hw : stmtWorkMono (ginibrePerturb (O := O) (Q := Q) sG).instrument
       (⟨1, [1]⟩ :: ⟨1, [0, 1]⟩ :: List.replicate 3 (WorkMono.const 0)) = ⟨201, [2]⟩ := by
     rw [stmtWorkMono_instrument]; kernel_rfl
   have hσ : SlotsLe [n + 1, p + 1] [n + 1, p, 0, 0, 0]
       (⟨1, [1]⟩ :: ⟨1, [0, 1]⟩ :: List.replicate 3 (WorkMono.const 0)) := by
     simp [SlotsLe, WorkMono.eval, WorkMono.const]
   have h := size_stmtCost_le_stmtWorkMono (by simp)
-    (ginibrePerturb (O := O) (Q := Q) sG).body.instrument hσ
+    (ginibrePerturb (O := O) (Q := Q) sG).instrument hσ
   rw [hw] at h
   simpa [WorkMono.eval, mul_assoc] using h
 

@@ -49,7 +49,7 @@ noncomputable def model {r b : ℕ} (P : Problem ℝ r b)
     let base := Functional.interp id (functions M)
     have hs : IsScalar M base := fun o =>
       Interp.ofFns_isFn (Tst := CmpTst) (functions M) .total (.inl o) AnyOperands
-    obtain ⟨hS, hB⟩ := (Blas.seq_certifies hM hu (fun _ => True)).meets base hs
+    obtain ⟨hS, hB⟩ := (Blas.seq_certifies hM hu (fun _ => True)).satisfies base hs
     refine ⟨base.link (Blas.seq (Op := RCLikeBlas.Operation) (Tst := CmpTst)).table, ?_, ?_⟩
     · intro o
       cases o with

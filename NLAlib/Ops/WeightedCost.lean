@@ -56,6 +56,7 @@ def stmtWeightedCost (op : Op → List ℕ → ℕ) (query : Tst → List ℕ �
       match IExp.evalList idx ds, IExp.evalList idx (args.map Operand.off) with
       | some d, some os => stmtWeightedCost op query s (d ++ os)
       | _, _ => 0
+  | .note _ s, idx => stmtWeightedCost op query s idx
 
 private theorem whileIter_weight_le
     {test : ℕ → St Op Tst K → Option (Bool × St Op Tst K)}
@@ -203,6 +204,7 @@ theorem evalCounted_weight_le (op : Op → List ℕ → ℕ) (query : Tst → Li
     split_ifs at h with hl
     simpa only [stmtWeightedCost, hd, Operand.evalList_off_of_evalList hxs,
       Env.idx_frame] using ih h
+  | note _ _ ih => exact ih h
 
 /-- A frame's scalar weighted bound follows from the evaluated dimensions and a body bound
 uniform in its operand offsets. Failed operand evaluation contributes zero weighted cost. -/
@@ -279,6 +281,7 @@ theorem stmtWeightedCost_zero_of_allOps (op : Op → List ℕ → ℕ) (p : Op �
     simp only [stmtWeightedCost]
     cases IExp.evalList idx ds <;> cases IExp.evalList idx (args.map Operand.off) <;>
       simp only [ih hs]
+  | note _ _ ih => exact ih hs idx
 
 /-- Total word-level logic and a scalar weighted source bound give a total instrumented
 execution with that bound on its exact original-count projection. Structural instructions

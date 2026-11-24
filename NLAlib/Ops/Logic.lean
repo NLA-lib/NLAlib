@@ -95,13 +95,13 @@ theorem wp_seq {s t : Stmt Op Tst} (h : Wp md I τ s ρ (Wp md I τ t ρ Q) m) :
   Mode.holds_bind h
 
 /-- **Call by contract.** The contract is given the window of the tape at the position. -/
-theorem wp_call {o : Op} {C : Contract K} (hI : I.Meets md o C) {ds : List IExp}
+theorem wp_call {o : Op} {C : Contract K} (hI : I.Satisfies md o C) {ds : List IExp}
     {ins outs : List Operand} {d : List ℕ} {a b : List (ℕ × ℕ)}
     (hd : IExp.evalList ρ.idx ds = some d) (ha : Operand.evalList ρ ins = some a)
     (hb : Operand.evalList ρ outs = some b) (hpre : (C.on md d a b τ m).pre m)
     (hQ : ∀ m', (C.on md d a b τ m).post m m' → Q m') : Wp md I τ (.call o ds ins outs) ρ Q m := by
   simp only [Wp, eval, hd, ha, hb, Option.bind_some]
-  exact (hI d a b τ m hpre).mono hQ
+  exact (hI.callS d a b τ m hpre).mono hQ
 
 theorem holds_iter {σ : Type} {f : ℕ → σ → Option σ} {k : ℕ} (Inv : ℕ → σ → Prop)
     (hstep : ∀ i < k, ∀ s, Inv i s → md.Holds (f i s) (Inv (i + 1))) {s : σ} (h0 : Inv 0 s) :
@@ -127,6 +127,10 @@ theorem wp_alloc {format : StorageFormat} {len : IExp} {body : Stmt Op Tst} {n :
       ⟨m.store.push n, m.pos⟩) : Wp md I τ (.allocAs format len body) ρ Q m := by
   simp only [Wp, eval, hn, Option.bind_some]
   exact Mode.holds_map h
+
+/-- A note changes no judgment: the tree with the note satisfies what the tree does. -/
+@[simp] theorem wp_note_iff {n : Note} {s : Stmt Op Tst} :
+    Wp md I τ (.note n s) ρ Q m ↔ Wp md I τ s ρ Q m := Iff.rfl
 
 /-- Procedure instance. -/
 theorem wp_frame {ds : List IExp} {args : List Operand} {body : Stmt Op Tst} {d : List ℕ}

@@ -19,7 +19,7 @@ eigenvector matrix has a condition number polynomial in $n/\gamma$
 states both in a polylogarithmic tail form with a record of constants $(C, a, b, c)$, as
 predicates on the record (`NLAlib.PolyLogTail.BoundsGinibreGap`,
 `NLAlib.PolyLogTail.BoundsGinibreCondition`), and proves them at the records
-`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ and
+`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(2048e, 11/3, 2/3, 2)$ and
 `NLAlib.ginibreConditionTail` <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$ from the
 tails of `NLAlib.RandomMatrix.Shattering.GapTail` and `NLAlib.RandomMatrix.Shattering.ConditionTail`
 . A consumer takes the predicates as hypotheses, so that a sharper record plugs in. The records are
@@ -415,9 +415,9 @@ theorem polyLogTailInverse_spec {c : PolyLogTail} (hb : 0 < c.b) {N K φ : ℝ} 
 /-! ### The proved tails -/
 
 /-- The tail record of the eigenvalue gap of a Ginibre perturbation that the library
-proves, <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$: $C = 10000e$, $a = 5$,
-$b = 1/2$, $c = 2$. -/
-noncomputable def ginibreGapTail : PolyLogTail := ⟨10000 * Real.exp 1, 5, 1 / 2, 2⟩
+proves, <!-- value ginibreGapTail --> $(2048e, 11/3, 2/3, 2)$: $C = 2048e$, $a = 11/3$,
+$b = 2/3$, $c = 2$. -/
+noncomputable def ginibreGapTail : PolyLogTail := ⟨2048 * Real.exp 1, 11 / 3, 2 / 3, 2⟩
 
 /-- The tail record of the eigenvector condition of a Ginibre perturbation that the library
 proves, <!-- value ginibreConditionTail --> $(128e, 3, 2, 2)$: $C = 128e$, $a = 3$, $b = 2$,
@@ -425,7 +425,7 @@ $c = 2$. -/
 noncomputable def ginibreConditionTail : PolyLogTail := ⟨128 * Real.exp 1, 3, 2, 2⟩
 
 /-- The exponent of the small parameter of the record
-`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(10000e, 5, 1/2, 2)$ is positive. -/
+`NLAlib.ginibreGapTail` <!-- value ginibreGapTail --> $(2048e, 11/3, 2/3, 2)$ is positive. -/
 theorem ginibreGapTail_b_pos : 0 < ginibreGapTail.b := by
   norm_num [ginibreGapTail]
 
@@ -436,12 +436,12 @@ theorem ginibreConditionTail_b_pos : 0 < ginibreConditionTail.b := by
   norm_num [ginibreConditionTail]
 
 /-- **The gap tail holds** at the record `NLAlib.ginibreGapTail` <!-- value ginibreGapTail -->
-$(10000e, 5, 1/2, 2)$ ([BanksGarzaVargasSrivastava2025, Lemma B.1], in a weaker polynomial form):
-`NLAlib.measureReal_not_exists_isEigenvalueListing_le_le_log_sq_of_hasLaw_complexGaussianMatrix`,
-with $\sqrt{t/\gamma} = (t/\gamma)^{1/2}$. -/
+$(2048e, 11/3, 2/3, 2)$ ([BanksGarzaVargasSrivastava2025, Lemma B.1], in a weaker polynomial form):
+`NLAlib.measureReal_not_exists_isEigenvalueListing_le_le_log_sq_of_hasLaw_complexGaussianMatrix`.
+-/
 theorem boundsGinibreGap_ginibreGapTail : ginibreGapTail.BoundsGinibreGap := by
   intro Ω _mΩ μ n _ _ G hG M γ t hγ hγM ht htγ
-  simpa only [ginibreGapTail, Real.rpow_ofNat, Real.sqrt_eq_rpow] using
+  simpa only [ginibreGapTail, Real.rpow_ofNat] using
     measureReal_not_exists_isEigenvalueListing_le_le_log_sq_of_hasLaw_complexGaussianMatrix
       hG M hγ hγM ht htγ
 

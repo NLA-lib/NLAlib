@@ -208,22 +208,22 @@ lengths `ok`. -/
 structure IsBlas1 [Has Blas1Op Op] (dec : K → ℝ) (ε : Blas1Err) (ok : ℕ → Prop)
     (J : Interp Op Tst K) : Prop where
   /-- `sum`. -/
-  sum : J.Meets .total (Has.inj Blas1Op.sum) ((sumRel dec ε.sum).spec (OutApart ok))
+  sum : J.Satisfies .total (Has.inj Blas1Op.sum) ((sumRel dec ε.sum).spec (OutApart ok))
   /-- `dot`. -/
-  dot : J.Meets .total (Has.inj Blas1Op.dot) ((dotRel dec ε.dot).spec (OutApart ok))
+  dot : J.Satisfies .total (Has.inj Blas1Op.dot) ((dotRel dec ε.dot).spec (OutApart ok))
   /-- `axpy`. -/
-  axpy : J.Meets .total (Has.inj Blas1Op.axpy) ((axpyRel dec ε.axpy).spec (InPlace ok))
+  axpy : J.Satisfies .total (Has.inj Blas1Op.axpy) ((axpyRel dec ε.axpy).spec (InPlace ok))
   /-- `nrm2`. -/
-  nrm2 : J.Meets .total (Has.inj Blas1Op.nrm2) ((nrm2Rel dec ε.dot ε.sqrt).spec (OutApart ok))
+  nrm2 : J.Satisfies .total (Has.inj Blas1Op.nrm2) ((nrm2Rel dec ε.dot ε.sqrt).spec (OutApart ok))
   /-- `scal`. -/
-  scal : J.Meets .total (Has.inj Blas1Op.scal) ((scalRel dec ε.scal).spec (InPlace ok))
+  scal : J.Satisfies .total (Has.inj Blas1Op.scal) ((scalRel dec ε.scal).spec (InPlace ok))
   /-- `copy`. -/
-  copy : J.Meets .total (Has.inj Blas1Op.copy) ((copyRel (K := K)).spec (OutApart ok))
+  copy : J.Satisfies .total (Has.inj Blas1Op.copy) ((copyRel (K := K)).spec (OutApart ok))
 
 /-- The contract of `sum` alone: what the other level-1 operations are implemented over. -/
 def IsSum [Has Blas1Op Op] (dec : K → ℝ) (e : ℕ → ℝ) (ok : ℕ → Prop) (J : Interp Op Tst K) :
     Prop :=
-  J.Meets .total (Has.inj Blas1Op.sum) ((sumRel dec e).spec (OutApart ok))
+  J.Satisfies .total (Has.inj Blas1Op.sum) ((sumRel dec e).spec (OutApart ok))
 
 /-! ### Exact contracts -/
 
@@ -275,25 +275,25 @@ admitted lengths. -/
 structure IsExactBlas1 [Has Blas1Op Op] (dec : K → ℝ) (ok : ℕ → Prop)
     (J : Interp Op Tst K) : Prop where
   /-- `sum`. -/
-  sum : J.Meets .total (Has.inj Blas1Op.sum) ((sumExactRel dec).spec (OutApart ok))
+  sum : J.Satisfies .total (Has.inj Blas1Op.sum) ((sumExactRel dec).spec (OutApart ok))
   /-- `dot`. -/
-  dot : J.Meets .total (Has.inj Blas1Op.dot) ((dotExactRel dec).spec (OutApart ok))
+  dot : J.Satisfies .total (Has.inj Blas1Op.dot) ((dotExactRel dec).spec (OutApart ok))
   /-- `axpy`. -/
-  axpy : J.Meets .total (Has.inj Blas1Op.axpy) ((axpyExactRel dec).spec (InPlace ok))
+  axpy : J.Satisfies .total (Has.inj Blas1Op.axpy) ((axpyExactRel dec).spec (InPlace ok))
   /-- `nrm2`. -/
-  nrm2 : J.Meets .total (Has.inj Blas1Op.nrm2) ((nrm2ExactRel dec).spec (OutApart ok))
+  nrm2 : J.Satisfies .total (Has.inj Blas1Op.nrm2) ((nrm2ExactRel dec).spec (OutApart ok))
   /-- `scal`. -/
-  scal : J.Meets .total (Has.inj Blas1Op.scal) ((scalExactRel dec).spec (InPlace ok))
+  scal : J.Satisfies .total (Has.inj Blas1Op.scal) ((scalExactRel dec).spec (InPlace ok))
   /-- `copy`. -/
-  copy : J.Meets .total (Has.inj Blas1Op.copy) ((copyRel (K := K)).spec (OutApart ok))
+  copy : J.Satisfies .total (Has.inj Blas1Op.copy) ((copyRel (K := K)).spec (OutApart ok))
 
 omit [Inhabited K] in
-private theorem meets_replace_rel {J : Interp Op Tst K} {o : Op} {R : BlockRel K}
+private theorem satisfies_replace_rel {J : Interp Op Tst K} {o : Op} {R : BlockRel K}
     {adm : List ℕ → List (ℕ × ℕ) → List (ℕ × ℕ) → Prop}
     {rel : List ℕ → List (List K) → List K → List (List K) → Prop}
-    (h : J.Meets .total o (R.spec adm))
+    (h : J.Satisfies .total o (R.spec adm))
     (hrel : ∀ d X w Y, R.rel d X w Y → rel d X w Y) :
-    J.Meets .total o ({ R with rel := rel }.spec adm) := by
+    J.Satisfies .total o ({ R with rel := rel }.spec adm) := by
   refine h.mono (fun _ _ _ _ _ hp => hp) ?_
   intro d ins outs τ m m' _ hpost
   obtain ⟨X, hread, hroom, Y, hlen, hR, hm⟩ := hpost
@@ -304,25 +304,25 @@ theorem IsBlas1.toExact [Has Blas1Op Op] {dec : K → ℝ} {ok : ℕ → Prop}
     {J : Interp Op Tst K} (h : IsBlas1 dec ⟨fun _ => 0, fun _ => 0, 0, 0, 0⟩ ok J) :
     IsExactBlas1 dec ok J := by
   refine ⟨?_, ?_, ?_, ?_, ?_, h.copy⟩
-  · refine meets_replace_rel (rel := (sumExactRel dec).rel) h.sum ?_
+  · refine satisfies_replace_rel (rel := (sumExactRel dec).rel) h.sum ?_
     intro d X w Y hrel
     simp only [sumRel_rel] at hrel
     split at hrel
     · simpa [sumExactRel, IsSumErr, sub_eq_zero] using hrel
     · contradiction
-  · refine meets_replace_rel (rel := (dotExactRel dec).rel) h.dot ?_
+  · refine satisfies_replace_rel (rel := (dotExactRel dec).rel) h.dot ?_
     intro d X w Y hrel
     simp only [dotRel_rel] at hrel
     split at hrel
     · simpa [dotExactRel, IsDotErr, sub_eq_zero] using hrel
     · contradiction
-  · refine meets_replace_rel (rel := (axpyExactRel dec).rel) h.axpy ?_
+  · refine satisfies_replace_rel (rel := (axpyExactRel dec).rel) h.axpy ?_
     intro d X w Y hrel
     simp only [axpyRel_rel] at hrel
     split at hrel
     · simpa [axpyExactRel, IsAxpyErr, sub_eq_zero] using hrel
     · contradiction
-  · refine meets_replace_rel (rel := (nrm2ExactRel dec).rel) h.nrm2 ?_
+  · refine satisfies_replace_rel (rel := (nrm2ExactRel dec).rel) h.nrm2 ?_
     intro d X w Y hrel
     simp only [nrm2Rel_rel] at hrel
     split at hrel
@@ -335,7 +335,7 @@ theorem IsBlas1.toExact [Has Blas1Op Op] {dec : K → ℝ} {ok : ℕ → Prop}
         exact Finset.sum_nonneg fun _ _ => sq_nonneg _
       simpa [nrm2ExactRel, sub_eq_zero, hs] using hν hnonneg
     · contradiction
-  · refine meets_replace_rel (rel := (scalExactRel dec).rel) h.scal ?_
+  · refine satisfies_replace_rel (rel := (scalExactRel dec).rel) h.scal ?_
     intro d X w Y hrel
     simp only [scalRel_rel] at hrel
     split at hrel
@@ -345,8 +345,8 @@ theorem IsBlas1.toExact [Has Blas1Op Op] {dec : K → ℝ} {ok : ℕ → Prop}
 /-- An exact dot product satisfies the relative-error contract with zero error. -/
 theorem IsExactBlas1.dot_zero [Has Blas1Op Op] {dec : K → ℝ} {ok : ℕ → Prop}
     {J : Interp Op Tst K} (h : IsExactBlas1 dec ok J) :
-    J.Meets .total (Has.inj Blas1Op.dot) ((dotRel dec (fun _ => 0)).spec (OutApart ok)) := by
-  refine meets_replace_rel (rel := (dotRel dec (fun _ => 0)).rel) h.dot ?_
+    J.Satisfies .total (Has.inj Blas1Op.dot) ((dotRel dec (fun _ => 0)).spec (OutApart ok)) := by
+  refine satisfies_replace_rel (rel := (dotRel dec (fun _ => 0)).rel) h.dot ?_
   intro d X w Y hrel
   simp only [dotExactRel_rel] at hrel
   split at hrel

@@ -58,8 +58,8 @@ import NLAlib.Ops.Tools.Lint
 #ops_lint_scan                                      -- every headline of the imported modules
 ```
 
-This is heuristic guidance, not a certification boundary. Canonical `Runs`, `Program.Certifies`,
-and `Impl.Meets` have structural guarantees enforced by the core. The linter recognizes those
+This is heuristic guidance, not a certification boundary. Canonical `Runs` and
+`Program.Certifies` have structural guarantees enforced by the core. The linter recognizes those
 schemas and explicitly reports `UNSUPPORTED` because conditional heuristics do not inspect them;
 it never marks
 them as passing (a)-(f). `Profile.Refines` is also recognized and diagnosed as conditional profile
@@ -67,7 +67,7 @@ refinement, not canonical certification. An explicit request on an unrecognized 
 a schema diagnostic rather than an empty-check pass.
 
 Conditional headlines contain `ConditionalRuns`, `ConditionalRunsW`, `ConditionalRunsL`,
-`ConditionalRunsLaw`, or `Impl.Triple` (under `∀`, `∧`, `∃`). Rules, on the statement only:
+`ConditionalRunsLaw`, `Impl.Satisfies` or `Routine.Meets` (under `∀`, `∧`, `∃`). Rules, on the statement only:
 (a) the program, tables of `Stmt.link` set apart, mentions only sizes (`ℕ`), rationals, types
 and instances, and reaches no noncomputable definition; (b) the interpretation is a variable of
 the statement (or `Interp.link` of one, or `ops_register_model`), not under `∃`, not fixed by an

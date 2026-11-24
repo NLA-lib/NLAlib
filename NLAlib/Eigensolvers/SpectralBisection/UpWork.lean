@@ -43,7 +43,7 @@ dimension is the parent size, including a zero-width child. No monotonicity of `
 theorem weightedCost_upSplit_le (T : ℕ → ℕ) (k kp : ℕ) (offs : List ℕ) (hp : kp ≤ k) :
     stmtWeightedCost (Dense.matrixWeight (MatrixOp.dimensionWeight T))
       (fun (_ : CmpTst ⊕ IdxTst) _ => 0)
-      (upSplitResultImpl (Op := DenseOp)).body ([k, kp] ++ offs) ≤ 2 * T k := by
+      (upSplitResult (Op := DenseOp)) ([k, kp] ++ offs) ≤ 2 * T k := by
   change _ + (_ + _) ≤ _
   conv_lhs => arg 2; arg 2; rw [matrixFree_weightedCost T _ (by rfl)]
   have hmul : (Has.inj MatrixOp.mul : DenseOp) = DenseOp.matrix .mul := rfl
@@ -58,7 +58,7 @@ theorem weightedCost_upNode_le (T : ℕ → ℕ) (n d lo k : ℕ) (offs : List �
     (hlen : offs.length = 6) :
     stmtWeightedCost (Dense.matrixWeight (MatrixOp.dimensionWeight T))
       (fun (_ : CmpTst ⊕ IdxTst) _ => 0)
-      (upNodeImpl (Op := DenseOp)).body ([n, d, lo, k] ++ offs) ≤ 2 * T k := by
+      (upNode (Op := DenseOp)) ([n, d, lo, k] ++ offs) ≤ 2 * T k := by
   change 0 + _ ≤ _
   simp only [Nat.zero_add]
   apply Finset.sup_le
@@ -105,14 +105,14 @@ theorem runs_upNode_kernelWeight {K Su Sg : Type} [Inhabited K]
     (hroom : m.Room (resultOperands n d lo ua ea) (resultLengths k))
     (hap : Fp.Apart (upNodeRegions n d lo ua qa ea kd kp t) (upNodeRegionLengths n k)) :
     ConditionalRunsW I.instrument (instrumentWorkspace W) τ
-      (upNodeImpl (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body.instrument
+      (upNode (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).instrument
       (Env.frame [n, d, lo, k] [ua, qa, ea, kd, kp, t]) m
-      (stmtPeak W (upNodeImpl (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body
+      (stmtPeak W (upNode (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))
         (Env.frame [n, d, lo, k] [ua, qa, ea, kd, kp, t]).idx)
       (fun c m' => Dense.kernelWeight T (Count.original c) ≤ 2 * T k ∧
         m'.pos = m.pos ∧ StoresResult n d lo ua ea
           (step.assemble (M.toFloatMachine dec mm qr unif normal) children) m'.store) := by
-  have htotal := writes_upNode (τ := τ) mm qr unif normal hS hQ hMM step children hStep hChildren
+  have htotal := upNode_writes (τ := τ) mm qr unif normal hS hQ hMM step children hStep hChildren
     hLit hk hl ht hroom hap
   apply Wp.runs_original_weighted (htotal.wp fun _ _ hp => hp)
     (Dense.matrixWeight (MatrixOp.dimensionWeight T)) (fun _ _ => 0) W

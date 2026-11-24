@@ -17,11 +17,12 @@ tags and a cast between them.
 
 ## Main results
 
-* `NLAlib.Ops.Examples.runs_mulAddMixed`: for every interpretation meeting the contracts of the
+* `NLAlib.Ops.Examples.runs_mulAddMixed`: for every interpretation satisfying the contracts of the
   two tags (two machines, two unit roundoffs) and of an exact cast,
   `|ẑ - (x y + w)| ≤ u_hi |x y + w| + (1 + u_hi) u_lo |x y|`, with **one multiplication counted
   at `Lo`, one addition at `Hi` and one cast**.
-* `NLAlib.Ops.Examples.sumSeq_spec_at`: sequential summation at a tag is the same implementation
+* `NLAlib.Ops.Examples.sumSeq_satisfies_at`: sequential summation at a tag is the same
+  implementation
   with the same certificate; nothing is rewritten for a tag.
 * `NLAlib.Ops.Examples.exists_isMixed`: the contracts of the two tags and of the cast can be met
   together.
@@ -110,15 +111,15 @@ variable {π : Type} [Has (Tagged π ScalarOp) Op] [Inhabited K]
 
 /-- Sequential summation at the tag `π`: the same tree, with the instance of the tag. -/
 def sumSeqAt (π : Type) [Has (Tagged π ScalarOp) Op] : Impl Op Tst :=
-  @sumSeq Op Tst (Tagged.has π)
+  (@sumSeqRoutine Op Tst (Tagged.has π)).impl
 
-/-- **The certificate of sequential summation at a tag** is the certificate of sequential
+/-- The certificate of sequential summation at a tag is the certificate of sequential
 summation: the unit roundoff is that of the machine of the tag. -/
-theorem sumSeq_spec_at {M : Machine K} {I : Interp Op Tst K} (hI : IsScalarAt π M I) {u : ℝ}
+theorem sumSeq_satisfies_at {M : Machine K} {I : Interp Op Tst K} (hI : IsScalarAt π M I) {u : ℝ}
     {dec : K → ℝ} (hM : StdModel u dec M) (hu : 0 ≤ u) (ok : ℕ → Prop) :
-    (sumSeqAt (Op := Op) (Tst := Tst) π).Triple I .total
+    (sumSeqAt (Op := Op) (Tst := Tst) π).Satisfies I .total
       ((sumRel dec fun n => (1 + u) ^ (n - 1) - 1).spec (OutApart ok)) :=
-  @sumSeq_spec K Op Tst (Tagged.has π) _ M I hI.isScalar u dec hM hu ok
+  @sumSeq_satisfies K Op Tst (Tagged.has π) _ M I hI.isScalar u dec hM hu ok
 
 end AtTag
 

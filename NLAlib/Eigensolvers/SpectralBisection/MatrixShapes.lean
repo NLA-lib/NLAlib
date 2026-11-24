@@ -44,7 +44,7 @@ theorem matrixShapes_of_allOps (n : ℕ) (s : Stmt DenseOp (CmpTst ⊕ IdxTst))
 
 private theorem signTest_shape (n k : ℕ) (offs : List ℕ) (hk : k ≤ n) :
     (stmtCost (Sign.test (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)
-      (Has.inj MatrixOp.mul)).body ([k] ++ offs)).CallsSatisfy (MatrixShape n) := by
+      (Has.inj MatrixOp.mul)) ([k] ++ offs)).CallsSatisfy (MatrixShape n) := by
   refine (Count.callsSatisfy_add _ _ (MatrixShape n)).mpr ?_
   constructor
   · change (Count.one (DenseOp.matrix .mul) [k, k, k] :
@@ -54,7 +54,7 @@ private theorem signTest_shape (n k : ℕ) (offs : List ℕ) (hk : k ≤ n) :
 
 private theorem signStep_shape (n k : ℕ) (offs : List ℕ) (hk : k ≤ n) :
     (stmtCost (Sign.step (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)
-      (Has.inj MatrixOp.mul)).body ([k] ++ offs)).CallsSatisfy (MatrixShape n) := by
+      (Has.inj MatrixOp.mul)) ([k] ++ offs)).CallsSatisfy (MatrixShape n) := by
   refine (Count.callsSatisfy_add _ _ (MatrixShape n)).mpr ?_
   refine ⟨matrixShapes_of_allOps n _ (by rfl) _, ?_⟩
   refine (Count.callsSatisfy_add _ _ (MatrixShape n)).mpr ?_
@@ -68,7 +68,7 @@ private theorem signStep_shape (n k : ℕ) (offs : List ℕ) (hk : k ≤ n) :
 
 private theorem signRound_shape (n k : ℕ) (offs : List ℕ) (hk : k ≤ n) :
     (stmtCost (Sign.round (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)
-      (Has.inj MatrixOp.mul)).body ([k] ++ offs)).CallsSatisfy (MatrixShape n) := by
+      (Has.inj MatrixOp.mul)) ([k] ++ offs)).CallsSatisfy (MatrixShape n) := by
   refine (Count.callsSatisfy_add _ _ (MatrixShape n)).mpr ⟨?_, ?_⟩
   · refine callsSatisfy_stmtCost_frame (d := [k]) (P := MatrixShape n) ?_ ?_
     · simp [IExp.evalList, IExp.eval]
@@ -79,7 +79,7 @@ private theorem signRound_shape (n k : ℕ) (offs : List ℕ) (hk : k ≤ n) :
 
 private theorem signLoop_shape (n k cap : ℕ) (offs : List ℕ) (hk : k ≤ n) :
     (stmtCost (Sign.loop (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)
-      (Has.inj MatrixOp.mul)).body ([k, cap] ++ offs)).CallsSatisfy (MatrixShape n) := by
+      (Has.inj MatrixOp.mul)) ([k, cap] ++ offs)).CallsSatisfy (MatrixShape n) := by
   refine (Count.callsSatisfy_add _ _ (MatrixShape n)).mpr ⟨?_, ?_⟩
   · refine (Count.callsSatisfy_sum _ _ (MatrixShape n)).mpr ?_
     intro i hi
@@ -93,7 +93,7 @@ private theorem signLoop_shape (n k cap : ℕ) (offs : List ℕ) (hk : k ≤ n) 
 
 private theorem signStart_shape (n k cap : ℕ) (offs : List ℕ) (hk : k ≤ n) :
     (stmtCost (Sign.start (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)
-      (Has.inj MatrixOp.mul)).body ([k, cap] ++ offs)).CallsSatisfy (MatrixShape n) := by
+      (Has.inj MatrixOp.mul)) ([k, cap] ++ offs)).CallsSatisfy (MatrixShape n) := by
   refine (Count.callsSatisfy_add _ _ (MatrixShape n)).mpr ⟨?_, ?_⟩
   · refine callsSatisfy_stmtCost_frame (d := [k]) (P := MatrixShape n) ?_ ?_
     · simp [IExp.evalList, IExp.eval]
@@ -104,7 +104,7 @@ private theorem signStart_shape (n k cap : ℕ) (offs : List ℕ) (hk : k ≤ n)
 
 private theorem signInitialized_shape (n k cap : ℕ) (offs : List ℕ) (hk : k ≤ n) :
     (stmtCost (Sign.initialized (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)
-      (Has.inj MatrixOp.mul)).body ([k, cap] ++ offs)).CallsSatisfy (MatrixShape n) := by
+      (Has.inj MatrixOp.mul)) ([k, cap] ++ offs)).CallsSatisfy (MatrixShape n) := by
   refine (Count.callsSatisfy_add _ _ (MatrixShape n)).mpr
     ⟨matrixShapes_of_allOps n _ (by rfl) _, ?_⟩
   refine (Count.callsSatisfy_add _ _ (MatrixShape n)).mpr
@@ -119,7 +119,7 @@ private theorem signInitialized_shape (n k cap : ℕ) (offs : List ℕ) (hk : k 
 The cap and all operand offsets are independent of the matrix dimension bound. -/
 theorem sign_matrixShapes (n k cap : ℕ) (offs : List ℕ) (hk : k ≤ n) :
     (stmtCost (Sign.program (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)
-      (Has.inj MatrixOp.mul)).body ([k, cap] ++ offs)).CallsSatisfy (MatrixShape n) := by
+      (Has.inj MatrixOp.mul)) ([k, cap] ++ offs)).CallsSatisfy (MatrixShape n) := by
   simp only [Sign.program]
   refine callsSatisfy_stmtCost_frame (d := [k, cap]) (P := MatrixShape n) ?_ ?_
   · simp [IExp.evalList, IExp.eval]
@@ -127,7 +127,7 @@ theorem sign_matrixShapes (n k cap : ℕ) (offs : List ℕ) (hk : k ≤ n) :
 
 /-- Deflation's QR operates on the full square sampled product, before selecting columns. -/
 theorem deflate_matrixShapes (n k r lo side : ℕ) (offs : List ℕ) (hk : k ≤ n) :
-    (stmtCost (deflate (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body
+    (stmtCost (deflate (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))
       ([n, k, r, lo, side] ++ offs)).CallsSatisfy (MatrixShape n) := by
   refine (Count.callsSatisfy_add _ _ (MatrixShape n)).mpr
     ⟨matrixShapes_of_allOps n _ (by rfl) _, ?_⟩
@@ -143,7 +143,7 @@ theorem deflate_matrixShapes (n k r lo side : ℕ) (offs : List ℕ) (hk : k ≤
 
 /-- Compression uses its actual rectangular product dimensions, including empty children. -/
 theorem compress_matrixShapes (n k r : ℕ) (offs : List ℕ) (hk : k ≤ n) (hr : r ≤ n) :
-    (stmtCost (compress (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body
+    (stmtCost (compress (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst))
       ([k, r] ++ offs)).CallsSatisfy (MatrixShape n) := by
   refine (Count.callsSatisfy_add _ _ (MatrixShape n)).mpr
     ⟨matrixShapes_of_allOps n _ (by rfl) _, ?_⟩

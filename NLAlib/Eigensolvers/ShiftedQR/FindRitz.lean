@@ -31,9 +31,10 @@ open Ops
 variable {Op Tst : Type} [Has ScalarOp Op] [Has IndexOp Op]
   [Has CmpTst Tst] [Has IdxTst Tst]
 
-/-- Actual initialization, bounded-index levels and final copies return the mathematical
-binary search result. The supplied determinant condition is mathematical and local to this
-search phase. [BanksGarzaVargasSrivastava2021, §4.3]. -/
+/-- Actual initialization, bounded-index levels and final copies return the mathematical binary
+search result. The supplied determinant condition is mathematical and local to this search phase.
+[BanksGarzaVargasSrivastava2021, §4.3]. Shared by the trees of `NLAlib.ShiftedQR.findRitzSearch` and
+`NLAlib.ShiftedQR.iteration`. -/
 theorem findRitzSearchWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     (hL : IsIndexLit M I) (hToNat : IsToNat id I)
@@ -45,7 +46,7 @@ theorem findRitzSearchWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst �
     (hra : r.1 ≠ b.1) (hrs : r.1 ≠ ss.1) (hr : r.2 + 6 ≤ m.store.len r.1)
     (hsep : Fp.Disj (Store.inBlock ss.1 ss.2 (2 * k)) (Store.inBlock z.1 z.2 2))
     (hz : z.2 + 2 ≤ m.store.len z.1) :
-    Writes .total I τ findRitzSearchWithScratch.body (Env.frame [n + 1, levels, k] [b, ss, r, z])
+    Writes .total I τ findRitzSearchWithScratch (Env.frame [n + 1, levels, k] [b, ss, r, z])
       (Store.inBlock r.1 r.2 6 ⊔ Store.inBlock z.1 z.2 2)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock z.1 z.2 2 =
         some [(findRitz H levels 1 shifts).re, (findRitz H levels 1 shifts).im]) m := by
@@ -79,10 +80,11 @@ theorem findRitzSearchWithScratch_writes {M : Machine ℝ} {I : Interp Op Tst �
   intro m''' _ ⟨hp'', hread⟩
   exact ⟨hp''.trans (hp'.trans hp), by simpa only [hlast.2] using hread⟩
 
-/-- The complete scoped implementation returns exactly the mathematical Ritz binary search
-on the actual supplied shift list. All numerical steps are explicit scalar programs; the
-standard index and comparison models govern the actual bounded index reads.
-[BanksGarzaVargasSrivastava2021, §4.3]. -/
+/-- The complete scoped implementation returns exactly the mathematical Ritz binary search on the
+actual supplied shift list. All numerical steps are explicit scalar programs; the standard index and
+comparison models govern the actual bounded index reads. [BanksGarzaVargasSrivastava2021, §4.3]. A
+fragment: its tree runs only inside the tree of `NLAlib.ShiftedQR.iteration`.
+A fragment of the tree `NLAlib.ShiftedQR.iteration`. -/
 theorem findRitzSearch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hS : IsScalar M I) (hE : ExactModel id M) (hCmp : IsCmp id I)
     (hL : IsIndexLit M I) (hToNat : IsToNat id I)
@@ -93,7 +95,7 @@ theorem findRitzSearch_writes {M : Machine ℝ} {I : Interp Op Tst ℝ}
     (hk : k = 2 ^ levels) (hdet : ∀ shift ∈ shifts, (H - shift • 1).det ≠ 0)
     (hsep : Fp.Disj (Store.inBlock ss.1 ss.2 (2 * k)) (Store.inBlock z.1 z.2 2))
     (hz : z.2 + 2 ≤ m.store.len z.1) :
-    Writes .total I τ findRitzSearch.body (Env.frame [n + 1, levels, k] [b, ss, z])
+    Writes .total I τ findRitzSearch (Env.frame [n + 1, levels, k] [b, ss, z])
       (Store.inBlock z.1 z.2 2)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock z.1 z.2 2 =
         some [(findRitz H levels 1 shifts).re, (findRitz H levels 1 shifts).im]) m := by

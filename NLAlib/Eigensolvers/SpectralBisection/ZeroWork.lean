@@ -37,13 +37,13 @@ local notation "qz" => (fun (_ : CmpTst ⊕ IdxTst) (_ : List ℕ) => 0)
 /-- Actual constants, root matrix, size slots and level parameters use only scalar/index calls. -/
 theorem initializeArenas_matrixWork_zero (idx : List ℕ) :
     stmtWeightedCost mw qz
-      (initializeArenas (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body idx = 0 :=
+      (initializeArenas (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) idx = 0 :=
   stmtWeightedCost_matrix_zero_of_allOps W _ (by rfl) idx
 
 /-- The complete preparation stage retains its sampling and scalar costs outside this projection. -/
-theorem downPrepareImpl_matrixWork_zero (idx : List ℕ) :
+theorem downPrepare_matrixWork_zero (idx : List ℕ) :
     stmtWeightedCost mw qz
-      (downPrepareImpl (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body idx = 0 :=
+      (downPrepare (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) idx = 0 :=
   stmtWeightedCost_matrix_zero_of_allOps W _ (by rfl) idx
 
 /-- Both terminal leaf variants contain no matrix primitives. -/
@@ -54,9 +54,9 @@ theorem leaf_matrixWork_zero (diagonal : Bool) (idx : List ℕ) :
   cases diagonal <;> rfl
 
 /-- A recursion-boundary identity and zero eigenvalues are computed by visible scalar loops. -/
-theorem bottomResultImpl_matrixWork_zero (idx : List ℕ) :
+theorem bottomResult_matrixWork_zero (idx : List ℕ) :
     stmtWeightedCost mw qz
-      (bottomResultImpl (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body idx = 0 :=
+      (bottomResult (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) idx = 0 :=
   stmtWeightedCost_matrix_zero_of_allOps W _ (by rfl) idx
 
 /-- The entire bottom pass has zero matrix-kernel weight, including all bounded size queries. -/
@@ -68,7 +68,7 @@ theorem bottomLevel_matrixWork_zero (idx : List ℕ) :
 /-- Copying the final reconstructed basis and eigenvalues calls scalar-copy primitives. -/
 theorem rootResultCopy_matrixWork_zero (idx : List ℕ) :
     stmtWeightedCost mw qz
-      (rootResultCopy (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)).body idx = 0 :=
+      (rootResultCopy (Op := DenseOp) (Tst := CmpTst ⊕ IdxTst)) idx = 0 :=
   stmtWeightedCost_matrix_zero_of_allOps W _ (by rfl) idx
 
 end NLAlib.SpectralBisection

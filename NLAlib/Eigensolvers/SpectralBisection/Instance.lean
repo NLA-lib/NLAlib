@@ -365,7 +365,7 @@ nearest selector $r$ (ties away from zero; any odd nearest selector, ties to eve
 would do) such that the machine `NLAlib.binaryFloatMachine` of `fmt` and $r$, which rounds its
 arithmetic to the format's grid (overflow not modelled; negation is exact and the uniform
 sampler clamps to the scale, so off-grid inputs can give off-grid results) with correctly
-rounded black boxes, meets
+rounded black boxes, satisfies
 the contract `NLAlib.FloatMachine.IsAccurate` with the identity decoding, $u = 2^{-p}$, floor
 $\tau = 2^{e_{\min} + p - 1}$, range the largest finite number,
 $\mu_{\mathrm{MM}}(d) = \mu_{\mathrm{QR}}(d) = 2d$ (monotone, nonnegative) and
@@ -689,7 +689,7 @@ set_option linter.style.longLine false in
 tolerance $0 < \varepsilon \le 2^{-15}$, failure probability $\theta > 0$ and bound
 $R_0 > 0$ there are a binary format `fmt`, a nearest selector $r$ (ties away from zero), the
 depth $\ell =$ `NLAlib.bisectionDepth` $\varepsilon$ and the accuracy $\beta = \hat\beta$ at its
-bound such that the machine `NLAlib.binaryFloatMachine` of `fmt` and $r$ meets the contract
+bound such that the machine `NLAlib.binaryFloatMachine` of `fmt` and $r$ satisfies the contract
 `NLAlib.FloatMachine.IsAccurate` at the format's constants ($u = 2^{-p}$, floor
 $\tau = 2^{e_{\min} + p - 1}$, range the largest finite number, $\mu_{\mathrm{MM}}(d) =
 \mu_{\mathrm{QR}}(d) = 2d$, $c_{\mathrm N} = \sqrt2$) with samplers of measurable fibres and

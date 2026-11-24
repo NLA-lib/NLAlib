@@ -6,8 +6,11 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.Ops.Logic.Count
+public import NLAlib.Ops.RoutineSyntax
 public import NLAlib.Ops.Logic.Tactic
 public import NLAlib.Ops.Profiles.BlasCert
+public import NLAlib.Ops.RoutineLink
+public import NLAlib.Ops.Logic.RoutineIntro
 
 /-!
 # Test case: the matrix product in finite precision
@@ -20,12 +23,13 @@ blocks), `C` is `m × p` stored by rows.
 
 * Mathematics: the postcondition `NLAlib.Ops.Examples.GemmRounded` is the classical componentwise
   forward bound `|ĉ_ij - Σ_k a_ik b_kj| ≤ ε Σ_k |a_ik| |b_kj|`; nothing else is needed.
-* The certificate (`NLAlib.Ops.Examples.gemm_spec`): for every interpretation meeting the
-  level-1 contracts at `ε`, `gemm` meets its contract in operand form
+* The certificate (`NLAlib.Ops.Examples.gemm_satisfies`): for every interpretation meeting the
+  level-1 contracts at `ε`, `gemm` satisfies its contract in operand form
   (`NLAlib.Ops.Examples.gemmRel`). This is the statement of an implementation of an operation;
   it is proved in the program logic (`NLAlib.Ops.Logic`) by the relational 2-D fill rule.
-* Abstract theorem (`NLAlib.Ops.Examples.runs_gemm_rounded`), from the certificate by the
-  bridge `NLAlib.Ops.Impl.Triple.runs_rel`: `m p` calls of `dot` at the length `n`.
+* Abstract theorem (`NLAlib.Ops.Examples.runs_gemm_rounded`), the counted run read off the
+  judgment of the routine (`NLAlib.Ops.Routine.Meets.runs_ofRel`): `m p` calls of `dot` at the
+  length `n`.
 * Corollaries, one application of `Profile.Refines.runs` each
   (`NLAlib.Ops.Examples.runs_gemm_link_seq`, `NLAlib.Ops.Examples.runs_gemm_link_pairwise`):
   `ε = (1 + u) ^ n - 1` under sequential summation and `(1 + u) ^ (⌈log₂ n⌉ + 1) - 1` under
@@ -62,10 +66,6 @@ theorem staticPeak_gemm_le (W : Op → List ℕ → ℕ) (m n p a b c : ℕ) :
       W (Has.inj Blas1Op.dot) [n] := by
   simp only [gemm, stmtPeak]
   exact Finset.sup_le fun i _ => Finset.sup_le fun j _ => by simp
-
-/-- **`gemm` as an implementation**: three dimensions `m`, `n`, `p`, two inputs `A`, `B`, one
-output `C`. -/
-def gemmImpl : Impl Op Tst := ⟨3, 2, 1, gemm⟩
 
 variable [Inhabited K]
 
@@ -104,16 +104,23 @@ def GemmRounded (dec : K → ℝ) (e : ℝ) (m n p : ℕ) (C : ℕ × ℕ) (as b
     (μ μ' : Mem K) : Prop :=
   ∃ cs : List K, μ' = μ.updBlock C cs ∧ cs.length = m * p ∧ GemmForward dec e m n p as bs cs
 
-/-- **The certificate of `gemm`**: for every interpretation meeting the level-1 contracts at
-`ε`, `gemm` meets its contract, with the error `ε.dot n` of `dot`. The same statement as the
-certificate of an implementation of a level-1 operation, so `gemm` is an operation for the
-algorithms above it. Proved with the relational 2-D fill rule: `C` is the layout of `Cᵀ` by
-columns, one `step` per entry. -/
-theorem gemm_spec {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop} {J : Interp Op Tst K}
+/-- `gemm` as a routine: `[m, n, p] (A : read m n, B : read p n) → (C : write m p)`. -/
+def gemmRoutine : Routine Op Tst :=
+  routine% [m, n, p] (A : m * n, B : p * n) → (C : m * p) := gemm
+
+/-- `gemm` meets the specification read off its relation, for every interpretation meeting the
+level-1 contracts at `ε` for the length `n`: the componentwise forward bound with `ε.dot n`,
+one `step` per entry. -/
+theorem gemmRoutine_meets {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop} {J : Interp Op Tst K}
     (hJ : IsBlas1 dec ε ok J) :
-    (gemmImpl (Op := Op) (Tst := Tst)).Triple J .total
-      ((gemmRel dec ε.dot).spec (GemmOperands ok)) := by
-  cert_intro [m, n, p] (A, B) → (C) reads (as, bs)
+    (gemmRoutine (Op := Op) (Tst := Tst)).Meets J
+      (Routine.Spec.ofRel (gemmRel dec ε.dot) fun d => ok (d.getD 1 0)) := by
+  routine_intro [m, n, p] (A, B, C) reads (as, bs) memory μ
+  have hadm : ok n ∧ ¬A.1 = C.1 ∧ ¬B.1 = C.1 := ⟨hpre.1, hAC, hBC⟩
+  have hz := hroom
+  change Writes .total J τ gemm (Env.frame [m, n, p] [A, B, C]) (Fp.blocks [C] [m * p])
+    (fun μ' => μ'.pos = μ.pos + 0 ∧ ∃ ys, μ'.readBlocks [C] [m * p] = some ys ∧
+      (gemmRel dec ε.dot).rel [m, n, p] [as, bs] [] ys) μ
   refine Writes.mono (writes_fillRel₂ ⟨C.1, C.2, p, m, p⟩ le_rfl rfl (fun _ => rfl)
     (fun j i x => IsDotErr dec (ε.dot n) n (fun k => vec as (i * n + k))
       (fun k => vec bs (j * n + k)) x) (fun _ => μ.pos) rfl fun i hi j hj m₁ hfr _ hpos => ?_)
@@ -127,6 +134,23 @@ theorem gemm_spec {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop} {J : Int
     exact ⟨by simp [hpos], [cs], Mem.readBlocks_of_cons hcs rfl,
       fun i hi j hj => by rw [hcC j hj i hi]; exact hR j hj i hi⟩
 
+/-- The routine of `gemm` implements its contract. -/
+theorem gemmRoutine_implements (dec : K → ℝ) (e : ℕ → ℝ) (ok : ℕ → Prop) :
+    (gemmRoutine (Op := Op) (Tst := Tst)).Implements (gemmRel dec e) (GemmOperands ok)
+      (fun ins outs => ins ++ outs) := by
+  implements [m, n, p] (A, B) → (C) with hadm
+
+/-- The certificate of `gemm`: for every interpretation meeting the level-1 contracts at
+`ε`, `gemm` satisfies its contract, with the error `ε.dot n` of `dot`. The same statement as the
+certificate of an implementation of a level-1 operation, so `gemm` is an operation for the
+algorithms above it. Proved with the relational 2-D fill rule: `C` is the layout of `Cᵀ` by
+columns, one `step` per entry. -/
+theorem gemm_satisfies {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop} {J : Interp Op Tst K}
+    (hJ : IsBlas1 dec ε ok J) :
+    (gemmRoutine (Op := Op) (Tst := Tst)).impl.Satisfies J .total
+      ((gemmRel dec ε.dot).spec (GemmOperands ok)) :=
+  (gemmRoutine_meets hJ).satisfies_ofRel (gemmRoutine_implements dec _ ok) fun _ _ _ h => h.2.1.1
+
 /-- **The abstract theorem of `gemm`**, from its certificate by the bridge: for every
 interpretation meeting the level-1 contracts at `ε` for the length `n`, the run terminates within
 `m p` calls of `dot` and the workspace of one, and the computed product satisfies the
@@ -139,10 +163,10 @@ theorem runs_gemm_rounded {dec : K → ℝ} {ε : Blas1Err} {ok : ℕ → Prop} 
     (hC : C.2 + m * p ≤ μ.store.len C.1) :
     ConditionalRuns J W τ gemm (Env.frame [m, n, p] [A, B, C]) μ (gemmCount m n p)
       (W (Has.inj Blas1Op.dot) [n]) (GemmRounded dec (ε.dot n) m n p C as bs μ) := by
-  refine ((gemm_spec hJ).runs_rel W (d := [m, n, p]) (ins := [A, B]) (outs := [C]) (τ := τ)
-    (xs := [as, bs]) rfl
-    ⟨hok, by simp [hAC, hBC]⟩ hl (by simp [gemmRel, Mem.readBlocks, hA, hB]) trivial
-    ⟨hC, trivial⟩).mono (le_of_eq (staticCost_gemm ..)) (staticPeak_gemm_le ..) ?_
+  refine ((gemmRoutine_meets hJ).runs_ofRel W (d := [m, n, p]) (args := [A, B, C]) (τ := τ)
+    (xs := [as, bs]) rfl rfl hl (by routine_sep) (by reads) hok trivial
+    (show μ.Room [C] [m * p] from ⟨hC, trivial⟩) rfl rfl).mono
+    (le_of_eq (staticCost_gemm ..)) (staticPeak_gemm_le ..) ?_
   rintro μ' ⟨ys, hlen, hb, rfl⟩
   obtain ⟨cs, rfl, hcs⟩ := map_length_eq_one hlen
   exact ⟨cs, rfl, hcs, hb⟩

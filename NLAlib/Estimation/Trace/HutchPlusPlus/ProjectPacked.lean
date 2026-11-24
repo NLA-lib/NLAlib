@@ -16,7 +16,7 @@ one ordinary packed matrix, ready for the next batch of matrix-vector applicatio
 
 ## Main results
 
-* `NLAlib.HutchPlusPlus.writes_projectProbes_packed` returns `projectedBasis`.
+* `NLAlib.HutchPlusPlus.projectProbes_writes_packed` returns `projectedBasis`.
 -/
 
 @[expose] public section
@@ -32,8 +32,10 @@ variable {𝕜 Op Tst : Type} [RCLike 𝕜] [Has ScalarOp Op] [Has Blas1Op Op]
 local instance instInhabitedProjectPacked : Inhabited 𝕜 := ⟨0⟩
 
 /-- Project the actual stored probes and retain the basis, with an exact matrix result.
-The computation is valid for every basis, including zero and dependent columns. -/
-theorem writes_projectProbes_packed (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
+The computation is valid for every basis, including zero and dependent columns.
+A fragment of `NLAlib.HutchPlusPlus.estimateRoutine`: run only inside its tree, on its
+operands and the buffers it allocates. -/
+theorem projectProbes_writes_packed (hS : IsScalar (RCLikeBlas.machine : Machine 𝕜) I)
     (hB : RCLikeBlas.IsExact I) {n k ell : ℕ} {b t : ℕ × ℕ}
     (Q : Matrix (Fin n) (Fin k) 𝕜) (G : Matrix (Fin n) (Fin ell) 𝕜)
     (hl : m.Live [b, t])
@@ -41,7 +43,7 @@ theorem writes_projectProbes_packed (hS : IsScalar (RCLikeBlas.machine : Machine
       some ((EntryCodec.scalar 𝕜).packFinMatrix (basisProbes Q G)))
     (hTB : Fp.Disj (Store.inBlock t.1 t.2 2) (Store.inBlock b.1 b.2 ((k + ell) * n)))
     (ht : t.2 + 2 ≤ m.store.len t.1) (hb : b.2 + (k + ell) * n ≤ m.store.len b.1) :
-    Writes .total I τ projectProbes.body (Env.frame [n, k, ell] [b, t])
+    Writes .total I τ projectProbes (Env.frame [n, k, ell] [b, t])
       (Store.inBlock b.1 (b.2 + n * k) (ell * n) ⊔ Store.inBlock t.1 t.2 2)
       (fun m' => m'.pos = m.pos ∧ m'.store.readBlock b.1 b.2 ((k + ell) * n) =
         some ((EntryCodec.scalar 𝕜).packFinMatrix (projectedBasis Q G))) m := by
@@ -61,7 +63,7 @@ theorem writes_projectProbes_packed (hS : IsScalar (RCLikeBlas.machine : Machine
       some (List.ofFn fun a : Fin n => basisProbes Q G a ⟨k + j, by omega⟩) at h
     rw [column_eq G j hj]
     simpa [basisProbes, show ¬ k + j < k by omega, Nat.mul_comm] using h
-  refine (writes_projectProbes hS hB (column Q) (column G) hl hQ hG hTB ht hb).mono
+  refine (projectProbes_writes hS hB (column Q) (column G) hl hQ hG hTB ht hb).mono
     le_rfl ?_
   intro m' hfr ⟨hp, hProbe⟩
   refine ⟨hp, Store.readBlock_scalar_matrix_of_columns _ fun j => ?_⟩

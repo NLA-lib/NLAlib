@@ -26,9 +26,9 @@ contract are two instances.
 ## Main results
 
 * `NLAlib.CGS2.ColsDone.succ`: one more column.
-* `NLAlib.CGS2.writes_round`: a round keeps the invariant.
-* `NLAlib.CGS2.cgs2Extend_triple_of`: the program meets the contract of a basis extension for
-  every predicate implied by the relations of its columns.
+* `NLAlib.CGS2.round_writes`: a round keeps the invariant.
+* `NLAlib.CGS2.cgs2ExtendRoutine_meets_of`: the program satisfies the contract of a basis extension
+  for every predicate implied by the relations of its columns.
 -/
 
 @[expose] public section
@@ -115,8 +115,10 @@ def ColsStored (M : Machine K) (dec : K → ℝ) (ed ea : ℝ) (N : (ℕ → K) 
 /-- A round keeps the invariant. From a memory with the layout of the rounds, the basis
 `qs`, the words read at entry in column `c` of the block and the invariant before round `c`,
 the round writes only its three columns and the scratch, keeps the position, and establishes
-the invariant before round `c + 1`. -/
-theorem writes_round {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea : ℝ}
+the invariant before round `c + 1`.
+Shared by the trees of `NLAlib.reduceLastStep`, `NLAlib.ShiftedQR.sweep`,
+`NLAlib.ShiftedQR.roundedDecoupleExit` and 44 more. -/
+theorem round_writes {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea : ℝ}
     {N : ℕ → (ℕ → K) → K → Prop} {S : ℕ → K → (ℕ → K) → (ℕ → K) → Prop} {ok : ℕ → Prop}
     {I : Interp Op Tst K} (ops : ColOps M dec ed ea N S ok I) {τ' : Tape K} {τ : ℚ}
     {n k b c : ℕ} {Q W C : ℕ × ℕ} {hb tb : ℕ} {m : Mem K} {qs ws : List K}
@@ -132,7 +134,7 @@ theorem writes_round {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea : 
   have hV : m.store.readBlock Q.1 Q.2 ((k + c) * n) = some (qs ++ qn) := by
     rw [Nat.add_mul]
     exact Store.readBlock_add hqs hqn
-  refine (writes_column ops L hc hok hV hw).mono le_rfl ?_
+  refine (column_writes ops L hc hok hV hw).mono le_rfl ?_
   intro m' hfr ⟨hpos, w₂, cc, qc, hw₂, hcc, hqc, hcol⟩
   obtain ⟨hQW, hQC, hWC, hQh, hWh, hCh, hht, -⟩ := id L
   have hWQ : W.1 ≠ Q.1 := hQW.symm
@@ -150,13 +152,13 @@ theorem writes_round {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea : 
   · rw [Nat.succ_mul]
     exact Store.readBlock_add (hfr.readBlock_of hcs fun j hj => by disjoint) hcc
 
-/-- The column-wise two-pass extension meets the contract of a basis extension for every
+/-- The column-wise two-pass extension meets the specification of a basis extension for every
 predicate implied by the relations of its columns. Under the contracts `NLAlib.CGS2.ColOps`
-of the operations, the implementation with the threshold `θ` runs on all admitted operands at
+of the operations, the routine with the threshold `θ` runs on all separated operands at
 the dimensions `ok`, which the level-1 operations must admit, and its decoded output satisfies
 `P` whenever `P` follows from `NLAlib.CGS2.ColsDone` of the `b` columns for blocks of the
 declared lengths. -/
-theorem cgs2Extend_triple_of {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea : ℝ}
+theorem cgs2ExtendRoutine_meets_of {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ} {ea : ℝ}
     {N : ℕ → (ℕ → K) → K → Prop} {S : ℕ → K → (ℕ → K) → (ℕ → K) → Prop} {okB : ℕ → Prop}
     {I : Interp Op Tst K} (ops : ColOps M dec ed ea N S okB I) {θ : ℚ}
     {ok : ℕ → ℕ → ℕ → Prop} {P : ExtendPred ℝ} (hok : ∀ n k b, ok n k b → okB n)
@@ -164,13 +166,18 @@ theorem cgs2Extend_triple_of {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ
       ws.length = b * n → qn.length = b * n → wd.length = b * n → cs.length = b * (k + b) →
       ColsDone M dec (ed n) ea (N n) (S n) θ n k b qs ws b qn wd cs →
       ExtendOut dec P n k b qs ws qn cs) :
-    (cgs2ExtendImpl (Op := Op) (Tst := Tst) θ).Triple I .total
-      ((extendRelOf dec ok P).spec ExtendOperands) := by
-  cert_intro [n, k, b] (Q, W) → (Qn, W', C) reads (qs, ws)
-  obtain ⟨rfl, hW, hQW, hQC, hWC⟩ := hadm
-  subst W'
-  obtain ⟨hlQ, hlW, -, -, hlC⟩ := hl
-  obtain ⟨hzQ, hzW, hzC⟩ := hz
+    (cgs2ExtendRoutine (Op := Op) (Tst := Tst) θ).Meets I (extendSpecOf dec ok P) := by
+  routine_intro [n, k, b] (Q, W, C) reads (qs, ws)
+  rename' m => μ
+  have hz := hrooms
+  have hl := hlive
+  have hlQ := hl Q (by simp)
+  have hlW := hl W (by simp)
+  have hlC := hl C (by simp)
+  obtain ⟨hzQ, hzW, hzC⟩ : Q.2 + k * n + b * n ≤ μ.store.len Q.1 ∧
+      W.2 + b * n ≤ μ.store.len W.1 ∧ C.2 + (k + b) * b ≤ μ.store.len C.1 := by
+    simpa only [Mem.room_cons, Mem.room_nil, and_true] using hz
+  have hdom : ok n k b := hpre.2
   have hdom' : ok n k b := hdom
   have hokn := hok _ _ _ hdom'
   change Writes _ _ _ (Stmt.alloc (IExp.var 1 + IExp.var 2) (Stmt.alloc (IExp.const 3)
@@ -202,14 +209,15 @@ theorem cgs2Extend_triple_of {M : Machine K} {dec : K → ℝ} {ed : ℕ → ℝ
       Store.readBlock_sub hws (by omega)
     have hw : m'.store.readBlock W.1 (W.2 + c * n) n = some ((ws.drop (c * n)).take n) := by
       kept
-    exact (writes_round ops (L₀.of_eqOff hfr) hc hokn hqs' hw hinv).mono (by fp_sub)
+    exact (round_writes ops (L₀.of_eqOff hfr) hc hokn hqs' hw hinv).mono (by fp_sub)
       fun m'' _ h => ⟨h.1.trans hpos, h.2⟩
   · rintro m' - ⟨hpos, qn, wd, cs, hqn, hwd, hcs, hdone⟩ s₃ hs₃ hB₃ s₄ hs₄ hB₄
     have hB := (hB₃.mono (by omega)).trans hB₄
     have hcs' : m'.store.readBlock C.1 C.2 ((k + b) * b) = some cs := by
       rw [Nat.mul_comm]
       exact hcs
-    refine ⟨by simp [hpos], [qn, wd, cs], Mem.readBlocks_of_cons (hB.readBlock_of hlQ hqn)
+    refine ⟨by change _ = μ.pos + 0; simp [hpos], [qn, wd, cs],
+      Mem.readBlocks_of_cons (hB.readBlock_of hlQ hqn)
       (Mem.readBlocks_of_cons (hB.readBlock_of hlW hwd)
         (Mem.readBlocks_of_cons (hB.readBlock_of hlC hcs') rfl)), ?_⟩
     exact hP n k b qs ws qn wd cs hdom' (Store.length_of_readBlock hqs)

@@ -511,6 +511,7 @@ public import NLAlib.Krylov.CG.HSCG.Carried.Certification
 public import NLAlib.Krylov.CG.HSCG.Carried.Exact
 public import NLAlib.Krylov.CG.HSCG.Carried.Initialization
 public import NLAlib.Krylov.CG.HSCG.Carried.Linked
+public import NLAlib.Krylov.CG.HSCG.Carried.Rounded.Accuracy
 public import NLAlib.Krylov.CG.HSCG.Carried.Rounded.Alg
 public import NLAlib.Krylov.CG.HSCG.Carried.Rounded.Bounds
 public import NLAlib.Krylov.CG.HSCG.Carried.Rounded.Certification
@@ -726,6 +727,7 @@ public import NLAlib.Krylov.Lanczos.Rounded.Recurrence
 public import NLAlib.Krylov.Lanczos.Rounded.Ritz
 public import NLAlib.Krylov.Lanczos.Rounded.Rounds
 public import NLAlib.Krylov.Lanczos.Rounded.Run
+public import NLAlib.Krylov.Lanczos.Rounded.RunAnalysis
 public import NLAlib.Krylov.Lanczos.Rounded.ScalarTheorem
 public import NLAlib.Krylov.Lanczos.Rounded.Solve
 public import NLAlib.Krylov.Lanczos.Rounded.Stability

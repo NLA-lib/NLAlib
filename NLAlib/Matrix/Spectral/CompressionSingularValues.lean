@@ -29,6 +29,9 @@ the range of $\mathbf{P}$ to capture $\llbracket\mathbf{A}\rrbracket_L$.
 * `IsStarProjection.frobNorm_sub_mul_sq_eq_add_sum`,
   `IsStarProjection.frobNorm_sub_truncatedSVD_mul_sq`: the Frobenius error as the optimal error
   plus the sum of the deficits.
+* `IsStarProjection.mul_rangeProjector_truncatedSVD_mul`: the truncated compression
+  $\llbracket\mathbf{P}\mathbf{A}\rrbracket_k$ is $\mathbf{\Pi}\mathbf{A}$ for a projector
+  $\mathbf{\Pi} \le \mathbf{P}$.
 * `NLAlib.HasOrthonormalCols.mul_frobNorm_truncatedSVD_sub_mul_sq_le`,
   `IsStarProjection.mul_frobNorm_truncatedSVD_sub_mul_sq_le`: an energy deficit and a gap give
   head capture.
@@ -140,6 +143,25 @@ theorem _root_.IsStarProjection.frobNorm_sub_mul_sq_eq_add_sum {P : Matrix m m �
   linarith
 
 omit [DecidableEq m] [DecidableEq n] in
+/-- The truncated compression is a projection of $\mathbf{A}$ itself: for an orthogonal
+projector $\mathbf{P}$ and every $k$, the projector $\mathbf{\Pi}$ onto the column space of
+$\llbracket\mathbf{P}\mathbf{A}\rrbracket_k$ satisfies $\mathbf{P}\mathbf{\Pi} = \mathbf{\Pi}$
+and $\mathbf{\Pi}\mathbf{A} = \llbracket\mathbf{P}\mathbf{A}\rrbracket_k$. -/
+theorem _root_.IsStarProjection.mul_rangeProjector_truncatedSVD_mul {P : Matrix m m 𝕜}
+    (hP : IsStarProjection P) (A : Matrix m n 𝕜) (k : ℕ) :
+    P * rangeProjector (truncatedSVD (P * A) k) = rangeProjector (truncatedSVD (P * A) k) ∧
+      rangeProjector (truncatedSVD (P * A) k) * A = truncatedSVD (P * A) k := by
+  classical
+  set Y := truncatedSVD (P * A) k
+  have hYP : LinearMap.range Y.mulVecLin ≤ LinearMap.range P.mulVecLin :=
+    (range_truncatedSVD_le (P * A) k).trans (range_le_iff_exists_mul.mpr ⟨A, rfl⟩)
+  have hRP : rangeProjector Y * P = rangeProjector Y := by
+    simpa only [hP.rangeProjector_eq] using rangeProjector_mul_rangeProjector_of_range_le' hYP
+  refine ⟨?_, ?_⟩
+  · simpa only [hP.rangeProjector_eq] using rangeProjector_mul_rangeProjector_of_range_le hYP
+  · rw [← hRP, Matrix.mul_assoc, rangeProjector_truncatedSVD_mul]
+
+omit [DecidableEq m] [DecidableEq n] in
 /-- **The Frobenius error of a truncated compression**: for an orthogonal projector $\mathbf{P}$
 (of any rank) and every $k$,
 $$\|\mathbf{A} - \llbracket\mathbf{P}\mathbf{A}\rrbracket_k\|_{\mathsf{F}}^2 =
@@ -155,13 +177,7 @@ theorem _root_.IsStarProjection.frobNorm_sub_truncatedSVD_mul_sq {P : Matrix m m
       ∑ i ∈ Finset.range k, (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) := by
   classical
   set Y := truncatedSVD (P * A) k
-  have hYP : LinearMap.range Y.mulVecLin ≤ LinearMap.range P.mulVecLin :=
-    (range_truncatedSVD_le (P * A) k).trans
-      (range_le_iff_exists_mul.mpr ⟨A, rfl⟩)
-  have hRP : rangeProjector Y * P = rangeProjector Y := by
-    simpa only [hP.rangeProjector_eq] using rangeProjector_mul_rangeProjector_of_range_le' hYP
-  have hRA : rangeProjector Y * A = Y := by
-    rw [← hRP, Matrix.mul_assoc, rangeProjector_truncatedSVD_mul]
+  have hRA : rangeProjector Y * A = Y := (hP.mul_rangeProjector_truncatedSVD_mul A k).2
   have h := (isStarProjection_rangeProjector Y).frobNorm_sub_mul_sq_eq_add_sum A
     ((rank_rangeProjector Y).trans_le (rank_truncatedSVD_le _ k))
   rw [hRA] at h
@@ -318,6 +334,37 @@ theorem _root_.IsStarProjection.mul_frobNorm_truncatedSVD_sub_mul_sq_le {P : Mat
     (hP : IsStarProjection P) (A : Matrix m n 𝕜) {h L : ℕ} (hL : h + 1 = L) {θ : ℝ}
     (hθ : θ ≤ 1) (hgap : singularValues A L ^ 2 ≤ (1 - θ) * singularValues A h ^ 2) :
     θ * frobNorm (truncatedSVD A L - P * truncatedSVD A L) ^ 2 ≤
-      ∑ i ∈ Finset.range L, (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) := sorry
+      ∑ i ∈ Finset.range L, (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) := by
+  classical
+  obtain ⟨hPR, hRA⟩ := hP.mul_rangeProjector_truncatedSVD_mul A L
+  set Y := truncatedSVD (P * A) L
+  set X := truncatedSVD A L
+  obtain ⟨W, hW, hWr⟩ :=
+    exists_hasOrthonormalCols_range_eq (p := Fin Y.rank) Y (Fintype.card_fin _)
+  have hWW : W * Wᴴ = rangeProjector Y := by
+    rw [← hW.rangeProjector_eq, rangeProjector_inj.mpr hWr]
+  have hdef : 0 ≤ ∑ i ∈ Finset.range L,
+      (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) :=
+    Finset.sum_nonneg fun i _ => sub_nonneg.mpr
+      (pow_le_pow_left₀ (singularValues_nonneg _ _) (hP.singularValues_mul_le A i) 2)
+  -- the energy of the frame is that of `⟦PA⟧_L`
+  have hη : ∑ i ∈ Finset.range L, singularValues A i ^ 2 - ∑ i ∈ Finset.range L,
+      (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) ≤ frobNorm (Aᴴ * W) ^ 2 := by
+    have e : frobNorm (Aᴴ * W) = frobNorm Y := by
+      rw [← frobNorm_conjTranspose, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose,
+        ← hW.frobNorm_mul_left, ← Matrix.mul_assoc, hWW, hRA]
+    rw [e, frobNorm_truncatedSVD_sq, Finset.sum_sub_distrib, sub_sub_cancel]
+  have h := hW.mul_frobNorm_truncatedSVD_sub_mul_sq_le A hL
+    (by rw [Fintype.card_fin]; exact rank_truncatedSVD_le _ _) hθ hgap hη
+  rw [hWW] at h
+  rcases lt_or_ge θ 0 with hθ0 | hθ0
+  · nlinarith [sq_nonneg (frobNorm (X - P * X))]
+  -- `P` captures at least what `Π ≤ P` captures
+  refine le_trans (mul_le_mul_of_nonneg_left ?_ hθ0) h
+  have e : X - P * X = (1 - P) * (X - rangeProjector Y * X) := by
+    simp only [Matrix.sub_mul, Matrix.mul_sub, Matrix.one_mul, ← Matrix.mul_assoc, hPR]
+    abel
+  rw [e]
+  exact pow_le_pow_left₀ (frobNorm_nonneg _) (hP.one_sub.frobNorm_mul_le _) 2
 
 end NLAlib

@@ -77,7 +77,14 @@ theorem _root_.IsStarProjection.schattenNorm_sub_mul_rpow_add_le {p : ℝ≥0∞
     (hp : p ≠ ⊤) {P : Matrix m m 𝕜} {Q : Matrix n n 𝕜} (hP : IsStarProjection P)
     (hQ : IsStarProjection Q) {A : Matrix m n 𝕜} (hPAQ : P * A * Q = P * A) :
     schattenNorm p (A - A * Q) ^ p.toReal + schattenNorm p (P * A) ^ p.toReal ≤
-      schattenNorm p A ^ p.toReal := sorry
+      schattenNorm p A ^ p.toReal := by
+  classical
+  have h := hP.schattenNorm_mul_mul_rpow_add_le hp1 hp hQ A
+  have e : (1 - P) * A * (1 - Q) = A - A * Q := by
+    simp only [Matrix.sub_mul, Matrix.mul_sub, Matrix.one_mul, Matrix.mul_one, hPAQ]
+    abel
+  rw [hPAQ, e] at h
+  linarith
 
 omit [DecidableEq m] [DecidableEq n] in
 /-- **The two-sided error from the deficits in $p$-th powers**: for $1 \le p < \infty$, orthogonal
@@ -170,8 +177,8 @@ theorem _root_.IsStarProjection.schattenNorm_sub_mul_rpow_le_of_singularValues_l
 
 omit [DecidableEq m] [DecidableEq n] in
 /-- **The tail-count form of the Frobenius error, one-sided**: let $\mathbf{P}$ be an orthogonal
-projector, $\gamma, \kappa \ge 0$ and $\beta_i \ge 0$ for $i < k$. If the tail is flat,
-$\sigma_k \le \kappa\,\sigma_{k+j}$, and the deficits satisfy
+projector and $\gamma \ge 0$. If the tail is flat, $\sigma_k \le \kappa\,\sigma_{k+j}$, and
+the deficits satisfy
 $\sigma_i(\mathbf{A})^2 - \gamma\,\sigma_k(\mathbf{A})^2 - \beta_i \le
 \sigma_i(\mathbf{P}\mathbf{A})^2$ for $i < k$, then
 $$\|\mathbf{A} - \llbracket\mathbf{P}\mathbf{A}\rrbracket_k\|_{\mathsf{F}}^2 \le
@@ -182,13 +189,37 @@ there, here for the truncated compression $\llbracket\mathbf{P}\mathbf{A}\rrbrac
 flatness $\kappa$ and the count $j + 1$ as parameters. -/
 theorem _root_.IsStarProjection.frobNorm_sub_truncatedSVD_mul_sq_le_of_singularValues_le_mul
     {P : Matrix m m 𝕜} (hP : IsStarProjection P) {A : Matrix m n 𝕜} {k j : ℕ} {γ κ : ℝ}
-    {β : ℕ → ℝ} (hγ : 0 ≤ γ) (hκ : 0 ≤ κ) (hβ : ∀ i < k, 0 ≤ β i)
-    (htail : singularValues A k ≤ κ * singularValues A (k + j))
+    {β : ℕ → ℝ} (hγ : 0 ≤ γ) (htail : singularValues A k ≤ κ * singularValues A (k + j))
     (hritz : ∀ i < k, singularValues A i ^ 2 - γ * singularValues A k ^ 2 - β i ≤
       singularValues (P * A) i ^ 2) :
     frobNorm (A - truncatedSVD (P * A) k) ^ 2 ≤
       (1 + k * γ * κ ^ 2 / ((j : ℝ) + 1)) * frobNorm (A - truncatedSVD A k) ^ 2 +
-        ∑ i ∈ Finset.range k, β i := sorry
+        ∑ i ∈ Finset.range k, β i := by
+  set E := frobNorm (A - truncatedSVD A k) ^ 2
+  -- the tail count at `p = 2`: `(j + 1) σ_{k+j}² ≤ E`
+  have hcount : ((j : ℝ) + 1) * singularValues A (k + j) ^ 2 ≤ E := by
+    have h := mul_singularValues_rpow_le_schattenNorm_sub_truncatedSVD_rpow (p := 2)
+      two_ne_zero ENNReal.ofNat_ne_top A k j
+    simpa only [ENNReal.toReal_ofNat, Real.rpow_two, schattenNorm_two] using h
+  have hk : singularValues A k ^ 2 ≤ κ ^ 2 * singularValues A (k + j) ^ 2 := by
+    rw [← mul_pow]
+    exact pow_le_pow_left₀ (singularValues_nonneg A k) htail 2
+  have hj : (0 : ℝ) < j + 1 := by positivity
+  have hσ : singularValues A k ^ 2 ≤ κ ^ 2 / ((j : ℝ) + 1) * E := by
+    rw [div_mul_eq_mul_div, le_div_iff₀ hj]
+    nlinarith [sq_nonneg κ]
+  have hsum : ∑ i ∈ Finset.range k, (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) ≤
+      k * (γ * singularValues A k ^ 2) + ∑ i ∈ Finset.range k, β i := by
+    have h := Finset.sum_le_sum fun i (hi : i ∈ Finset.range k) =>
+      (show singularValues A i ^ 2 - singularValues (P * A) i ^ 2 ≤
+          γ * singularValues A k ^ 2 + β i by linarith [hritz i (Finset.mem_range.mp hi)])
+    rwa [Finset.sum_add_distrib, Finset.sum_const, Finset.card_range, nsmul_eq_mul] at h
+  rw [hP.frobNorm_sub_truncatedSVD_mul_sq A k]
+  have hkγ : (k : ℝ) * (γ * singularValues A k ^ 2) ≤ k * (γ * (κ ^ 2 / ((j : ℝ) + 1) * E)) :=
+    mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left hσ hγ) (Nat.cast_nonneg k)
+  have e : (1 + k * γ * κ ^ 2 / ((j : ℝ) + 1)) * E =
+      E + k * (γ * (κ ^ 2 / ((j : ℝ) + 1) * E)) := by ring
+  linarith
 
 omit [DecidableEq m] [DecidableEq n] in
 /-- **The better of two candidates, $1 \le p \le 2$**: let $(\mathbf{P}_1, \mathbf{Q}_1)$ and

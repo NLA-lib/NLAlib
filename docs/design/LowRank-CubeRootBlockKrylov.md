@@ -1050,8 +1050,7 @@ theorem _root_.IsStarProjection.schattenNorm_sub_mul_rpow_le_of_singularValues_l
 -- CB1F (tail-count form, Frobenius, one-sided)
 theorem _root_.IsStarProjection.frobNorm_sub_truncatedSVD_mul_sq_le_of_singularValues_le_mul
     {P : Matrix m m 𝕜} (hP : IsStarProjection P) {A : Matrix m n 𝕜} {k j : ℕ} {γ κ : ℝ}
-    {β : ℕ → ℝ} (hγ : 0 ≤ γ) (hκ : 0 ≤ κ) (hβ : ∀ i < k, 0 ≤ β i)
-    (htail : singularValues A k ≤ κ * singularValues A (k + j))
+    {β : ℕ → ℝ} (hγ : 0 ≤ γ) (htail : singularValues A k ≤ κ * singularValues A (k + j))
     (hritz : ∀ i < k, singularValues A i ^ 2 - γ * singularValues A k ^ 2 - β i ≤
       singularValues (P * A) i ^ 2) :
     frobNorm (A - truncatedSVD (P * A) k) ^ 2 ≤

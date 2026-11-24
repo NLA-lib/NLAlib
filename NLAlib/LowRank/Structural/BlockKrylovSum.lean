@@ -124,7 +124,9 @@ theorem range_mul_blockKrylovMatrix_le_range_mul_fromCols_left (A : Matrix m n �
     (Ω₁ : Matrix n l₁ 𝕜) (Ω₂ : Matrix n l₂ 𝕜) (q₁ q₂ : ℕ) :
     LinearMap.range (A * blockKrylovMatrix (Aᴴ * A) Ω₁ q₁).mulVecLin ≤
       LinearMap.range (A * Matrix.fromCols (blockKrylovMatrix (Aᴴ * A) Ω₁ q₁)
-        (blockKrylovMatrix (Aᴴ * A) Ω₂ q₂)).mulVecLin := sorry
+        (blockKrylovMatrix (Aᴴ * A) Ω₂ q₂)).mulVecLin := by
+  rw [Matrix.mul_fromCols]
+  exact Matrix.range_le_range_fromCols_left _ _
 
 omit [DecidableEq m] in
 /-- The sketch of the two block Krylov test matrices side by side contains the sketch of the
@@ -138,7 +140,9 @@ theorem range_mul_blockKrylovMatrix_le_range_mul_fromCols_right (A : Matrix m n 
     (Ω₁ : Matrix n l₁ 𝕜) (Ω₂ : Matrix n l₂ 𝕜) (q₁ q₂ : ℕ) :
     LinearMap.range (A * blockKrylovMatrix (Aᴴ * A) Ω₂ q₂).mulVecLin ≤
       LinearMap.range (A * Matrix.fromCols (blockKrylovMatrix (Aᴴ * A) Ω₁ q₁)
-        (blockKrylovMatrix (Aᴴ * A) Ω₂ q₂)).mulVecLin := sorry
+        (blockKrylovMatrix (Aᴴ * A) Ω₂ q₂)).mulVecLin := by
+  rw [Matrix.mul_fromCols]
+  exact Matrix.range_le_range_fromCols_right _ _
 
 omit [DecidableEq m] in
 /-- The sum does at least as well as the first run, singular value by singular value:
@@ -147,7 +151,10 @@ $\sigma_i\bigl(\mathsf{rbki}(\mathbf{A}, \mathbf{\Omega}_1, q_1)\bigr) \le
 q_2)\bigr)$ for every $i$. -/
 theorem singularValues_rbki_le_singularValues_rbkiSum_left (A : Matrix m n 𝕜)
     (Ω₁ : Matrix n l₁ 𝕜) (Ω₂ : Matrix n l₂ 𝕜) (q₁ q₂ i : ℕ) :
-    singularValues (rbki A Ω₁ q₁) i ≤ singularValues (rbkiSum A Ω₁ Ω₂ q₁ q₂) i := sorry
+    singularValues (rbki A Ω₁ q₁) i ≤ singularValues (rbkiSum A Ω₁ Ω₂ q₁ q₂) i := by
+  classical
+  exact singularValues_rangeProjector_mul_le_of_range_le
+    (range_mul_blockKrylovMatrix_le_range_mul_fromCols_left A Ω₁ Ω₂ q₁ q₂) A i
 
 omit [DecidableEq m] in
 /-- The sum does at least as well as the second run, singular value by singular value:
@@ -156,7 +163,10 @@ $\sigma_i\bigl(\mathsf{rbki}(\mathbf{A}, \mathbf{\Omega}_2, q_2)\bigr) \le
 q_2)\bigr)$ for every $i$. -/
 theorem singularValues_rbki_le_singularValues_rbkiSum_right (A : Matrix m n 𝕜)
     (Ω₁ : Matrix n l₁ 𝕜) (Ω₂ : Matrix n l₂ 𝕜) (q₁ q₂ i : ℕ) :
-    singularValues (rbki A Ω₂ q₂) i ≤ singularValues (rbkiSum A Ω₁ Ω₂ q₁ q₂) i := sorry
+    singularValues (rbki A Ω₂ q₂) i ≤ singularValues (rbkiSum A Ω₁ Ω₂ q₁ q₂) i := by
+  classical
+  exact singularValues_rangeProjector_mul_le_of_range_le
+    (range_mul_blockKrylovMatrix_le_range_mul_fromCols_right A Ω₁ Ω₂ q₁ q₂) A i
 
 /-! ### Frobenius norm -/
 

@@ -7,6 +7,7 @@ module
 
 public import NLAlib.Krylov.Basic.BlockSpace
 public import NLAlib.Matrix.Factorizations.NystromGram
+public import NLAlib.Matrix.Spectral.CompressionSingularValues
 public import NLAlib.Matrix.Spectral.SingularValueInequalities
 
 /-!
@@ -45,6 +46,8 @@ value (`NLAlib.singularValues_sub_rbki_le_of_degree_lt`).
 * `NLAlib.singularValues_sub_rbki_le_of_degree_lt`,
   `NLAlib.singularValues_sub_rbki_le_sub_rsvd_pow`, `NLAlib.singularValues_sub_rbki_le_of_le`: RBKI
   beats every polynomial filter, RSI with one block fewer, and itself with fewer blocks.
+* `NLAlib.singularValues_rsvd_cfc_le_singularValues_rbki`: the twin for the singular values of the
+  output.
 * `NLAlib.rbki_blockKrylovMatrix`, `Matrix.PosSemidef.nystromBKI_blockKrylovMatrix`: the simulated
   block, RBKI and NysBKI with block $\mathbf{\Omega}$ and $s + q + 1$ blocks are those with the
   block $\mathbf{K}_{s+1}$ and $q + 1$ blocks.
@@ -152,6 +155,25 @@ theorem singularValues_sub_rbki_le_of_degree_lt {R : Type*} [CommSemiring R] [Al
   classical
   rw [rbki, sub_rsvd, sub_rsvd]
   refine singularValues_one_sub_rangeProjector_mul_le_of_range_le ?_ A i
+  rw [← Matrix.mul_assoc]
+  exact range_mul_aeval_mul_le_range_mul_blockKrylovMatrix A (Aᴴ * A) Ω hf
+
+/-- RBKI dominates every polynomial filter of degree below $q$ from below: for a real polynomial
+$f$ with $\deg f < q$ and every $i$,
+$$\sigma_i\bigl(\mathsf{rsvd}(\mathbf{A}, f(\mathbf{A}^{\mathsf{H}}\mathbf{A})\mathbf{\Omega})\bigr)
+\le \sigma_i\bigl(\mathsf{rbki}(\mathbf{A}, \mathbf{\Omega}, q)\bigr)\,,$$
+since the range of $\mathbf{A}f(\mathbf{A}^{\mathsf{H}}\mathbf{A})\mathbf{\Omega}$ lies in the
+Krylov range (`NLAlib.singularValues_rangeProjector_mul_le_of_range_le`). The twin for the errors
+is `NLAlib.singularValues_sub_rbki_le_of_degree_lt`. -/
+theorem singularValues_rsvd_cfc_le_singularValues_rbki (A : Matrix m n 𝕜)
+    (Ω : Matrix n l 𝕜) {q : ℕ} {f : ℝ[X]} (hf : f.degree < q) (i : ℕ) :
+    singularValues (rsvd A (cfc (fun x => f.eval x) (Aᴴ * A) * Ω)) i ≤
+      singularValues (rbki A Ω q) i := by
+  have hG : cfc (fun x => f.eval x) (Aᴴ * A) = aeval (Aᴴ * A) f :=
+    cfc_polynomial f (Aᴴ * A) (Matrix.isHermitian_conjTranspose_mul_self A)
+  classical
+  rw [hG, rbki, rsvd, rsvd]
+  refine singularValues_rangeProjector_mul_le_of_range_le ?_ A i
   rw [← Matrix.mul_assoc]
   exact range_mul_aeval_mul_le_range_mul_blockKrylovMatrix A (Aᴴ * A) Ω hf
 

@@ -115,6 +115,16 @@ theorem measureReal_abs_ge_le_add (X : Ω → ℝ) (t : ℝ) :
   rw [h]
   exact measureReal_union_le _ _
 
+/-- A union bound up to null sets: if two events of measure at most $a$ and $b$ almost surely
+cover $S$, then $\mu(S) \le a + b$. -/
+theorem measureReal_le_add_of_ae_imp [IsFiniteMeasure μ] {S E₁ E₂ : Set Ω} {a b : ℝ}
+    (h₁ : μ.real E₁ ≤ a) (h₂ : μ.real E₂ ≤ b) (h : ∀ᵐ ω ∂μ, ω ∈ S → ω ∈ E₁ ∨ ω ∈ E₂) :
+    μ.real S ≤ a + b := by
+  have h' : S ≤ᵐ[μ] (E₁ ∪ E₂ : Set Ω) := h.mono fun ω hω hS => hω hS
+  calc μ.real S ≤ μ.real (E₁ ∪ E₂) := ENNReal.toReal_mono (measure_ne_top _ _) (measure_mono_ae h')
+    _ ≤ μ.real E₁ + μ.real E₂ := measureReal_union_le _ _
+    _ ≤ a + b := add_le_add h₁ h₂
+
 /-- **Markov's inequality off a failure event**: if $\mu(G^c) \le \delta$, $M \ge 0$ is integrable
 with mean $m$ (and vanishes when $m = 0$), and on $G$ the event $E$ forces $t m < M$, then for
 $t > 0$

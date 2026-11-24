@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import NLAlib.ForMathlib.Analysis.SpecialFunctions.Trigonometric.Chebyshev.Growth
 public import NLAlib.Matrix.Basic.ComplementaryProjector
 public import NLAlib.Matrix.Norms.Projector
 public import NLAlib.Matrix.Spectral.Interlacing
@@ -44,6 +45,8 @@ $k$ largest singular values from the rest.
 * `NLAlib.specNorm_le_sqrt_mul_one_add_of_specNorm_sub_smul_one_le`,
   `NLAlib.sqrt_mul_one_sub_le_singularValues_of_specNorm_sub_smul_one_le`: from a Gram error
   relative to $N\mathbf{I}$ to bounds on the extreme singular values.
+* `NLAlib.exists_degree_lt_div_sq_le_exp_singularGapRatio`: a Chebyshev filter of degree $d$
+  separating the head from the tail at the rate $4e^{-8d\sqrt{\gamma}}$ of the relative gap.
 -/
 
 @[expose] public section
@@ -509,5 +512,41 @@ theorem one_sub_singularGapRatio_div_one_add_singularGapRatio (A : Matrix m n �
   rw [singularGapRatio]
   field_simp [hi.ne']
   ring
+
+/-! ### A Chebyshev filter at the relative gap -/
+
+open Polynomial in
+/-- **A Chebyshev filter at the relative singular gap**: for a matrix $\mathbf{A}$, a head of
+$r = h + 1$ singular values, a tail index $t \ge r$ and a degree $d$, there are a real
+polynomial $f$ of degree at most $d$ and constants $c > 0$ and $a$ with
+$\lvert f(\sigma_i^2) \rvert \ge c$ for $i < r$, $\lvert f \rvert \le a$ on $[0, \sigma_t^2]$,
+and
+$$\Bigl(\frac{a}{c}\Bigr)^2 \le 4e^{-8d\sqrt{\gamma}}\,,$$
+where $\gamma = (\sigma_h - \sigma_t)/(\sigma_h + \sigma_t)$ is the relative gap
+`NLAlib.singularGapRatio A h t` (zero when $\sigma_h = 0$). For $\sigma_t > 0$ the filter is
+$f(x) = T_d(2x/\sigma_t^2 - 1)$ with $a = 1$ and $c = \tfrac12 e^{4d\sqrt{\gamma}}$; for
+$\sigma_t = 0 < \sigma_h$ it is $x^d$, and for $\sigma_h = 0$ it is $1$: the instance of
+`Polynomial.Chebyshev.exists_degree_lt_div_sq_le_exp_of_le` at the levels $\sigma_h$ and
+$\sigma_t$. [MuscoMusco2015, Lemma 5]; there a polynomial normalized at one level and bounded
+on $[0, \alpha]$, here the ratio $(a/c)^2$ at two singular values. -/
+theorem exists_degree_lt_div_sq_le_exp_singularGapRatio (A : Matrix m n 𝕜) {h r t : ℕ}
+    (hr : h + 1 = r) (hrt : r ≤ t) (d : ℕ) :
+    ∃ f : ℝ[X], f.degree < (d + 1 : ℕ) ∧ ∃ c a : ℝ, 0 < c ∧
+      (∀ i < r, c ≤ |f.eval (singularValues A i ^ 2)|) ∧
+      (∀ x ∈ Set.Icc 0 (singularValues A t ^ 2), |f.eval x| ≤ a) ∧
+      (a / c) ^ 2 ≤ 4 * Real.exp (-8 * (d : ℝ) * Real.sqrt (singularGapRatio A h t)) := by
+  have hht : h ≤ t := by omega
+  rcases (singularValues_nonneg A h).eq_or_lt with hσh | hσh
+  · -- $\sigma_h = 0$: then $\sigma_t = 0$, the gap ratio is zero and the constant filter does.
+    have hσt : singularValues A t = 0 :=
+      le_antisymm (hσh ▸ singularValues_antitone A hht) (singularValues_nonneg A t)
+    refine ⟨1, by rw [degree_one]; exact_mod_cast Nat.succ_pos d, 1, 1, one_pos,
+      fun i _ => by simp, fun x _ => by simp, ?_⟩
+    simp [singularGapRatio, hσt, ← hσh]
+  obtain ⟨f, hf, c, a, hc, hhead, htail, hac⟩ :=
+    Polynomial.Chebyshev.exists_degree_lt_div_sq_le_exp_of_le
+      (singularValues_nonneg A t) (singularValues_antitone A hht) hσh d
+  refine ⟨f, hf, c, a, hc, fun i hi => hhead _ ?_, htail, hac⟩
+  exact pow_le_pow_left₀ (singularValues_nonneg A h) (singularValues_antitone A (by omega)) 2
 
 end NLAlib

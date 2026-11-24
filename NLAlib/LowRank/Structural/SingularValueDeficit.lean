@@ -6,6 +6,7 @@ Authors: NLAlib contributors
 module
 
 public import NLAlib.ForMathlib.Analysis.SpecialFunctions.Pow.Real
+public import NLAlib.LowRank.Structural.Truncation
 public import NLAlib.Matrix.Norms.SchattenPinching
 public import NLAlib.Matrix.Spectral.CompressionSingularValues
 public import NLAlib.Matrix.Spectral.SingularValueDecay
@@ -49,6 +50,10 @@ $k\gamma\kappa^p/(j + 1)$.
   the tail-count form for $2 \le p < \infty$, one-sided.
 * `IsStarProjection.frobNorm_truncatedSVD_sub_mul_le_sqrt_mul`: head capture from small head
   deficits and a gap.
+* `NLAlib.schattenNorm_sub_truncatedSVD_rsvd_le_mul_of_singularValues_le_mul`,
+  `NLAlib.schattenNorm_sub_mul_rangeProjector_le_schattenNorm_sub_truncatedSVD_rsvd`: the
+  one-sided tail-count form for the truncated randomized SVD, and the two-sided output of the
+  truncated randomized SVD against the one-sided one.
 -/
 
 @[expose] public section
@@ -710,5 +715,69 @@ theorem _root_.IsStarProjection.schattenNorm_sub_mul_le_mul_of_singularValues_le
         positivity
     _ = (1 + c) ^ p.toReal⁻¹ * O := by
         rw [Real.mul_rpow (by linarith) (Real.rpow_nonneg hO _), Real.rpow_rpow_inv hO hr.ne']
+
+/-! ### The truncated randomized SVD -/
+
+omit [DecidableEq m] [DecidableEq n] in
+/-- The tail-count form for the truncated randomized SVD, $2 \le p < \infty$: let
+$\mathbf{B} = \mathsf{rsvd}(\mathbf{A}, \mathbf{Y})$ and $\delta, \gamma, \kappa \ge 0$. Suppose
+$\sigma_k \le \kappa\,\sigma_{k+j}$; every $i < k$ has
+$\sigma_i(\mathbf{A})^2 - \gamma\,\sigma_k(\mathbf{A})^2 \le \sigma_i(\mathbf{B})^2$; and every
+$i < k$ with $(1 + 1/(2p))\,\sigma_k < \sigma_i$ has
+$\sigma_i(\mathbf{A})^2 - \delta\,\sigma_k(\mathbf{A})^2 \le \sigma_i(\mathbf{B})^2$. Then
+$$\|\mathbf{A} - \llbracket\mathbf{B}\rrbracket_k\|_{S_p} \le
+\Bigl(k\sqrt{2(p + 1)\delta} +
+\Bigl(1 + \frac{e\,p\,k\gamma\kappa^p}{2(j + 1)}\Bigr)^{1/p}\Bigr)
+\|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_k\|_{S_p}\,.$$
+The truncated output is the compression of $\mathbf{A}$ by the projector onto its own range
+(`NLAlib.truncatedSVD_rsvd_eq_rangeProjector_mul`), whose leading singular values are those of
+$\mathbf{B}$; then `IsStarProjection.schattenNorm_sub_mul_le_mul_of_singularValues_le_mul`. -/
+theorem schattenNorm_sub_truncatedSVD_rsvd_le_mul_of_singularValues_le_mul {l : Type*}
+    [Fintype l] {p : ℝ≥0∞} (hp2 : 2 ≤ p) (hp : p ≠ ⊤) (A : Matrix m n 𝕜) (Y : Matrix n l 𝕜)
+    {k j : ℕ} {δ γ κ : ℝ} (hδ : 0 ≤ δ) (hγ : 0 ≤ γ) (hκ : 0 ≤ κ)
+    (htail : singularValues A k ≤ κ * singularValues A (k + j))
+    (hhead : ∀ i < k, (1 + 1 / (2 * p.toReal)) * singularValues A k < singularValues A i →
+      singularValues A i ^ 2 - δ * singularValues A k ^ 2 ≤ singularValues (rsvd A Y) i ^ 2)
+    (hritz : ∀ i < k, singularValues A i ^ 2 - γ * singularValues A k ^ 2 ≤
+      singularValues (rsvd A Y) i ^ 2) :
+    schattenNorm p (A - truncatedSVD (rsvd A Y) k) ≤
+      (k * Real.sqrt (2 * (p.toReal + 1) * δ) +
+        (1 + Real.exp 1 * (p.toReal / 2) * k * γ * κ ^ p.toReal / ((j : ℝ) + 1)) ^ p.toReal⁻¹) *
+        schattenNorm p (A - truncatedSVD A k) := by
+  have hT := truncatedSVD_rsvd_eq_rangeProjector_mul A Y k
+  have hσ : ∀ i < k, singularValues (rangeProjector (truncatedSVD (rsvd A Y) k) * A) i =
+      singularValues (rsvd A Y) i := fun i hi => by
+    rw [← hT, singularValues_truncatedSVD, if_pos hi]
+  calc schattenNorm p (A - truncatedSVD (rsvd A Y) k)
+      = schattenNorm p (A - rangeProjector (truncatedSVD (rsvd A Y) k) * A) := by rw [← hT]
+    _ ≤ _ :=
+      (isStarProjection_rangeProjector _).schattenNorm_sub_mul_le_mul_of_singularValues_le_mul
+        hp2 hp hδ hγ hκ htail (fun i hi h => by rw [hσ i hi]; exact hhead i hi h)
+        (fun i hi => by rw [hσ i hi]; exact hritz i hi)
+
+omit [DecidableEq m] [DecidableEq n] in
+/-- The two-sided output of the truncated randomized SVD is at least as accurate as the
+one-sided one: with $\mathbf{B} = \llbracket\mathsf{rsvd}(\mathbf{A}, \mathbf{Y})\rrbracket_k$
+and $1 \le p$,
+$\|\mathbf{A} - \mathbf{A}\mathbf{P}_{\mathbf{B}^{\mathsf{H}}}\|_{S_p} \le
+\|\mathbf{A} - \mathbf{B}\|_{S_p}$. Here $\mathbf{P}_{\mathbf{B}}\mathbf{A} = \mathbf{B}$
+(`NLAlib.truncatedSVD_rsvd_eq_rangeProjector_mul`) and
+$\mathbf{B}\mathbf{P}_{\mathbf{B}^{\mathsf{H}}} = \mathbf{B}$, so
+`IsStarProjection.matrixNorm_sub_mul_le_matrixNorm_sub_mul` applies. -/
+theorem schattenNorm_sub_mul_rangeProjector_le_schattenNorm_sub_truncatedSVD_rsvd {l : Type*}
+    [Fintype l] {p : ℝ≥0∞} (hp1 : 1 ≤ p) (A : Matrix m n 𝕜) (Y : Matrix n l 𝕜) (k : ℕ) :
+    schattenNorm p (A - A * rangeProjector (truncatedSVD (rsvd A Y) k)ᴴ) ≤
+      schattenNorm p (A - truncatedSVD (rsvd A Y) k) := by
+  have : Fact (1 ≤ p) := ⟨hp1⟩
+  set T := truncatedSVD (rsvd A Y) k
+  have hT : T = rangeProjector T * A := truncatedSVD_rsvd_eq_rangeProjector_mul A Y k
+  have hTQ : T * rangeProjector Tᴴ = T := by
+    have h := congrArg Matrix.conjTranspose (rangeProjector_mul_self Tᴴ)
+    rwa [Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose,
+      conjTranspose_rangeProjector] at h
+  have h := (isStarProjection_rangeProjector Tᴴ).matrixNorm_sub_mul_le_matrixNorm_sub_mul
+    (lpGauge p) (P := rangeProjector T) (A := A) (by rw [← hT, hTQ])
+  rw [lpGauge_matrixNorm, lpGauge_matrixNorm, ← hT] at h
+  exact h
 
 end NLAlib

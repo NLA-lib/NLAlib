@@ -190,8 +190,8 @@ theorem _root_.IsStarProjection.matrixNorm_sub_mul_le_matrixNorm_sub_mul (Φ : S
 omit [DecidableEq m] [DecidableEq n] in
 /-- **The tail-count form of the two-sided error, $1 \le p \le 2$**: let $\mathbf{P}$,
 $\mathbf{Q}$ be orthogonal projectors with $\mathbf{P}\mathbf{A}\mathbf{Q} =
-\mathbf{P}\mathbf{A}$, let $\gamma, \kappa \ge 0$ and $\beta_i \ge 0$ for $i < k$, with
-$\beta_i = 0$ for all $i < k$ if $\sigma_k(\mathbf{A}) = 0$. If the tail is flat,
+\mathbf{P}\mathbf{A}$, let $\gamma, \kappa \ge 0$ and let $\beta_i$, $i < k$, be real numbers
+with $\beta_i = 0$ for all $i < k$ if $\sigma_k(\mathbf{A}) = 0$. If the tail is flat,
 $\sigma_k \le \kappa\,\sigma_{k+j}$, and the deficits satisfy
 $\sigma_i(\mathbf{A})^2 - \gamma\,\sigma_k(\mathbf{A})^2 - \beta_i \le
 \sigma_i(\mathbf{P}\mathbf{A})^2$ for $i < k$, then
@@ -210,14 +210,78 @@ theorem _root_.IsStarProjection.schattenNorm_sub_mul_rpow_le_of_singularValues_l
     {p : ℝ≥0∞} (hp1 : 1 ≤ p) (hp2 : p ≤ 2) {P : Matrix m m 𝕜} {Q : Matrix n n 𝕜}
     (hP : IsStarProjection P) (hQ : IsStarProjection Q) {A : Matrix m n 𝕜}
     (hPAQ : P * A * Q = P * A) {k j : ℕ} {γ κ : ℝ} {β : ℕ → ℝ} (hγ : 0 ≤ γ) (hκ : 0 ≤ κ)
-    (hβ : ∀ i < k, 0 ≤ β i) (hβ0 : singularValues A k = 0 → ∀ i < k, β i = 0)
+    (hβ0 : singularValues A k = 0 → ∀ i < k, β i = 0)
     (htail : singularValues A k ≤ κ * singularValues A (k + j))
     (hritz : ∀ i < k, singularValues A i ^ 2 - γ * singularValues A k ^ 2 - β i ≤
       singularValues (P * A) i ^ 2) :
     schattenNorm p (A - A * Q) ^ p.toReal ≤
       (1 + k * γ * κ ^ p.toReal / ((j : ℝ) + 1)) *
           schattenNorm p (A - truncatedSVD A k) ^ p.toReal +
-        singularValues A k ^ (p.toReal - 2) * ∑ i ∈ Finset.range k, β i := sorry
+        singularValues A k ^ (p.toReal - 2) * ∑ i ∈ Finset.range k, β i := by
+  have hp : p ≠ ⊤ := ne_top_of_le_ne_top ENNReal.ofNat_ne_top hp2
+  have hp0 : p ≠ 0 := (lt_of_lt_of_le zero_lt_one hp1).ne'
+  have hr1 : 1 ≤ p.toReal := by simpa only [ENNReal.toReal_one] using ENNReal.toReal_mono hp hp1
+  have hr2 : p.toReal ≤ 2 := by
+    simpa only [ENNReal.toReal_ofNat] using ENNReal.toReal_mono ENNReal.ofNat_ne_top hp2
+  refine (hP.schattenNorm_sub_mul_rpow_le_add_sum_mul hp1 hp hQ hPAQ k).trans ?_
+  simp only [max_eq_left (show p.toReal / 2 ≤ 1 by linarith), one_mul]
+  set O := schattenNorm p (A - truncatedSVD A k) ^ p.toReal
+  set s := singularValues A k with hs_def
+  have hO : 0 ≤ O := Real.rpow_nonneg (schattenNorm_nonneg _ _) _
+  have hd0 (i : ℕ) : 0 ≤ singularValues A i ^ 2 - singularValues (P * A) i ^ 2 :=
+    sub_nonneg.mpr (pow_le_pow_left₀ (singularValues_nonneg _ _) (hP.singularValues_mul_le A i) 2)
+  have hc : 0 ≤ k * γ * κ ^ p.toReal / ((j : ℝ) + 1) := by positivity
+  rcases (singularValues_nonneg A k).eq_or_lt with hs | hs
+  · -- `σ_k = 0`: every deficit and every `β_i` vanishes
+    have hβ' := hβ0 hs.symm
+    have hsum : ∑ i ∈ Finset.range k, singularValues A i ^ (p.toReal - 2) *
+        (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) = 0 :=
+      Finset.sum_eq_zero fun i hi => by
+        have hi' := Finset.mem_range.mp hi
+        have h := hritz i hi'
+        rw [show s = 0 from hs.symm, hβ' i hi'] at h
+        have h0 : singularValues A i ^ 2 - singularValues (P * A) i ^ 2 = 0 :=
+          le_antisymm (by linarith) (hd0 i)
+        rw [h0, mul_zero]
+    rw [hsum, Finset.sum_eq_zero fun i hi => hβ' i (Finset.mem_range.mp hi), mul_zero, add_zero,
+      add_zero]
+    nlinarith
+  · -- `σ_k > 0`: `σ_i^(p-2) ≤ σ_k^(p-2)` for `i < k`, and the tail count
+    have hsp : s ^ (p.toReal - 2) * s ^ 2 = s ^ p.toReal := by
+      rw [← Real.rpow_two, ← Real.rpow_add hs, sub_add_cancel]
+    have hterm (i : ℕ) (hi : i ∈ Finset.range k) :
+        singularValues A i ^ (p.toReal - 2) *
+            (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) ≤
+          γ * s ^ p.toReal + s ^ (p.toReal - 2) * β i := by
+      have hi' := Finset.mem_range.mp hi
+      have hpow : singularValues A i ^ (p.toReal - 2) ≤ s ^ (p.toReal - 2) :=
+        Real.rpow_le_rpow_of_nonpos hs (singularValues_antitone A hi'.le) (by linarith)
+      have hd : singularValues A i ^ 2 - singularValues (P * A) i ^ 2 ≤ γ * s ^ 2 + β i := by
+        linarith [hritz i hi']
+      calc singularValues A i ^ (p.toReal - 2) *
+            (singularValues A i ^ 2 - singularValues (P * A) i ^ 2)
+          ≤ s ^ (p.toReal - 2) * (γ * s ^ 2 + β i) :=
+            mul_le_mul hpow hd (hd0 i) (Real.rpow_nonneg hs.le _)
+        _ = γ * s ^ p.toReal + s ^ (p.toReal - 2) * β i := by rw [← hsp]; ring
+    have hsum := Finset.sum_le_sum hterm
+    rw [Finset.sum_add_distrib, Finset.sum_const, Finset.card_range, nsmul_eq_mul,
+      ← Finset.mul_sum] at hsum
+    have hj : (0 : ℝ) < j + 1 := by positivity
+    have hσ : s ^ p.toReal ≤ κ ^ p.toReal / ((j : ℝ) + 1) * O := by
+      have h := mul_singularValues_rpow_le_schattenNorm_sub_truncatedSVD_rpow hp0 hp A k j
+      calc s ^ p.toReal ≤ κ ^ p.toReal * singularValues A (k + j) ^ p.toReal := by
+            rw [← Real.mul_rpow hκ (singularValues_nonneg _ _)]
+            exact Real.rpow_le_rpow hs.le htail (by linarith)
+        _ ≤ κ ^ p.toReal * (O / ((j : ℝ) + 1)) := by
+            gcongr
+            rw [le_div_iff₀ hj, mul_comm]
+            exact h
+        _ = _ := by ring
+    have hkγ : (k : ℝ) * (γ * s ^ p.toReal) ≤ k * (γ * (κ ^ p.toReal / ((j : ℝ) + 1) * O)) :=
+      mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left hσ hγ) (Nat.cast_nonneg k)
+    have e : (1 + k * γ * κ ^ p.toReal / ((j : ℝ) + 1)) * O =
+        O + k * (γ * (κ ^ p.toReal / ((j : ℝ) + 1) * O)) := by ring
+    linarith
 
 omit [DecidableEq m] [DecidableEq n] in
 /-- **The tail-count form of the Frobenius error, one-sided**: let $\mathbf{P}$ be an orthogonal
@@ -290,7 +354,7 @@ theorem min_schattenNorm_sub_mul_rpow_le_of_singularValues_le_mul
     (hP₁ : IsStarProjection P₁) (hQ₁ : IsStarProjection Q₁) (hP₂ : IsStarProjection P₂)
     (hQ₂ : IsStarProjection Q₂) {A : Matrix m n 𝕜} (h₁ : P₁ * A * Q₁ = P₁ * A)
     (h₂ : P₂ * A * Q₂ = P₂ * A) {k j : ℕ} {γ₁ γ₂ κ : ℝ} {β₁ β₂ : ℕ → ℝ} (hγ₁ : 0 ≤ γ₁)
-    (hγ₂ : 0 ≤ γ₂) (hκ : 0 ≤ κ) (hβ₁ : ∀ i < k, 0 ≤ β₁ i) (hβ₂ : ∀ i < k, 0 ≤ β₂ i)
+    (hγ₂ : 0 ≤ γ₂) (hκ : 0 ≤ κ)
     (hβ0 : singularValues A k = 0 → ∀ i < k, β₁ i = 0 ∧ β₂ i = 0)
     (hritz₁ : ∀ i < k, singularValues A i ^ 2 - γ₁ * singularValues A k ^ 2 - β₁ i ≤
       singularValues (P₁ * A) i ^ 2)
@@ -301,7 +365,29 @@ theorem min_schattenNorm_sub_mul_rpow_le_of_singularValues_le_mul
       (1 + k * max (γ₁ * κ ^ p.toReal / ((j : ℝ) + 1)) γ₂) *
           schattenNorm p (A - truncatedSVD A k) ^ p.toReal +
         singularValues A k ^ (p.toReal - 2) *
-          max (∑ i ∈ Finset.range k, β₁ i) (∑ i ∈ Finset.range k, β₂ i) := sorry
+          max (∑ i ∈ Finset.range k, β₁ i) (∑ i ∈ Finset.range k, β₂ i) := by
+  set O := schattenNorm p (A - truncatedSVD A k) ^ p.toReal
+  have hO : 0 ≤ O := Real.rpow_nonneg (schattenNorm_nonneg _ _) _
+  have hs : 0 ≤ singularValues A k ^ (p.toReal - 2) :=
+    Real.rpow_nonneg (singularValues_nonneg _ _) _
+  -- a candidate's bound is at most the common bound
+  have hle {c : ℝ} {b : ℝ} (hc : c ≤ max (γ₁ * κ ^ p.toReal / ((j : ℝ) + 1)) γ₂)
+      (hb : b ≤ max (∑ i ∈ Finset.range k, β₁ i) (∑ i ∈ Finset.range k, β₂ i)) :
+      (1 + k * c) * O + singularValues A k ^ (p.toReal - 2) * b ≤
+        (1 + k * max (γ₁ * κ ^ p.toReal / ((j : ℝ) + 1)) γ₂) * O +
+          singularValues A k ^ (p.toReal - 2) *
+            max (∑ i ∈ Finset.range k, β₁ i) (∑ i ∈ Finset.range k, β₂ i) := by
+    gcongr
+  rcases le_or_gt (singularValues A k) (κ * singularValues A (k + j)) with htail | hgap
+  · -- no gap: the first candidate, with the tail count
+    refine (min_le_left _ _).trans ((hP₁.schattenNorm_sub_mul_rpow_le_of_singularValues_le_mul
+      hp1 hp2 hQ₁ h₁ hγ₁ hκ (fun h i hi => (hβ0 h i hi).1) htail hritz₁).trans ?_)
+    refine (le_of_eq (by ring)).trans (hle (le_max_left _ _) (le_max_left _ _))
+  · -- a gap: the second candidate, with `κ = 1` and `j = 0`
+    refine (min_le_right _ _).trans ((hP₂.schattenNorm_sub_mul_rpow_le_of_singularValues_le_mul
+      hp1 hp2 hQ₂ h₂ hγ₂ zero_le_one (fun h i hi => (hβ0 h i hi).2)
+      (by rw [add_zero, one_mul]) (hritz₂ hgap) (j := 0)).trans ?_)
+    refine (le_of_eq (by simp [O])).trans (hle (le_max_right _ _) (le_max_right _ _))
 
 /-! ### The one-sided output, $2 \le p < \infty$ -/
 

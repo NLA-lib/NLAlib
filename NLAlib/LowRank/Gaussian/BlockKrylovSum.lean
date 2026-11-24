@@ -71,6 +71,50 @@ variable {Ω : Type*} {mΩ : MeasurableSpace Ω} {μ : Measure Ω} {l m n l₁ l
 /-! ### One run -/
 
 omit [DecidableEq m] in
+/-- A Gaussian block against a frame of top right singular vectors: for $k + 2 \le \ell$ there
+is a frame $\mathbf{Z}$ of $\min(k, \lvert n \rvert)$ orthonormal columns with
+$\mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}} = \llbracket\mathbf{A}\rrbracket_k$, almost
+surely $\operatorname{rank}(\mathbf{X}^{\mathsf{H}}\mathbf{Z}) = \operatorname{rank}\mathbf{Z}$,
+and the sketch residual
+$(\mathbf{A} - \llbracket\mathbf{A}\rrbracket_k)\mathbf{X}(\mathbf{Z}^{\mathsf{H}}\mathbf{X})^{+}$
+is square integrable with
+$\mathbb{E}\|\cdot\|_{\mathsf{F}}^2 \le (k/(\ell - k - 1))
+\|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_k\|_{\mathsf{F}}^2$. -/
+private theorem exists_frame_residual (A : Matrix m n ℝ) {X : Ω → Matrix n l ℝ}
+    (hX : HasLaw X (gaussianMatrix n l) μ) {k : ℕ} (hk : k + 2 ≤ Fintype.card l) :
+    ∃ Z : Matrix n (Fin (min k (Fintype.card n))) ℝ, HasOrthonormalCols Z ∧
+      A * Z * Zᴴ = truncatedSVD A k ∧ (∀ᵐ ω ∂μ, ((X ω)ᴴ * Z).rank = Z.rank) ∧
+      Integrable (fun ω => frobNorm ((A - truncatedSVD A k) * X ω * pinv (Zᴴ * X ω)) ^ 2) μ ∧
+      ∫ ω, frobNorm ((A - truncatedSVD A k) * X ω * pinv (Zᴴ * X ω)) ^ 2 ∂μ ≤
+        (k : ℝ) / ((Fintype.card l : ℝ) - k - 1) * frobNorm (A - truncatedSVD A k) ^ 2 := by
+  obtain ⟨Z, -, hZ, -, -, -, -, -, hpre⟩ :=
+    exists_hasOrthonormalCols_conjTranspose_mul_self_mul_eq_mul_diagonal A
+      (min_le_right k (Fintype.card n))
+  have hT : truncatedSVD A (min k (Fintype.card n)) = truncatedSVD A k := by
+    rcases le_total k (Fintype.card n) with h | h
+    · rw [min_eq_left h]
+    · rw [min_eq_right h, truncatedSVD_of_rank_le A A.rank_le_card_width,
+        truncatedSVD_of_rank_le A (A.rank_le_card_width.trans h)]
+  have hAZ : A * Z * Zᴴ = truncatedSVD A k := by
+    have h := hpre _ le_rfl
+    rw [Fin.castLE_rfl, Matrix.submatrix_id_id] at h
+    rw [h, hT]
+  have hs : Fintype.card (Fin (min k (Fintype.card n))) + 2 ≤ Fintype.card l := by
+    rw [Fintype.card_fin]
+    omega
+  have hE : A - truncatedSVD A k = A - A * Z * Zᴴ := by rw [hAZ]
+  refine ⟨Z, hZ, hAZ, ae_rank_conjTranspose_mul_eq_of_hasLaw_gaussianMatrix Z hX
+      (by rw [hZ.rank_eq, Fintype.card_fin]; omega), ?_, ?_⟩
+  · rw [hE]
+    exact integrable_frobNorm_sub_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix A hX hZ hs
+  · rw [hE, integral_frobNorm_sub_mul_mul_pinv_sq_of_hasLaw_gaussianMatrix A hX hZ hs,
+      Fintype.card_fin, mul_div_assoc, mul_comm]
+    refine mul_le_mul_of_nonneg_right ?_ (sq_nonneg _)
+    have hkl : (k : ℝ) + 2 ≤ Fintype.card l := by exact_mod_cast hk
+    have htk : ((min k (Fintype.card n) : ℕ) : ℝ) ≤ k := Nat.cast_le.mpr (min_le_left _ _)
+    exact div_le_div₀ (Nat.cast_nonneg _) htk (by linarith) (by linarith)
+
+omit [DecidableEq m] in
 /-- **The expected Frobenius error of one truncated run of block Krylov iteration, no gap**: for
 a real matrix $\mathbf{A}$, a standard Gaussian $n \times \ell$ test matrix $\mathbf{X}$
 (independent standard normal entries), $k + 2 \le \ell$, $q \ge 1$ blocks and
@@ -92,7 +136,29 @@ theorem integral_frobNorm_sub_truncatedSVD_rbki_sq_le_add_mul_of_hasLaw_gaussian
     ∫ ω, frobNorm (A - truncatedSVD (rbki A (X₁ ω) q) k) ^ 2 ∂μ ≤
       (1 + 4 * k * Real.exp (-2 * Real.sqrt 2 * ((q : ℝ) - 1) * Real.sqrt γ) *
           ((k : ℝ) / ((Fintype.card l₁ : ℝ) - k - 1))) * frobNorm (A - truncatedSVD A k) ^ 2 +
-        k * γ * singularValues A k ^ 2 := sorry
+        k * γ * singularValues A k ^ 2 := by
+  have := hX.isProbabilityMeasure
+  obtain ⟨Z, hZ, hAZ, hrk, hRi, hR⟩ := exists_frame_residual A hX hk
+  set c := 4 * k * Real.exp (-2 * Real.sqrt 2 * ((q : ℝ) - 1) * Real.sqrt γ)
+  have hc : 0 ≤ c := by positivity
+  have hY : AEMeasurable (fun ω => blockKrylovMatrix (Aᴴ * A) (X₁ ω) q) μ :=
+    (measurable_blockKrylovMatrix (Aᴴ * A) q).comp_aemeasurable hX.aemeasurable
+  have hI : Integrable (fun ω => frobNorm (A - truncatedSVD A k) ^ 2 +
+      k * γ * singularValues A k ^ 2 +
+      c * frobNorm ((A - truncatedSVD A k) * X₁ ω * pinv (Zᴴ * X₁ ω)) ^ 2) μ :=
+    (integrable_const _).add (hRi.const_mul c)
+  simp only [rbki_def]
+  refine (integral_mono_ae (integrable_frobNorm_sub_truncatedSVD_rsvd_sq A hY k) hI ?_).trans ?_
+  · filter_upwards [hrk] with ω hω
+    have h := hZ.frobNorm_sub_truncatedSVD_rbki_sq_le_add_mul hω hAZ hq hγ hγ1
+    rw [rbki_def] at h
+    have h2 := mul_le_mul_of_nonneg_left (pow_le_pow_left₀ (specNorm_nonneg _)
+      (specNorm_le_frobNorm ((A - truncatedSVD A k) * X₁ ω * pinv (Zᴴ * X₁ ω))) 2) hc
+    linarith
+  · rw [integral_add (integrable_const _) (hRi.const_mul c), integral_const, probReal_univ,
+      one_smul, integral_const_mul]
+    have h := mul_le_mul_of_nonneg_left hR hc
+    linarith
 
 /-! ### Frobenius norm, in expectation -/
 
@@ -133,7 +199,47 @@ theorem integral_frobNorm_sub_truncatedSVD_rsvd_sq_le_of_range_le_of_hasLaw_gaus
           ((k : ℝ) / ((Fintype.card l₁ : ℝ) - k - 1)) +
         4 * Real.exp (-3 * ((q₂ : ℝ) - 1)) *
           (((k : ℝ) + j) / ((Fintype.card l₂ : ℝ) - k - j - 1))) *
-        frobNorm (A - truncatedSVD A k) ^ 2 := sorry
+        frobNorm (A - truncatedSVD A k) ^ 2 := by
+  have := hX₁.isProbabilityMeasure
+  obtain ⟨Z₁, hZ₁, hAZ₁, hrk₁, hRi₁, hR₁⟩ := exists_frame_residual A hX₁ hl₁
+  obtain ⟨Z₂, hZ₂, hAZ₂, hrk₂, hRi₂, hR₂⟩ := exists_frame_residual A hX₂ (k := k + j) hl₂
+  set c₁ := 4 * k * Real.exp (-2 * Real.sqrt 2 * ((q₁ : ℝ) - 1) * Real.sqrt γ)
+  set c₂ := 4 * Real.exp (-3 * ((q₂ : ℝ) - 1))
+  have hc₁ : 0 ≤ c₁ := by positivity
+  have hc₂ : 0 ≤ c₂ := by positivity
+  have hI₁ : Integrable (fun ω => (1 + 2 * k * γ / ((j : ℝ) + 1)) *
+      frobNorm (A - truncatedSVD A k) ^ 2 +
+      c₁ * frobNorm ((A - truncatedSVD A k) * X₁ ω * pinv (Z₁ᴴ * X₁ ω)) ^ 2) μ :=
+    (integrable_const _).add (hRi₁.const_mul c₁)
+  have hI : Integrable (fun ω => (1 + 2 * k * γ / ((j : ℝ) + 1)) *
+      frobNorm (A - truncatedSVD A k) ^ 2 +
+      c₁ * frobNorm ((A - truncatedSVD A k) * X₁ ω * pinv (Z₁ᴴ * X₁ ω)) ^ 2 +
+      c₂ * frobNorm ((A - truncatedSVD A (k + j)) * X₂ ω * pinv (Z₂ᴴ * X₂ ω)) ^ 2) μ :=
+    hI₁.add (hRi₂.const_mul c₂)
+  refine (integral_mono_ae (integrable_frobNorm_sub_truncatedSVD_rsvd_sq A hY k) hI ?_).trans ?_
+  · filter_upwards [hrk₁, hrk₂] with ω hω₁ hω₂
+    have h := hZ₁.frobNorm_sub_truncatedSVD_rsvd_sq_le_of_range_le hZ₂ hω₁ hω₂ hAZ₁ hAZ₂ hq₁ hq₂
+      hγ hγ1 (h₁ ω) (h₂ ω)
+    have h2 := mul_le_mul_of_nonneg_left (pow_le_pow_left₀ (specNorm_nonneg _)
+      (specNorm_le_frobNorm ((A - truncatedSVD A k) * X₁ ω * pinv (Z₁ᴴ * X₁ ω))) 2) hc₁
+    linarith
+  · rw [integral_add hI₁ (hRi₂.const_mul c₂),
+      integral_add (integrable_const _) (hRi₁.const_mul c₁), integral_const, probReal_univ,
+      one_smul, integral_const_mul, integral_const_mul]
+    have hl : (k : ℝ) + j + 2 ≤ Fintype.card l₂ := by exact_mod_cast hl₂
+    have hr₂ : 0 ≤ ((k : ℝ) + j) / ((Fintype.card l₂ : ℝ) - k - j - 1) :=
+      div_nonneg (by positivity) (by linarith)
+    have hopt : frobNorm (A - truncatedSVD A (k + j)) ^ 2 ≤ frobNorm (A - truncatedSVD A k) ^ 2 :=
+      pow_le_pow_left₀ (frobNorm_nonneg _) (frobNorm_sub_truncatedSVD_le_of_rank_le A
+        ((rank_truncatedSVD_le A k).trans (Nat.le_add_right k j))) 2
+    have e₁ := mul_le_mul_of_nonneg_left hR₁ hc₁
+    have hR₂' : ∫ ω, frobNorm ((A - truncatedSVD A (k + j)) * X₂ ω * pinv (Z₂ᴴ * X₂ ω)) ^ 2 ∂μ ≤
+        ((k : ℝ) + j) / ((Fintype.card l₂ : ℝ) - k - j - 1) *
+          frobNorm (A - truncatedSVD A (k + j)) ^ 2 :=
+      hR₂.trans_eq (by push_cast; ring)
+    have e₂ := mul_le_mul_of_nonneg_left hR₂' hc₂
+    have e₃ := mul_le_mul_of_nonneg_left hopt (mul_nonneg hc₂ hr₂)
+    linarith
 
 omit [DecidableEq m] in
 /-- **The expected Frobenius error of block Krylov iteration on the sum of two Gaussian block

@@ -794,8 +794,10 @@ public import NLAlib.LowRank.BlockKrylov.Factored
 public import NLAlib.LowRank.BlockKrylov.Probability
 public import NLAlib.LowRank.BlockKrylov.Samples
 public import NLAlib.LowRank.Gaussian.BlockKrylov
+public import NLAlib.LowRank.Gaussian.BlockKrylovFrobenius
 public import NLAlib.LowRank.Gaussian.BlockKrylovGapless
 public import NLAlib.LowRank.Gaussian.BlockKrylovSum
+public import NLAlib.LowRank.Gaussian.BlockKrylovSumSchatten
 public import NLAlib.LowRank.Gaussian.BlockKrylovSumTail
 public import NLAlib.LowRank.Gaussian.EarlyTruncation
 public import NLAlib.LowRank.Gaussian.EarlyTruncationHaar
@@ -809,6 +811,7 @@ public import NLAlib.LowRank.Gaussian.RangeFinder
 public import NLAlib.LowRank.Gaussian.RangeFinderMoments
 public import NLAlib.LowRank.Gaussian.RangeFinderTail
 public import NLAlib.LowRank.Gaussian.RangeFinderTailHaar
+public import NLAlib.LowRank.Gaussian.RitzValues
 public import NLAlib.LowRank.Gaussian.RotationInvariant
 public import NLAlib.LowRank.Gaussian.RotationInvariantFactor
 public import NLAlib.LowRank.Gaussian.SmallBlock
@@ -833,6 +836,7 @@ public import NLAlib.LowRank.Structural.BlockKrylov
 public import NLAlib.LowRank.Structural.BlockKrylovSum
 public import NLAlib.LowRank.Structural.EarlyTruncation
 public import NLAlib.LowRank.Structural.Filter
+public import NLAlib.LowRank.Structural.FilteredResidual
 public import NLAlib.LowRank.Structural.RangeFinder
 public import NLAlib.LowRank.Structural.RitzValues
 public import NLAlib.LowRank.Structural.SingularValueDeficit

@@ -46,6 +46,8 @@ $k\gamma\kappa^p/(j + 1)$.
   `IsStarProjection.schattenNorm_sub_mul_le_of_singularValues_sq_sub_le`,
   `IsStarProjection.schattenNorm_sub_mul_le_mul_of_singularValues_le_mul`: the head split and
   the tail-count form for $2 \le p < \infty$, one-sided.
+* `IsStarProjection.schattenNorm_sub_truncatedSVD_mul_rpow_le_add_sum_mul`: the truncated
+  one-sided output for $2 \le p < \infty$ from the deficits in squares.
 * `IsStarProjection.frobNorm_truncatedSVD_sub_mul_le_sqrt_mul`: head capture from small head
   deficits and a gap.
 * `NLAlib.schattenNorm_sub_truncatedSVD_rsvd_le_mul_of_singularValues_le_mul`,
@@ -554,6 +556,63 @@ theorem _root_.IsStarProjection.schattenNorm_sub_mul_le_of_singularValues_sq_sub
     refine Real.rpow_le_rpow (by positivity) (add_le_add le_rfl ?_)
       (inv_nonneg.mpr (by linarith))
     exact sum_Ico_rpow_sub_rpow_le hr2 hP hLk (by linarith) hflat hmid
+
+omit [DecidableEq m] [DecidableEq n] in
+/-- **The truncated one-sided output from the deficits in squares, $2 \le p < \infty$**: for
+$2 \le p < \infty$, an orthogonal projector $\mathbf{P}$ ($m \times m$), an $m \times n$ matrix
+$\mathbf{A}$ and every $k$,
+$$\|\mathbf{A} - \llbracket\mathbf{P}\mathbf{A}\rrbracket_k\|_{S_p}^p \le
+\|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_k\|_{S_p}^p +
+\sum_{i<k} \frac{p}{2}\,\sigma_i(\mathbf{A})^{p-2}
+\bigl(\sigma_i(\mathbf{A})^2 - \sigma_i(\mathbf{P}\mathbf{A})^2\bigr)\,.$$
+Each deficit is weighted by the power $\sigma_i^{p-2}$ of its own index, not by that of
+$\sigma_k$. [BakshiClarksonWoodruff2022, proof of Theorem 3.1]; there for the two-sided output
+with the pair-of-projectors inequality and the deficits in $p$-th powers, here for the truncated
+one-sided output, with the deficits in squares. -/
+theorem _root_.IsStarProjection.schattenNorm_sub_truncatedSVD_mul_rpow_le_add_sum_mul
+    {p : ℝ≥0∞} (hp2 : 2 ≤ p) (hp : p ≠ ⊤) {P : Matrix m m 𝕜} (hP : IsStarProjection P)
+    (A : Matrix m n 𝕜) (k : ℕ) :
+    schattenNorm p (A - truncatedSVD (P * A) k) ^ p.toReal ≤
+      schattenNorm p (A - truncatedSVD A k) ^ p.toReal +
+        ∑ i ∈ Finset.range k, p.toReal / 2 * singularValues A i ^ (p.toReal - 2) *
+          (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) := by
+  classical
+  have hp0 : p ≠ 0 := (lt_of_lt_of_le (by norm_num) hp2).ne'
+  have hpr : 2 ≤ p.toReal := by
+    simpa only [ENNReal.toReal_ofNat] using ENNReal.toReal_mono hp hp2
+  set B := truncatedSVD (P * A) k
+  set Q := rangeProjector B
+  have hQP : Q * P = Q := by
+    have hle : LinearMap.range B.mulVecLin ≤ LinearMap.range P.mulVecLin :=
+      (range_truncatedSVD_le (P * A) k).trans (range_le_iff_exists_mul.mpr ⟨A, rfl⟩)
+    have h := rangeProjector_mul_rangeProjector_of_range_le' hle
+    rwa [hP.rangeProjector_eq] at h
+  have hQA : Q * A = B := by
+    calc Q * A = Q * (P * A) := by rw [← Matrix.mul_assoc, hQP]
+      _ = B := rangeProjector_truncatedSVD_mul (P * A) k
+  have hpin := (isStarProjection_rangeProjector B).schattenNorm_mul_rpow_add_le hp2 hp A
+  change schattenNorm p (Q * A) ^ p.toReal +
+    schattenNorm p ((1 - Q) * A) ^ p.toReal ≤ schattenNorm p A ^ p.toReal at hpin
+  rw [Matrix.sub_mul, Matrix.one_mul, hQA] at hpin
+  have hB : schattenNorm p B ^ p.toReal =
+      ∑ i ∈ Finset.range k, singularValues (P * A) i ^ p.toReal := by
+    rw [schattenNorm_rpow hp0 hp B (rank_truncatedSVD_le _ _)]
+    exact Finset.sum_congr rfl fun i hi => by
+      rw [singularValues_truncatedSVD, if_pos (Finset.mem_range.mp hi)]
+  have hA := schattenNorm_sub_truncatedSVD_rpow_eq_add_sum hp0 hp A (Nat.zero_le k)
+  rw [truncatedSVD_zero, sub_zero, ← Finset.range_eq_Ico] at hA
+  have hsum : ∑ i ∈ Finset.range k,
+      (singularValues A i ^ p.toReal - singularValues (P * A) i ^ p.toReal) ≤
+      ∑ i ∈ Finset.range k, p.toReal / 2 * singularValues A i ^ (p.toReal - 2) *
+        (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) := by
+    refine Finset.sum_le_sum fun i _ => ?_
+    have h := Real.rpow_sub_rpow_le_max_mul_sq (singularValues_nonneg _ _)
+      (hP.singularValues_mul_le A i) (by linarith : 0 < p.toReal)
+    rwa [max_eq_right (by linarith : 1 ≤ p.toReal / 2)] at h
+  rw [Finset.sum_sub_distrib] at hsum
+  rw [hB] at hpin
+  linarith
+
 
 omit [DecidableEq m] [DecidableEq n] in
 /-- The head index of `NLAlib.exists_le_singularValues_le_and_gap` with its gap parameter: for

@@ -1,12 +1,39 @@
 # Low-rank approximation with $\varepsilon^{-1/3}$ products: the optional items
 
-2026-11-24. Design note; **status: design only, revised after one independent review (§10; harness copy of the review:
-`scratch/Review-LRA-OPTIONAL-Design.md` in the worktree), awaiting the maintainer's decisions (§8). Nothing
-is proved and there is no skeleton.** Branch `design/lra-optional` from `cleanup/lra-cube-root`
-@ `1bed77c6`. Stage LRA-OPTIONAL, board card T152. Targets: harness
+2026-11-24 (design), 2026-11-25 (selected implementation). **The selected 16 targets are
+proved:** MM1–MM3 (the single-run Frobenius corollaries and the two-sided Schatten companion)
+and CF1, CR1, CR2, CT1, PLd, PL0, PL0b, PL1–PL6 (the dimension-free Schatten chain). Each has
+been checked with `lake lean`; the full `scripts/stage_check.sh` passed on 2026-11-25
+(exit 0): warning-fatal build, axiom audit, linters, kernel replay, fixtures and repository
+checks. The build had zero warnings; the audit and replay had zero violations. No selected
+statement or constant was weakened.
+
+The maintainer selected these two batches on 2026-11-25. SINGLE-RUN (SR0–SR7) and INEXACT
+(IX1–IX2) remain deferred; BLOCK-K was already dropped. Their library skeletons are preserved
+locally under untracked `scratch/deferred-optional-skeleton/` (not included in the PR), and are
+absent from the active library,
+so the selected subset can be built and audited without `sorry`. The original design, proof
+outlines and Appendix A below remain the record of the larger proposal.
+
+Branch `design/lra-optional`, worktree `~/nlalib-design-lra-optimal`, based on the completed
+`cleanup/lra-cube-root` stage at `6e5ff864`. Target list: harness
 `pilot/lra-optional-targets.json`. Decision sheet: harness `state/decisions/LRA-OPTIONAL.json`.
-Every Lean statement of Appendix A elaborated with `sorry` proofs against the build at `1bed77c6`
-(scratch file outside `NLAlib/`, not committed; §A.0).
+The independent design review is preserved locally in `scratch/Review-LRA-OPTIONAL-Design.md`.
+
+**Implementation layout.** The corollaries are in `LowRank/Gaussian/BlockKrylovFrobenius`;
+weighted Gaussian deficits (PL1–PL2) are in `LowRank/Gaussian/RitzValues`; the two-space
+expectation, tail and asymptotic bounds are in `LowRank/Gaussian/BlockKrylovSumSchatten`.
+Their deterministic filtered-residual bounds are in `LowRank/Structural/FilteredResidual`.
+The power-weighted Chebyshev filter, integrability companions and one-sided deficit inequality
+are in the existing topic files listed in §5. The asymptotic witnesses are $C=100$,
+$\varepsilon_0=e^{-1}$ for MM3 and $C=1000$, $\varepsilon_0=e^{-1}$ for PL5; the explicit
+headline constants remain those of the reviewed design. The old uniform-tail estimate in
+`Structural/RitzValues` now shares its kernel-preservation argument with the weighted-tail
+identity. Three existing private lemmas used by the new proofs are public, with unchanged
+statements: `mul_conjTranspose_mul_eq_of_truncatedSVD_mul`,
+`truncatedSVD_mul_mul_conjTranspose_of_le`, and `four_mul_exp_le_four_mul_exp`.
+
+**Historical amendment (skeleton, 2026-11-24):** approved with every recommendation (BLOCK-K dropped: 26 targets, sorried in the files of §5 after merging `cleanup/lra-cube-root` @ `6e5ff864`); the cleanup's names apply throughout (`docs/renames/2026-11-lra-cube-root.json`: RZ1 = `HasOrthonormalCols.singularValues_sq_sub_le_singularValues_rsvd_cfc_sq`, RZ2 = `HasOrthonormalCols.sq_sub_le_singularValues_rsvd_cfc_sq_of_le_singularValues`, RZ3 = `HasOrthonormalCols.singularValues_sq_sub_le_singularValues_rbki_sq`, `IsStarProjection.singularValues_sq_sub_specNorm_sq_le`; the Chebyshev lemma is the unprimed `exists_degree_lt_div_sq_le_exp_singularGapRatio` over `𝕜` in `Matrix/Spectral/SingularValueInequalities`; `exists_frame_residual` is the public `exists_integral_frobNorm_sub_truncatedSVD_mul_mul_pinv_sq_le_of_hasLaw_gaussianMatrix` in `Gaussian/RangeFinder`; the tail file is `Gaussian/BlockKrylovSumTail`; `schattenNorm_sub_truncatedSVD_rpow_eq_add_sum` (CT1) is in `Matrix/Spectral/SingularValueDecay`; RZ2's scalar lemmas stay private, to be made public in the proving wave if CR2 needs them); six target names follow N6 (SR2 `…singularValues_sq_sub_le_singularValues_rbki_sq_of_mul_le`, CR1 `…singularValues_sq_sub_inv_sq_mul_le_singularValues_rsvd_cfc_sq`, CR2 `…sq_sub_inv_sq_mul_le_singularValues_rsvd_cfc_sq_of_le_singularValues`, PL0b `integrable_singularValues_rbki_sq` (over `𝕜`), PL1 `integral_singularValues_rpow_mul_singularValues_sq_sub_singularValues_rbki_sq_le_of_hasLaw_gaussianMatrix`, PL2 `integral_max_singularValues_sq_sub_sub_singularValues_rbki_sq_le_of_hasLaw_gaussianMatrix`); Appendix A keeps the names as designed.
 
 The maintainer asked (2026-11-24): "do the optional stuff", that is the items that
 `LowRank-CubeRootBlockKrylov.md` (stage 1, fully proved) deferred: MM-FROB, BLOCK-K, SINGLE-RUN,
@@ -54,9 +81,10 @@ Headlines (planned; constants explicit; no dimension anywhere):
   $q_1 \ge 1 + r + \sqrt p\,\log(14pk/\varepsilon)/(2\varepsilon^{1/3})$,
   $q_2 \ge 1 + r + \sqrt p\,\log(8pk/\varepsilon)/2$:
   $\mathbb E\|\mathbf A - \llbracket\mathsf{rbkiSum}(\mathbf A,\mathbf X_1,\mathbf X_2,q_1,q_2)\rrbracket_k\|_{S_p}^p
-  \le (1+\varepsilon)\mathrm{OPT}_p^p$. With $\varepsilon = p\varepsilon'$ (accuracy $\varepsilon'$
-  in the norm) the depths are $p^{1/6}\varepsilon'^{-1/3}\log$ and the wide block
-  $k(p\varepsilon')^{-1/3}$: BCW's rate, without their $\log d$.
+  \le (1+\varepsilon)\mathrm{OPT}_p^p$. With $\varepsilon = p\varepsilon'$ and
+  $0<\varepsilon'\le1/p$, the norm factor is at most $e^{\varepsilon'}$. The depths retain
+  the additive weight degree: $O(p+p^{1/6}\varepsilon'^{-1/3}\log)$, with wide block
+  $O(k(p\varepsilon')^{-1/3})$ and a logarithm independent of the matrix dimensions.
 * **INEXACT.** $\|\mathbf A - \mathbf A\mathbf Q\|_{S_p} \le \|\mathbf P\mathbf A(\mathbf I-\mathbf Q)\|_{S_p}
   + \bigl(\|\mathbf A\|_{S_p}^p - \|\mathbf P\mathbf A\mathbf Q\|_{S_p}^p\bigr)^{1/p}$ for every
   pair of orthogonal projectors.

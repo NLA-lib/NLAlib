@@ -48,7 +48,8 @@ Borel measurable (`NLAlib.measurable_truncatedSVD`), with
   the error for any measurable test matrix.
 * `NLAlib.integrable_frobNorm_sub_truncatedSVD_rsvd_sq`: the late-truncated output, Frobenius.
 * `NLAlib.integrable_schattenNorm_sub_mul_rangeProjector_rsvd_rpow`: the two-sided output of the
-  late-truncated randomized SVD, $p$-th power of the Schatten $p$-norm.
+  late-truncated randomized SVD, $p$-th power of the Schatten $p$-norm;
+  `NLAlib.integrable_schattenNorm_sub_truncatedSVD_rsvd_rpow`, its one-sided twin.
 * `NLAlib.integrable_frobNorm_sub_earlyTruncatedRSVD_sq`: the early-truncated output;
   `NLAlib.aestronglyMeasurable_frobNorm_sub_earlyTruncatedGeneralizedNystrom_sq`, the
   measurability of its generalized Nyström completion for any pair of test matrices.
@@ -63,7 +64,8 @@ Borel measurable (`NLAlib.measurable_truncatedSVD`), with
   `NLAlib.integrable_specNorm_sub_truncatedSVD_rbki_sq`,
   `NLAlib.integrable_frobNorm_sub_truncatedSVD_rbki_sq`: the same for randomized block Krylov
   iteration, whose test matrix $\mathbf{K}_q(\mathbf{A}^{\mathsf{H}}\mathbf{A}, \mathbf{X})$ is
-  measurable in $\mathbf{X}$ (`NLAlib.measurable_blockKrylovMatrix`).
+  measurable in $\mathbf{X}$ (`NLAlib.measurable_blockKrylovMatrix`), and
+  `NLAlib.integrable_singularValues_rbki_sq` for its squared singular values.
 -/
 
 @[expose] public section
@@ -276,6 +278,48 @@ theorem integrable_schattenNorm_sub_mul_rangeProjector_rsvd_rpow [IsFiniteMeasur
     _ ≤ schattenNorm p A * specNorm (1 - P) := schattenNorm_mul_le_mul_specNorm hp0 A _
     _ ≤ schattenNorm p A := mul_le_of_le_one_right (schattenNorm_nonneg _ _) hS
 
+/-- The $p$-th power of the Schatten error of the late-truncated randomized SVD is integrable: for
+a real matrix $\mathbf{A}$, every almost everywhere measurable random test matrix $\mathbf{Y}$,
+every finite measure, every $p$ and $k$,
+$\|\mathbf{A} - \llbracket\mathsf{rsvd}(\mathbf{A}, \mathbf{Y})\rrbracket_k\|_{S_p}^p$ is
+integrable. The integrability companion of the expectation bounds for this one-sided output,
+$2 \le p < \infty$; the two-sided twin is
+`NLAlib.integrable_schattenNorm_sub_mul_rangeProjector_rsvd_rpow`. -/
+theorem integrable_schattenNorm_sub_truncatedSVD_rsvd_rpow [IsFiniteMeasure μ] (p : ℝ≥0∞)
+    (A : Matrix m n ℝ) {Y : Ω → Matrix n l ℝ} (hY : AEMeasurable Y μ) (k : ℕ) :
+    Integrable (fun ω => schattenNorm p (A - truncatedSVD (rsvd A (Y ω)) k) ^ p.toReal) μ :=
+  by
+  classical
+  rcases eq_or_ne p.toReal 0 with h0 | h0
+  · simp only [h0, Real.rpow_zero]
+    exact integrable_const 1
+  have hpt : p ≠ ⊤ := fun h => h0 (by simp [h])
+  have hp0 : p ≠ 0 := fun h => h0 (by simp [h])
+  have hc : Continuous fun M : Matrix m n ℝ => schattenNorm p M := by
+    have h := continuous_schattenNorm_ofReal (𝕜 := ℝ) (m := m) (n := n)
+      (ENNReal.toReal_pos hp0 hpt)
+    rwa [ENNReal.ofReal_toReal hpt] at h
+  have hg : Measurable fun Ω : Matrix n l ℝ =>
+      schattenNorm p (A - truncatedSVD (rsvd A Ω) k) ^ p.toReal :=
+    (hc.measurable.comp (measurable_const.matrix_sub
+      ((measurable_truncatedSVD k).comp (measurable_rsvd A)))).pow_const _
+  refine Integrable.of_bound (hg.comp_aemeasurable hY).aestronglyMeasurable
+    (schattenNorm p A ^ p.toReal) (ae_of_all _ fun ω => ?_)
+  rw [Real.norm_of_nonneg (by positivity)]
+  refine Real.rpow_le_rpow (schattenNorm_nonneg _ _) ?_ ENNReal.toReal_nonneg
+  rw [truncatedSVD_rsvd_eq_rangeProjector_mul]
+  set P := rangeProjector (truncatedSVD (rsvd A (Y ω)) k)
+  have hS : specNorm (1 - P) ≤ 1 := by
+    have h := specNorm_one_sub_rangeProjector_mul_le (truncatedSVD (rsvd A (Y ω)) k)
+      (1 : Matrix m m ℝ)
+    rw [Matrix.mul_one] at h
+    exact h.trans specNorm_one_le
+  calc schattenNorm p (A - P * A) = schattenNorm p ((1 - P) * A) := by
+        rw [Matrix.sub_mul, Matrix.one_mul]
+    _ ≤ specNorm (1 - P) * schattenNorm p A := schattenNorm_mul_le_specNorm_mul hp0 _ A
+    _ ≤ schattenNorm p A := mul_le_of_le_one_left (schattenNorm_nonneg _ _) hS
+
+
 /-- For a measurable choice $\mathbf{Y}$ of best rank-$k$ approximations of the randomized SVD,
 $\mathbf{Y}(\omega)$ a best approximation of $\mathbf{P}_{\mathbf{A}\mathbf{X}(\omega)}\mathbf{A}$
 of rank at most $k$, the squared spectral error $\|\mathbf{A} - \mathbf{Y}\|_2^2$ is integrable for
@@ -423,6 +467,25 @@ theorem integrable_frobNorm_sub_truncatedSVD_rbki_sq [IsFiniteMeasure μ] (A : M
     (hX : AEMeasurable X μ) (q k : ℕ) :
     Integrable (fun ω => frobNorm (A - truncatedSVD (rbki A (X ω) q) k) ^ 2) μ :=
   integrable_frobNorm_sub_truncatedSVD_rsvd_sq A (aemeasurable_blockKrylovMatrix A hX q) k
+
+/-- The squared singular values
+$\sigma_i\bigl(\mathsf{rbki}(\mathbf{A}, \mathbf{\Omega}, q)\bigr)^2$ of randomized block Krylov
+iteration are integrable, for any almost everywhere measurable test matrix and finite measure;
+they are at most $\sigma_i(\mathbf{A})^2$. -/
+theorem integrable_singularValues_rbki_sq [IsFiniteMeasure μ] (A : Matrix m n 𝕜)
+    (hX : AEMeasurable X μ) (q i : ℕ) :
+    Integrable (fun ω => singularValues (rbki A (X ω) q) i ^ 2) μ := by
+  classical
+  have hm : AEMeasurable (fun ω => rsvd A (blockKrylovMatrix (Aᴴ * A) (X ω) q)) μ :=
+    (measurable_rsvd A).comp_aemeasurable (aemeasurable_blockKrylovMatrix A hX q)
+  refine Integrable.of_bound
+    (((measurable_singularValues i).comp_aemeasurable hm).pow_const 2).aestronglyMeasurable
+    (singularValues A i ^ 2) (ae_of_all _ fun ω => ?_)
+  rw [Real.norm_of_nonneg (sq_nonneg _)]
+  rw [rbki_eq_rangeProjector]
+  exact pow_le_pow_left₀ (singularValues_nonneg _ _)
+    ((isStarProjection_rangeProjector _).singularValues_mul_le A i) 2
+
 
 end BlockKrylov
 

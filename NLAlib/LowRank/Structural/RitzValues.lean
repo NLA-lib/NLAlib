@@ -66,7 +66,7 @@ with $\mathbf{A}\mathbf{T}\mathbf{T}^{\mathsf{H}} = \llbracket\mathbf{A}\rrbrack
 $\llbracket\mathbf{A}\rrbracket_{i+1}\mathbf{Z}\mathbf{Z}^{\mathsf{H}} =
 \llbracket\mathbf{A}\rrbracket_{i+1}$, then
 $\mathbf{Z}\mathbf{Z}^{\mathsf{H}}\mathbf{T} = \mathbf{T}$. -/
-private theorem mul_conjTranspose_mul_eq_of_truncatedSVD_mul {A : Matrix m n 𝕜} {i : ℕ}
+theorem mul_conjTranspose_mul_eq_of_truncatedSVD_mul {A : Matrix m n 𝕜} {i : ℕ}
     (hσ : 0 < singularValues A i) {T : Matrix n (Fin (i + 1)) 𝕜} (hT : HasOrthonormalCols T)
     (hHT : Aᴴ * A * T =
       T * Matrix.diagonal fun j : Fin (i + 1) => ((singularValues A j ^ 2 : ℝ) : 𝕜))
@@ -135,6 +135,28 @@ private theorem norm_mulVec_cfc_mulVec_le {p q : Type*} [Fintype p] [Fintype q] 
   nlinarith [mul_le_mul_of_nonneg_right hga (mul_nonneg (he j) (sq_nonneg ‖(Vᴴ *ᵥ y) j‖))]
 
 omit [DecidableEq m] [DecidableEq s] in
+/-- Frames giving the same right compression of a matrix give the same compression after a
+real function of its Gram matrix. Their difference has range in the kernel of the matrix,
+which the functional calculus preserves. -/
+theorem sub_mul_cfc_mul_eq_of_mul_mul_conjTranspose_eq {a : Type*} [Fintype a]
+    {A : Matrix m n 𝕜} (g : ℝ → ℝ) {Z : Matrix n s 𝕜} {T : Matrix n a 𝕜}
+    (h : A * Z * Zᴴ = A * T * Tᴴ) :
+    A * cfc g (Aᴴ * A) - A * cfc g (Aᴴ * A) * Z * Zᴴ =
+      A * cfc g (Aᴴ * A) - A * cfc g (Aᴴ * A) * T * Tᴴ := by
+  have hK : A * (Z * Zᴴ - T * Tᴴ) = 0 := by
+    rw [Matrix.mul_sub, ← Matrix.mul_assoc, ← Matrix.mul_assoc, h, sub_self]
+  have hHK : Aᴴ * A * (Z * Zᴴ - T * Tᴴ) =
+      (Z * Zᴴ - T * Tᴴ) * Matrix.diagonal fun _ : n => ((0 : ℝ) : 𝕜) := by
+    rw [Matrix.mul_assoc, hK, Matrix.mul_zero, RCLike.ofReal_zero, Matrix.diagonal_zero,
+      Matrix.mul_zero]
+  have hGK : A * cfc g (Aᴴ * A) * (Z * Zᴴ - T * Tᴴ) = 0 := by
+    rw [Matrix.mul_assoc,
+      (Matrix.isHermitian_conjTranspose_mul_self A).cfc_mul_eq_mul_diagonal_of_mul_eq hHK g,
+      ← Matrix.mul_assoc, hK, Matrix.zero_mul]
+  rw [Matrix.mul_sub, sub_eq_zero] at hGK
+  rw [Matrix.mul_assoc _ Z, hGK, Matrix.mul_assoc _ T]
+
+omit [DecidableEq m] [DecidableEq s] in
 /-- A filter on the tail of a frame, for one vector: if
 $\mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}} =
 \llbracket\mathbf{A}\rrbracket_t$ (the columns of $\mathbf{Z}$ need not be orthonormal) and
@@ -172,21 +194,7 @@ theorem norm_toLp_sub_mul_cfc_mul_mulVec_le {A : Matrix m n 𝕜} (g : ℝ → �
     · exact singularValues_antitone A (by omega)
     · rw [singularValues_of_card_cols_le A (by omega)]
       exact singularValues_nonneg A t
-  -- `Z Zᴴ` and `T Tᴴ` differ on the kernel of `A`, which the filter preserves
-  have hK : A * (Z * Zᴴ - T * Tᴴ) = 0 := by
-    rw [Matrix.mul_sub, ← Matrix.mul_assoc, ← Matrix.mul_assoc, hAZ, hATT, sub_self]
-  have hGK : A * cfc g (Aᴴ * A) * (Z * Zᴴ - T * Tᴴ) = 0 := by
-    have hHK : Aᴴ * A * (Z * Zᴴ - T * Tᴴ) =
-        (Z * Zᴴ - T * Tᴴ) * Matrix.diagonal fun _ : n => ((0 : ℝ) : 𝕜) := by
-      rw [Matrix.mul_assoc, hK, Matrix.mul_zero, RCLike.ofReal_zero, Matrix.diagonal_zero,
-        Matrix.mul_zero]
-    rw [Matrix.mul_assoc,
-      (Matrix.isHermitian_conjTranspose_mul_self A).cfc_mul_eq_mul_diagonal_of_mul_eq hHK g,
-      ← Matrix.mul_assoc, hK, Matrix.zero_mul]
-  have hB : A * cfc g (Aᴴ * A) - A * cfc g (Aᴴ * A) * Z * Zᴴ =
-      A * cfc g (Aᴴ * A) - A * cfc g (Aᴴ * A) * T * Tᴴ := by
-    rw [Matrix.mul_sub, sub_eq_zero] at hGK
-    rw [Matrix.mul_assoc _ Z, hGK, Matrix.mul_assoc _ T]
+  have hB := sub_mul_cfc_mul_eq_of_mul_mul_conjTranspose_eq g (hAZ.trans hATT.symm)
   have hy : Tᴴ *ᵥ (y - T *ᵥ (Tᴴ *ᵥ y)) = 0 := by
     rw [Matrix.mulVec_sub, Matrix.mulVec_mulVec, hT.conjTranspose_mul_self, Matrix.one_mulVec,
       sub_self]
@@ -253,7 +261,7 @@ $\llbracket\mathbf{A}\rrbracket_k$ with $k \le t$: if
 $\mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}} = \llbracket\mathbf{A}\rrbracket_t$, then
 $\llbracket\mathbf{A}\rrbracket_k\mathbf{Z}\mathbf{Z}^{\mathsf{H}} =
 \llbracket\mathbf{A}\rrbracket_k$. -/
-private theorem truncatedSVD_mul_mul_conjTranspose_of_le {A : Matrix m n 𝕜} {Z : Matrix n s 𝕜}
+theorem truncatedSVD_mul_mul_conjTranspose_of_le {A : Matrix m n 𝕜} {Z : Matrix n s 𝕜}
     {k t : ℕ} (hAZ : A * Z * Zᴴ = truncatedSVD A t) (hkt : k ≤ t) :
     truncatedSVD A k * Z * Zᴴ = truncatedSVD A k := by
   classical
@@ -647,7 +655,7 @@ theorem HasOrthonormalCols.sum_singularValues_sq_sub_singularValues_rsvd_cfc_sq_
 $s > 0$ and $\gamma(s + \tau)^2 \le 8(s^2 - \tau^2)$, that is
 $\gamma/8 \le (s - \tau)/(s + \tau)$, and every $d \ge 0$,
 $4e^{-8d\sqrt{(s-\tau)/(s+\tau)}} \le 4e^{-2\sqrt{2}\,d\sqrt{\gamma}}$. -/
-private theorem four_mul_exp_le_four_mul_exp {s τ γ d : ℝ} (hs : 0 < s) (hτ : 0 ≤ τ)
+theorem four_mul_exp_le_four_mul_exp {s τ γ d : ℝ} (hs : 0 < s) (hτ : 0 ≤ τ)
     (hd : 0 ≤ d) (h : γ * (s + τ) ^ 2 ≤ 8 * (s ^ 2 - τ ^ 2)) :
     4 * Real.exp (-8 * d * Real.sqrt ((s - τ) / (s + τ))) ≤
       4 * Real.exp (-2 * Real.sqrt 2 * d * Real.sqrt γ) := by

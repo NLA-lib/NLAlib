@@ -45,6 +45,8 @@ These are upstream candidates in `Polynomial.Chebyshev`.
 * `Polynomial.Chebyshev.exists_degree_lt_div_sq_le_exp_of_le`: a filter of degree at most $d$ that
   is large on $[s^2, \infty)$ and small on $[0, \tau^2]$, with ratio
   $4e^{-8d\sqrt{(s - \tau)/(s + \tau)}}$.
+* `Polynomial.Chebyshev.exists_degree_lt_div_sq_le_exp_mul_pow`: the same filter times a
+  power $x^r$.
 * `Polynomial.Chebyshev.le_exp_of_eval_T_real_le`: an inverse of Chebyshev growth,
   $T_q(x) \le y \Rightarrow x \le \exp((\log(2y)/q)^2/2)$.
 * `Polynomial.Chebyshev.eval_iterate_derivative_T_real_nonneg`,
@@ -252,6 +254,43 @@ theorem exists_degree_lt_div_sq_le_exp_of_le {s τ : ℝ} (hτ : 0 ≤ τ) (hτs
       -(4 * (d : ℝ) * √γ) + -(4 * (d : ℝ) * √γ) by ring, exp_add, exp_neg]
     field_simp
     ring
+
+/-- **A Chebyshev filter with a power weight**: for real $0 \le \tau \le s$ with $s > 0$ and
+degrees $d$ and $r$, there are a real polynomial $f$ of degree at most $d + r$ and constants
+$c > 0$ and $a$ with $\lvert f(x) \rvert \ge c\,x^r$ for every $x \ge s^2$,
+$\lvert f(x) \rvert \le a\,x^r$ for every $x \in [0, \tau^2]$, and
+$$\Bigl(\frac{a}{c}\Bigr)^2 \le 4\exp\Bigl(-8d\sqrt{\frac{s - \tau}{s + \tau}}\Bigr)\,.$$
+The weight $x^r$ keeps the filter small near $0$ relative to its values at the head, so that
+the energy it leaves on a tail is measured by a Schatten norm of the tail rather than by its
+Frobenius norm. [BakshiNarayanan2023, proof of Lemma 7.6]; there the weight
+$x^{\lceil p/2 \rceil}$ times a filter for one start vector and rank one, here a Chebyshev filter
+between any two levels times any power. Upstream candidate. -/
+theorem exists_degree_lt_div_sq_le_exp_mul_pow {s τ : ℝ} (hτ : 0 ≤ τ)
+    (hτs : τ ≤ s) (hs : 0 < s) (d r : ℕ) :
+    ∃ f : ℝ[X], f.degree < (d + r + 1 : ℕ) ∧ ∃ c a : ℝ, 0 < c ∧
+      (∀ x, s ^ 2 ≤ x → c * x ^ r ≤ |f.eval x|) ∧
+      (∀ x ∈ Set.Icc 0 (τ ^ 2), |f.eval x| ≤ a * x ^ r) ∧
+      (a / c) ^ 2 ≤ 4 * Real.exp (-8 * (d : ℝ) * Real.sqrt ((s - τ) / (s + τ))) := by
+  obtain ⟨f, hf, c, a, hc, hhead, htail, hbound⟩ :=
+    exists_degree_lt_div_sq_le_exp_of_le hτ hτs hs d
+  have hf0 : f ≠ 0 := by
+    intro h
+    have := hhead (s ^ 2) le_rfl
+    simp only [h, eval_zero, abs_zero] at this
+    linarith
+  refine ⟨f * X ^ r, ?_, c, a, hc, ?_, ?_, hbound⟩
+  · have hfd := (natDegree_lt_iff_degree_lt hf0).mpr hf
+    refine degree_le_natDegree.trans_lt ?_
+    have hd := natDegree_mul_le (p := f) (q := X ^ r)
+    rw [natDegree_X_pow] at hd
+    exact_mod_cast (show (f * X ^ r).natDegree < d + r + 1 by omega)
+  · intro x hx
+    rw [eval_mul, eval_pow, eval_X, abs_mul, abs_pow, abs_of_nonneg (sq_nonneg s |>.trans hx)]
+    exact mul_le_mul_of_nonneg_right (hhead x hx) (pow_nonneg (sq_nonneg s |>.trans hx) _)
+  · intro x hx
+    rw [eval_mul, eval_pow, eval_X, abs_mul, abs_pow, abs_of_nonneg hx.1]
+    exact mul_le_mul_of_nonneg_right (htail x hx) (pow_nonneg hx.1 _)
+
 
 /-- **Inverting Chebyshev growth**: for $q > 0$ and $x \ge 1$, if $T_q(x) \le y$ then
 $$x \le \exp\Bigl(\frac{1}{2}\Bigl(\frac{\log(2y)}{q}\Bigr)^2\Bigr)\,.$$

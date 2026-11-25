@@ -1,0 +1,42 @@
+/-
+Copyright (c) 2026 NLAlib contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: NLAlib contributors
+-/
+import CountBoundTactic
+import NLAlib.Matrix.Computation.DenseFactorizationResources
+
+/-! Concrete actual-tree comparisons with an independent closed cubic instruction budget. -/
+
+open NLAlib NLAlib.Computation
+
+namespace DenseFactorizationTargetDraft
+
+/-- Every actual positive-definite Cholesky count coordinate obeys the closed cubic budget. -/
+theorem cholesky_count_le_closed (N : ℕ) :
+    (choleskyResources (ι := Empty) (fun k => Finsupp.single k 1) (fun _ => 0) () N 0 0).count ≤
+      closedCountBudget N := by
+  apply count_le_closedCountBudget
+  intro kind
+  count_bound N
+  nlinarith
+
+/-- Every actual guarded PSD Cholesky count coordinate obeys the closed cubic budget. -/
+theorem semidefiniteCholesky_count_le_closed (N : ℕ) :
+    (semidefiniteCholeskyResources (ι := Empty) (fun k => Finsupp.single k 1)
+      (fun _ => 0) () N 0 0).count ≤ closedCountBudget N := by
+  apply count_le_closedCountBudget
+  intro kind
+  count_bound N
+  nlinarith
+
+/-- Every actual scalar-pivot LDL count coordinate obeys the closed cubic budget. -/
+theorem ldl_count_le_closed (N : ℕ) :
+    (ldlFactorResources (ι := Empty) (fun k => Finsupp.single k 1) (fun _ => 0) () N 0 0 0).count ≤
+      closedCountBudget N := by
+  apply count_le_closedCountBudget
+  intro kind
+  count_bound N
+  nlinarith
+
+end DenseFactorizationTargetDraft

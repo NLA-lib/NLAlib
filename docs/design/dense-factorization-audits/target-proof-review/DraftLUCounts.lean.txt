@@ -1,0 +1,21 @@
+import DenseFactorizationTargetDraft
+import CountBoundTactic
+import Mathlib.Tactic.Linarith
+
+/-! Independent closed cubic domination of the actual unpivoted LU instruction counts. -/
+
+open NLAlib NLAlib.Computation
+
+namespace DenseFactorizationTargetDraft
+
+/-- Every operation-kind count of the actual symbolic LU tree fits the independent cubic budget. -/
+theorem lu_count_le (N : ℕ) :
+    (Prog.staticCost (luResourceTree (ι := Empty) ())
+      (fun k => Finsupp.single k 1) (fun _ => 0) N (fun _ => 0)).count ≤
+        closedCountBudget N := by
+  apply count_le_closedCountBudget
+  intro o
+  count_bound N
+  nlinarith
+
+end DenseFactorizationTargetDraft

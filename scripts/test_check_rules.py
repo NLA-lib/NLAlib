@@ -340,6 +340,18 @@ def violations(rid, fixture):
 
 
 class RuleTests(unittest.TestCase):
+    def test_b1_builder_routines_are_not_bounds(self):
+        for name in ('luFactor', 'pluFactor', 'pluqFactor', 'swapRows'):
+            for builder in ('Builder', 'NLAlib.Computation.Builder'):
+                with self.subTest(name=name, builder=builder):
+                    body = (f'/-- A routine. -/\ndef {name} {{P : Type}} (n : Nat)\n'
+                            f'    : {builder} P ι VB VI Unit := pure ()')
+                    self.assertEqual(violations('B1', body), [])
+        # A Builder argument or body must not exempt a numeric return type.
+        for body in ('def rowBound (b : Builder P ι VB VI Unit) : Nat := 1',
+                     'def rowBound : Nat := size (Builder P ι VB VI Unit)'):
+            self.assertEqual(len(violations('B1', '/-- A bound. -/\n' + body)), 1)
+
     def test_every_rule_has_a_fixture(self):
         self.assertEqual(set(RULES) - set(FIX), set())
 

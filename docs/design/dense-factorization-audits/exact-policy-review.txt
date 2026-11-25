@@ -1,0 +1,51 @@
+Independent exact pivot-policy review — frozen 2026-11-24
+
+Read-only scope: PivotChoiceRoutine; PLUQ, PLUQPrefix, PLUQPivot, PLUQEmpty;
+PivotedLUFactors; PivotedLURoutine; LUQualityPivoting; PLUQRoutine. Also checked
+relevant PLUQFrames and actual rook/threshold selector signatures. Rounded PLUQ
+changes were excluded. No edits to canonical sources, cache writes or builds.
+
+Result: no material correctness issue found.
+
+- PivotChoiceRoutine:48–76 requires actual selector success, two exact singleton
+  log writes, source retention, active indices and positive column quality. This
+  is a local selector contract, not assumed full-factorization execution. Its
+  complete/rook/threshold instances consume actual selector theorems; none adds
+  nonsingularity or a nonzero-pivot hypothesis. Threshold has 0<τ≤1 and really
+  writes the current column literal, preserving both distinct output cells.
+- LUQualityPivoting:32–64 converts positive column quality to zero-column
+  compatibility and exact total LU, with |Lij|≤α⁻¹. Positivity handles zero
+  pivots; α≤1 also covers the unit diagonal. Prefix transport fixes previous
+  pivot positions while moving the active rows and columns independently.
+  No assumption that a zero rook pivot makes the whole active square zero.
+- PLUQ.State links both actual log prefixes, two independently decoded
+  current-position permutations, gaussState residual, committed lower columns
+  and upper rows, and quantitative column quality. PLUQ iteration obtains real
+  choices, binds the stored indices, swaps residual/lower rows and
+  residual/upper columns, then runs both zero-safe kernels. Final extraction
+  uses actual history reads, canonical factors and the full original four-block
+  write. Neither arbitrary existential permutations nor assumed final factors
+  substitute for the stored logs.
+- PivotedLUFactors:273–337 executes a real scoped identity column log for the
+  row-only threshold wrapper. It proves q=id from each recorded current-column
+  choice before removing that log. Nonempty capacities force caller buffers
+  below the fresh handle. The separate zero branch (98–125) calls the generic
+  empty execution theorem, so invalid caller handles may coincide with that
+  fresh log handle; no phantom capacity or fresh-handle inequality is imposed.
+  External output buffers remain pairwise distinct as publicly stated.
+- PLUQEmpty and exec_pivotedLUFactor_of_zero are independent of chooser behavior
+  and scalar semantics at N0: loops are empty, store is restored after pop.
+  They correctly avoid claiming complete state/peak metadata identity.
+- Actual rook/threshold routine instances consume the successful raw execution
+  results and actual logs to supply ordinary zero-error certificates. They
+  require exact real semantics and standard instruction charges, not native
+  floating-point range safety. Their concrete source/output separation is
+  stronger than guarded raw separation and consistent with their statements.
+- Complete-pivot AST preservation: compared generic pivotedLUFactor specialized
+  by completePivotChoice to the frozen pre-extraction pluqFactor body in
+  /tmp/nlalib-next-rounded-pluq. Allocation, copy/zero loops, choice, both index
+  binders, matrix swap order and total elimination instructions are unchanged;
+  pluqFactor is a transparent specialization without added runtime work.
+
+This is a source/mathematical review. Fresh canonical compilation, kernel replay,
+linters and regressions remain the root agent's authoritative integration checks.

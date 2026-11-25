@@ -1,0 +1,266 @@
+/-
+Copyright (c) 2026 NLAlib contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: NLAlib contributors
+-/
+import ClosedCountBudget
+import NLAlib.Computation.Model
+import NLAlib.Matrix.Computation.DenseFactorizationResources
+import NLAlib.Matrix.Computation.DenseFactorizationSpace
+import NLAlib.Matrix.Computation.DenseFactorizationResourceTags
+
+/-!
+Concrete propositions for maintainer review only. No target is proved or registered here.
+All inputs are declared buffers; len=0 excludes ROM data and ROM-loading claims.
+For each proposition the separate StoredEntries.NonVacuous obligation remains to prove:
+for every lower order bound choose that order, zero offsets and the identity input.
+The domains contain only the matrix and input-only mathematical proofs.
+-/
+
+open NLAlib NLAlib.Computation
+open scoped Matrix
+
+namespace DenseFactorizationTargetDraft
+
+noncomputable section
+
+/-- A real square input matrix. -/
+abbrev Mat (N : ℕ) := Matrix (Fin N) (Fin N) ℝ
+
+/-- The concrete real-word state, with no oracle names. -/
+abbrev State := St Unit ℝ (OpCount Unit Empty)
+
+/-- All additional size variables are zero offsets; the matrix order is unrestricted. -/
+def valid {r : ℕ} (_N : ℕ) (n : Fin r → ℕ) : Prop := ∀ j, n j = 0
+
+/-- Input-only nonbreakdown domain for unpivoted LU. -/
+def LUInput (N : ℕ) (_n : Fin 3 → ℕ) :=
+  {A : Mat N // ∀ k : Fin N, gaussState A k k k ≠ 0}
+
+/-- Arbitrary matrices for the row-pivoted and fixed-scale drivers. -/
+def PLUInput (N : ℕ) (_n : Fin 4 → ℕ) := Mat N
+
+/-- Arbitrary matrices for the independently row/column-pivoted driver. -/
+def PLUQInput (N : ℕ) (_n : Fin 5 → ℕ) := Mat N
+
+/-- Input-only positive-definite domain. -/
+def SPDInput (N : ℕ) (_n : Fin 2 → ℕ) := {A : Mat N // A.PosDef}
+
+/-- Input-only positive-semidefinite domain, including singular matrices. -/
+def PSDInput (N : ℕ) (_n : Fin 2 → ℕ) := {A : Mat N // A.PosSemidef}
+
+/-- Input-only Hermitian nonbreakdown domain for scalar LDL. -/
+def LDLInput (N : ℕ) (_n : Fin 3 → ℕ) :=
+  {A : Mat N // A.IsHermitian ∧ ∀ k : Fin N, gaussState A k k k ≠ 0}
+
+/-- Caller arrays for unpivoted LU: source, lower factor, upper factor. -/
+def luInputs (N : ℕ) (n : Fin 3 → ℕ) (x : LUInput N n) : Fin 3 → Array (Option ℝ) :=
+  ![(flatten x.val).map some, Array.replicate (N * N) none, Array.replicate (N * N) none]
+
+/-- Caller arrays for partial or fixed-scale pivoting: source, factors and actual row log. -/
+def pluInputs (N : ℕ) (n : Fin 4 → ℕ) (A : PLUInput N n) : Fin 4 → Array (Option ℝ) :=
+  ![(flatten A).map some, Array.replicate (N * N) none,
+    Array.replicate (N * N) none, Array.replicate N none]
+
+/-- Caller arrays for complete pivoting: source, factors and two independent logs. -/
+def pluqInputs (N : ℕ) (n : Fin 5 → ℕ) (A : PLUQInput N n) : Fin 5 → Array (Option ℝ) :=
+  ![(flatten A).map some, Array.replicate (N * N) none,
+    Array.replicate (N * N) none, Array.replicate N none, Array.replicate N none]
+
+/-- Caller arrays for SPD Cholesky. -/
+def spdInputs (N : ℕ) (n : Fin 2 → ℕ) (x : SPDInput N n) : Fin 2 → Array (Option ℝ) :=
+  ![(flatten x.val).map some, Array.replicate (N * N) none]
+
+/-- Caller arrays for PSD Cholesky. -/
+def psdInputs (N : ℕ) (n : Fin 2 → ℕ) (x : PSDInput N n) : Fin 2 → Array (Option ℝ) :=
+  ![(flatten x.val).map some, Array.replicate (N * N) none]
+
+/-- Caller arrays for LDL: source, lower factor and scalar diagonal. -/
+def ldlInputs (N : ℕ) (n : Fin 3 → ℕ) (x : LDLInput N n) : Fin 3 → Array (Option ℝ) :=
+  ![(flatten x.val).map some, Array.replicate (N * N) none, Array.replicate N none]
+
+/-- No read-only ROM data is supplied. -/
+def romLength {r : ℕ} (_N : ℕ) (_n : Fin r → ℕ) : ℕ := 0
+
+/-- All storage is at the sole unit tag, including caller arrays and additional live words. -/
+def memory (caller scratch : ℕ → ℕ) (N : ℕ) (_q : Unit) : ℕ := caller N + scratch N
+
+/-- The original source entries and all initial buffer extents are retained. -/
+def retains {N b : ℕ} (A : Mat N) (ao : ℕ) (bufs : Fin b → Array (Option ℝ))
+    (out : State) : Prop :=
+  Holds out.store () 0 ao A ∧
+    out.store.shape = (inputState (C := OpCount Unit Empty) () (List.ofFn bufs)).store.shape
+
+/-- Actual unpivoted canonical factor reads, exact factorization, retained input and shape. -/
+def luPost (N : ℕ) (n : Fin 3 → ℕ) (x : LUInput N n)
+    (_vals : ℕ → ℝ) (_tape : Dist → ℕ → ℝ) (out : State) : Prop :=
+  Holds out.store () 1 (n 1) (luLower x.val) ∧
+  Holds out.store () 2 (n 2) (luUpper x.val) ∧
+  IsLU x.val (luLower x.val) (luUpper x.val) ∧
+  retains x.val (n 0) (luInputs N n x) out
+
+/-- Actual row log determines the permuted input and both canonical factor reads. -/
+def pluPost (N : ℕ) (n : Fin 4 → ℕ) (A : PLUInput N n)
+    (_vals : ℕ → ℝ) (_tape : Dist → ℕ → ℝ) (out : State) : Prop :=
+  ∃ p : Fin N → Fin N,
+    (∀ j : Fin N, out.store.read () 3 (n 3 + j) = some ((p j).val : ℝ)) ∧
+    (∀ j, j ≤ p j) ∧
+    Holds out.store () 1 (n 1) (luLower (A.submatrix (luPivotPermutation p N) id)) ∧
+    Holds out.store () 2 (n 2) (luUpper (A.submatrix (luPivotPermutation p N) id)) ∧
+    IsLU (A.submatrix (luPivotPermutation p N) id)
+      (luLower (A.submatrix (luPivotPermutation p N) id))
+      (luUpper (A.submatrix (luPivotPermutation p N) id)) ∧
+    retains A (n 0) (pluInputs N n A) out
+
+/-- Both actual logs independently determine the canonical factors of the permuted input. -/
+def pluqPost (N : ℕ) (n : Fin 5 → ℕ) (A : PLUQInput N n)
+    (_vals : ℕ → ℝ) (_tape : Dist → ℕ → ℝ) (out : State) : Prop :=
+  ∃ p q : Fin N → Fin N,
+    (∀ j : Fin N, out.store.read () 3 (n 3 + j) = some ((p j).val : ℝ)) ∧
+    (∀ j : Fin N, out.store.read () 4 (n 4 + j) = some ((q j).val : ℝ)) ∧
+    (∀ j, j ≤ p j) ∧ (∀ j, j ≤ q j) ∧
+    Holds out.store () 1 (n 1)
+      (luLower (A.submatrix (luPivotPermutation p N) (luPivotPermutation q N))) ∧
+    Holds out.store () 2 (n 2)
+      (luUpper (A.submatrix (luPivotPermutation p N) (luPivotPermutation q N))) ∧
+    IsLU (A.submatrix (luPivotPermutation p N) (luPivotPermutation q N))
+      (luLower (A.submatrix (luPivotPermutation p N) (luPivotPermutation q N)))
+      (luUpper (A.submatrix (luPivotPermutation p N) (luPivotPermutation q N))) ∧
+    retains A (n 0) (pluqInputs N n A) out
+
+/-- SPD output has the actual canonical factor and the existing positive-diagonal predicate. -/
+def spdPost (N : ℕ) (n : Fin 2 → ℕ) (x : SPDInput N n)
+    (_vals : ℕ → ℝ) (_tape : Dist → ℕ → ℝ) (out : State) : Prop :=
+  Holds out.store () 1 (n 1) (choleskyLower x.val) ∧
+  IsCholesky x.val (choleskyLower x.val) ∧ retains x.val (n 0) (spdInputs N n x) out
+
+/-- PSD output permits zero diagonal: actual lower factor, nonnegative diagonal and Gram. -/
+def psdPost (N : ℕ) (n : Fin 2 → ℕ) (x : PSDInput N n)
+    (_vals : ℕ → ℝ) (_tape : Dist → ℕ → ℝ) (out : State) : Prop :=
+  Holds out.store () 1 (n 1) (choleskyLower x.val) ∧
+  (choleskyLower x.val).IsLowerTriangular ∧
+  (∀ i, 0 ≤ choleskyLower x.val i i) ∧
+  x.val = choleskyLower x.val * (choleskyLower x.val)ᴴ ∧
+  retains x.val (n 0) (psdInputs N n x) out
+
+/-- Actual canonical LDL factor and pivot-diagonal reads, factorization, source and shape. -/
+def ldlPost (N : ℕ) (n : Fin 3 → ℕ) (x : LDLInput N n)
+    (_vals : ℕ → ℝ) (_tape : Dist → ℕ → ℝ) (out : State) : Prop :=
+  Holds out.store () 1 (n 1) (luLower x.val) ∧
+  (∀ i : Fin N, out.store.read () 2 (n 2 + i) = some (gaussState x.val i i i)) ∧
+  IsLDL x.val (luLower x.val) (fun i => gaussState x.val i i i) ∧
+  retains x.val (n 0) (ldlInputs N n x) out
+
+/-- Proposed closed exact stored-entry LU budget statement; unproved and unregistered. -/
+def StoredEntriesDenseLU : Prop :=
+  StoredEntries () (luResourceTree ()) valid LUInput (fun N _ x =>
+      ![(flatten x.val).map some, Array.replicate (N * N) none,
+        Array.replicate (N * N) none]) romLength
+    (fun N _ => closedCountBudget N)
+    (fun N _ => memory (fun k => 3 * k * k) (fun k => k * k + 2 * k + 3) N) luPost
+
+/-- Proposed closed partial-pivoted statement; includes singular inputs and actual row logs. -/
+def StoredEntriesDensePLU : Prop :=
+  StoredEntries () (pluResourceTree ()) valid PLUInput (fun N _ x =>
+      ![(flatten x).map some, Array.replicate (N * N) none,
+        Array.replicate (N * N) none, Array.replicate N none]) romLength
+    (fun N _ => closedCountBudget N)
+    (fun N _ => memory (fun k => 3 * k * k + k) (fun k => k * k + 2 * k + 7) N) pluPost
+
+/-- Proposed closed complete-pivoted statement with two independently decoded actual logs. -/
+def StoredEntriesDensePLUQ : Prop :=
+  StoredEntries () (pluqResourceTree ()) valid PLUQInput (fun N _ x =>
+      ![(flatten x).map some, Array.replicate (N * N) none,
+        Array.replicate (N * N) none, Array.replicate N none, Array.replicate N none]) romLength
+    (fun N _ => closedCountBudget N)
+    (fun N _ => memory (fun k => 3 * k * k + 2 * k) (fun k => k * k + 2 * k + 7) N) pluqPost
+
+/-- Proposed fixed-original-row-scale driver statement; no unweighted multiplier claim. -/
+def StoredEntriesDenseScaledPLU : Prop :=
+  StoredEntries () (scaledPluResourceTree ()) valid PLUInput (fun N _ x =>
+      ![(flatten x).map some, Array.replicate (N * N) none,
+        Array.replicate (N * N) none, Array.replicate N none]) romLength
+    (fun N _ => closedCountBudget N)
+    (fun N _ => memory (fun k => 3 * k * k + k) (fun k => k * k + 3 * k + 7) N) pluPost
+
+/-- Proposed closed SPD Cholesky statement. -/
+def StoredEntriesDenseCholesky : Prop :=
+  StoredEntries () (choleskyResourceTree ()) valid SPDInput (fun N _ x =>
+      ![(flatten x.val).map some, Array.replicate (N * N) none]) romLength
+    (fun N _ => closedCountBudget N)
+    (fun N _ => memory (fun k => 2 * k * k) (fun k => k * k + 2 * k + 3) N) spdPost
+
+/-- Proposed closed PSD statement, deliberately without the strict IsCholesky predicate. -/
+def StoredEntriesDenseSemidefiniteCholesky : Prop :=
+  StoredEntries () (semidefiniteCholeskyResourceTree ()) valid PSDInput (fun N _ x =>
+      ![(flatten x.val).map some, Array.replicate (N * N) none]) romLength
+    (fun N _ => closedCountBudget N)
+    (fun N _ => memory (fun k => 2 * k * k) (fun k => k * k + 2 * k + 4) N) psdPost
+
+/-- Proposed closed scalar-pivot LDL statement on its input-only Hermitian domain. -/
+def StoredEntriesDenseLDL : Prop :=
+  StoredEntries () (ldlResourceTree ()) valid LDLInput (fun N _ x =>
+      ![(flatten x.val).map some, Array.replicate (N * N) none, Array.replicate N none]) romLength
+    (fun N _ => closedCountBudget N)
+    (fun N _ => memory (fun k => 2 * k * k + k) (fun k => 2 * k * k + 2 * k + 3) N) ldlPost
+
+/-- Separate unproved nonvacuity obligation for LU; intended witnesses are identity matrices. -/
+abbrev StoredEntriesDenseLUNonVacuous : Prop :=
+  ∀ N₀, StoredEntries.NonVacuous () (luResourceTree ()) valid LUInput (fun N _ x =>
+      ![(flatten x.val).map some, Array.replicate (N * N) none,
+        Array.replicate (N * N) none]) romLength
+    (fun N _ => closedCountBudget N)
+    (fun N _ => memory (fun k => 3 * k * k) (fun k => k * k + 2 * k + 3) N) luPost N₀
+
+/-- Separate unproved nonvacuity obligation for PLU; intended witnesses are identity matrices. -/
+abbrev StoredEntriesDensePLUNonVacuous : Prop :=
+  ∀ N₀, StoredEntries.NonVacuous () (pluResourceTree ()) valid PLUInput (fun N _ x =>
+      ![(flatten x).map some, Array.replicate (N * N) none,
+        Array.replicate (N * N) none, Array.replicate N none]) romLength
+    (fun N _ => closedCountBudget N)
+    (fun N _ => memory (fun k => 3 * k * k + k) (fun k => k * k + 2 * k + 7) N) pluPost N₀
+
+/-- Separate unproved nonvacuity obligation for PLUQ; intended witnesses are identity matrices. -/
+abbrev StoredEntriesDensePLUQNonVacuous : Prop :=
+  ∀ N₀, StoredEntries.NonVacuous () (pluqResourceTree ()) valid PLUQInput (fun N _ x =>
+      ![(flatten x).map some, Array.replicate (N * N) none,
+        Array.replicate (N * N) none, Array.replicate N none, Array.replicate N none]) romLength
+    (fun N _ => closedCountBudget N)
+    (fun N _ => memory (fun k => 3 * k * k + 2 * k) (fun k => k * k + 2 * k + 7) N) pluqPost N₀
+
+/-- Separate unproved nonvacuity obligation for ScaledPLU;
+intended witnesses are identity matrices. -/
+abbrev StoredEntriesDenseScaledPLUNonVacuous : Prop :=
+  ∀ N₀, StoredEntries.NonVacuous () (scaledPluResourceTree ()) valid PLUInput (fun N _ x =>
+      ![(flatten x).map some, Array.replicate (N * N) none,
+        Array.replicate (N * N) none, Array.replicate N none]) romLength
+    (fun N _ => closedCountBudget N)
+    (fun N _ => memory (fun k => 3 * k * k + k) (fun k => k * k + 3 * k + 7) N) pluPost N₀
+
+/-- Separate unproved nonvacuity obligation for Cholesky;
+intended witnesses are identity matrices. -/
+abbrev StoredEntriesDenseCholeskyNonVacuous : Prop :=
+  ∀ N₀, StoredEntries.NonVacuous () (choleskyResourceTree ()) valid SPDInput (fun N _ x =>
+      ![(flatten x.val).map some, Array.replicate (N * N) none]) romLength
+    (fun N _ => closedCountBudget N)
+    (fun N _ => memory (fun k => 2 * k * k) (fun k => k * k + 2 * k + 3) N) spdPost N₀
+
+/-- Separate unproved nonvacuity obligation for SemidefiniteCholesky;
+intended witnesses are identity matrices. -/
+abbrev StoredEntriesDenseSemidefiniteCholeskyNonVacuous : Prop :=
+  ∀ N₀, StoredEntries.NonVacuous () (semidefiniteCholeskyResourceTree ())
+    valid PSDInput (fun N _ x =>
+      ![(flatten x.val).map some, Array.replicate (N * N) none]) romLength
+    (fun N _ => closedCountBudget N)
+    (fun N _ => memory (fun k => 2 * k * k) (fun k => k * k + 2 * k + 4) N) psdPost N₀
+
+/-- Separate unproved nonvacuity obligation for LDL; intended witnesses are identity matrices. -/
+abbrev StoredEntriesDenseLDLNonVacuous : Prop :=
+  ∀ N₀, StoredEntries.NonVacuous () (ldlResourceTree ()) valid LDLInput (fun N _ x =>
+      ![(flatten x.val).map some, Array.replicate (N * N) none, Array.replicate N none]) romLength
+    (fun N _ => closedCountBudget N)
+    (fun N _ => memory (fun k => 2 * k * k + k) (fun k => 2 * k * k + 2 * k + 3) N) ldlPost N₀
+
+end
+
+end DenseFactorizationTargetDraft

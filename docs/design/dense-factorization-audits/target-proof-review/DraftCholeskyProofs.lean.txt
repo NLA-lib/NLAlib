@@ -1,0 +1,185 @@
+/-
+Copyright (c) 2026 NLAlib contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: NLAlib contributors
+-/
+import DraftSupport
+import DraftCholeskyCounts
+
+/-!
+# Private concrete Cholesky and LDL target proofs
+
+These proofs discharge the frozen candidate statements and their input-only nonvacuity
+obligations. They neither register targets nor alter protected statements.
+-/
+
+open NLAlib NLAlib.Computation
+open scoped Matrix
+
+namespace DenseFactorizationTargetDraft
+
+/-- Every order admits an SPD identity input at zero offsets. -/
+theorem storedEntriesDenseCholeskyNonVacuous : StoredEntriesDenseCholeskyNonVacuous := by
+  intro N₀
+  exact ⟨N₀, fun _ => 0, le_rfl, fun _ => rfl, ⟨⟨1, Matrix.PosDef.one⟩⟩⟩
+
+/-- Every order admits a PSD identity input at zero offsets. -/
+theorem storedEntriesDenseSemidefiniteCholeskyNonVacuous :
+    StoredEntriesDenseSemidefiniteCholeskyNonVacuous := by
+  intro N₀
+  exact ⟨N₀, fun _ => 0, le_rfl, fun _ => rfl, ⟨⟨1, Matrix.PosDef.one.posSemidef⟩⟩⟩
+
+/-- Every order admits a Hermitian identity input with nonzero canonical LDL pivots. -/
+theorem storedEntriesDenseLDLNonVacuous : StoredEntriesDenseLDLNonVacuous := by
+  intro N₀
+  have hI : (1 : Mat N₀).PosDef := Matrix.PosDef.one
+  exact ⟨N₀, fun _ => 0, le_rfl, fun _ => rfl,
+    ⟨⟨1, hI.isHermitian, fun k => (hI.gaussState_apply_self_pos k).ne'⟩⟩⟩
+
+/-- The frozen SPD target follows from actual Cholesky execution and its structural budget. -/
+theorem storedEntriesDenseCholesky : StoredEntriesDenseCholesky := by
+  intro N n hn x vals ξ
+  obtain rfl : n = fun _ => 0 := funext hn
+  let bufs := spdInputs N (fun _ => 0) x
+  have hin : Holds (initial bufs).store () 0 0 x.val :=
+    holds_initial bufs 0 x.val (by simp [bufs, spdInputs])
+  have hL : Writable (initial bufs).store () 1 0 (N * N) :=
+    writable_initial bufs 1 (N * N) (by simp [bufs, spdInputs])
+  obtain ⟨out, he, hw, hLF, hchol⟩ := exec_cholesky (storedInterp (ι := Empty) 0 vals ξ ()) rfl
+    (fun _ => rfl) () (initial bufs) (.const N) 0 1 0 0 x.val x.prop hin hL
+  have htree : Prog.toStmt (choleskyResourceTree (ι := Empty) ()) N (fun _ => 0) =
+      (cholesky () (.const N) 0 0 1 0).run := rfl
+  have hprog : Prog.exec (storedInterp (ι := Empty) 0 vals ξ ())
+      (choleskyResourceTree (ι := Empty) ()) N (fun _ => 0) (initial bufs) = some out := by
+    rw [Prog.exec_eq_exec_toStmt, htree]
+    exact he
+  have hcaller : ((List.ofFn bufs).map Array.size).sum ≤ 2 * N * N := by
+    simp [bufs, spdInputs, List.ofFn_succ, size_flatten, Nat.mul_assoc]
+    omega
+  have hspace : (Prog.staticCost (choleskyResourceTree (ι := Empty) ())
+      (fun k => Finsupp.single k 1) (fun _ => 0) N (fun _ => 0)).cells () ≤ N * N + 2 * N + 3 := by
+    have henv : Fin.cons N (fun _ : Fin 2 => 0) = ![N, 0, 0] := by
+      funext i
+      fin_cases i <;> rfl
+    unfold Prog.staticCost
+    rw [henv]
+    exact choleskyResources_cells_le _ _ () N 0 0
+  have hcount : (Prog.staticCost (choleskyResourceTree (ι := Empty) ())
+      (fun k => Finsupp.single k 1) (fun _ => 0) N (fun _ => 0)).count ≤
+        closedCountBudget N := by
+    have henv : Fin.cons N (fun _ : Fin 2 => 0) = ![N, 0, 0] := by
+      funext i
+      fin_cases i <;> rfl
+    unfold Prog.staticCost
+    rw [henv]
+    exact cholesky_count_le_closed N
+  have hp : spdPost N (fun _ => 0) x vals ξ out := by
+    refine ⟨hLF, hchol, ?_, Store.shape_of_writeBlock_eq_some hw⟩
+    intro i j
+    rw [Store.read_of_writeBlock_eq_some_of_ne hw (Or.inl (by omega : 0 ≠ 1))]
+    exact hin i j
+  exact runsWithin_of_exec _ N (fun _ => 0) bufs vals ξ (2 * N * N)
+    (N * N + 2 * N + 3) hcaller hspace hcount hprog hp
+
+/-- The frozen PSD target follows from guarded actual execution, including singular inputs. -/
+theorem storedEntriesDenseSemidefiniteCholesky : StoredEntriesDenseSemidefiniteCholesky := by
+  intro N n hn x vals ξ
+  obtain rfl : n = fun _ => 0 := funext hn
+  let bufs := psdInputs N (fun _ => 0) x
+  have hin : Holds (initial bufs).store () 0 0 x.val :=
+    holds_initial bufs 0 x.val (by simp [bufs, psdInputs])
+  have hL : Writable (initial bufs).store () 1 0 (N * N) :=
+    writable_initial bufs 1 (N * N) (by simp [bufs, psdInputs])
+  obtain ⟨out, he, hw, hLF, hlow, hdiag, hgram⟩ := exec_semidefiniteCholesky
+    (storedInterp (ι := Empty) 0 vals ξ ()) rfl (fun _ => rfl) () (initial bufs) (.const N)
+    0 1 0 0 x.val x.prop hin hL
+  have htree : Prog.toStmt (semidefiniteCholeskyResourceTree (ι := Empty) ()) N (fun _ => 0) =
+      (semidefiniteCholesky () (.const N) 0 0 1 0).run := rfl
+  have hprog : Prog.exec (storedInterp (ι := Empty) 0 vals ξ ())
+      (semidefiniteCholeskyResourceTree (ι := Empty) ()) N (fun _ => 0)
+      (initial bufs) = some out := by
+    rw [Prog.exec_eq_exec_toStmt, htree]
+    exact he
+  have hcaller : ((List.ofFn bufs).map Array.size).sum ≤ 2 * N * N := by
+    simp [bufs, psdInputs, List.ofFn_succ, size_flatten, Nat.mul_assoc]
+    omega
+  have hspace : (Prog.staticCost (semidefiniteCholeskyResourceTree (ι := Empty) ())
+      (fun k => Finsupp.single k 1) (fun _ => 0) N (fun _ => 0)).cells () ≤
+        N * N + 2 * N + 4 := by
+    have henv : Fin.cons N (fun _ : Fin 2 => 0) = ![N, 0, 0] := by
+      funext i
+      fin_cases i <;> rfl
+    unfold Prog.staticCost
+    rw [henv]
+    exact semidefiniteCholeskyResources_cells_le _ _ () N 0 0
+  have hcount : (Prog.staticCost (semidefiniteCholeskyResourceTree (ι := Empty) ())
+      (fun k => Finsupp.single k 1) (fun _ => 0) N (fun _ => 0)).count ≤
+        closedCountBudget N := by
+    have henv : Fin.cons N (fun _ : Fin 2 => 0) = ![N, 0, 0] := by
+      funext i
+      fin_cases i <;> rfl
+    unfold Prog.staticCost
+    rw [henv]
+    exact semidefiniteCholesky_count_le_closed N
+  have hp : psdPost N (fun _ => 0) x vals ξ out := by
+    refine ⟨hLF, hlow, hdiag, hgram, ?_, Store.shape_of_writeBlock_eq_some hw⟩
+    intro i j
+    rw [Store.read_of_writeBlock_eq_some_of_ne hw (Or.inl (by omega : 0 ≠ 1))]
+    exact hin i j
+  exact runsWithin_of_exec _ N (fun _ => 0) bufs vals ξ (2 * N * N)
+    (N * N + 2 * N + 4) hcaller hspace hcount hprog hp
+
+/-- The frozen scalar LDL target follows from actual execution on its input-only pivot domain. -/
+theorem storedEntriesDenseLDL : StoredEntriesDenseLDL := by
+  intro N n hn x vals ξ
+  obtain rfl : n = fun _ => 0 := funext hn
+  let bufs := ldlInputs N (fun _ => 0) x
+  have hin : Holds (initial bufs).store () 0 0 x.val :=
+    holds_initial bufs 0 x.val (by simp [bufs, ldlInputs])
+  have hL : Writable (initial bufs).store () 1 0 (N * N) :=
+    writable_initial bufs 1 (N * N) (by simp [bufs, ldlInputs])
+  have hD : Writable (initial bufs).store () 2 0 N :=
+    writable_initial bufs 2 N (by simp [bufs, ldlInputs])
+  obtain ⟨out, he, hw, hLF, hdiag, hldl⟩ := exec_ldlFactor
+    (storedInterp (ι := Empty) 0 vals ξ ()) rfl (fun _ => rfl) () (initial bufs) (.const N)
+    0 1 2 0 0 0 x.val hin x.prop.1 x.prop.2
+    hL hD (by omega) (fun _ => by omega)
+  have htree : Prog.toStmt (ldlResourceTree (ι := Empty) ()) N (fun _ => 0) =
+      (ldlFactor () (.const N) 0 1 2 0 0 0).run := rfl
+  have hprog : Prog.exec (storedInterp (ι := Empty) 0 vals ξ ())
+      (ldlResourceTree (ι := Empty) ()) N (fun _ => 0) (initial bufs) = some out := by
+    rw [Prog.exec_eq_exec_toStmt, htree]
+    exact he
+  have hcaller : ((List.ofFn bufs).map Array.size).sum ≤ 2 * N * N + N := by
+    simp [bufs, ldlInputs, List.ofFn_succ, size_flatten, Nat.mul_assoc]
+    omega
+  have hspace : (Prog.staticCost (ldlResourceTree (ι := Empty) ()) (fun k => Finsupp.single k 1)
+      (fun _ => 0) N (fun _ => 0)).cells () ≤ 2 * N * N + 2 * N + 3 := by
+    have henv : Fin.cons N (fun _ : Fin 3 => 0) = ![N, 0, 0, 0] := by
+      funext i
+      fin_cases i <;> rfl
+    unfold Prog.staticCost
+    rw [henv]
+    exact ldlFactorResources_cells_le _ _ () N 0 0 0
+  have hcount : (Prog.staticCost (ldlResourceTree (ι := Empty) ())
+      (fun k => Finsupp.single k 1) (fun _ => 0) N (fun _ => 0)).count ≤
+        closedCountBudget N := by
+    have henv : Fin.cons N (fun _ : Fin 3 => 0) = ![N, 0, 0, 0] := by
+      funext i
+      fin_cases i <;> rfl
+    unfold Prog.staticCost
+    rw [henv]
+    exact ldl_count_le_closed N
+  have hp : ldlPost N (fun _ => 0) x vals ξ out := by
+    obtain ⟨_, _, mid, hwl, hwd⟩ := Store.writeBlocks_pair_eq_some_iff.mp hw
+    refine ⟨hLF, hdiag, hldl, ?_, (Store.shape_of_writeBlock_eq_some hwd).trans
+      (Store.shape_of_writeBlock_eq_some hwl)⟩
+    intro i j
+    rw [Store.read_of_writeBlock_eq_some_of_ne hwd (Or.inl (by omega : 0 ≠ 2)),
+      Store.read_of_writeBlock_eq_some_of_ne hwl (Or.inl (by omega : 0 ≠ 1))]
+    exact hin i j
+  exact runsWithin_of_exec _ N (fun _ => 0) bufs vals ξ (2 * N * N + N)
+    (2 * N * N + 2 * N + 3) hcaller hspace hcount hprog hp
+
+
+end DenseFactorizationTargetDraft

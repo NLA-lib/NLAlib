@@ -8,6 +8,7 @@ module
 public import NLAlib.Computation.BLAS
 public import NLAlib.Computation.Contract
 public import NLAlib.Computation.BLAS.Traces
+public import NLAlib.Computation.BLAS.ReciprocalScaling
 
 /-!
 # Rounding errors of the BLAS kernels
@@ -808,43 +809,8 @@ theorem IsRelErrSem.exec_rscl (h : IsRelErrSem u dec (fun _ _ => True) I.sem) (a
     ∃ st', ∃ W : ℕ → K, exec I (rscl p a x xo n).run st = some st' ∧
       st.store.writeBlock p x xo.eval ((List.range n.eval).toArray.map W) = some st'.store ∧
       ∀ i < n.eval, ∃ δ : ℝ, |δ| ≤ u p ∧ dec p (W i) = xs i / av * (1 + δ) := by
-  obtain ⟨wa, hwa, hva⟩ := ha
-  rw [run_rscl, exec_seq_skip, exec_named, exec_seq_skip]
-  refine exists₂_of (exists_exec_loop_eq_some_of_forall I (n := n)
-    (body := fun i => .seq (.instr (.bin p .div ⟨x, xo + .var i⟩ ⟨x, xo + .var i⟩ a)) .skip)
-    (fun i st' => ∃ W : ℕ → K, ∃ si : Store P K,
-      (List.range i).foldlM (fun s j => s.write p x (xo.eval + j) (W j)) st.store = some si ∧
-      st'.store = si ∧ ∀ k < i, ∃ δ : ℝ, |δ| ≤ u p ∧ dec p (W k) = xs k / av * (1 + δ))
-    ⟨fun _ => wa, st.store, rfl, rfl, fun k hk => absurd hk (Nat.not_lt_zero _)⟩ ?_ |>.imp
-      fun st' ⟨hrun, W, si, hsi, hst, hW⟩ =>
-        ⟨hrun, W, by rw [Store.writeBlock_map_range, hsi]; simp [hst], hW⟩)
-  intro i hi st' ⟨W, si, hsi, hst, hW⟩
-  have hrd : ∀ {b j : ℕ}, (∀ k < i, b ≠ x ∨ j ≠ xo.eval + k) →
-      si.read p b j = st.store.read p b j := fun h =>
-    Store.read_of_foldlM_write_eq_some_of_forall_ne _ _ _ hsi fun k hk =>
-      h k (List.mem_range.mp hk)
-  obtain ⟨wx, hwx, hvx⟩ := hx i hi
-  have ha' : si.read p a.buf a.idx.eval = some wa := by
-    rw [hrd fun k hk => ?_, hwa]
-    by_cases h : a.buf = x
-    · exact Or.inr (hax h k (hk.trans hi))
-    · exact Or.inl h
-  have hx' : si.read p x (xo.eval + i) = some wx := by
-    rw [hrd fun k hk => Or.inr (by omega), hwx]
-  obtain ⟨z, hz⟩ := h.bin_ok p .div wx wa trivial (fun _ => by rw [hva]; exact hav) trivial
-  obtain ⟨δ, hδ, hdz⟩ := h.bin_err p .div wx wa z trivial hz
-  obtain ⟨si', hsi'⟩ := Store.exists_write_eq_some_of_read_eq_some (v := z) hx'
-  refine ⟨_, (exec_seq_instr_bin I (st := st') (by rw [hst]; exact hx') (by rw [hst]; exact ha')
-    hz (by rw [hst]; exact hsi')).trans (exec_skip I _), Function.update W i z, si', ?_, rfl,
-    fun k hk => ?_⟩
-  · rw [List.range_succ, List.foldlM_append, foldlM_write_congr _ fun j hj =>
-      Function.update_of_ne (Nat.ne_of_lt (List.mem_range.mp hj)) _ _, hsi]
-    simp [hsi']
-  · rcases Nat.lt_succ_iff_lt_or_eq.mp hk with hk | rfl
-    · rw [Function.update_of_ne (Nat.ne_of_lt hk)]
-      exact hW k hk
-    · rw [Function.update_self]
-      exact ⟨δ, hδ, by rw [hdz, hvx, hva]; rfl⟩
+  exact IsArithErrSem.exec_rscl I p st (h.isArithErrSem fun _ => trivial)
+    a x xo n av xs hav ha hx hax (fun _ _ => trivial)
 
 /-- **Backward error of `gemv`** in the standard model [Higham2002, §3.5], (3.11)
 there, with the factor of [CarsonMaShao2026, (3)]: under the contract

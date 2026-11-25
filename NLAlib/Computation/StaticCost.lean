@@ -83,6 +83,24 @@ the range). It bounds a body that runs at an index value below `m` not known sta
 noncomputable def supRange (m : ℕ) (f : ℕ → StaticCost P ι) : StaticCost P ι :=
   (List.range m).foldr (fun k c => (f k).branch c) zero
 
+/-- A finite supremum with constant cell workspace has that workspace exactly when nonempty. -/
+theorem supRange_cells_mk {P ι : Type} (m : ℕ)
+    (count : ℕ → OpCount P ι) (cells : P → ℕ) (bits : ℕ → ℕ) (p : P) :
+    (StaticCost.supRange m (fun k => ⟨count k, cells, bits k⟩)).cells p =
+      if List.range m = [] then 0 else cells p := by
+  have hfold (xs : List ℕ) :
+      (xs.foldr (fun k c => (StaticCost.mk (count k) cells (bits k)).branch c)
+        StaticCost.zero).cells p = if xs = [] then 0 else cells p := by
+    induction xs with
+    | nil => rfl
+    | cons k xs ih =>
+      change max (cells p) _ = _
+      rw [ih]
+      simp only [List.cons_ne_nil, ite_false]
+      split_ifs <;> simp
+  exact hfold (List.range m)
+
+
 /-- A resource summary bounds an actual transition: counts grow by at most its charge,
 current memory is restored, and peaks allow its additional workspace above initial current
 memory. No assumption on scalar arithmetic or store contents is part of this predicate. -/

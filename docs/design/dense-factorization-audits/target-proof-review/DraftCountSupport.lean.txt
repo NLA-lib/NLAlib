@@ -1,0 +1,63 @@
+import ClosedCountBudget
+import NLAlib.Computation.StaticCost
+
+/-! Pointwise proof tools for bounding actual static counts by independent closed formulas. -/
+
+open NLAlib.Computation
+
+namespace DenseFactorizationTargetDraft
+
+variable {P ι : Type}
+
+/-- A single standard instruction contributes at most one to any coordinate. -/
+theorem single_count_le (a o : OpKind P ι) : (Finsupp.single a 1 : OpCount P ι) o ≤ 1 := by
+  classical
+  simp only [Finsupp.single_apply]
+  split_ifs <;> omega
+
+/-- Counts of a sequential composition add coordinatewise. -/
+@[simp] theorem seq_count (a b : StaticCost P ι) (o : OpKind P ι) :
+    (a.seq b).count o = a.count o + b.count o := rfl
+
+/-- A scalar branch takes the larger coordinate count. -/
+@[simp] theorem branch_count (a b : StaticCost P ι) (o : OpKind P ι) :
+    (a.branch b).count o = max (a.count o) (b.count o) := by
+  simp only [StaticCost.branch, Finsupp.sup_apply]
+
+/-- Scoped allocation adds no scalar instruction. -/
+@[simp] theorem alloc_count [DecidableEq P] (p : P) (len : ℕ) (width : P → ℕ)
+    (a : StaticCost P ι) (o : OpKind P ι) :
+    (StaticCost.alloc p len width a).count o = a.count o := rfl
+
+/-- A loop whose every body count is bounded has its length times that count as budget. -/
+theorem sequence_count_le {α : Type} (xs : List α) (cost : α → StaticCost P ι)
+    (o : OpKind P ι) (bound : ℕ) (h : ∀ x ∈ xs, (cost x).count o ≤ bound) :
+    (StaticCost.sequence xs cost).count o ≤ xs.length * bound := by
+  induction xs with
+  | nil => simp [StaticCost.sequence, StaticCost.zero]
+  | cons x xs ih =>
+    simp only [StaticCost.sequence, seq_count, List.length_cons, Nat.add_mul, Nat.one_mul]
+    exact (Nat.add_le_add (h x List.mem_cons_self)
+      (ih (fun y hy => h y (List.mem_cons_of_mem x hy)))).trans_eq (Nat.add_comm _ _)
+
+/-- An unknown bounded index chooses one body, without multiplying its count by the range. -/
+theorem supRange_count_le (m : ℕ) (cost : ℕ → StaticCost P ι)
+    (o : OpKind P ι) (bound : ℕ) (h : ∀ k, k < m → (cost k).count o ≤ bound) :
+    (StaticCost.supRange m cost).count o ≤ bound := by
+  have hfold (xs : List ℕ) (hx : ∀ k ∈ xs, (cost k).count o ≤ bound) :
+      (xs.foldr (fun k a => (cost k).branch a) StaticCost.zero).count o ≤ bound := by
+    induction xs with
+    | nil => exact Nat.zero_le _
+    | cons x xs ih =>
+      change max ((cost x).count o) _ ≤ bound
+      exact max_le (hx x List.mem_cons_self) (ih (fun y hy => hx y (List.mem_cons_of_mem x hy)))
+  exact hfold (List.range m) (fun k hk => h k (List.mem_range.mp hk))
+
+/-- A uniform scalar instruction bound proves domination by the explicit closed budget. -/
+theorem count_le_closedCountBudget (N : ℕ) (c : OpCount Unit Empty)
+    (h : ∀ o, c o ≤ 1024 * (N + 1) ^ 3) : c ≤ closedCountBudget N := by
+  intro o
+  rw [closedCountBudget_apply]
+  exact h o
+
+end DenseFactorizationTargetDraft

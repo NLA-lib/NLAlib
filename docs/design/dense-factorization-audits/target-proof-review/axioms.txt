@@ -1,0 +1,41 @@
+'DenseFactorizationTargetDraft.storedEntriesDenseLU_proof' depends on axioms: [propext, Classical.choice, Quot.sound]
+'DenseFactorizationTargetDraft.storedEntriesDenseLU_nonVacuous' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'DenseFactorizationTargetDraft.lu_count_le' depends on axioms: [propext, Classical.choice, Quot.sound]
+'DenseFactorizationTargetDraft.storedEntriesDensePLU_proof' depends on axioms: [propext, Classical.choice, Quot.sound]
+'DenseFactorizationTargetDraft.storedEntriesDensePLUQ_proof' depends on axioms: [propext, Classical.choice, Quot.sound]
+'DenseFactorizationTargetDraft.storedEntriesDenseScaledPLU_proof' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'DenseFactorizationTargetDraft.storedEntriesDensePLU_nonVacuous' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'DenseFactorizationTargetDraft.storedEntriesDensePLUQ_nonVacuous' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'DenseFactorizationTargetDraft.storedEntriesDenseScaledPLU_nonVacuous' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'DenseFactorizationTargetDraft.plu_count_le_closed' depends on axioms: [propext, Classical.choice, Quot.sound]
+'DenseFactorizationTargetDraft.pluq_count_le_closed' depends on axioms: [propext, Classical.choice, Quot.sound]
+'DenseFactorizationTargetDraft.scaledPlu_count_le_closed' depends on axioms: [propext, Classical.choice, Quot.sound]
+'DenseFactorizationTargetDraft.storedEntriesDenseCholesky' depends on axioms: [propext, Classical.choice, Quot.sound]
+'DenseFactorizationTargetDraft.storedEntriesDenseSemidefiniteCholesky' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'DenseFactorizationTargetDraft.storedEntriesDenseLDL' depends on axioms: [propext, Classical.choice, Quot.sound]
+'DenseFactorizationTargetDraft.storedEntriesDenseCholeskyNonVacuous' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'DenseFactorizationTargetDraft.storedEntriesDenseSemidefiniteCholeskyNonVacuous' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'DenseFactorizationTargetDraft.storedEntriesDenseLDLNonVacuous' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'DenseFactorizationTargetDraft.cholesky_count_le_closed' depends on axioms: [propext, Classical.choice, Quot.sound]
+'DenseFactorizationTargetDraft.semidefiniteCholesky_count_le_closed' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+'DenseFactorizationTargetDraft.ldl_count_le_closed' depends on axioms: [propext, Classical.choice, Quot.sound]

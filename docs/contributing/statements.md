@@ -118,7 +118,9 @@ Part of the [contributor guide](../../CONTRIBUTING.md).
      A new named bound gets its registry entry in the commit that defines it [B1]; the check
      treats a public definition whose name ends in `Constant`, `Bound`, `Tail`, `Dim`, `Factor`,
      `Size`, `Rows`, `Rate`, `Exponent` or `Threshold` as a named bound (a `…Ratio` is not
-     detected; register it by hand). To change a
+     detected; register it by hand). Executable definitions with an explicit `Builder` return
+     type are excluded: names such as `luFactor` and `swapRows` denote routines, not bounds.
+     To change a
      bound: edit its body; in the registry move `latex` (and `display`) to `previous_latex` (and
      `previous_display`) and write the new value; run
      `python3 scripts/check_constants.py --update NAME`, which replaces the previous value by the

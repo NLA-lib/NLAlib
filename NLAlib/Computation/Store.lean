@@ -761,6 +761,18 @@ theorem Store.BlockFrame.write_scratch (h : Store.BlockFrame s₀ p T dst dOff L
     · rw [Store.read_of_write_eq_some_of_ne_tag hw hq, hfr q b i hbT hout]
   · rw [Store.read_of_write_eq_some_of_ne hw (Or.inl (hdT (by omega))), hblk m hm]
 
+/-- Writing an entire block of the scratch buffer preserves the destination frame. Empty
+destination blocks require no separation between the scratch and destination handles. -/
+theorem Store.BlockFrame.writeBlock_scratch (h : Store.BlockFrame s₀ p T dst dOff L s g)
+    {off : ℕ} {xs : Array K} (hdT : 0 < L → dst ≠ T)
+    (hw : s.writeBlock p T off xs = some s') :
+    Store.BlockFrame s₀ p T dst dOff L s' g := by
+  refine ⟨(Store.shape_of_writeBlock_eq_some hw).trans h.1, ?_, ?_⟩
+  · intro q b i hb hout
+    rw [Store.read_of_writeBlock_eq_some_of_ne hw (Or.inl hb), h.2.1 q b i hb hout]
+  · intro m hm
+    rw [Store.read_of_writeBlock_eq_some_of_ne hw (Or.inl (hdT (by omega))), h.2.2 m hm]
+
 /-- In the frame, a write succeeds at every cell of a buffer of `s₀` of its tag. -/
 theorem Store.BlockFrame.exists_write_eq_some (h : Store.BlockFrame s₀ p T dst dOff L s g)
     {b i n : ℕ} (v : K) (hs : s₀.shape[b]? = some (p, n)) (hi : i < n) :

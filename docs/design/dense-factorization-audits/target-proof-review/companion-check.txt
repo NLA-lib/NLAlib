@@ -1,0 +1,7 @@
+candidate witness/decoding accepted: DenseFactorizationTargetDraft.StoredEntriesDenseLU; precomputed-input flag some (false)
+candidate witness/decoding accepted: DenseFactorizationTargetDraft.StoredEntriesDensePLU; precomputed-input flag some (false)
+candidate witness/decoding accepted: DenseFactorizationTargetDraft.StoredEntriesDensePLUQ; precomputed-input flag some (false)
+candidate witness/decoding accepted: DenseFactorizationTargetDraft.StoredEntriesDenseScaledPLU; precomputed-input flag some (false)
+candidate witness/decoding accepted: DenseFactorizationTargetDraft.StoredEntriesDenseCholesky; precomputed-input flag some (false)
+candidate witness/decoding accepted: DenseFactorizationTargetDraft.StoredEntriesDenseSemidefiniteCholesky; precomputed-input flag some (false)
+candidate witness/decoding accepted: DenseFactorizationTargetDraft.StoredEntriesDenseLDL; precomputed-input flag some (false)

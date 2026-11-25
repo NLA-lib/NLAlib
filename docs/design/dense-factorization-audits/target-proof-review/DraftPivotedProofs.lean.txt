@@ -1,0 +1,181 @@
+/-
+Copyright (c) 2026 NLAlib contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: NLAlib contributors
+-/
+import DraftSupport
+import DraftPivotedCounts
+
+/-! Private proofs for the three concrete pivoted dense target candidates. No registration. -/
+
+open NLAlib NLAlib.Computation
+
+namespace DenseFactorizationTargetDraft
+
+noncomputable section
+
+/-- The fixed partial-pivoted tree meets the concrete declared-buffer target. -/
+theorem storedEntriesDensePLU_proof : StoredEntriesDensePLU := by
+  intro N n hn A vals ξ
+  have hn' : n = fun _ => 0 := funext hn
+  subst n
+  change Mat N at A
+  let bufs := pluInputs N (fun _ => 0) A
+  let I := storedInterp (ι := Empty) 0 vals ξ ()
+  have hA := holds_initial bufs (0 : Fin 4) A rfl
+  have hL := writable_initial bufs (1 : Fin 4) (N * N) (by simp [bufs, pluInputs])
+  have hU := writable_initial bufs (2 : Fin 4) (N * N) (by simp [bufs, pluInputs])
+  have hH := writable_initial bufs (3 : Fin 4) N (by simp [bufs, pluInputs])
+  obtain ⟨out, p, hr, hw, hp, hf, -, hLf, hUf, hlog, hsource⟩ :=
+    exec_pluFactor I rfl (fun _ => rfl) () (initial bufs) (.const N)
+      0 1 2 3 0 0 0 0 A hA hL hU hH (by decide) (by decide) (by decide)
+      (fun _ => by decide) (fun _ => by decide) (fun _ => by decide)
+  have htree : Prog.toStmt (pluResourceTree (ι := Empty) ()) N (fun _ => 0) =
+      (pluFactor () (.const N) 0 1 2 3 0 0 0 0).run := rfl
+  have hrun : Prog.exec I (pluResourceTree (ι := Empty) ()) N (fun _ => 0)
+      (initial bufs) = some out := by
+    rw [Prog.exec_eq_exec_toStmt, htree]
+    exact hr
+  have hpost : pluPost N (fun _ => 0) A vals ξ out :=
+    ⟨p, hlog, hp, hLf, hUf, hf, hsource, Store.shape_of_writeBlocks_eq_some hw⟩
+  have hcaller : ((List.ofFn bufs).map Array.size).sum ≤ 3 * N * N + N := by
+    simp [bufs, pluInputs, List.ofFn_succ, size_flatten, Nat.mul_assoc]
+    omega
+  have hspace : (Prog.staticCost (pluResourceTree (ι := Empty) ())
+      (fun k => Finsupp.single k 1) (fun _ => 0) N (fun _ => 0)).cells () ≤
+      N * N + 2 * N + 7 := by
+    have henv : Fin.cons N (fun _ : Fin 4 => 0) = ![N, 0, 0, 0, 0] := by
+      funext i
+      fin_cases i <;> rfl
+    unfold Prog.staticCost
+    rw [henv]
+    exact pluFactorResources_cells_le _ _ () N 0 0 0 0
+  have hcount : (Prog.staticCost (pluResourceTree (ι := Empty) ())
+      (fun k => Finsupp.single k 1) (fun _ => 0) N (fun _ => 0)).count ≤
+      closedCountBudget N := by
+    have henv : Fin.cons N (fun _ : Fin 4 => 0) = ![N, 0, 0, 0, 0] := by
+      funext i
+      fin_cases i <;> rfl
+    unfold Prog.staticCost
+    rw [henv]
+    exact plu_count_le_closed N
+  exact runsWithin_of_exec (pluResourceTree ()) N (fun _ => 0) bufs vals ξ
+    (3 * N * N + N) (N * N + 2 * N + 7) hcaller hspace hcount hrun hpost
+
+/-- Arbitrarily large identity inputs witness nonvacuity of the partial-pivoted candidate. -/
+theorem storedEntriesDensePLU_nonVacuous : StoredEntriesDensePLUNonVacuous := by
+  intro N₀
+  exact ⟨N₀, (fun _ => 0), le_rfl, (fun _ => rfl), ⟨(1 : Mat N₀)⟩⟩
+
+/-- The fixed complete-pivoted tree meets the concrete target with independent actual logs. -/
+theorem storedEntriesDensePLUQ_proof : StoredEntriesDensePLUQ := by
+  intro N n hn A vals ξ
+  have hn' : n = fun _ => 0 := funext hn
+  subst n
+  change Mat N at A
+  let bufs := pluqInputs N (fun _ => 0) A
+  let I := storedInterp (ι := Empty) 0 vals ξ ()
+  have hA := holds_initial bufs (0 : Fin 5) A rfl
+  have hL := writable_initial bufs (1 : Fin 5) (N * N) (by simp [bufs, pluqInputs])
+  have hU := writable_initial bufs (2 : Fin 5) (N * N) (by simp [bufs, pluqInputs])
+  have hR := writable_initial bufs (3 : Fin 5) N (by simp [bufs, pluqInputs])
+  have hC := writable_initial bufs (4 : Fin 5) N (by simp [bufs, pluqInputs])
+  obtain ⟨out, p, q, hr, hw, hp, hq, hf, -, hLf, hUf, hrow, hcol, hsource⟩ :=
+    exec_pluqFactor I rfl (fun _ => rfl) () (initial bufs) (.const N)
+      0 1 2 3 4 0 0 0 0 0 A hA hL hU hR hC
+      (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
+      (fun _ => by decide) (fun _ => by decide) (fun _ => by decide) (fun _ => by decide)
+  have htree : Prog.toStmt (pluqResourceTree (ι := Empty) ()) N (fun _ => 0) =
+      (pluqFactor () (.const N) 0 1 2 3 4 0 0 0 0 0).run := rfl
+  have hrun : Prog.exec I (pluqResourceTree (ι := Empty) ()) N (fun _ => 0)
+      (initial bufs) = some out := by
+    rw [Prog.exec_eq_exec_toStmt, htree]
+    exact hr
+  have hpost : pluqPost N (fun _ => 0) A vals ξ out :=
+    ⟨p, q, hrow, hcol, hp, hq, hLf, hUf, hf, hsource,
+      Store.shape_of_writeBlocks_eq_some hw⟩
+  have hcaller : ((List.ofFn bufs).map Array.size).sum ≤ 3 * N * N + 2 * N := by
+    simp [bufs, pluqInputs, List.ofFn_succ, size_flatten, Nat.mul_assoc]
+    omega
+  have hspace : (Prog.staticCost (pluqResourceTree (ι := Empty) ())
+      (fun k => Finsupp.single k 1) (fun _ => 0) N (fun _ => 0)).cells () ≤
+      N * N + 2 * N + 7 := by
+    have henv : Fin.cons N (fun _ : Fin 5 => 0) = ![N, 0, 0, 0, 0, 0] := by
+      funext i
+      fin_cases i <;> rfl
+    unfold Prog.staticCost
+    rw [henv]
+    exact pluqFactorResources_cells_le _ _ () N 0 0 0 0 0
+  have hcount : (Prog.staticCost (pluqResourceTree (ι := Empty) ())
+      (fun k => Finsupp.single k 1) (fun _ => 0) N (fun _ => 0)).count ≤
+      closedCountBudget N := by
+    have henv : Fin.cons N (fun _ : Fin 5 => 0) = ![N, 0, 0, 0, 0, 0] := by
+      funext i
+      fin_cases i <;> rfl
+    unfold Prog.staticCost
+    rw [henv]
+    exact pluq_count_le_closed N
+  exact runsWithin_of_exec (pluqResourceTree ()) N (fun _ => 0) bufs vals ξ
+    (3 * N * N + 2 * N) (N * N + 2 * N + 7) hcaller hspace hcount hrun hpost
+
+/-- Arbitrarily large identity inputs witness nonvacuity of the complete-pivoted candidate. -/
+theorem storedEntriesDensePLUQ_nonVacuous : StoredEntriesDensePLUQNonVacuous := by
+  intro N₀
+  exact ⟨N₀, (fun _ => 0), le_rfl, (fun _ => rfl), ⟨(1 : Mat N₀)⟩⟩
+
+/-- The actual original-row-scale tree meets the concrete ordinary row-factor guarantee. -/
+theorem storedEntriesDenseScaledPLU_proof : StoredEntriesDenseScaledPLU := by
+  intro N n hn A vals ξ
+  have hn' : n = fun _ => 0 := funext hn
+  subst n
+  change Mat N at A
+  let bufs := pluInputs N (fun _ => 0) A
+  let I := storedInterp (ι := Empty) 0 vals ξ ()
+  have hA := holds_initial bufs (0 : Fin 4) A rfl
+  have hL := writable_initial bufs (1 : Fin 4) (N * N) (by simp [bufs, pluInputs])
+  have hU := writable_initial bufs (2 : Fin 4) (N * N) (by simp [bufs, pluInputs])
+  have hH := writable_initial bufs (3 : Fin 4) N (by simp [bufs, pluInputs])
+  obtain ⟨out, p, hr, hw, hp, hf, hLf, hUf, hlog, hsource⟩ :=
+    exec_scaledPluFactor I rfl (fun _ => rfl) () (initial bufs) (.const N)
+      0 1 2 3 0 0 0 0 A hA hL hU hH (by decide) (by decide) (by decide)
+      (fun _ => by decide) (fun _ => by decide) (fun _ => by decide)
+  have htree : Prog.toStmt (scaledPluResourceTree (ι := Empty) ()) N (fun _ => 0) =
+      (scaledPluFactor () (.const N) 0 1 2 3 0 0 0 0).run := rfl
+  have hrun : Prog.exec I (scaledPluResourceTree (ι := Empty) ()) N (fun _ => 0)
+      (initial bufs) = some out := by
+    rw [Prog.exec_eq_exec_toStmt, htree]
+    exact hr
+  have hpost : pluPost N (fun _ => 0) A vals ξ out :=
+    ⟨p, hlog, hp, hLf, hUf, hf, hsource, Store.shape_of_writeBlocks_eq_some hw⟩
+  have hcaller : ((List.ofFn bufs).map Array.size).sum ≤ 3 * N * N + N := by
+    simp [bufs, pluInputs, List.ofFn_succ, size_flatten, Nat.mul_assoc]
+    omega
+  have hspace : (Prog.staticCost (scaledPluResourceTree (ι := Empty) ())
+      (fun k => Finsupp.single k 1) (fun _ => 0) N (fun _ => 0)).cells () ≤
+      N * N + 3 * N + 7 := by
+    have henv : Fin.cons N (fun _ : Fin 4 => 0) = ![N, 0, 0, 0, 0] := by
+      funext i
+      fin_cases i <;> rfl
+    unfold Prog.staticCost
+    rw [henv]
+    exact scaledPluFactorResources_cells_le _ _ () N 0 0 0 0
+  have hcount : (Prog.staticCost (scaledPluResourceTree (ι := Empty) ())
+      (fun k => Finsupp.single k 1) (fun _ => 0) N (fun _ => 0)).count ≤
+      closedCountBudget N := by
+    have henv : Fin.cons N (fun _ : Fin 4 => 0) = ![N, 0, 0, 0, 0] := by
+      funext i
+      fin_cases i <;> rfl
+    unfold Prog.staticCost
+    rw [henv]
+    exact scaledPlu_count_le_closed N
+  exact runsWithin_of_exec (scaledPluResourceTree ()) N (fun _ => 0) bufs vals ξ
+    (3 * N * N + N) (N * N + 3 * N + 7) hcaller hspace hcount hrun hpost
+
+/-- Identity inputs also witness nonvacuity of the fixed-scale all-input candidate. -/
+theorem storedEntriesDenseScaledPLU_nonVacuous : StoredEntriesDenseScaledPLUNonVacuous := by
+  intro N₀
+  exact ⟨N₀, (fun _ => 0), le_rfl, (fun _ => rfl), ⟨(1 : Mat N₀)⟩⟩
+
+end
+
+end DenseFactorizationTargetDraft

@@ -325,6 +325,19 @@ def ReadsDecoded {N : ℕ} (s : Store P K) (dec : P → K → ℝ) (p : P) (b of
 def Writable (s : Store P K) (p : P) (b off n : ℕ) : Prop :=
   ∀ i < n, ∃ len, s.shape[b]? = some (p, len) ∧ off + i < len
 
+/-- A readable packed matrix block has capacity for a write of the same dimensions. The
+empty-block case imposes no condition on the buffer handle. -/
+theorem Holds.writable {N k : ℕ} {s : Store P K} {p : P} {b off : ℕ}
+    {M : Matrix (Fin N) (Fin k) K} (h : Holds s p b off M) :
+    Writable s p b off (N * k) := by
+  intro i hi
+  have hN : 0 < N := by nlinarith
+  have hj : i / N < k := (Nat.div_lt_iff_lt_mul hN).mpr
+    (by simpa only [Nat.mul_comm] using hi)
+  have hr := h ⟨i % N, Nat.mod_lt _ hN⟩ ⟨i / N, hj⟩
+  simp only [Nat.add_assoc, Nat.mod_add_div] at hr
+  exact Store.exists_getElem?_shape_of_read_eq_some hr
+
 /-- Every block `(handle, offset, length)` of `bs` is writable at tag `p`. -/
 def WritableBlocks (s : Store P K) (p : P) (bs : List (ℕ × ℕ × ℕ)) : Prop :=
   ∀ x ∈ bs, Writable s p x.1 x.2.1 x.2.2

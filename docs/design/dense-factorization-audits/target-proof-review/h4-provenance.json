@@ -1,0 +1,21 @@
+{
+  "checker": "scripts/Targets.lean:TargetChecks.costErrors, witnessError, decErrors, precomputedInputs",
+  "checker_sha256": "6fc11621132ef698c917407215d2952132e87f75de0b96b582667f1dd6600581",
+  "budget_sha256": "2806fbe0f6108e203c8985b42384f43b3cdf3c0e381bde208b476185cc5c6c9c",
+  "statements_sha256": "893fdee1f7fadbd08a679636c018f5719e4e811ba0d05a5f116da4266fa7fab7",
+  "h4_current_file_expansion": true,
+  "actual_resource_tree_names_in_forbidden_set": true,
+  "accepted_candidates": 7,
+  "accepted_witnesses": 7,
+  "decoding_errors": 0,
+  "precomputed_flags": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+  ],
+  "old_structural_candidates_rejected": 7
+}

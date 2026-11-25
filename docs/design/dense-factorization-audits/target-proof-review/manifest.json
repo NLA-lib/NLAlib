@@ -1,0 +1,50 @@
+[
+  {
+    "module": "ClosedCountBudget",
+    "sha256": "2806fbe0f6108e203c8985b42384f43b3cdf3c0e381bde208b476185cc5c6c9c"
+  },
+  {
+    "module": "DenseFactorizationTargetDraft",
+    "sha256": "893fdee1f7fadbd08a679636c018f5719e4e811ba0d05a5f116da4266fa7fab7"
+  },
+  {
+    "module": "DraftCountSupport",
+    "sha256": "c8e22d409741e7f15c73869b88ee756dafb4f603ea6adab42214d6a23c9cb8d7"
+  },
+  {
+    "module": "CountBoundTactic",
+    "sha256": "46f30e604747122cafc9b1160b19f9b362e2559c4ea20b52dec666d07ebb3895"
+  },
+  {
+    "module": "DraftSupport",
+    "sha256": "d5ec868831082621cb9b4626944786bd8451e37589e0f1ca94fd4b7cad990fb4"
+  },
+  {
+    "module": "DraftLUCounts",
+    "sha256": "c1796a9e121a55a181cc14e861835bcc3dea11bc5407d77b1c2153bc71c7fe49"
+  },
+  {
+    "module": "DraftPivotedCounts",
+    "sha256": "cb8b1ac7c528c0d191ec2bafd4affb899a038d59e493787de19fcfa5c5f52875"
+  },
+  {
+    "module": "DraftCholeskyCounts",
+    "sha256": "98675951c7d15a6bfa53ad4540325de31c295f0cc5984162fe69ecbbc352374e"
+  },
+  {
+    "module": "DraftLUProofs",
+    "sha256": "dedb6933d6fbf7e85c43ad72952f9ffe21e3ecd1825de011398212078348e605"
+  },
+  {
+    "module": "DraftPivotedProofs",
+    "sha256": "5b3a17f1df65c2a0fd9b3fc2c1d3843f24ffa4aa487b0cb01d8729125ad1312b"
+  },
+  {
+    "module": "DraftCholeskyProofs",
+    "sha256": "3246ff5e8a1ebab54faefda9480960089bfeca5a1df61b920ce30d2d7a3e00e1"
+  },
+  {
+    "module": "AllAxioms",
+    "sha256": "fd68f21f07e21b0eebb71b61c2c4d9918649f9c0262cce0313b395ca9313ecf4"
+  }
+]

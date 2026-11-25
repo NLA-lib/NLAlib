@@ -1,0 +1,231 @@
+/-
+Copyright (c) 2026 NLAlib contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: NLAlib contributors
+-/
+module
+
+public import NLAlib.Computation.StaticCountBounds
+public meta import Mathlib.Tactic.Assume
+
+/-!
+# Certified compositional static-count bounds
+
+The `count_bound N` tactic recursively constructs ordinary inequality proofs for a concrete
+static count. It replaces subtraction by certified upper bounds, handles finite sequences and
+index suprema, and leaves a polynomial inequality for an arithmetic tactic. Recursion uses a
+fixed decreasing fuel counter; exhaustion fails without producing a proof.
+
+## Main results
+
+The `count_bound` tactic reduces a count-coordinate inequality to a certified polynomial
+majorant. It introduces no axiom and changes neither the program nor its proposed budget.
+-/
+
+@[expose] public section
+
+meta section
+
+open Lean Meta Elab Tactic
+
+namespace NLAlib.Computation
+
+private def natLE (a b : Expr) : MetaM Expr := mkAppM ``LE.le #[a, b]
+
+private def transBound (p q : Expr) : MetaM Expr := mkAppM ``Nat.le_trans #[p, q]
+
+private def reflBound (e : Expr) : MetaM Expr := mkAppM ``Nat.le_refl #[e]
+
+private def applyCount (c o : Expr) : MetaM Expr := mkAppM ``DFunLike.coe #[c, o]
+
+private def countParts? (e : Expr) : Option (Expr × Expr) := do
+  if e.isAppOfArity ``DFunLike.coe 6 then
+    let a := e.getAppArgs
+    return (a[4]!, a[5]!)
+  if let .app (.proj ``Finsupp 1 f) o := e then return (f, o)
+  none
+
+private def addBound (a b pa pb : Expr) : MetaM (Expr × Expr) := do
+  pure (← mkAppM ``HAdd.hAdd #[a, b], ← mkAppM ``Nat.add_le_add #[pa, pb])
+
+private def mulBound (a b pa pb : Expr) : MetaM (Expr × Expr) := do
+  pure (← mkAppM ``HMul.hMul #[a, b], ← mkAppM ``Nat.mul_le_mul #[pa, pb])
+
+private def maxBound (a b pa pb : Expr) : MetaM (Expr × Expr) := do
+  let p ← transBound pa (← mkAppM ``Nat.le_add_right #[a, b])
+  let q ← transBound pb (← mkAppM ``Nat.le_add_left #[b, a])
+  pure (← mkAppM ``HAdd.hAdd #[a, b], ← mkAppM ``max_le #[p, q])
+
+private def findIndexUpper? (e : Expr) (recurse : Expr → MetaM (Expr × Expr)) :
+    MetaM (Option (Expr × Expr)) := do
+  for decl in ← getLCtx do
+    let t ← instantiateMVars decl.type
+    let a := t.getAppArgs
+    if t.isAppOfArity ``Membership.mem 5 && a[4]! == e &&
+        a[3]!.isAppOf ``List.range then
+      let m := a[3]!.getAppArgs.back!
+      let iff ← mkAppOptM ``List.mem_range #[some e, some m]
+      let hlt ← mkAppM ``Iff.mp #[iff, decl.toExpr]
+      let (b, hb) ← recurse m
+      return some (b, ← transBound (← mkAppM ``Nat.le_of_lt #[hlt]) hb)
+    if t.isAppOfArity ``LT.lt 4 && a[2]! == e then
+      let (b, hb) ← recurse a[3]!
+      return some (b, ← transBound (← mkAppM ``Nat.le_of_lt #[decl.toExpr]) hb)
+  return none
+
+mutual
+private def boundNat : Nat → Expr → Expr → MetaM (Expr × Expr)
+  | 0, _, _ => throwError "count_bound: proof-construction fuel exhausted"
+  | fuel + 1, e, horizon => do
+    let e ← instantiateMVars e
+    if e == horizon || e.rawNatLit?.isSome then return (e, ← reflBound e)
+    if e.isConstOf ``Nat.zero then return (mkNatLit 0, ← reflBound (mkNatLit 0))
+    if e.isAppOfArity ``Nat.succ 1 then
+      let (b, hb) ← boundNat fuel e.getAppArgs[0]! horizon
+      return (← mkAppM ``HAdd.hAdd #[b, mkNatLit 1],
+        ← mkAppM ``Nat.succ_le_succ #[hb])
+    if e.isFVar then
+      if let some result ← findIndexUpper? e (fun m => boundNat fuel m horizon) then
+        return result
+    if e.isAppOf ``List.length then
+      let xs := e.getAppArgs.back!
+      if xs.isAppOf ``List.range then
+        let m := xs.getAppArgs.back!
+        let (b, hb) ← boundNat fuel m horizon
+        let he ← mkAppOptM ``List.length_range #[some m]
+        return (b, ← transBound (← mkAppM ``le_of_eq #[he]) hb)
+    if e.isAppOf ``Max.max then
+      let a := e.getAppArgs
+      let (x, px) ← boundNat fuel a[a.size - 2]! horizon
+      let (y, py) ← boundNat fuel a.back! horizon
+      return ← maxBound x y px py
+    if e.isAppOfArity ``Nat.pred 1 then
+      let d := e.getAppArgs[0]!
+      let (b, hb) ← boundNat fuel d horizon
+      return (b, ← transBound (← mkAppM ``Nat.pred_le #[d]) hb)
+    if let some matcher ← matchMatcherApp? e (alsoCasesOn := true) then
+      if matcher.discrs.size == 1 then
+        let d := matcher.discrs[0]!
+        if ← isDefEq (← inferType d) (mkConst ``Nat) then
+          let pred ← mkAppM ``Nat.pred #[d]
+          if ← isDefEq pred e then
+            let (b, hb) ← boundNat fuel d horizon
+            return (b, ← transBound (← mkAppM ``Nat.pred_le #[d]) hb)
+    if e.isAppOfArity ``Nat.add 2 then
+      let a := e.getAppArgs
+      let (x, px) ← boundNat fuel a[0]! horizon
+      let (y, py) ← boundNat fuel a[1]! horizon
+      return ← addBound x y px py
+    if e.isAppOfArity ``Nat.mul 2 then
+      let a := e.getAppArgs
+      let (x, px) ← boundNat fuel a[0]! horizon
+      let (y, py) ← boundNat fuel a[1]! horizon
+      return ← mulBound x y px py
+    if e.isAppOfArity ``Nat.sub 2 then
+      let a := e.getAppArgs
+      let (x, px) ← boundNat fuel a[0]! horizon
+      return (x, ← transBound (← mkAppM ``Nat.sub_le #[a[0]!, a[1]!]) px)
+    if e.isAppOfArity ``Nat.max 2 then
+      let a := e.getAppArgs
+      let (x, px) ← boundNat fuel a[0]! horizon
+      let (y, py) ← boundNat fuel a[1]! horizon
+      return ← maxBound x y px py
+    if let some (f, o) := countParts? e then
+      let f := f.headBeta
+      if let .proj ``StaticCost 0 c := f then
+        return ← boundCost fuel c o horizon
+      if f.isAppOfArity ``StaticCost.count 3 then
+        return ← boundCost fuel f.getAppArgs[2]! o horizon
+      if f.isAppOf ``Finsupp.single then
+        let a := f.getAppArgs
+        if ← isDefEq a.back! (mkNatLit 1) then
+          return (mkNatLit 1, ← mkAppM ``single_count_le #[a[a.size - 2]!, o])
+    if e.isAppOf ``Decidable.rec then
+      let d := e.getAppArgs.back!
+      if d.isAppOf ``Classical.decEq then
+        let a := d.getAppArgs
+        let hp ← mkAppM ``single_count_le #[a.back!, a[a.size - 2]!]
+        if ← isDefEq (← inferType hp) (← natLE e (mkNatLit 1)) then
+          return (mkNatLit 1, hp)
+    let e' ← withTransparency .all <| whnf e
+    if e' != e then return ← boundNat fuel e' horizon
+    throwError "count_bound: unsupported scalar expression {e}"
+
+private def boundCost : Nat → Expr → Expr → Expr → MetaM (Expr × Expr)
+  | 0, _, _, _ => throwError "count_bound: proof-construction fuel exhausted"
+  | fuel + 1, c, o, horizon => do
+    let c ← instantiateMVars c
+    let a := c.getAppArgs
+    if c.isAppOf ``StaticCost.seq then
+      let (x, px) ← boundCost fuel a[a.size - 2]! o horizon
+      let (y, py) ← boundCost fuel a.back! o horizon
+      return ← addBound x y px py
+    if c.isAppOf ``StaticCost.branch then
+      let ca := a[a.size - 2]!
+      let cb := a.back!
+      let (x, px) ← boundCost fuel ca o horizon
+      let (y, py) ← boundCost fuel cb o horizon
+      let (z, pz) ← maxBound x y px py
+      let he ← mkAppM ``branch_count #[ca, cb, o]
+      return (z, ← transBound (← mkAppM ``le_of_eq #[he]) pz)
+    if c.isAppOf ``StaticCost.alloc then
+      return ← boundCost fuel a.back! o horizon
+    if c.isAppOf ``StaticCost.zero then return (mkNatLit 0, ← reflBound (mkNatLit 0))
+    if c.isAppOf ``StaticCost.step then
+      return ← boundNat fuel (← applyCount a.back! o) horizon
+    if c.isAppOf ``StaticCost.mk then
+      return ← boundNat fuel (← applyCount a[a.size - 3]! o) horizon
+    if c.isAppOf ``StaticCost.sequence then
+      let xs := a[a.size - 2]!
+      let body := a.back!
+      let α ← inferType (← mkAppM ``List.head? #[xs])
+      let α := α.getAppArgs.back!
+      let (budget, hp) ← withLocalDeclD `idx α fun idx => do
+        let hm ← mkAppM ``Membership.mem #[xs, idx]
+        withLocalDeclD `hidx hm fun hidx => do
+          let (budget, hp) ← boundCost fuel (mkApp body idx) o horizon
+          if budget.containsFVar idx.fvarId! then
+            throwError "count_bound: index-dependent body budget {budget}"
+          pure (budget, ← mkLambdaFVars #[idx, hidx] hp)
+      let p ← mkAppM ``sequence_count_le #[xs, body, o, budget, hp]
+      let len ← mkAppM ``List.length #[xs]
+      let (m, hm) ← boundNat fuel len horizon
+      let hmul ← mkAppM ``Nat.mul_le_mul #[hm, ← reflBound budget]
+      return (← mkAppM ``HMul.hMul #[m, budget], ← transBound p hmul)
+    if c.isAppOf ``StaticCost.supRange then
+      let m := a[a.size - 2]!
+      let body := a.back!
+      let (budget, hp) ← withLocalDeclD `idx (mkConst ``Nat) fun idx => do
+        let hm ← mkAppM ``LT.lt #[idx, m]
+        withLocalDeclD `hidx hm fun hidx => do
+          let (budget, hp) ← boundCost fuel (mkApp body idx) o horizon
+          if budget.containsFVar idx.fvarId! then
+            throwError "count_bound: index-dependent supremum budget {budget}"
+          pure (budget, ← mkLambdaFVars #[idx, hidx] hp)
+      return (budget, ← mkAppM ``supRange_count_le #[m, body, o, budget, hp])
+    let c' ← withTransparency .all <| whnf c
+    if c' != c then return ← boundCost fuel c' o horizon
+    throwError "count_bound: unsupported static summary {c}"
+
+end
+
+/-- Replace a concrete count bound by a certified upper polynomial independent of loop indices. -/
+syntax (name := countLeSyntax) "count_bound " term : tactic
+
+-- Meta execution does not expose the implementation or its private helper bodies for reduction.
+@[no_expose] elab_rules : tactic
+  | `(tactic| count_bound $h) => withMainContext do
+    let horizon ← elabTerm h (some (mkConst ``Nat))
+    let goal ← getMainGoal
+    let target ← instantiateMVars (← goal.getType)
+    let a := target.getAppArgs
+    unless target.isAppOfArity ``LE.le 4 do throwError "count_bound: expected a natural inequality"
+    -- A fixed depth allowance bounds tactic recursion independently of program sizes.
+    let (budget, hp) ← boundNat 4096 a[2]! horizon
+    let rest ← mkFreshExprMVar (← natLE budget a[3]!)
+    goal.assign (← transBound hp rest)
+    replaceMainGoal [rest.mvarId!]
+
+end NLAlib.Computation
+
+end

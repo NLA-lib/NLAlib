@@ -1,0 +1,57 @@
+Independent read-only target proposal review — frozen 2026-11-24
+
+Reviewed canonical docs/design/Matrix-DenseFactorizationTargetProposal.md against
+Model.lean, Exact.lean, FirstOrder.lean, Syntax.lean, StaticCost.lean,
+DenseFactorizationResources.lean and DenseFactorizationSpace.lean.
+
+Conclusion: no mathematical blocker in this proposal. This review does not approve
+protected target registration and does not assert completed cost publication.
+
+1. Declared-input access is valid. StoredEntries (Model.lean:156–165) starts from
+inputState containing the declared arrays, independently of ROM len. len=0 means
+empty ROM, not absent matrix input. Input matrix/domain proof are universally
+quantified; no supplied factors or execution witness are allowed. inputState
+(Exact.lean:110) counts all declared source/output arrays in initial cur and peak.
+Unused vals/tapes remain universally quantified. Existing exact execution theorems
+can supply success under storedInterp; there is no oracle or loading-cost claim.
+
+2. Fixed dimensions are correct. Prog r b is FStmt b (r+1). The actual compiled
+resource trees have extra-size/buffer counts LU3/3, PLU4/4, PLUQ5/5,
+scaledPLU4/4, SPDCholesky2/2, PSDCholesky2/2 and LDL3/3. They are compiled once
+symbolically and have rfl instantiation equations, not selected from input values.
+The predicate fixing all external offsets to zero leaves N arbitrary, including0.
+
+3. Domains reference only inputs. Canonical nonzero pivots are appropriate for
+unpivoted LU/LDL; SPD/PSD domains are appropriate for the respective Cholesky
+algorithms; pivoted algorithms admit every square input, including singular cases.
+Nonvacuity for arbitrarily large N is available from identity matrices for the
+restricted domains, and also from zero matrices for PSD/all-input domains.
+Actual log decoding must remain in the eventual pivoted postconditions.
+
+4. All seven caller and additional-live-word formulas agree with the current
+resource trees and Space lemmas. In particular scaledPLU adds its N scales inside
+scratch, LDL includes both N² upper workspace and N² residual scratch, and caller
+arrays include all factor outputs and logs/diagonal. Bounds.peak combines initial
+caller memory with additional scratch. ROM contributes0. Structural count is a
+size-only conservative upper bound, not an exact observed count or polynomial
+flop claim. Width0 makes no finite-format/native-bit claim.
+
+Two precision points for eventual definitions/proofs:
+- Proposal line33 is schematic: Array.ofFn(fun ij=>some(A i j)) does not itself
+bind i/j. Use the existing packed representation, e.g. (flatten A).map some,
+which also handles N0 without introducing a new encoding.
+- The Space lemmas bound cells at p. To discharge mem q=0 for q≠p, the eventual
+target proof must also show the resource tree allocates no cells at other tags.
+All these trees allocate solely at p, so this is an auxiliary proof obligation,
+not a budget defect. Do not infer that full per-tag statement from p-only lemmas.
+
+No protected files, source files or caches were changed; no build was launched.
+
+CORRECTION after root predicate audit:
+The original proposal PSD row did have a substantive postcondition error that this
+review missed: IsCholesky requires strictly positive diagonal. Singular PSD output
+has only nonnegative diagonal. That row must instead assert the direct triple
+IsLowerTriangular L, nonnegative diagonal, and A=L*Lᴴ, matching the actual PSD
+execution theorem. Root identified and corrected the proposal. The earlier
+no-blocker conclusion applies only after this correction; no predicate weakening
+or runtime code change is justified.

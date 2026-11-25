@@ -1,0 +1,84 @@
+/-
+Copyright (c) 2026 NLAlib contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: NLAlib contributors
+-/
+import DenseFactorizationTargetDraft
+import DraftCountSupport
+
+/-! Shared support for private, unregistered target proofs. -/
+
+open NLAlib NLAlib.Computation
+open scoped Matrix
+
+namespace DenseFactorizationTargetDraft
+
+/-- The declared buffers and their charged initial state. -/
+def initial {b : ℕ} (bufs : Fin b → Array (Option ℝ)) : State :=
+  inputState () (List.ofFn bufs)
+
+/-- Reads of a declared buffer reduce to its initialized words. -/
+theorem initial_read {b : ℕ} (bufs : Fin b → Array (Option ℝ)) (j : Fin b) (i : ℕ) :
+    (initial bufs).store.read () j.val i = (bufs j)[i]?.join := by
+  simp [initial, inputState, Store.read, j.isLt]
+
+/-- Declared buffer extents and tags. -/
+theorem initial_shape {b : ℕ} (bufs : Fin b → Array (Option ℝ)) (j : Fin b) :
+    (initial bufs).store.shape[j.val]? = some ((), (bufs j).size) := by
+  simp [initial, inputState, Store.shape, j.isLt]
+
+/-- A fully initialized packed declared matrix satisfies Holds. -/
+theorem holds_initial {b N : ℕ} (bufs : Fin b → Array (Option ℝ)) (j : Fin b)
+    (A : Mat N) (hbuf : bufs j = (flatten A).map some) :
+    Holds (initial bufs).store () j.val 0 A := by
+  intro i k
+  rw [Nat.zero_add, initial_read, hbuf, Array.getElem?_map, getElem?_flatten]
+  rfl
+
+/-- A declared output capacity is writable. -/
+theorem writable_initial {b : ℕ} (bufs : Fin b → Array (Option ℝ)) (j : Fin b)
+    (len : ℕ) (hlen : len ≤ (bufs j).size) :
+    Writable (initial bufs).store () j.val 0 len := by
+  intro i hi
+  exact ⟨(bufs j).size, initial_shape bufs j, by omega⟩
+
+/-- The initial store contains exactly the declared buffer handles. -/
+theorem initial_size {b : ℕ} (bufs : Fin b → Array (Option ℝ)) :
+    (initial bufs).store.size = b := by
+  simp [initial]
+
+/-- Actual success, a numerical postcondition and structural space bounds prove the budget. -/
+theorem runsWithin_of_exec {r b : ℕ} (prog : Prog Unit Empty r b) (N : ℕ)
+    (n : Fin r → ℕ) (bufs : Fin b → Array (Option ℝ)) (vals : ℕ → ℝ)
+    (ξ : Dist → ℕ → ℝ) (caller scratch : ℕ)
+    (hcaller : ((List.ofFn bufs).map Array.size).sum ≤ caller)
+    (hspace : (prog.staticCost (fun k => Finsupp.single k 1) (fun _ => 0) N n).cells () ≤
+      scratch)
+    (hcount : (prog.staticCost (fun k => Finsupp.single k 1) (fun _ => 0) N n).count ≤
+      closedCountBudget N) {out : State}
+    (hr : prog.exec (storedInterp 0 vals ξ ()) N n (initial bufs) = some out)
+    {post : State → Prop} (hp : post out) :
+    prog.RunsWithin (storedInterp 0 vals ξ ()) N n (initial bufs) (closedCountBudget N)
+      (fun _ => caller + scratch) post := by
+  have hb := prog.bounds_staticCost_of_exec_eq_some (storedInterp 0 vals ξ ()) N n hr
+  refine ⟨initial_size bufs, out, hr, ?_, ?_, hp⟩
+  · exact hb.count.trans (add_le_add le_rfl hcount)
+  · intro q
+    cases q
+    have hcur : (initial bufs).cur () ≤ caller := by simpa [initial, inputState] using hcaller
+    have hpeak : (initial bufs).peak () ≤ caller := by simpa [initial, inputState] using hcaller
+    change out.peak () + 0 ≤ caller + scratch
+    rw [Nat.add_zero]
+    exact (hb.peak ()).trans (max_le (hpeak.trans (Nat.le_add_right _ _))
+      (Nat.add_le_add hcur hspace))
+
+/-- The proposed validity condition fixes every external offset to zero. -/
+theorem valid_eq_zero {r N : ℕ} {n : Fin r → ℕ} (h : valid N n) : n = fun _ => 0 :=
+  funext h
+
+/-- Identity inputs witness every canonical nonzero-pivot domain. -/
+theorem identity_pivots (N : ℕ) (k : Fin N) :
+    gaussState (1 : Mat N) k k k ≠ 0 :=
+  ne_of_gt ((Matrix.PosDef.one : (1 : Mat N).PosDef).gaussState_apply_self_pos k)
+
+end DenseFactorizationTargetDraft

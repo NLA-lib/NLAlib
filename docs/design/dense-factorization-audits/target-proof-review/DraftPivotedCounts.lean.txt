@@ -1,0 +1,40 @@
+import CountBoundTactic
+import Mathlib.Tactic.Linarith
+import NLAlib.Matrix.Computation.DenseFactorizationResources
+
+/-! Closed cubic comparisons for the actual pivoted count summaries; no registration. -/
+
+open NLAlib.Computation
+
+namespace DenseFactorizationTargetDraft
+
+/-- The actual partial-pivoted static count is dominated by the independent cubic budget. -/
+theorem plu_count_le_closed (N : ℕ) :
+    (pluFactorResources (fun k => Finsupp.single k 1) (fun _ => 0) () N 0 0 0 0).count ≤
+      closedCountBudget N := by
+  apply count_le_closedCountBudget
+  intro kind
+  count_bound N
+  nlinarith
+
+/-- The actual complete-pivoted static count is dominated by the independent cubic budget. -/
+theorem pluq_count_le_closed (N : ℕ) :
+    (pluqFactorResources (fun k => Finsupp.single k 1) (fun _ => 0) () N 0 0 0 0 0).count ≤
+      closedCountBudget N := by
+  apply count_le_closedCountBudget
+  intro kind
+  count_bound N
+  nlinarith
+
+set_option maxHeartbeats 800000 in
+-- Nested scaled-scan index binders exceed the default proof-construction heartbeat limit.
+/-- The actual fixed-scale static count is dominated by the independent cubic budget. -/
+theorem scaledPlu_count_le_closed (N : ℕ) :
+    (scaledPluFactorResources (fun k => Finsupp.single k 1) (fun _ => 0) () N 0 0 0 0).count ≤
+      closedCountBudget N := by
+  apply count_le_closedCountBudget
+  intro kind
+  count_bound N
+  nlinarith
+
+end DenseFactorizationTargetDraft

@@ -1,0 +1,55 @@
+import DraftSupport
+import DraftLUCounts
+
+/-! Private proofs of the reviewed unpivoted LU target and its nonvacuity obligation. -/
+
+open NLAlib NLAlib.Computation
+
+namespace DenseFactorizationTargetDraft
+
+noncomputable section
+
+/-- The actual fixed LU tree meets the proposed stored-entry target on its input-only domain. -/
+theorem storedEntriesDenseLU_proof : StoredEntriesDenseLU := by
+  intro N n hn x vals ξ
+  have hn' : n = fun _ => 0 := funext hn
+  subst n
+  let bufs := luInputs N (fun _ => 0) x
+  let I := storedInterp (ι := Empty) 0 vals ξ ()
+  have hA := holds_initial bufs (0 : Fin 3) x.val rfl
+  have hL := writable_initial bufs (1 : Fin 3) (N * N) (by simp [bufs, luInputs])
+  have hU := writable_initial bufs (2 : Fin 3) (N * N) (by simp [bufs, luInputs])
+  obtain ⟨out, hr, hw, hLf, hUf, hf, hsource⟩ :=
+    exec_luFactor I rfl (fun _ => rfl) () (initial bufs) (.const N) 0 1 2 0 0 0
+      x.val hA x.property hL hU (fun _ => by decide) (fun _ => by decide) (by decide)
+  have htree : Prog.toStmt (luResourceTree (ι := Empty) ()) N (fun _ => 0) =
+      (luFactor () (.const N) 0 1 2 0 0 0).run := rfl
+  have hrun : Prog.exec I (luResourceTree (ι := Empty) ()) N (fun _ => 0)
+      (initial bufs) = some out := by
+    rw [Prog.exec_eq_exec_toStmt, htree]
+    exact hr
+  have hpost : luPost N (fun _ => 0) x vals ξ out :=
+    ⟨hLf, hUf, hf, hsource, Store.shape_of_writeBlocks_eq_some hw⟩
+  have hcaller : ((List.ofFn bufs).map Array.size).sum ≤ 3 * N * N := by
+    simp [bufs, luInputs, List.ofFn_succ, size_flatten, Nat.mul_assoc]
+    omega
+  have hspace : (Prog.staticCost (luResourceTree (ι := Empty) ())
+      (fun k => Finsupp.single k 1) (fun _ => 0) N (fun _ => 0)).cells () ≤
+      N * N + 2 * N + 3 := by
+    have henv : Fin.cons N (fun _ : Fin 3 => 0) = ![N, 0, 0, 0] := by
+      funext i
+      fin_cases i <;> rfl
+    unfold Prog.staticCost
+    rw [henv]
+    exact luFactorResources_cells_le _ _ () N 0 0 0
+  exact runsWithin_of_exec (luResourceTree ()) N (fun _ => 0) bufs vals ξ
+    (3 * N * N) (N * N + 2 * N + 3) hcaller hspace (lu_count_le N) hrun hpost
+
+/-- Every order admits the identity in the canonical-pivot LU domain. -/
+theorem storedEntriesDenseLU_nonVacuous : StoredEntriesDenseLUNonVacuous := by
+  intro N₀
+  exact ⟨N₀, (fun _ => 0), le_rfl, (fun _ => rfl), ⟨⟨(1 : Mat N₀), identity_pivots N₀⟩⟩⟩
+
+end
+
+end DenseFactorizationTargetDraft

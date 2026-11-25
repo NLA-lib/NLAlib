@@ -113,6 +113,29 @@ theorem exec_forRange_zero (I : Interp P ι ℝ C) (hI : I.sem = exactSem) (tag 
   exact exec_forRange_literal_zero I tag 0 (by rw [hI]; simp only [exactSem, Rat.cast_zero])
     st n buf off hshape
 
+/-- Writing a literal-zero word to a window already containing that word preserves the store.
+The execution is the actual literal loop; its count and usage fields may change. -/
+theorem exec_forRange_zero_of_reads_eq_zero {K : Type} (I : Interp P ι K C) (p : P)
+    (zero : K) (hzero : I.sem.lit p 0 = some zero) (st : St P K C) (k : IExp ℕ)
+    (L : ℕ) (off : IExp ℕ)
+    (hw : ∀ i < k.eval, ∃ len,
+      st.store.shape[L]? = some (p, len) ∧ off.eval + i < len)
+    (hz : ∀ i < k.eval, st.store.read p L (off.eval + i) = some zero) :
+    ∃ out, exec I (forRange k fun i => ins (.lit p ⟨L, off + .var i⟩ 0)).run st = some out ∧
+      out.store = st.store := by
+  obtain ⟨store, hr, hsh, hread, hframe⟩ := exec_forRange_literal_zero I p zero hzero
+    st k L off hw
+  have heq : store = st.store := by
+    apply Store.ext_of_shape_eq hsh
+    intro q b i
+    by_cases hcell : q = p ∧ b = L ∧ off.eval ≤ i ∧ i < off.eval + k.eval
+    · obtain ⟨rfl, rfl, hle, hlt⟩ := hcell
+      obtain ⟨j, rfl⟩ := Nat.exists_eq_add_of_le hle
+      rw [hread j (by omega), hz j (by omega)]
+    · exact hframe q b i (by
+        simpa only [not_and_or, not_le, not_lt] using hcell)
+  exact ⟨_, hr, heq⟩
+
 /-- The existing copy kernel preserves the entire store outside its destination window,
 including earlier columns of the same basis buffer. Writable capacity suffices; destination
 entries need not have been initialized. Its operation count and memory footprint are exact. -/

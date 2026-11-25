@@ -922,11 +922,19 @@ def v_unrecorded(c):
 BOUND_NAME = re.compile(r'(Constant|Bound|Tail|Dim|Factor|Size|Rows|Rate|Exponent|Threshold)$')
 
 
+def returns_builder(d):
+    """Recognize an explicitly typed executable builder, not a scalar bound."""
+    stmt = d['stmt']
+    _, result = split_sig(stmt[stmt.index(d['name']):])
+    return bool(re.match(r'\s*(?:NLAlib\.Computation\.)?Builder\b', result))
+
+
 @rule('B1')
 def b_unregistered(c):
     return [V('B1', p, d['line'], d['full']) for p, d in c.src_decls
             if d['kind'] in ('def', 'irreducible_def', 'abbrev') and d['name'] and not d['private']
-            and BOUND_NAME.search(d['name']) and d['full'] not in c.reg_names]
+            and BOUND_NAME.search(d['name']) and d['full'] not in c.reg_names
+            and not returns_builder(d)]
 
 
 @rule('B2')

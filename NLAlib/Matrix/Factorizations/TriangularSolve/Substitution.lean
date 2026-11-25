@@ -53,9 +53,7 @@ theorem unitRoundoff_nonneg {M : Machine K} {u : ℝ} {dec : K → ℝ} (hM : St
 
 /-- An absolute bound relative to the exact value is a relative error. -/
 theorem relErr_of_abs_sub_le {u a z : ℝ} (hu : 0 ≤ u) (h : |z - a| ≤ u * |a|) : RelErr u a z :=
-  AbsRelErr.relErr (by
-    change |a - z| ≤ u * |a| + 0
-    rwa [add_zero, abs_sub_comm]) hu
+  Computation.relErr_of_abs_sub_le hu h
 
 /-- The decoded accumulator is a rounding trace: each step is a rounded product and a rounded
 difference. -/

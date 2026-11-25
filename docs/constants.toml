@@ -819,3 +819,43 @@ args = ["κ", "θ", "η", "ε"]
 latex = '(1+#4)(1+#2)2#1#3+#4'
 lean_body = 'refinementAccuracyBound (κ θ η ε : ℝ) : ℝ := (1 + ε) * ((1 + θ) * (2 * κ * η)) + ε'
 body_hash = "d7f3260ca9ec0025"
+
+
+[[constant]]
+name = "NLAlib.choleskySchurErrorBound"
+kind = "error bound sequence"
+file = "NLAlib/Matrix/Perturbation/CholeskySchurError.lean"
+args = ["u", "B", "μ"]
+latex = '\eta_0=0,\quad\eta_{k+1}=(1+6(#2/#3)+2(#2/#3)^2)\eta_k+#1#2(2+80(#2/#3))'
+lean_body = 'choleskySchurErrorBound (u B μ : ℝ) : ℕ → ℝ | 0 => 0 | k + 1 => (1 + 6 * (B / μ) + 2 * (B / μ) ^ 2) * choleskySchurErrorBound u B μ k + u * B * (2 + 80 * (B / μ))'
+body_hash = "87adefa33a39ba23"
+
+
+[[constant]]
+name = "NLAlib.schurMixedErrorBound"
+kind = "error bound"
+file = "NLAlib/Matrix/Perturbation/SchurMixedError.lean"
+args = ["u", "τ", "H", "m"]
+latex = '\ell=1+#1+#2,\quad C=(1+#1)\ell/#4+#2,\quad T=(1+#1)C\cdot#3+#2,\quad Q=(1+#1)#3\cdot T+#2,\quad E_c=(#1+#2)/#4+#1\ell/#4+#2,\quad E_t=#3\cdot E_c+#1 C\cdot#3+#2,\quad E_q=#3\cdot E_t+#1#3\cdot T+#2,\quad D=E_q+#1(#3+Q)+#2'
+lean_body = 'schurMixedErrorBound (u τ H m : ℝ) : ℝ := let ell := 1 + u + τ let c := (1 + u) * ell / m + τ let t := (1 + u) * c * H + τ let q := (1 + u) * H * t + τ let ec := (u + τ) / m + u * ell / m + τ let et := H * ec + u * c * H + τ let eq := H * et + u * H * t + τ eq + u * (H + q) + τ'
+body_hash = "c361a175627d5355"
+
+
+[[constant]]
+name = "NLAlib.choleskyMixedSchurErrorBound"
+kind = "error bound sequence"
+file = "NLAlib/Matrix/Perturbation/CholeskyMixedSchurError.lean"
+args = ["u", "τ", "B", "μ"]
+latex = '\zeta_0=0,\quad\zeta_{k+1}=(1+6(#3/#4)+2(#3/#4)^2)\zeta_k+D'
+lean_body = 'choleskyMixedSchurErrorBound (u τ B μ : ℝ) : ℕ → ℝ | 0 => 0 | k + 1 => (1 + 6 * (B / μ) + 2 * (B / μ) ^ 2) * choleskyMixedSchurErrorBound u τ B μ k + schurMixedErrorBound u τ (2 * B) (μ / 2)'
+body_hash = "782edfbbc4261164"
+
+
+[[constant]]
+name = "NLAlib.choleskyMixedColumnErrorBound"
+kind = "error bound"
+file = "NLAlib/Matrix/Perturbation/CholeskyMixedColumnError.lean"
+args = ["u", "τ", "B", "μ", "η"]
+latex = 'm=#4/2,\quad H=2#3,\quad d=(1-#1)\sqrt{m}-#2,\quad 2(1+#3/#4)#5/\sqrt{#4}+(#1\sqrt{H}+#2)(1+H/(d\sqrt{m}))+#1 H/d+#2'
+lean_body = 'choleskyMixedColumnErrorBound (u τ B μ η : ℝ) : ℝ := let m := μ / 2 let H := 2 * B let d := (1 - u) * Real.sqrt m - τ 2 * (1 + B / μ) * η / Real.sqrt μ + (u * Real.sqrt H + τ) * (1 + H / (d * Real.sqrt m)) + u * H / d + τ'
+body_hash = "b86e1054ae260595"

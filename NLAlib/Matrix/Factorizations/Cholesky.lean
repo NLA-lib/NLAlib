@@ -164,14 +164,14 @@ theorem isLowerTriangular_choleskyLower (A : Matrix (Fin n) (Fin n) 𝕜) :
   simp only [choleskyLower, Matrix.of_apply, if_neg hij'.not_ge]
 
 /-- Elimination preserves positive semidefinite matrices. -/
-private theorem posSemidef_gaussState {A : Matrix (Fin n) (Fin n) 𝕜} (hA : A.PosSemidef)
+theorem _root_.Matrix.PosSemidef.gaussState {A : Matrix (Fin n) (Fin n) 𝕜} (hA : A.PosSemidef)
     (k : ℕ) : (gaussState A k).PosSemidef := by
   rw [gaussState_eq_foldl]
   exact hA.foldl_eliminationStep _
 
 /-- Elimination on a positive semidefinite matrix clears the rows of the pivots used, whether
 or not the pivots are zero. -/
-private theorem gaussState_apply_eq_zero_of_posSemidef {A : Matrix (Fin n) (Fin n) 𝕜}
+theorem _root_.Matrix.PosSemidef.gaussState_apply_eq_zero_of_lt_left {A : Matrix (Fin n) (Fin n) 𝕜}
     (hA : A.PosSemidef) {k : ℕ} {i : Fin n} (hi : (i : ℕ) < k) (l : Fin n) :
     gaussState A k i l = 0 := by
   induction k generalizing l with
@@ -181,7 +181,7 @@ private theorem gaussState_apply_eq_zero_of_posSemidef {A : Matrix (Fin n) (Fin 
     · rw [gaussState_succ A hk]
       by_cases hik : (i : ℕ) = k
       · obtain rfl : i = ⟨k, hk⟩ := Fin.ext hik
-        exact (posSemidef_gaussState hA k).eliminationStep_apply_pivot_left _ l
+        exact (Matrix.PosSemidef.gaussState hA k).eliminationStep_apply_pivot_left _ l
       · exact eliminationStep_apply_eq_zero_of_row (fun l => ih (by omega) l) _ l
     · rw [gaussState, dif_neg hk]
       exact ih (by have := i.2; omega) l
@@ -278,8 +278,9 @@ theorem _root_.Matrix.PosSemidef.eq_choleskyLower_mul_conjTranspose
     {A : Matrix (Fin n) (Fin n) 𝕜} (hA : A.PosSemidef) :
     A = choleskyLower A * (choleskyLower A)ᴴ :=
   eq_choleskyLower_mul_conjTranspose_of hA.isHermitian
-    (fun j => (posSemidef_gaussState hA j).diag_nonneg)
-    fun j i hj => congrFun ((posSemidef_gaussState hA j).col_eq_zero_of_apply_self_eq_zero hj) i
+    (fun j => (Matrix.PosSemidef.gaussState hA j).diag_nonneg)
+    fun j i hj =>
+      congrFun ((Matrix.PosSemidef.gaussState hA j).col_eq_zero_of_apply_self_eq_zero hj) i
 
 /-- Elimination computes the Cholesky factorization of a positive definite matrix. -/
 theorem _root_.Matrix.PosDef.isCholesky_choleskyLower {A : Matrix (Fin n) (Fin n) 𝕜}
@@ -339,14 +340,14 @@ private theorem choleskyLower_pivot_rank {A : Matrix (Fin n) (Fin n) 𝕜} (hA :
     ∀ i j : Fin n, A.rank ≤ (j : ℕ) → choleskyLower B i j = 0
   change B.rank = A.rank at hrank
   rw [← hrank]
-  have hG := posSemidef_gaussState hB
+  have hG := Matrix.PosSemidef.gaussState hB
   -- a zero pivot means that elimination has reached the zero matrix
   have hzero : ∀ j : Fin n, gaussState B j j j = 0 → gaussState B j = 0 := by
     intro j hj
     have hdiag : ∀ i : Fin n, gaussState B j i i = 0 := by
       intro i
       rcases lt_or_ge i j with hij | hij
-      · exact gaussState_apply_eq_zero_of_posSemidef hB (Fin.lt_def.mp hij) i
+      · exact Matrix.PosSemidef.gaussState_apply_eq_zero_of_lt_left hB (Fin.lt_def.mp hij) i
       · have h1 := hσ j i hij
         rw [hj, map_zero] at h1
         have h2 := (hG j).diag_nonneg (i := i)

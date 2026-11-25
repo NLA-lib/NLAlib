@@ -26,11 +26,50 @@ of pivots in partial pivoting and in diagonally pivoted Cholesky. Upstream candi
 
 * `Fin.le_greedyPerm_apply_self`, `Fin.exists_perm_forall_le_apply_self`: pivots maximize
   the score at each step.
+* `Fin.swap_apply_of_lt_of_le`: a swap above a position fixes that position.
+* `Fin.le_swap_apply_of_le`: a swap within a final segment preserves that segment.
+* `Fin.lt_perm_apply_iff_of_forall_le_eq`: fixing an initial segment preserves its cut.
 -/
 
 @[expose] public section
 
 namespace Fin
+
+/-- A permutation fixing every position through `j` preserves strict comparison with `j`.
+This interval-preservation fact does not require that the permutation preserve the full order.
+Upstream candidate for `Mathlib.GroupTheory.Perm.Fin`. -/
+theorem lt_perm_apply_iff_of_forall_le_eq {n : ℕ} (τ : Equiv.Perm (Fin n))
+    (j : Fin n) (hτ : ∀ l : Fin n, l ≤ j → τ l = l) (i : Fin n) :
+    j < τ i ↔ j < i := by
+  by_cases hi : i ≤ j
+  · rw [hτ i hi]
+  · have hji : j < i := lt_of_not_ge hi
+    have hjτ : j < τ i := by
+      by_contra h
+      have hle : τ i ≤ j := le_of_not_gt h
+      have hfix : τ (τ i) = τ i := hτ (τ i) hle
+      have heq : τ i = i := τ.injective hfix
+      rw [heq] at hle
+      exact hji.not_ge hle
+    exact iff_of_true hjτ hji
+
+
+/-- Swapping two ordered positions fixes every position before both of them. -/
+theorem swap_apply_of_lt_of_le {n : ℕ} (k r : Fin n) (hkr : k ≤ r)
+    (i : Fin n) (hi : i < k) : Equiv.swap k r i = i := by
+  exact Equiv.swap_apply_of_ne_of_ne (ne_of_lt hi) (ne_of_lt (hi.trans_le hkr))
+
+/-- Swapping positions in a final segment maps each member of that segment into it. -/
+theorem le_swap_apply_of_le {n : ℕ} (k r : Fin n) (hkr : k ≤ r)
+    (i : Fin n) (hi : k ≤ i) : k ≤ Equiv.swap k r i := by
+  by_cases hik : i = k
+  · subst i
+    simpa only [Equiv.swap_apply_left] using hkr
+  by_cases hir : i = r
+  · subst i
+    simp only [Equiv.swap_apply_right, le_refl]
+  simpa only [Equiv.swap_apply_of_ne_of_ne hik hir] using hi
+
 
 private def pivotCandidates {n : ℕ} (j : Fin n) : List (Fin n) :=
   j :: (List.finRange n).filter (j < ·)

@@ -6,13 +6,14 @@ Authors: NLAlib contributors
 module
 
 public import Mathlib.Algebra.Order.Field.Basic
+public import Mathlib.Tactic.GCongr
 public import Mathlib.Tactic.FieldSimp
 public import Mathlib.Tactic.Linarith
 public import Mathlib.Tactic.Positivity
 public import Mathlib.Tactic.Ring
 
 /-!
-# The rational parametrisation of the circle, the Bernstein exponent, a tail weight
+# Rational identities and perturbation estimates in ordered fields
 
 For every $t$ in an ordered field, $c = (1 - t^2) / (1 + t^2)$ and $s = 2t / (1 + t^2)$ satisfy
 $c^2 + s^2 = 1$: the coefficients of a plane rotation as rational functions of one parameter.
@@ -28,6 +29,7 @@ range-finder bounds is nonnegative for $r + 2 \le \ell$. Upstream candidates for
 * `mul_lt_three_of_mem_Ioo`, `sq_div_two_div_nonneg_of_mem_Ioo`: the Bernstein coefficient.
 * `exists_bernstein_exponent`: the optimised exponent of the Bernstein tail.
 * `natCast_div_sub_sub_one_nonneg`: $0 \le r/(\ell - r - 1)$.
+* `abs_div_sub_div_le`, `abs_mul_div_sub_mul_div_le`: quotient perturbation estimates.
 -/
 
 @[expose] public section
@@ -98,3 +100,68 @@ theorem natCast_div_sub_sub_one_nonneg {r l : ℕ} (hl : r + 2 ≤ l) :
   exact div_nonneg (Nat.cast_nonneg _) (by linarith)
 
 end Cast
+
+
+/-- A positive denominator margin controls simultaneous numerator and denominator changes. -/
+theorem abs_div_sub_div_le {K : Type*} [Field K] [LinearOrder K] [IsStrictOrderedRing K]
+    {r e α β m B η : K}
+    (hm : 0 < m) (hα : m / 2 ≤ α) (hβ : m ≤ β)
+    (hre : |r - e| ≤ η) (he : |e| ≤ B) (hαβ : |α - β| ≤ η / m) :
+    |r / α - e / β| ≤ 2 * (1 + B / m ^ 2) * η / m := by
+  have hB : 0 ≤ B := (abs_nonneg e).trans he
+  have hη : 0 ≤ η := (abs_nonneg (r - e)).trans hre
+  have hα0 : 0 < α := by linarith
+  have hβ0 : 0 < β := hm.trans_le hβ
+  have hai : |α⁻¹| ≤ 2 / m := by
+    rw [abs_of_pos (inv_pos.mpr hα0)]
+    calc α⁻¹ ≤ (m / 2)⁻¹ := inv_anti₀ (by positivity) hα
+         _ = 2 / m := by ring
+  have hbi : |β⁻¹| ≤ 1 / m := by
+    rw [abs_of_pos (inv_pos.mpr hβ0), one_div]
+    exact inv_anti₀ hm hβ
+  have hβα : |β - α| ≤ η / m := by simpa only [abs_sub_comm] using hαβ
+  have hid : r / α - e / β = (r - e) * α⁻¹ + e * (β - α) * α⁻¹ * β⁻¹ := by
+    field_simp [hα0.ne', hβ0.ne']
+    ring
+  rw [hid]
+  calc |(r - e) * α⁻¹ + e * (β - α) * α⁻¹ * β⁻¹|
+      ≤ |(r - e) * α⁻¹| + |e * (β - α) * α⁻¹ * β⁻¹| := abs_add_le _ _
+    _ ≤ η * (2 / m) + B * (η / m) * (2 / m) * (1 / m) := by
+      simp only [abs_mul]
+      gcongr
+    _ = 2 * (1 + B / m ^ 2) * η / m := by ring
+
+
+/-- Positive denominator margins control a product quotient under three scalar perturbations. -/
+theorem abs_mul_div_sub_mul_div_le {K : Type*} [Field K] [LinearOrder K] [IsStrictOrderedRing K]
+    {a d x y r s B μ η : K}
+    (hμ : 0 < μ) (ha : μ / 2 ≤ a) (hd : μ ≤ d)
+    (hy : |y| ≤ 2 * B) (hr : |r| ≤ B) (hs : |s| ≤ B)
+    (hxr : |x - r| ≤ η) (hys : |y - s| ≤ η) (had : |a - d| ≤ η) :
+    |x * y / a - r * s / d| ≤
+      (6 * (B / μ) + 2 * (B / μ) ^ 2) * η := by
+  have hB : 0 ≤ B := (abs_nonneg r).trans hr
+  have hη : 0 ≤ η := (abs_nonneg (x - r)).trans hxr
+  have ha0 : 0 < a := lt_of_lt_of_le (by linarith) ha
+  have hd0 : 0 < d := hμ.trans_le hd
+  have hai : |a⁻¹| ≤ 2 / μ := by
+    rw [abs_of_pos (inv_pos.mpr ha0)]
+    calc a⁻¹ ≤ (μ / 2)⁻¹ := inv_anti₀ (by positivity) ha
+         _ = 2 / μ := by ring
+  have hdi : |d⁻¹| ≤ 1 / μ := by
+    rw [abs_of_pos (inv_pos.mpr hd0), one_div]
+    exact inv_anti₀ hμ hd
+  have hda : |d - a| ≤ η := by simpa only [abs_sub_comm] using had
+  have he : x * y / a - r * s / d =
+      (x - r) * y * a⁻¹ + r * (y - s) * a⁻¹ + r * s * (d - a) * a⁻¹ * d⁻¹ := by
+    field_simp [ha0.ne', hd0.ne']
+    ring
+  rw [he]
+  calc |(x - r) * y * a⁻¹ + r * (y - s) * a⁻¹ + r * s * (d - a) * a⁻¹ * d⁻¹|
+      ≤ |(x - r) * y * a⁻¹| + |r * (y - s) * a⁻¹| +
+          |r * s * (d - a) * a⁻¹ * d⁻¹| := abs_add_three _ _ _
+    _ ≤ η * (2 * B) * (2 / μ) + B * η * (2 / μ) +
+          B * B * η * (2 / μ) * (1 / μ) := by
+      simp only [abs_mul]
+      gcongr
+    _ = (6 * (B / μ) + 2 * (B / μ) ^ 2) * η := by ring

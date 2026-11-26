@@ -5,6 +5,7 @@ Authors: NLAlib contributors
 -/
 module
 
+public import Mathlib.Analysis.Convex.SpecificFunctions.Basic
 public import Mathlib.Analysis.SpecialFunctions.Pow.Real
 public import NLAlib.ForMathlib.Analysis.SpecialFunctions.Log.Basic
 
@@ -15,7 +16,8 @@ For $0 < a$, $x, y \in [a, a']$, $t \ge 0$ and real $\alpha$, the ratio of
 $z^\alpha / (z + t)$ at $x$ and $y$ is at most $(a'/a)^{\max(\alpha, 1 - \alpha)}$: the kernel
 inequality behind the near-optimality of Krylov methods for $\mathbf{A}^\alpha$. The base
 $e^s / (1 + s)^{1+s}$ of the Chernoff tails, raised to a real power, in exponential form. The
-power threshold $R^{1/(2p+1)} \le 1 + \varepsilon$ of subspace iteration. Upstream candidates for
+power threshold $R^{1/(2p+1)} \le 1 + \varepsilon$ of subspace iteration. A difference of real
+powers against the difference of the bases. Upstream candidates for
 `Mathlib.Analysis.SpecialFunctions.Pow.Real`.
 
 ## Main results
@@ -26,6 +28,9 @@ power threshold $R^{1/(2p+1)} \le 1 + \varepsilon$ of subspace iteration. Upstre
   $\bigl(e^s / (1 + s)^{1+s}\bigr)^a = e^{(s - (1 + s) \log(1 + s)) a}$.
 * `Real.rpow_one_div_two_mul_add_one_le_one_add`: $R^{1/(2p+1)} \le 1 + \varepsilon$ for
   $p \ge 2\log(N + 1)/\varepsilon$ and $1 \le R \le 1 + N^2$.
+* `Real.rpow_sub_rpow_le_max_mul`: $a^r - b^r \le \max(1, r)\,a^{r-1}(a - b)$ for
+  $0 \le b \le a$ and $r > 0$; `Real.rpow_sub_rpow_le_max_mul_sq`, the same on the squares.
+* `Real.one_add_one_div_rpow_le_exp_one`: $(1 + 1/p)^p \le e$ for real $p > 0$.
 -/
 
 @[expose] public section
@@ -118,5 +123,50 @@ theorem rpow_one_div_two_mul_add_one_le_one_add {N R ε : ℝ} {p : ℕ} (hN : 0
   calc Real.exp (Real.log R * (1 / (2 * (p : ℝ) + 1))) ≤ Real.exp (Real.log (1 + ε)) :=
         Real.exp_le_exp.2 hratio
     _ = 1 + ε := Real.exp_log (by linarith)
+
+/-- A difference of real powers against the difference of the bases: for $0 \le b \le a$ and
+$r > 0$, $$a^r - b^r \le \max(1, r)\,a^{r-1}(a - b)\,.$$ For $r \ge 1$ this is Bernoulli's
+inequality $(1 + s)^r \ge 1 + rs$ at $s = b/a - 1$; for $r < 1$ it is $b^r \ge b\,a^{r-1}$. The
+constant $\max(1, r)$ cannot be replaced by $r$ when $r < 1$. Upstream candidate. -/
+theorem rpow_sub_rpow_le_max_mul {a b r : ℝ} (hb : 0 ≤ b) (hab : b ≤ a) (hr : 0 < r) :
+    a ^ r - b ^ r ≤ max 1 r * a ^ (r - 1) * (a - b) := by
+  rcases (hb.trans hab).eq_or_lt with rfl | ha
+  · obtain rfl : b = 0 := le_antisymm hab hb
+    simp
+  have hsub : a ^ (r - 1) * a = a ^ r := by rw [rpow_sub_one ha.ne', div_mul_cancel₀ _ ha.ne']
+  rcases le_or_gt 1 r with hr1 | hr1
+  · rw [max_eq_right hr1]
+    have h := one_add_mul_self_le_rpow_one_add (s := b / a - 1)
+      (by linarith [div_nonneg hb ha.le]) hr1
+    rw [add_sub_cancel, div_rpow hb ha.le, le_div_iff₀ (rpow_pos_of_pos ha r)] at h
+    have hba : b / a * a ^ r = b * a ^ (r - 1) := by
+      rw [← hsub]; field_simp
+    linear_combination h - r * hba - r * hsub
+  · rw [max_eq_left hr1.le, one_mul]
+    rcases hb.eq_or_lt with rfl | hb'
+    · rw [zero_rpow hr.ne', sub_zero, sub_zero, hsub]
+    · have h1 : a ^ (r - 1) ≤ b ^ (r - 1) := rpow_le_rpow_of_nonpos hb' hab (by linarith)
+      have h2 : b ^ (r - 1) * b = b ^ r := by
+        rw [rpow_sub_one hb'.ne', div_mul_cancel₀ _ hb'.ne']
+      nlinarith
+
+/-- `Real.rpow_sub_rpow_le_max_mul` on the squares: for $0 \le b \le a$ and $p > 0$,
+$$a^p - b^p \le \max\Bigl(1, \frac{p}{2}\Bigr)\,a^{p-2}\,(a^2 - b^2)\,.$$ -/
+theorem rpow_sub_rpow_le_max_mul_sq {a b p : ℝ} (hb : 0 ≤ b) (hab : b ≤ a) (hp : 0 < p) :
+    a ^ p - b ^ p ≤ max 1 (p / 2) * a ^ (p - 2) * (a ^ 2 - b ^ 2) := by
+  have hsq (x r : ℝ) (hx : 0 ≤ x) : (x ^ 2) ^ r = x ^ (2 * r) := by
+    rw [← rpow_two, ← rpow_mul hx]
+  have h := rpow_sub_rpow_le_max_mul (sq_nonneg b) (pow_le_pow_left₀ hb hab 2)
+    (show 0 < p / 2 by linarith)
+  rwa [hsq _ _ (hb.trans hab), hsq _ _ hb, hsq _ _ (hb.trans hab),
+    show 2 * (p / 2) = p by ring, show 2 * (p / 2 - 1) = p - 2 by ring] at h
+
+/-- The real power $(1 + 1/p)^p$ is at most $e$ for $p > 0$; for natural $p$ this is
+`Real.one_add_inv_pow_le_exp`. -/
+theorem one_add_one_div_rpow_le_exp_one {p : ℝ} (hp : 0 < p) : (1 + 1 / p) ^ p ≤ exp 1 := by
+  calc (1 + 1 / p) ^ p ≤ exp (1 / p) ^ p := by
+        refine rpow_le_rpow (by positivity) ?_ hp.le
+        linarith [add_one_le_exp (1 / p)]
+    _ = exp 1 := by rw [← exp_mul, one_div_mul_cancel hp.ne']
 
 end Real

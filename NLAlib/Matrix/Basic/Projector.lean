@@ -152,6 +152,14 @@ theorem HasOrthonormalCols.isStarProjection_mul_conjTranspose [Fintype m] [Finty
   exact ⟨by rw [Matrix.mul_assoc, hQ.conjTranspose_mul_cancel_left],
     Matrix.isHermitian_mul_conjTranspose_self Q⟩
 
+/-- The reflection $2\mathbf{P} - \mathbf{I}$ through the range of an orthogonal projector is
+unitary: Mathlib's `IsStarProjection.two_mul_sub_one_mem_unitary`, in the library's
+`HasOrthonormalCols` form. -/
+theorem _root_.IsStarProjection.hasOrthonormalCols_two_smul_sub_one [Fintype m] [DecidableEq m]
+    {P : Matrix m m 𝕜} (hP : IsStarProjection P) : HasOrthonormalCols ((2 : 𝕜) • P - 1) := by
+  rw [hasOrthonormalCols_iff_mem_unitaryGroup, two_smul, ← two_mul]
+  exact hP.two_mul_sub_one_mem_unitary
+
 /-! ### The range projector -/
 
 open Classical in

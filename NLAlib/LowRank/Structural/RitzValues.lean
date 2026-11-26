@@ -1,0 +1,881 @@
+/-
+Copyright (c) 2026 NLAlib contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: NLAlib contributors
+-/
+module
+
+public import NLAlib.ForMathlib.Analysis.SpecialFunctions.Trigonometric.Chebyshev.Growth
+public import NLAlib.LowRank.Structural.BlockKrylov
+public import NLAlib.LowRank.Structural.Filter
+public import NLAlib.Matrix.Spectral.CompressionSingularValues
+
+/-!
+# Singular values of filtered sketches and of block Krylov iteration
+
+Deterministic lower bounds on the singular values of the randomized SVD at a filtered test
+matrix, $\mathsf{rsvd}(\mathbf{A}, g(\mathbf{A}^{\mathsf{H}}\mathbf{A})\mathbf{\Omega})$, and of
+randomized block Krylov iteration $\mathsf{rbki}(\mathbf{A}, \mathbf{\Omega}, q)$: the squares
+$\sigma_i(\cdot)^2$ of the singular values of the output (the Ritz values of
+$\mathbf{A}\mathbf{A}^{\mathsf{H}}$ on the sketched space) are close to
+$\sigma_i(\mathbf{A})^2$. The test matrix enters through a frame $\mathbf{Z}$ of right singular
+vectors with $\mathbf{Z}^{\mathsf{H}}\mathbf{\Omega}$ of full row rank and the residual
+$(\mathbf{A} - \llbracket\mathbf{A}\rrbracket_t)\mathbf{\Omega}
+(\mathbf{Z}^{\mathsf{H}}\mathbf{\Omega})^{+}$, as in the structural analysis of the randomized
+SVD. There are two regimes: with a gap between a head index and a tail index $t$ the deficit is
+the residual times a Chebyshev value in the relative gap; without a gap the deficit is
+$\gamma\,\sigma_k^2$ plus the residual times a Chebyshev value in $\gamma$, for any
+$\gamma \in (0, 1]$. These are the per-vector guarantees of [MuscoMusco2015], stated for singular
+values.
+
+## Main results
+
+* `NLAlib.HasOrthonormalCols.singularValues_sq_sub_le_singularValues_rsvd_cfc_sq`,
+  `NLAlib.HasOrthonormalCols.sq_sub_le_singularValues_rsvd_cfc_sq_of_le_singularValues`: a
+  filtered sketch, gap form and cut form.
+* `NLAlib.HasOrthonormalCols.sum_singularValues_sq_sub_singularValues_rsvd_cfc_sq_le`: a
+  filtered sketch, gap form, summed (Frobenius residual).
+* `NLAlib.specNorm_sub_mul_cfc_mul_mul_le`, `NLAlib.frobNorm_sub_mul_cfc_mul_mul_le`: a filter
+  bounded by $a$ on the tail scales the sketch residual by at most $a$.
+* `NLAlib.HasOrthonormalCols.singularValues_sq_sub_le_singularValues_rbki_sq`: block Krylov
+  iteration, no gap.
+* `NLAlib.HasOrthonormalCols.singularValues_sq_sub_le_singularValues_rbki_sq_singularGapRatio`,
+  `NLAlib.HasOrthonormalCols.sum_singularValues_sq_sub_singularValues_rbki_sq_le`: block Krylov
+  iteration with a gap, per index and summed.
+* `NLAlib.HasOrthonormalCols.frobNorm_sub_truncatedSVD_rbki_sq_le_add_mul`: the Frobenius error
+  of one truncated run.
+-/
+
+@[expose] public section
+
+open scoped Matrix
+open Polynomial
+
+namespace NLAlib
+
+variable {𝕜 : Type*} [RCLike 𝕜] {l m n s : Type*} [Fintype l] [Fintype m] [Fintype n] [Fintype s]
+  [DecidableEq m] [DecidableEq n] [DecidableEq s]
+
+/-! ### Filtered sketches -/
+
+omit [DecidableEq m] [DecidableEq n] [DecidableEq s] in
+/-- A frame whose range contains the row space of $\llbracket\mathbf{A}\rrbracket_{i+1}$
+contains every head frame: if $\sigma_i(\mathbf{A}) > 0$,
+$\mathbf{A}^{\mathsf{H}}\mathbf{A}\mathbf{T} = \mathbf{T}\operatorname{diag}(\sigma_j^2)_{j \le i}$
+with $\mathbf{A}\mathbf{T}\mathbf{T}^{\mathsf{H}} = \llbracket\mathbf{A}\rrbracket_{i+1}$, and
+$\llbracket\mathbf{A}\rrbracket_{i+1}\mathbf{Z}\mathbf{Z}^{\mathsf{H}} =
+\llbracket\mathbf{A}\rrbracket_{i+1}$, then
+$\mathbf{Z}\mathbf{Z}^{\mathsf{H}}\mathbf{T} = \mathbf{T}$. -/
+theorem mul_conjTranspose_mul_eq_of_truncatedSVD_mul {A : Matrix m n 𝕜} {i : ℕ}
+    (hσ : 0 < singularValues A i) {T : Matrix n (Fin (i + 1)) 𝕜} (hT : HasOrthonormalCols T)
+    (hHT : Aᴴ * A * T =
+      T * Matrix.diagonal fun j : Fin (i + 1) => ((singularValues A j ^ 2 : ℝ) : 𝕜))
+    (hATT : A * T * Tᴴ = truncatedSVD A (i + 1)) {Z : Matrix n s 𝕜}
+    (hAZ : truncatedSVD A (i + 1) * Z * Zᴴ = truncatedSVD A (i + 1)) : Z * Zᴴ * T = T := by
+  set Dinv := Matrix.diagonal fun j : Fin (i + 1) => (((singularValues A j ^ 2)⁻¹ : ℝ) : 𝕜)
+  have hDD : (Matrix.diagonal fun j : Fin (i + 1) => ((singularValues A j ^ 2 : ℝ) : 𝕜)) *
+      Dinv = 1 := by
+    rw [Matrix.diagonal_mul_diagonal, ← Matrix.diagonal_one]
+    congr 1
+    funext j
+    have hj : 0 < singularValues A j :=
+      hσ.trans_le (singularValues_antitone A (Nat.lt_succ_iff.mp j.isLt))
+    rw [← RCLike.ofReal_mul, mul_inv_cancel₀ (pow_ne_zero 2 hj.ne'), RCLike.ofReal_one]
+  have hG : (A * T)ᴴ * (A * T) =
+      Matrix.diagonal fun j : Fin (i + 1) => ((singularValues A j ^ 2 : ℝ) : 𝕜) := by
+    rw [Matrix.conjTranspose_mul, Matrix.mul_assoc, ← Matrix.mul_assoc Aᴴ, hHT,
+      ← Matrix.mul_assoc, hT.conjTranspose_mul_self, Matrix.one_mul]
+  have hTD : (truncatedSVD A (i + 1))ᴴ * (A * T * Dinv) = T := by
+    calc (truncatedSVD A (i + 1))ᴴ * (A * T * Dinv) = T * ((A * T)ᴴ * (A * T)) * Dinv := by
+          rw [← hATT, Matrix.conjTranspose_mul (A * T) Tᴴ, Matrix.conjTranspose_conjTranspose]
+          simp only [Matrix.mul_assoc]
+      _ = T := by rw [hG, Matrix.mul_assoc, hDD, Matrix.mul_one]
+  have hZA : Z * Zᴴ * (truncatedSVD A (i + 1))ᴴ = (truncatedSVD A (i + 1))ᴴ := by
+    have h := congrArg Matrix.conjTranspose hAZ
+    rwa [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose,
+      ← Matrix.mul_assoc] at h
+  conv_lhs => rw [← hTD]
+  rw [← Matrix.mul_assoc, hZA, hTD]
+
+omit [DecidableEq m] [DecidableEq s] in
+/-- The vector core of the tail bound: with complementary invariant frames $\mathbf{T}$ and
+$\mathbf{V}$ of $\mathbf{A}^{\mathsf{H}}\mathbf{A}$, tail eigenvalues $e_j \ge 0$ with
+$\lvert g(e_j) \rvert \le a$, and $\mathbf{T}^{\mathsf{H}}\mathbf{y} = \mathbf{0}$,
+$\|\mathbf{A}g(\mathbf{A}^{\mathsf{H}}\mathbf{A})\mathbf{y}\| \le a\|\mathbf{A}\mathbf{y}\|$. -/
+private theorem norm_mulVec_cfc_mulVec_le {p q : Type*} [Fintype p] [Fintype q] [DecidableEq p]
+    [DecidableEq q] (A : Matrix m n 𝕜) (g : ℝ → ℝ) {T : Matrix n p 𝕜} {V : Matrix n q 𝕜}
+    (h1 : T * Tᴴ + V * Vᴴ = 1) {d : p → ℝ} {e : q → ℝ}
+    (hHT : Aᴴ * A * T = T * Matrix.diagonal fun j => (d j : 𝕜))
+    (hHV : Aᴴ * A * V = V * Matrix.diagonal fun j => (e j : 𝕜)) {a : ℝ} (ha : 0 ≤ a)
+    (he : ∀ j, 0 ≤ e j) (heg : ∀ j, |g (e j)| ≤ a) {y : n → 𝕜} (hy : Tᴴ *ᵥ y = 0) :
+    ‖WithLp.toLp 2 (A *ᵥ (cfc g (Aᴴ * A) *ᵥ y))‖ ≤ a * ‖WithLp.toLp 2 (A *ᵥ y)‖ := by
+  have hH : (Aᴴ * A).IsHermitian := Matrix.isHermitian_conjTranspose_mul_self A
+  have hF : (cfc g (Aᴴ * A)).IsHermitian := cfc_predicate g (Aᴴ * A)
+  have hsa : IsSelfAdjoint (Aᴴ * A) := hH
+  have hcont : ∀ f : ℝ → ℝ, ContinuousOn f (spectrum ℝ (Aᴴ * A)) := fun f =>
+    (Aᴴ * A).finite_real_spectrum.continuousOn f
+  have hcY : cfc (fun x => g x * x * g x) (Aᴴ * A) =
+      (cfc g (Aᴴ * A))ᴴ * (Aᴴ * A) * cfc g (Aᴴ * A) := by
+    rw [cfc_mul (fun x => g x * x) g _ (hcont _) (hcont _),
+      cfc_mul g (fun x => x) _ (hcont _) (hcont _), cfc_id' ℝ (Aᴴ * A) hsa, hF.eq]
+  have hq := hH.re_quadForm_cfc_eq_sum_add_sum h1 hHT hHV
+  have hY := hq (fun x => g x * x * g x) y
+  rw [hcY, quadForm_conjTranspose_mul_mul, quadForm_conjTranspose_mul_self, RCLike.ofReal_re,
+    hy] at hY
+  have hE := hq (fun x => x) y
+  rw [cfc_id' ℝ (Aᴴ * A) hsa, quadForm_conjTranspose_mul_self, RCLike.ofReal_re, hy] at hE
+  simp only [Pi.zero_apply, norm_zero, ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow,
+    mul_zero, Finset.sum_const_zero, zero_add] at hY hE
+  refine (sq_le_sq₀ (norm_nonneg _) (by positivity)).mp ?_
+  rw [mul_pow, hY, hE, Finset.mul_sum]
+  refine Finset.sum_le_sum fun j _ => ?_
+  have hga : g (e j) ^ 2 ≤ a ^ 2 := by
+    rw [← sq_abs (g (e j))]
+    exact pow_le_pow_left₀ (abs_nonneg _) (heg j) 2
+  nlinarith [mul_le_mul_of_nonneg_right hga (mul_nonneg (he j) (sq_nonneg ‖(Vᴴ *ᵥ y) j‖))]
+
+omit [DecidableEq m] [DecidableEq s] in
+/-- Frames giving the same right compression of a matrix give the same compression after a
+real function of its Gram matrix. Their difference has range in the kernel of the matrix,
+which the functional calculus preserves. -/
+theorem sub_mul_cfc_mul_eq_of_mul_mul_conjTranspose_eq {a : Type*} [Fintype a]
+    {A : Matrix m n 𝕜} (g : ℝ → ℝ) {Z : Matrix n s 𝕜} {T : Matrix n a 𝕜}
+    (h : A * Z * Zᴴ = A * T * Tᴴ) :
+    A * cfc g (Aᴴ * A) - A * cfc g (Aᴴ * A) * Z * Zᴴ =
+      A * cfc g (Aᴴ * A) - A * cfc g (Aᴴ * A) * T * Tᴴ := by
+  have hK : A * (Z * Zᴴ - T * Tᴴ) = 0 := by
+    rw [Matrix.mul_sub, ← Matrix.mul_assoc, ← Matrix.mul_assoc, h, sub_self]
+  have hHK : Aᴴ * A * (Z * Zᴴ - T * Tᴴ) =
+      (Z * Zᴴ - T * Tᴴ) * Matrix.diagonal fun _ : n => ((0 : ℝ) : 𝕜) := by
+    rw [Matrix.mul_assoc, hK, Matrix.mul_zero, RCLike.ofReal_zero, Matrix.diagonal_zero,
+      Matrix.mul_zero]
+  have hGK : A * cfc g (Aᴴ * A) * (Z * Zᴴ - T * Tᴴ) = 0 := by
+    rw [Matrix.mul_assoc,
+      (Matrix.isHermitian_conjTranspose_mul_self A).cfc_mul_eq_mul_diagonal_of_mul_eq hHK g,
+      ← Matrix.mul_assoc, hK, Matrix.zero_mul]
+  rw [Matrix.mul_sub, sub_eq_zero] at hGK
+  rw [Matrix.mul_assoc _ Z, hGK, Matrix.mul_assoc _ T]
+
+omit [DecidableEq m] [DecidableEq s] in
+/-- A filter on the tail of a frame, for one vector: if
+$\mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}} =
+\llbracket\mathbf{A}\rrbracket_t$ (the columns of $\mathbf{Z}$ need not be orthonormal) and
+$\lvert g \rvert \le a$ on $[0, \sigma_t(\mathbf{A})^2]$, then for every $\mathbf{y}$, with
+$\mathbf{B} = \mathbf{A}g(\mathbf{A}^{\mathsf{H}}\mathbf{A})$,
+$$\|(\mathbf{B} - \mathbf{B}\mathbf{Z}\mathbf{Z}^{\mathsf{H}})\mathbf{y}\| \le
+a\,\|(\mathbf{A} - \llbracket\mathbf{A}\rrbracket_t)\mathbf{y}\|\,.$$
+$\mathbf{I} - \mathbf{Z}\mathbf{Z}^{\mathsf{H}}$ differs from the projector onto the tail right
+singular vectors only on the kernel of $\mathbf{A}$, which $g(\mathbf{A}^{\mathsf{H}}\mathbf{A})$
+preserves. The matrix forms are `NLAlib.specNorm_sub_mul_cfc_mul_mul_le` and
+`NLAlib.frobNorm_sub_mul_cfc_mul_mul_le`. -/
+theorem norm_toLp_sub_mul_cfc_mul_mulVec_le {A : Matrix m n 𝕜} (g : ℝ → ℝ) {Z : Matrix n s 𝕜}
+    {t : ℕ} (hAZ : A * Z * Zᴴ = truncatedSVD A t) {a : ℝ}
+    (htail : ∀ x ∈ Set.Icc 0 (singularValues A t ^ 2), |g x| ≤ a) (y : n → 𝕜) :
+    ‖WithLp.toLp 2 ((A * cfc g (Aᴴ * A) - A * cfc g (Aᴴ * A) * Z * Zᴴ) *ᵥ y)‖ ≤
+      a * ‖WithLp.toLp 2 ((A - truncatedSVD A t) *ᵥ y)‖ := by
+  classical
+  have ha : 0 ≤ a := (abs_nonneg _).trans (htail 0 ⟨le_rfl, sq_nonneg _⟩)
+  set t' := min t (Fintype.card n)
+  have hT' : truncatedSVD A t' = truncatedSVD A t := by
+    rcases le_total t (Fintype.card n) with h | h
+    · rw [show t' = t from min_eq_left h]
+    · rw [show t' = Fintype.card n from min_eq_right h,
+        truncatedSVD_of_rank_le A A.rank_le_card_width,
+        truncatedSVD_of_rank_le A (A.rank_le_card_width.trans h)]
+  obtain ⟨T, V, hT, -, -, h1, hHT, hHV, htr⟩ :=
+    exists_hasOrthonormalCols_conjTranspose_mul_self_mul_eq_mul_diagonal A
+      (min_le_right t (Fintype.card n))
+  have hATT : A * T * Tᴴ = truncatedSVD A t := by
+    have h := htr t' le_rfl
+    rw [Fin.castLE_rfl, Matrix.submatrix_id_id] at h
+    rw [h, hT']
+  have he (j : Fin (Fintype.card n - t')) : singularValues A (t' + j) ≤ singularValues A t := by
+    rcases le_total t (Fintype.card n) with h | h
+    · exact singularValues_antitone A (by omega)
+    · rw [singularValues_of_card_cols_le A (by omega)]
+      exact singularValues_nonneg A t
+  have hB := sub_mul_cfc_mul_eq_of_mul_mul_conjTranspose_eq g (hAZ.trans hATT.symm)
+  have hy : Tᴴ *ᵥ (y - T *ᵥ (Tᴴ *ᵥ y)) = 0 := by
+    rw [Matrix.mulVec_sub, Matrix.mulVec_mulVec, hT.conjTranspose_mul_self, Matrix.one_mulVec,
+      sub_self]
+  have hBy : (A * cfc g (Aᴴ * A) - A * cfc g (Aᴴ * A) * T * Tᴴ) *ᵥ y =
+      A *ᵥ (cfc g (Aᴴ * A) *ᵥ (y - T *ᵥ (Tᴴ *ᵥ y))) := by
+    simp only [Matrix.mulVec_sub, Matrix.mulVec_mulVec, Matrix.sub_mulVec, Matrix.mul_assoc]
+  have hAy : (A - A * T * Tᴴ) *ᵥ y = A *ᵥ (y - T *ᵥ (Tᴴ *ᵥ y)) := by
+    simp only [Matrix.mulVec_sub, Matrix.mulVec_mulVec, Matrix.sub_mulVec, Matrix.mul_assoc]
+  rw [hB, ← hATT, hBy, hAy]
+  exact norm_mulVec_cfc_mulVec_le A g h1 hHT hHV ha (fun _ => sq_nonneg _) (fun j => htail _
+    ⟨sq_nonneg _, pow_le_pow_left₀ (singularValues_nonneg _ _) (he j) 2⟩) hy
+
+omit [DecidableEq m] [DecidableEq s] in
+/-- A filter on the tail of a frame: if $\mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}} =
+\llbracket\mathbf{A}\rrbracket_t$ (the columns of $\mathbf{Z}$ need not be orthonormal) and
+$\lvert g \rvert \le a$ on $[0, \sigma_t(\mathbf{A})^2]$, then for every $\mathbf{Y}$, with
+$\mathbf{B} = \mathbf{A}g(\mathbf{A}^{\mathsf{H}}\mathbf{A})$,
+$$\|(\mathbf{B} - \mathbf{B}\mathbf{Z}\mathbf{Z}^{\mathsf{H}})\mathbf{Y}\|_2 \le
+a\,\|(\mathbf{A} - \llbracket\mathbf{A}\rrbracket_t)\mathbf{Y}\|_2\,.$$
+The filtered residual of
+`NLAlib.HasOrthonormalCols.singularValues_one_sub_rangeProjector_mul_mul_le` at
+$\mathbf{Y} = \mathbf{\Omega}(\mathbf{Z}^{\mathsf{H}}\mathbf{\Omega})^{+}$ is at most $a$ times
+the unfiltered one; `NLAlib.norm_toLp_sub_mul_cfc_mul_mulVec_le` applied to the columns of
+$\mathbf{Y}\mathbf{x}$. -/
+theorem specNorm_sub_mul_cfc_mul_mul_le {A : Matrix m n 𝕜} (g : ℝ → ℝ) {Z : Matrix n s 𝕜}
+    {t : ℕ} (hAZ : A * Z * Zᴴ = truncatedSVD A t) {a : ℝ}
+    (htail : ∀ x ∈ Set.Icc 0 (singularValues A t ^ 2), |g x| ≤ a) (Y : Matrix n l 𝕜) :
+    specNorm ((A * cfc g (Aᴴ * A) - A * cfc g (Aᴴ * A) * Z * Zᴴ) * Y) ≤
+      a * specNorm ((A - truncatedSVD A t) * Y) := by
+  have ha : 0 ≤ a := (abs_nonneg _).trans (htail 0 ⟨le_rfl, sq_nonneg _⟩)
+  refine (specNorm_le_iff (mul_nonneg ha (specNorm_nonneg _))).mpr fun x => ?_
+  rw [← Matrix.mulVec_mulVec, mul_assoc]
+  refine (norm_toLp_sub_mul_cfc_mul_mulVec_le g hAZ htail (Y *ᵥ x)).trans ?_
+  rw [Matrix.mulVec_mulVec]
+  exact mul_le_mul_of_nonneg_left (norm_toLp_mulVec_le _ x) ha
+
+omit [DecidableEq m] [DecidableEq s] in
+/-- A filter on the tail of a frame, Frobenius form: if
+$\mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}} = \llbracket\mathbf{A}\rrbracket_t$ (the columns of
+$\mathbf{Z}$ need not be orthonormal) and $\lvert g \rvert \le a$ on
+$[0, \sigma_t(\mathbf{A})^2]$, then for every $\mathbf{Y}$, with
+$\mathbf{B} = \mathbf{A}g(\mathbf{A}^{\mathsf{H}}\mathbf{A})$,
+$$\|(\mathbf{B} - \mathbf{B}\mathbf{Z}\mathbf{Z}^{\mathsf{H}})\mathbf{Y}\|_{\mathsf{F}} \le
+a\,\|(\mathbf{A} - \llbracket\mathbf{A}\rrbracket_t)\mathbf{Y}\|_{\mathsf{F}}\,,$$
+column by column (`NLAlib.norm_toLp_sub_mul_cfc_mul_mulVec_le`). -/
+theorem frobNorm_sub_mul_cfc_mul_mul_le {A : Matrix m n 𝕜} (g : ℝ → ℝ) {Z : Matrix n s 𝕜}
+    {t : ℕ} (hAZ : A * Z * Zᴴ = truncatedSVD A t) {a : ℝ}
+    (htail : ∀ x ∈ Set.Icc 0 (singularValues A t ^ 2), |g x| ≤ a) (Y : Matrix n l 𝕜) :
+    frobNorm ((A * cfc g (Aᴴ * A) - A * cfc g (Aᴴ * A) * Z * Zᴴ) * Y) ≤
+      a * frobNorm ((A - truncatedSVD A t) * Y) := by
+  have ha : 0 ≤ a := (abs_nonneg _).trans (htail 0 ⟨le_rfl, sq_nonneg _⟩)
+  have hcol (M : Matrix m n 𝕜) (j : l) : (M * Y).col j = M *ᵥ Y.col j := by
+    funext i
+    simp [Matrix.mul_apply, Matrix.mulVec, dotProduct]
+  refine (sq_le_sq₀ (frobNorm_nonneg _) (mul_nonneg ha (frobNorm_nonneg _))).mp ?_
+  rw [mul_pow, frobNorm_sq_eq_sum_col, frobNorm_sq_eq_sum_col, Finset.mul_sum]
+  refine Finset.sum_le_sum fun j _ => ?_
+  rw [hcol, hcol, ← mul_pow]
+  exact pow_le_pow_left₀ (norm_nonneg _) (norm_toLp_sub_mul_cfc_mul_mulVec_le g hAZ htail _) 2
+
+omit [DecidableEq m] [DecidableEq n] [DecidableEq s] in
+/-- A frame for the row space of $\llbracket\mathbf{A}\rrbracket_t$ is one for every
+$\llbracket\mathbf{A}\rrbracket_k$ with $k \le t$: if
+$\mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}} = \llbracket\mathbf{A}\rrbracket_t$, then
+$\llbracket\mathbf{A}\rrbracket_k\mathbf{Z}\mathbf{Z}^{\mathsf{H}} =
+\llbracket\mathbf{A}\rrbracket_k$. -/
+theorem truncatedSVD_mul_mul_conjTranspose_of_le {A : Matrix m n 𝕜} {Z : Matrix n s 𝕜}
+    {k t : ℕ} (hAZ : A * Z * Zᴴ = truncatedSVD A t) (hkt : k ≤ t) :
+    truncatedSVD A k * Z * Zᴴ = truncatedSVD A k := by
+  classical
+  have hle := range_truncatedSVD_mono A hkt
+  have hRT := rangeProjector_truncatedSVD_mul A k
+  calc truncatedSVD A k * Z * Zᴴ = rangeProjector (truncatedSVD A k) * (A * Z * Zᴴ) := by
+        rw [← Matrix.mul_assoc, ← Matrix.mul_assoc, hRT]
+    _ = rangeProjector (truncatedSVD A k) * (rangeProjector (truncatedSVD A t) * A) := by
+        rw [hAZ, rangeProjector_truncatedSVD_mul]
+    _ = truncatedSVD A k := by
+        rw [← Matrix.mul_assoc, rangeProjector_mul_rangeProjector_of_range_le' hle, hRT]
+
+omit [DecidableEq m] in
+/-- **Singular values of a filtered sketch, gap form**: let $g$ be a real function,
+$\mathbf{Z}$ a frame (orthonormal columns) with
+$\mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}} = \llbracket\mathbf{A}\rrbracket_t$ and
+$\operatorname{rank}(\mathbf{\Omega}^{\mathsf{H}}\mathbf{Z}) = \operatorname{rank}\mathbf{Z}$,
+and $i < t$. If $\lvert g(\sigma_j(\mathbf{A})^2) \rvert \ge c > 0$ for $j \le i$ and
+$\lvert g \rvert \le a$ on $[0, \sigma_t(\mathbf{A})^2]$, then
+$$\sigma_i(\mathbf{A})^2 - \Bigl(\frac{a}{c}\Bigr)^2
+\|(\mathbf{A} - \llbracket\mathbf{A}\rrbracket_t)\mathbf{\Omega}
+(\mathbf{Z}^{\mathsf{H}}\mathbf{\Omega})^{+}\|_2^2 \le
+\sigma_i\bigl(\mathsf{rsvd}(\mathbf{A},
+g(\mathbf{A}^{\mathsf{H}}\mathbf{A})\mathbf{\Omega})\bigr)^2\,.$$
+It combines `IsStarProjection.singularValues_sq_sub_specNorm_sq_le` with the head capture
+`NLAlib.HasOrthonormalCols.matrixNorm_one_sub_rangeProjector_mul_mul_le` of the filtered range
+finder and the tail bound `NLAlib.specNorm_sub_mul_cfc_mul_mul_le`.
+[MuscoMusco2015, Lemma 9]; property 1 there, for the Chebyshev filter and a Gaussian block with
+probability $99/100$, here deterministic, for any filter, with the residual explicit. -/
+theorem HasOrthonormalCols.singularValues_sq_sub_le_singularValues_rsvd_cfc_sq
+    {A : Matrix m n 𝕜} {Ω : Matrix n l 𝕜} (g : ℝ → ℝ) {Z : Matrix n s 𝕜}
+    (hZ : HasOrthonormalCols Z) (hΩ : (Ωᴴ * Z).rank = Z.rank) {t : ℕ}
+    (hAZ : A * Z * Zᴴ = truncatedSVD A t) {i : ℕ} (hi : i < t) {c a : ℝ} (hc : 0 < c)
+    (hhead : ∀ j ≤ i, c ≤ |g (singularValues A j ^ 2)|)
+    (htail : ∀ x ∈ Set.Icc 0 (singularValues A t ^ 2), |g x| ≤ a) :
+    singularValues A i ^ 2 -
+        (a / c) ^ 2 * specNorm ((A - truncatedSVD A t) * Ω * pinv (Zᴴ * Ω)) ^ 2 ≤
+      singularValues (rsvd A (cfc g (Aᴴ * A) * Ω)) i ^ 2 := by
+  classical
+  set ρ := specNorm ((A - truncatedSVD A t) * Ω * pinv (Zᴴ * Ω))
+  rcases (singularValues_nonneg A i).eq_or_lt with hσ | hσ
+  · rw [← hσ]
+    nlinarith [sq_nonneg (a / c * ρ), sq_nonneg (singularValues (rsvd A (cfc g (Aᴴ * A) * Ω)) i)]
+  have hiN : i + 1 ≤ Fintype.card n :=
+    ((singularValues_pos_iff A).mp hσ).trans_le A.rank_le_card_width
+  obtain ⟨W, -, hW, -, -, -, hHW, -, htr⟩ :=
+    exists_hasOrthonormalCols_conjTranspose_mul_self_mul_eq_mul_diagonal A hiN
+  have hAWW : A * W * Wᴴ = truncatedSVD A (i + 1) := by simpa using htr (i + 1) le_rfl
+  -- the frame `Z` contains the head frame `W`
+  have hAZ' := truncatedSVD_mul_mul_conjTranspose_of_le hAZ (show i + 1 ≤ t by omega)
+  have hZW := mul_conjTranspose_mul_eq_of_truncatedSVD_mul hσ hW hHW hAWW hAZ'
+  have hWZ : LinearMap.range W.mulVecLin ≤ LinearMap.range Z.mulVecLin :=
+    range_le_iff_exists_mul.mpr ⟨Zᴴ * W, by rw [← Matrix.mul_assoc, hZW]⟩
+  -- head capture, then the tail bound on the filtered residual
+  have hcap := hW.matrixNorm_one_sub_rangeProjector_mul_mul_le (lpGauge ⊤) g hHW hZ hΩ hWZ hc
+    fun j => hhead j (Nat.lt_succ_iff.mp j.isLt)
+  rw [lpGauge_top_matrixNorm, lpGauge_top_matrixNorm, hAWW, Matrix.mul_assoc A] at hcap
+  have hres := specNorm_sub_mul_cfc_mul_mul_le g hAZ htail (Ω * pinv (Zᴴ * Ω))
+  simp only [← Matrix.mul_assoc] at hres
+  have hP := (isStarProjection_rangeProjector
+    (A * (cfc g (Aᴴ * A) * Ω))).singularValues_sq_sub_specNorm_sq_le A i
+  have hb : specNorm ((1 - rangeProjector (A * (cfc g (Aᴴ * A) * Ω))) *
+      truncatedSVD A (i + 1)) ≤ a / c * ρ := by
+    refine hcap.trans ?_
+    rw [div_eq_inv_mul, mul_assoc]
+    exact mul_le_mul_of_nonneg_left hres (inv_nonneg.mpr hc.le)
+  have hb2 := pow_le_pow_left₀ (specNorm_nonneg _) hb 2
+  rw [rsvd]
+  nlinarith [hb2, hP, mul_pow (a / c) ρ 2]
+
+/-- The scalar core of the cut form: with head weights $d_j \ge \sigma^2 \ge \tau^2$ where
+$\lvert g \rvert \ge c$, tail weights $e_j \ge 0$ where $\lvert g \rvert \le a$ below $\tau^2$, and
+a tail mass $\sum_j e_j v_j \le \rho^2 \sum_j u_j$, the weights $x g(x)^2$ have mass
+at least $\sigma^2c^2\sum_j u_j$, and the Rayleigh quotient of $x \mapsto x^2 g(x)^2$ against
+$x \mapsto x g(x)^2$ is at least $\tau^2 - (a/c)^2\rho^2$. -/
+private theorem sq_sub_mul_sum_le_sum {p q : Type*} [Fintype p] [Fintype q] (g : ℝ → ℝ)
+    {d u : p → ℝ} {e v : q → ℝ} {σ c a τ ρ : ℝ} (hc : 0 < c) (hτ : 0 ≤ τ) (hτσ : τ ≤ σ)
+    (hu : ∀ j, 0 ≤ u j) (hv : ∀ j, 0 ≤ v j) (hd : ∀ j, σ ^ 2 ≤ d j) (hdg : ∀ j, c ≤ |g (d j)|)
+    (he : ∀ j, 0 ≤ e j) (heg : ∀ j, e j ≤ τ ^ 2 → |g (e j)| ≤ a)
+    (hX : ∑ j, e j * v j ≤ ρ ^ 2 * ∑ j, u j) :
+    σ ^ 2 * c ^ 2 * ∑ j, u j ≤
+        ∑ j, g (d j) * d j * g (d j) * u j + ∑ j, g (e j) * e j * g (e j) * v j ∧
+      (τ ^ 2 - (a / c) ^ 2 * ρ ^ 2) *
+          (∑ j, g (d j) * d j * g (d j) * u j + ∑ j, g (e j) * e j * g (e j) * v j) ≤
+        ∑ j, (d j * g (d j)) ^ 2 * u j + ∑ j, (e j * g (e j)) ^ 2 * v j := by
+  have hσ0 : 0 ≤ σ := hτ.trans hτσ
+  have hU : 0 ≤ ∑ j, u j := Finset.sum_nonneg fun j _ => hu j
+  have hS1 : σ ^ 2 * c ^ 2 * ∑ j, u j ≤ ∑ j, g (d j) * d j * g (d j) * u j := by
+    rw [Finset.mul_sum]
+    refine Finset.sum_le_sum fun j _ => ?_
+    have hg2 : c ^ 2 ≤ g (d j) ^ 2 := by
+      rw [← sq_abs (g (d j))]; exact pow_le_pow_left₀ hc.le (hdg j) 2
+    have := mul_le_mul (hd j) hg2 (sq_nonneg c) ((sq_nonneg σ).trans (hd j))
+    nlinarith [hu j]
+  have hS2 : 0 ≤ ∑ j, g (e j) * e j * g (e j) * v j := by
+    refine Finset.sum_nonneg fun j _ => ?_
+    nlinarith [mul_nonneg (mul_nonneg (he j) (hv j)) (sq_nonneg (g (e j)))]
+  have hK1 : τ ^ 2 * ∑ j, g (d j) * d j * g (d j) * u j ≤ ∑ j, (d j * g (d j)) ^ 2 * u j := by
+    rw [Finset.mul_sum]
+    refine Finset.sum_le_sum fun j _ => ?_
+    have hτd : τ ^ 2 ≤ d j := (pow_le_pow_left₀ hτ hτσ 2).trans (hd j)
+    have h0 : 0 ≤ g (d j) ^ 2 * d j * u j :=
+      mul_nonneg (mul_nonneg (sq_nonneg _) ((sq_nonneg σ).trans (hd j))) (hu j)
+    nlinarith [mul_le_mul_of_nonneg_right hτd h0]
+  have hK2 : τ ^ 2 * ∑ j, g (e j) * e j * g (e j) * v j - τ ^ 2 * a ^ 2 * ∑ j, e j * v j ≤
+      ∑ j, (e j * g (e j)) ^ 2 * v j := by
+    rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_sub_distrib]
+    refine Finset.sum_le_sum fun j _ => ?_
+    have h0 : 0 ≤ e j * v j := mul_nonneg (he j) (hv j)
+    rcases le_or_gt (e j) (τ ^ 2) with hle | hlt
+    · have hga : g (e j) ^ 2 ≤ a ^ 2 := by
+        rw [← sq_abs (g (e j))]
+        exact pow_le_pow_left₀ (abs_nonneg _) (heg j hle) 2
+      nlinarith [mul_le_mul_of_nonneg_left hga (mul_nonneg (sq_nonneg τ) h0),
+        mul_nonneg (hv j) (sq_nonneg (e j * g (e j)))]
+    · have h1 : 0 ≤ g (e j) ^ 2 * e j * v j := mul_nonneg (mul_nonneg (sq_nonneg _) (he j)) (hv j)
+      nlinarith [mul_le_mul_of_nonneg_right hlt.le h1, mul_nonneg (mul_nonneg (sq_nonneg τ)
+        (sq_nonneg a)) h0]
+  have hac : (a / c) ^ 2 * c ^ 2 = a ^ 2 := by field_simp
+  have step1 := mul_le_mul_of_nonneg_left hX (mul_nonneg (sq_nonneg τ) (sq_nonneg a))
+  have step2 : a ^ 2 * ρ ^ 2 * τ ^ 2 * ∑ j, u j ≤ (a / c) ^ 2 * ρ ^ 2 *
+      (∑ j, g (d j) * d j * g (d j) * u j + ∑ j, g (e j) * e j * g (e j) * v j) := by
+    have hτσ2 : τ ^ 2 ≤ σ ^ 2 := pow_le_pow_left₀ hτ hτσ 2
+    have hw : 0 ≤ (a / c) ^ 2 * ρ ^ 2 := by positivity
+    calc a ^ 2 * ρ ^ 2 * τ ^ 2 * ∑ j, u j ≤ a ^ 2 * ρ ^ 2 * σ ^ 2 * ∑ j, u j := by
+          gcongr
+      _ = (a / c) ^ 2 * ρ ^ 2 * (σ ^ 2 * c ^ 2 * ∑ j, u j) := by rw [← hac]; ring
+      _ ≤ _ := mul_le_mul_of_nonneg_left (by linarith) hw
+  exact ⟨by linarith, by linarith⟩
+
+omit [DecidableEq m] in
+/-- The vector form of the cut bound: with a head frame $\mathbf{T}$ of the top $i + 1$ right
+singular vectors (with $\mathbf{Z}\mathbf{Z}^{\mathsf{H}}\mathbf{T} = \mathbf{T}$) and its
+invariant complement $\mathbf{V}$, the sketched head vectors
+$\mathbf{y} = \mathbf{A}g(\mathbf{A}^{\mathsf{H}}\mathbf{A})\mathbf{\Omega}
+(\mathbf{Z}^{\mathsf{H}}\mathbf{\Omega})^{+}\mathbf{Z}^{\mathsf{H}}\mathbf{T}\mathbf{t}$ satisfy
+$\sigma_i^2c^2\|\mathbf{t}\|^2 \le \|\mathbf{y}\|^2$ and
+$(\tau^2 - (a/c)^2\rho^2)\|\mathbf{y}\|^2 \le \|\mathbf{A}^{\mathsf{H}}\mathbf{y}\|^2$. -/
+private theorem sq_sub_mul_norm_sq_le_norm_conjTranspose_mulVec_sq {q : Type*} [Fintype q]
+    [DecidableEq q] {A : Matrix m n 𝕜} {Ω : Matrix n l 𝕜} (g : ℝ → ℝ) {Z : Matrix n s 𝕜}
+    (hZ : HasOrthonormalCols Z) (hΩ : (Ωᴴ * Z).rank = Z.rank) {i : ℕ}
+    {T : Matrix n (Fin (i + 1)) 𝕜} {V : Matrix n q 𝕜} (hT : HasOrthonormalCols T)
+    (hTV : Tᴴ * V = 0) (h1 : T * Tᴴ + V * Vᴴ = 1) {e : q → ℝ}
+    (hHT : Aᴴ * A * T =
+      T * Matrix.diagonal fun j : Fin (i + 1) => ((singularValues A j ^ 2 : ℝ) : 𝕜))
+    (hHV : Aᴴ * A * V = V * Matrix.diagonal fun j => (e j : 𝕜)) (he : ∀ j, 0 ≤ e j)
+    (hZT : Z * Zᴴ * T = T) {c a τ : ℝ} (hc : 0 < c) (hτ : 0 ≤ τ)
+    (hτi : τ ≤ singularValues A i) (hhead : ∀ j ≤ i, c ≤ |g (singularValues A j ^ 2)|)
+    (htail : ∀ x ∈ Set.Icc 0 (τ ^ 2), |g x| ≤ a) (t : Fin (i + 1) → 𝕜) :
+    singularValues A i ^ 2 * c ^ 2 * ‖WithLp.toLp 2 t‖ ^ 2 ≤
+        ‖WithLp.toLp 2 ((A * cfc g (Aᴴ * A) * (Ω * pinv (Zᴴ * Ω) * Zᴴ * T)) *ᵥ t)‖ ^ 2 ∧
+      (τ ^ 2 - (a / c) ^ 2 * specNorm ((A - A * Z * Zᴴ) * Ω * pinv (Zᴴ * Ω)) ^ 2) *
+          ‖WithLp.toLp 2 ((A * cfc g (Aᴴ * A) * (Ω * pinv (Zᴴ * Ω) * Zᴴ * T)) *ᵥ t)‖ ^ 2 ≤
+        ‖WithLp.toLp 2 (Aᴴ *ᵥ ((A * cfc g (Aᴴ * A) * (Ω * pinv (Zᴴ * Ω) * Zᴴ * T)) *ᵥ t))‖ ^ 2 := by
+  have hH : (Aᴴ * A).IsHermitian := Matrix.isHermitian_conjTranspose_mul_self A
+  have hF : (cfc g (Aᴴ * A)).IsHermitian := cfc_predicate g (Aᴴ * A)
+  set X := Ω * pinv (Zᴴ * Ω) * Zᴴ * T
+  set ρ := specNorm ((A - A * Z * Zᴴ) * Ω * pinv (Zᴴ * Ω))
+  have hcont : ∀ f : ℝ → ℝ, ContinuousOn f (spectrum ℝ (Aᴴ * A)) := fun f =>
+    (Aᴴ * A).finite_real_spectrum.continuousOn f
+  have hZΩ := hZ.mul_pinv_self_of_rank_eq hΩ
+  have hTZ : Tᴴ * (Z * Zᴴ) = Tᴴ := by
+    have h := congrArg Matrix.conjTranspose hZT
+    rwa [Matrix.conjTranspose_mul, Matrix.conjTranspose_mul, Matrix.conjTranspose_conjTranspose]
+      at h
+  have hZX : Z * Zᴴ * X = T := by
+    calc Z * Zᴴ * X = Z * (Zᴴ * Ω * pinv (Zᴴ * Ω)) * Zᴴ * T := by simp only [X, Matrix.mul_assoc]
+      _ = T := by rw [hZΩ, Matrix.mul_one, hZT]
+  have hTX : Tᴴ * X = 1 := by
+    rw [← hTZ, Matrix.mul_assoc, hZX, hT.conjTranspose_mul_self]
+  have hVT : Vᴴ * T = 0 := by
+    rw [← Matrix.conjTranspose_conjTranspose (Vᴴ * T), Matrix.conjTranspose_mul,
+      Matrix.conjTranspose_conjTranspose, hTV, Matrix.conjTranspose_zero]
+  have hAXT : A * (X - T) = (A - A * Z * Zᴴ) * Ω * pinv (Zᴴ * Ω) * (Zᴴ * T) := by
+    conv_lhs => rw [← hZX]
+    simp only [X, Matrix.sub_mul, Matrix.mul_sub, Matrix.mul_assoc]
+  have hsa : IsSelfAdjoint (Aᴴ * A) := hH
+  have hcY : cfc (fun x => g x * x * g x) (Aᴴ * A) =
+      (cfc g (Aᴴ * A))ᴴ * (Aᴴ * A) * cfc g (Aᴴ * A) := by
+    rw [cfc_mul (fun x => g x * x) g _ (hcont _) (hcont _),
+      cfc_mul g (fun x => x) _ (hcont _) (hcont _), cfc_id' ℝ (Aᴴ * A) hsa, hF.eq]
+  have hcK : cfc (fun x => x * g x) (Aᴴ * A) = Aᴴ * A * cfc g (Aᴴ * A) := by
+    rw [cfc_mul (fun x => x) g _ (hcont _) (hcont _), cfc_id' ℝ (Aᴴ * A) hsa]
+  -- coordinates of the sketched vector in the two frames
+  set b := Vᴴ *ᵥ ((X - T) *ᵥ t)
+  have hxT : Tᴴ *ᵥ (X *ᵥ t) = t := by rw [Matrix.mulVec_mulVec, hTX, Matrix.one_mulVec]
+  have hxV : Vᴴ *ᵥ (X *ᵥ t) = b := by
+    simp only [b, Matrix.mulVec_mulVec, Matrix.mul_sub, hVT, sub_zero]
+  have hx'T : Tᴴ *ᵥ ((X - T) *ᵥ t) = 0 := by
+    rw [Matrix.mulVec_mulVec, Matrix.mul_sub, hTX, hT.conjTranspose_mul_self, sub_self,
+      Matrix.zero_mulVec]
+  have hy : (A * cfc g (Aᴴ * A) * X) *ᵥ t = A *ᵥ (cfc g (Aᴴ * A) *ᵥ (X *ᵥ t)) := by
+    rw [← Matrix.mulVec_mulVec, ← Matrix.mulVec_mulVec]
+  have hAy : Aᴴ *ᵥ ((A * cfc g (Aᴴ * A) * X) *ᵥ t) =
+      cfc (fun x => x * g x) (Aᴴ * A) *ᵥ (X *ᵥ t) := by
+    rw [hy, Matrix.mulVec_mulVec, Matrix.mulVec_mulVec, ← hcK]
+  -- the three quadratic forms in these coordinates
+  have hq := hH.re_quadForm_cfc_eq_sum_add_sum h1 hHT hHV
+  have hY := hq (fun x => g x * x * g x) (X *ᵥ t)
+  rw [hcY, quadForm_conjTranspose_mul_mul, quadForm_conjTranspose_mul_self, RCLike.ofReal_re,
+    ← hy, hxT, hxV] at hY
+  have hK := hq (fun x => (x * g x) ^ 2) (X *ᵥ t)
+  rw [← hH.norm_toLp_cfc_mulVec_sq, ← hAy, hxT, hxV] at hK
+  have hE := hq (fun x => x) ((X - T) *ᵥ t)
+  rw [cfc_id' ℝ (Aᴴ * A) hsa, quadForm_conjTranspose_mul_self, RCLike.ofReal_re, hx'T] at hE
+  simp only [Pi.zero_apply, norm_zero, ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow,
+    mul_zero, Finset.sum_const_zero, zero_add] at hE
+  have hEb : ‖WithLp.toLp 2 (A *ᵥ ((X - T) *ᵥ t))‖ ≤ ρ * ‖WithLp.toLp 2 t‖ := by
+    rw [Matrix.mulVec_mulVec, hAXT]
+    refine (norm_toLp_mulVec_le _ t).trans (mul_le_mul_of_nonneg_right ?_ (norm_nonneg _))
+    exact (specNorm_mul_le _ _).trans (mul_le_of_le_one_right (specNorm_nonneg _)
+      ((hZ.specNorm_conjTranspose_mul_le T).trans hT.specNorm_le_one))
+  have ht : ‖WithLp.toLp 2 t‖ ^ 2 = ∑ j, ‖t j‖ ^ 2 := EuclideanSpace.norm_sq_eq _
+  have hX : ∑ j, e j * ‖b j‖ ^ 2 ≤ ρ ^ 2 * ∑ j, ‖t j‖ ^ 2 := by
+    rw [← hE, ← ht, ← mul_pow]
+    exact pow_le_pow_left₀ (norm_nonneg _) hEb 2
+  obtain ⟨hs1, hs2⟩ := sq_sub_mul_sum_le_sum g (d := fun j : Fin (i + 1) => singularValues A j ^ 2)
+    (u := fun j => ‖t j‖ ^ 2) (v := fun j => ‖b j‖ ^ 2) hc hτ hτi (fun _ => sq_nonneg _)
+    (fun _ => sq_nonneg _)
+    (fun j => pow_le_pow_left₀ (singularValues_nonneg A _)
+      (singularValues_antitone A (Nat.lt_succ_iff.mp j.isLt)) 2)
+    (fun j => hhead j (Nat.lt_succ_iff.mp j.isLt)) he (fun j h => htail _ ⟨he j, h⟩) hX
+  rw [hY, hK, ht]
+  exact ⟨hs1, hs2⟩
+
+omit [DecidableEq m] in
+/-- **Singular values of a filtered sketch, cut form**: let $g$ be a real function,
+$\mathbf{Z}$ a frame (orthonormal columns) whose range contains the row space of
+$\llbracket\mathbf{A}\rrbracket_{i+1}$, that is
+$\llbracket\mathbf{A}\rrbracket_{i+1}\mathbf{Z}\mathbf{Z}^{\mathsf{H}} =
+\llbracket\mathbf{A}\rrbracket_{i+1}$, with
+$\operatorname{rank}(\mathbf{\Omega}^{\mathsf{H}}\mathbf{Z}) = \operatorname{rank}\mathbf{Z}$,
+and let $0 \le \tau \le \sigma_i(\mathbf{A})$ be a cut. If
+$\lvert g(\sigma_j(\mathbf{A})^2) \rvert \ge c > 0$ for $j \le i$ and $\lvert g \rvert \le a$ on
+$[0, \tau^2]$, then
+$$\tau^2 - \Bigl(\frac{a}{c}\Bigr)^2
+\|(\mathbf{A} - \mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}})\mathbf{\Omega}
+(\mathbf{Z}^{\mathsf{H}}\mathbf{\Omega})^{+}\|_2^2 \le
+\sigma_i\bigl(\mathsf{rsvd}(\mathbf{A},
+g(\mathbf{A}^{\mathsf{H}}\mathbf{A})\mathbf{\Omega})\bigr)^2\,.$$
+The filter need not separate $\sigma_i$ from the singular values just below it: everything above
+the cut $\tau$ counts as head, and the bound is for $\tau^2$, not $\sigma_i^2$.
+[MuscoMusco2015, Lemma 9]; property 2 there, with the cut at $\sigma_{k+1}$ times a fixed factor
+and probability $99/100$, here deterministic with the cut as a parameter. -/
+theorem HasOrthonormalCols.sq_sub_le_singularValues_rsvd_cfc_sq_of_le_singularValues
+    {A : Matrix m n 𝕜} {Ω : Matrix n l 𝕜} (g : ℝ → ℝ) {Z : Matrix n s 𝕜}
+    (hZ : HasOrthonormalCols Z) (hΩ : (Ωᴴ * Z).rank = Z.rank) {i : ℕ}
+    (hAZ : truncatedSVD A (i + 1) * Z * Zᴴ = truncatedSVD A (i + 1)) {c a τ : ℝ} (hc : 0 < c)
+    (hτ : 0 ≤ τ) (hτi : τ ≤ singularValues A i)
+    (hhead : ∀ j ≤ i, c ≤ |g (singularValues A j ^ 2)|)
+    (htail : ∀ x ∈ Set.Icc 0 (τ ^ 2), |g x| ≤ a) :
+    τ ^ 2 - (a / c) ^ 2 * specNorm ((A - A * Z * Zᴴ) * Ω * pinv (Zᴴ * Ω)) ^ 2 ≤
+      singularValues (rsvd A (cfc g (Aᴴ * A) * Ω)) i ^ 2 := by
+  classical
+  set ρ := specNorm ((A - A * Z * Zᴴ) * Ω * pinv (Zᴴ * Ω))
+  rcases le_or_gt (τ ^ 2 - (a / c) ^ 2 * ρ ^ 2) 0 with hneg | hpos
+  · exact hneg.trans (sq_nonneg _)
+  have hσ : 0 < singularValues A i := by
+    rcases (singularValues_nonneg A i).eq_or_lt with h0 | h0
+    · have hτ0 : τ = 0 := le_antisymm (h0 ▸ hτi) hτ
+      rw [hτ0] at hpos
+      nlinarith [sq_nonneg (a / c * ρ)]
+    · exact h0
+  have hiN : i + 1 ≤ Fintype.card n :=
+    ((singularValues_pos_iff A).mp hσ).trans_le A.rank_le_card_width
+  obtain ⟨T, V, hT, -, hTV, h1, hHT, hHV, htr⟩ :=
+    exists_hasOrthonormalCols_conjTranspose_mul_self_mul_eq_mul_diagonal A hiN
+  have hZT := mul_conjTranspose_mul_eq_of_truncatedSVD_mul hσ hT hHT
+    (by simpa using htr (i + 1) le_rfl) hAZ
+  -- the sketched head vectors
+  set K := A * cfc g (Aᴴ * A) * (Ω * pinv (Zᴴ * Ω) * Zᴴ * T)
+  have hv := fun t => sq_sub_mul_norm_sq_le_norm_conjTranspose_mulVec_sq g hZ hΩ hT hTV h1 hHT
+    hHV (fun _ => sq_nonneg _) hZT hc hτ hτi hhead htail t
+  have hinj : Function.Injective K.mulVec := by
+    intro t₁ t₂ h12
+    have h := (hv (t₁ - t₂)).1
+    rw [Matrix.mulVec_sub, h12, sub_self, WithLp.toLp_zero, norm_zero,
+      zero_pow two_ne_zero] at h
+    have hn : ‖WithLp.toLp 2 (t₁ - t₂)‖ ^ 2 = 0 := le_antisymm
+      (nonpos_of_mul_nonpos_right h (by positivity)) (sq_nonneg _)
+    rw [pow_eq_zero_iff two_ne_zero, norm_eq_zero, WithLp.toLp_eq_zero] at hn
+    exact sub_eq_zero.mp hn
+  have hrank : K.rank = i + 1 := by rw [mulVec_injective_iff_rank_eq.mp hinj, Fintype.card_fin]
+  -- min–max for the conjugate transpose of the output, on the range of `K`
+  have hPK : rangeProjector (A * (cfc g (Aᴴ * A) * Ω)) * K = K := by
+    rw [rangeProjector_mul_eq_self_iff, range_le_iff_exists_mul]
+    exact ⟨pinv (Zᴴ * Ω) * Zᴴ * T, by simp only [K, Matrix.mul_assoc]⟩
+  have key : Real.sqrt (τ ^ 2 - (a / c) ^ 2 * ρ ^ 2) ≤
+      singularValues (rsvd A (cfc g (Aᴴ * A) * Ω))ᴴ i := by
+    refine le_singularValues_of_forall_mem _ (LinearMap.range K.mulVecLin) hrank.ge
+      fun y hy => ?_
+    obtain ⟨t, rfl⟩ := hy
+    rw [Matrix.mulVecLin_apply, rsvd, Matrix.conjTranspose_mul,
+      (isStarProjection_rangeProjector _).conjTranspose_eq,
+      ← Matrix.mulVec_mulVec (M := Aᴴ) (N := rangeProjector (A * (cfc g (Aᴴ * A) * Ω))),
+      Matrix.mulVec_mulVec (M := rangeProjector (A * (cfc g (Aᴴ * A) * Ω))) (N := K), hPK]
+    refine (sq_le_sq₀ (by positivity) (norm_nonneg _)).mp ?_
+    rw [mul_pow, Real.sq_sqrt hpos.le]
+    exact (hv t).2
+  rw [← singularValues_conjTranspose]
+  calc τ ^ 2 - (a / c) ^ 2 * ρ ^ 2 = Real.sqrt (τ ^ 2 - (a / c) ^ 2 * ρ ^ 2) ^ 2 :=
+        (Real.sq_sqrt hpos.le).symm
+    _ ≤ _ := pow_le_pow_left₀ (Real.sqrt_nonneg _) key 2
+
+omit [DecidableEq m] in
+/-- **Singular values of a filtered sketch, gap form, summed**: let $g$ be a real function,
+$\mathbf{Z}$ a frame (orthonormal columns) with
+$\mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}} = \llbracket\mathbf{A}\rrbracket_t$ and
+$\operatorname{rank}(\mathbf{\Omega}^{\mathsf{H}}\mathbf{Z}) = \operatorname{rank}\mathbf{Z}$,
+and $r \le t$. If $\lvert g(\sigma_j(\mathbf{A})^2) \rvert \ge c > 0$ for $j < r$ and
+$\lvert g \rvert \le a$ on $[0, \sigma_t(\mathbf{A})^2]$, then, with
+$\mathbf{Y} = g(\mathbf{A}^{\mathsf{H}}\mathbf{A})\mathbf{\Omega}$,
+$$\sum_{i<r}\Bigl(\sigma_i(\mathbf{A})^2 - \sigma_i\bigl(\mathsf{rsvd}(\mathbf{A},
+\mathbf{Y})\bigr)^2\Bigr) \le \Bigl(\frac{a}{c}\Bigr)^2
+\|(\mathbf{A} - \llbracket\mathbf{A}\rrbracket_t)\mathbf{\Omega}
+(\mathbf{Z}^{\mathsf{H}}\mathbf{\Omega})^{+}\|_{\mathsf{F}}^2\,.$$
+The sum of the deficits is the excess Frobenius error of the truncated output
+(`IsStarProjection.frobNorm_sub_truncatedSVD_mul_sq`), at most
+$\|(\mathbf{I} - \mathbf{P}_{\mathbf{A}\mathbf{Y}})
+\llbracket\mathbf{A}\rrbracket_r\|_{\mathsf{F}}^2$ by Gu's projected form; then head capture
+at the Frobenius gauge and
+`NLAlib.frobNorm_sub_mul_cfc_mul_mul_le`. Summing the gap form
+`NLAlib.HasOrthonormalCols.singularValues_sq_sub_le_singularValues_rsvd_cfc_sq` instead would
+give $r$ times the spectral norm.
+[MuscoMusco2015, Lemma 9]; property 1 there, for the Chebyshev filter and a Gaussian block with
+probability $99/100$, here deterministic, for any filter, with the residual explicit. -/
+theorem HasOrthonormalCols.sum_singularValues_sq_sub_singularValues_rsvd_cfc_sq_le
+    {A : Matrix m n 𝕜} {Ω : Matrix n l 𝕜} (g : ℝ → ℝ) {Z : Matrix n s 𝕜}
+    (hZ : HasOrthonormalCols Z) (hΩ : (Ωᴴ * Z).rank = Z.rank) {r t : ℕ} (hrt : r ≤ t)
+    (hAZ : A * Z * Zᴴ = truncatedSVD A t) {c a : ℝ} (hc : 0 < c)
+    (hhead : ∀ j < r, c ≤ |g (singularValues A j ^ 2)|)
+    (htail : ∀ x ∈ Set.Icc 0 (singularValues A t ^ 2), |g x| ≤ a) :
+    ∑ i ∈ Finset.range r,
+        (singularValues A i ^ 2 - singularValues (rsvd A (cfc g (Aᴴ * A) * Ω)) i ^ 2) ≤
+      (a / c) ^ 2 * frobNorm ((A - truncatedSVD A t) * Ω * pinv (Zᴴ * Ω)) ^ 2 := by
+  classical
+  set P := rangeProjector (A * (cfc g (Aᴴ * A) * Ω))
+  -- the deficits are at most the Frobenius head loss (Gu's projected form)
+  have hST := (isStarProjection_rangeProjector
+    (A * (cfc g (Aᴴ * A) * Ω))).frobNorm_sub_truncatedSVD_mul_sq A r
+  have hGu := frobNorm_sub_truncatedSVD_rsvd_sq_le_frobNorm_sub_truncatedSVD_sq_add A
+    (cfc g (Aᴴ * A) * Ω) r
+  rw [rsvd] at hGu ⊢
+  have hdef : ∑ i ∈ Finset.range r, (singularValues A i ^ 2 - singularValues (P * A) i ^ 2) ≤
+      frobNorm ((1 - P) * truncatedSVD A r) ^ 2 := by
+    rw [Matrix.sub_mul, Matrix.one_mul]
+    linarith
+  refine hdef.trans ?_
+  -- only the positive singular values count: `⟦A⟧_r = ⟦A⟧_{r'}`, `r' = min r (rank A)`
+  set r' := min r A.rank
+  have hTr : truncatedSVD A r = truncatedSVD A r' := by
+    rcases le_total r A.rank with h | h
+    · rw [show r' = r from min_eq_left h]
+    · rw [show r' = A.rank from min_eq_right h, truncatedSVD_of_rank_le A h,
+        truncatedSVD_of_rank_le A le_rfl]
+  rw [hTr]
+  obtain h0 | ⟨i, hi⟩ : r' = 0 ∨ ∃ i, r' = i + 1 := by
+    rcases Nat.eq_zero_or_pos r' with h | h
+    · exact Or.inl h
+    · exact Or.inr ⟨r' - 1, by omega⟩
+  · rw [h0, truncatedSVD_zero, Matrix.mul_zero, frobNorm_zero, zero_pow two_ne_zero]
+    positivity
+  rw [hi]
+  have hσ : 0 < singularValues A i := (singularValues_pos_iff A).mpr (by omega)
+  have hiN : i + 1 ≤ Fintype.card n :=
+    ((singularValues_pos_iff A).mp hσ).trans_le A.rank_le_card_width
+  obtain ⟨W, -, hW, -, -, -, hHW, -, htr⟩ :=
+    exists_hasOrthonormalCols_conjTranspose_mul_self_mul_eq_mul_diagonal A hiN
+  have hAWW : A * W * Wᴴ = truncatedSVD A (i + 1) := by simpa using htr (i + 1) le_rfl
+  have hZW := mul_conjTranspose_mul_eq_of_truncatedSVD_mul hσ hW hHW hAWW
+    (truncatedSVD_mul_mul_conjTranspose_of_le hAZ (show i + 1 ≤ t by omega))
+  have hWZ : LinearMap.range W.mulVecLin ≤ LinearMap.range Z.mulVecLin :=
+    range_le_iff_exists_mul.mpr ⟨Zᴴ * W, by rw [← Matrix.mul_assoc, hZW]⟩
+  -- head capture at the Frobenius gauge, then the tail bound
+  have hcap := hW.matrixNorm_one_sub_rangeProjector_mul_mul_le (lpGauge 2) g hHW hZ hΩ hWZ hc
+    fun j => hhead j (by omega)
+  rw [lpGauge_two_matrixNorm, lpGauge_two_matrixNorm, hAWW, Matrix.mul_assoc A] at hcap
+  have hres := frobNorm_sub_mul_cfc_mul_mul_le g hAZ htail (Ω * pinv (Zᴴ * Ω))
+  simp only [← Matrix.mul_assoc] at hres
+  have hb : frobNorm ((1 - P) * truncatedSVD A (i + 1)) ≤
+      a / c * frobNorm ((A - truncatedSVD A t) * Ω * pinv (Zᴴ * Ω)) := by
+    refine hcap.trans ?_
+    rw [div_eq_inv_mul, mul_assoc]
+    exact mul_le_mul_of_nonneg_left hres (inv_nonneg.mpr hc.le)
+  rw [← mul_pow]
+  exact pow_le_pow_left₀ (frobNorm_nonneg _) hb 2
+
+/-! ### Block Krylov iteration -/
+
+/-- The Chebyshev rate between two levels against the gapless rate: for $0 \le \tau \le s$ with
+$s > 0$ and $\gamma(s + \tau)^2 \le 8(s^2 - \tau^2)$, that is
+$\gamma/8 \le (s - \tau)/(s + \tau)$, and every $d \ge 0$,
+$4e^{-8d\sqrt{(s-\tau)/(s+\tau)}} \le 4e^{-2\sqrt{2}\,d\sqrt{\gamma}}$. -/
+theorem four_mul_exp_le_four_mul_exp {s τ γ d : ℝ} (hs : 0 < s) (hτ : 0 ≤ τ)
+    (hd : 0 ≤ d) (h : γ * (s + τ) ^ 2 ≤ 8 * (s ^ 2 - τ ^ 2)) :
+    4 * Real.exp (-8 * d * Real.sqrt ((s - τ) / (s + τ))) ≤
+      4 * Real.exp (-2 * Real.sqrt 2 * d * Real.sqrt γ) := by
+  have hst : 0 < s + τ := by linarith
+  have hr : 8 * γ ≤ 64 * ((s - τ) / (s + τ)) := by
+    rw [mul_div_assoc', le_div_iff₀ hst]
+    nlinarith
+  have e1 : 2 * Real.sqrt 2 * Real.sqrt γ = Real.sqrt (8 * γ) := by
+    rw [show (8 : ℝ) * γ = 2 ^ 2 * 2 * γ by ring, Real.sqrt_mul (by positivity),
+      Real.sqrt_mul (by positivity), Real.sqrt_sq (by norm_num)]
+  have e2 : 8 * Real.sqrt ((s - τ) / (s + τ)) = Real.sqrt (64 * ((s - τ) / (s + τ))) := by
+    rw [show (64 : ℝ) = 8 ^ 2 by norm_num, Real.sqrt_mul (by positivity),
+      Real.sqrt_sq (by norm_num)]
+  have key : 2 * Real.sqrt 2 * Real.sqrt γ ≤ 8 * Real.sqrt ((s - τ) / (s + τ)) := by
+    rw [e1, e2]
+    exact Real.sqrt_le_sqrt hr
+  refine mul_le_mul_of_nonneg_left (Real.exp_le_exp.mpr ?_) (by norm_num)
+  nlinarith [mul_le_mul_of_nonneg_left key hd]
+
+omit [DecidableEq m] in
+/-- **Singular values of block Krylov iteration, no gap**: let $\mathbf{Z}$ be a frame
+(orthonormal columns) with
+$\mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}} = \llbracket\mathbf{A}\rrbracket_k$ and
+$\operatorname{rank}(\mathbf{\Omega}^{\mathsf{H}}\mathbf{Z}) = \operatorname{rank}\mathbf{Z}$,
+$q \ge 1$ and $0 < \gamma \le 1$. Then for every $i < k$,
+$$\sigma_i(\mathbf{A})^2 - \gamma\,\sigma_k(\mathbf{A})^2 -
+4e^{-2\sqrt{2}(q-1)\sqrt{\gamma}}\,
+\|(\mathbf{A} - \llbracket\mathbf{A}\rrbracket_k)\mathbf{\Omega}
+(\mathbf{Z}^{\mathsf{H}}\mathbf{\Omega})^{+}\|_2^2 \le
+\sigma_i\bigl(\mathsf{rbki}(\mathbf{A}, \mathbf{\Omega}, q)\bigr)^2\,.$$
+No gap in the spectrum is assumed; $\gamma$ is a free parameter.
+[BakshiClarksonWoodruff2022, Lemma 3.1]; [MuscoMusco2015, Theorem 12]; there for a Gaussian block
+of $k$ columns, with probability $99/100$, depth $O(\log(d/\gamma)/\sqrt{\gamma})$ and
+unspecified constants, here deterministic for any block, with the residual explicit. -/
+theorem HasOrthonormalCols.singularValues_sq_sub_le_singularValues_rbki_sq
+    {A : Matrix m n 𝕜} {Ω : Matrix n l 𝕜} {Z : Matrix n s 𝕜} (hZ : HasOrthonormalCols Z)
+    (hΩ : (Ωᴴ * Z).rank = Z.rank) {k : ℕ} (hAZ : A * Z * Zᴴ = truncatedSVD A k) {q : ℕ}
+    (hq : 1 ≤ q) {γ : ℝ} (hγ : 0 < γ) (hγ1 : γ ≤ 1) {i : ℕ} (hi : i < k) :
+    singularValues A i ^ 2 - γ * singularValues A k ^ 2 -
+        4 * Real.exp (-2 * Real.sqrt 2 * ((q : ℝ) - 1) * Real.sqrt γ) *
+          specNorm ((A - truncatedSVD A k) * Ω * pinv (Zᴴ * Ω)) ^ 2 ≤
+      singularValues (rbki A Ω q) i ^ 2 := by
+  classical
+  set ρ := specNorm ((A - truncatedSVD A k) * Ω * pinv (Zᴴ * Ω))
+  set E := 4 * Real.exp (-2 * Real.sqrt 2 * ((q : ℝ) - 1) * Real.sqrt γ)
+  have hki : singularValues A k ≤ singularValues A i := singularValues_antitone A hi.le
+  have hk0 := singularValues_nonneg A k
+  have hd : ((q - 1 : ℕ) : ℝ) = (q : ℝ) - 1 := by rw [Nat.cast_sub hq, Nat.cast_one]
+  have hd0 : (0 : ℝ) ≤ ((q - 1 : ℕ) : ℝ) := Nat.cast_nonneg _
+  have hE : 0 ≤ E * ρ ^ 2 := by positivity
+  have hγk : 0 ≤ γ * singularValues A k ^ 2 := by positivity
+  have hR := sq_nonneg (singularValues (rbki A Ω q) i)
+  rcases (singularValues_nonneg A i).eq_or_lt with hσ | hσ
+  · rw [← hσ]
+    nlinarith
+  have hcomp (f : ℝ[X]) (hf : f.degree < (q - 1 + 1 : ℕ)) :=
+    pow_le_pow_left₀ (singularValues_nonneg _ _) (singularValues_rsvd_cfc_le_singularValues_rbki
+      A Ω (q := q) (by rwa [Nat.sub_add_cancel hq] at hf) i) 2
+  by_cases hcase : (1 + γ) * singularValues A k ^ 2 ≤ singularValues A i ^ 2
+  · -- a gap above `σ_k`: the filter between `σ_k` and `σ_i`, and the gap form
+    obtain ⟨f, hf, c, a, hc, hhead, htail, hac⟩ :=
+      Polynomial.Chebyshev.exists_degree_lt_div_sq_le_exp_of_le hk0 hki hσ (q - 1)
+    have h1 := hZ.singularValues_sq_sub_le_singularValues_rsvd_cfc_sq (fun x => f.eval x) hΩ hAZ
+      hi hc (fun j hj => hhead _ (pow_le_pow_left₀ (singularValues_nonneg A i)
+        (singularValues_antitone A hj) 2)) htail
+    have hrate : γ * (singularValues A i + singularValues A k) ^ 2 ≤
+        8 * (singularValues A i ^ 2 - singularValues A k ^ 2) := by
+      rcases le_or_gt (9 * singularValues A k) (7 * singularValues A i) with h | h
+      · nlinarith
+      · have h' : singularValues A i + singularValues A k ≤ 16 / 7 * singularValues A k := by
+          linarith
+        have hs : (singularValues A i + singularValues A k) ^ 2 ≤ 8 * singularValues A k ^ 2 := by
+          nlinarith [mul_le_mul h' h' (by positivity) (by positivity)]
+        nlinarith [mul_le_mul_of_nonneg_left hs hγ.le]
+    have hexp := four_mul_exp_le_four_mul_exp hσ hk0 hd0 hrate
+    rw [hd] at hac hexp
+    have := mul_le_mul_of_nonneg_right (hac.trans hexp) (sq_nonneg ρ)
+    nlinarith [hcomp f hf]
+  · -- no gap: the cut form at `τ² = σ_i² - γσ_k²`
+    rw [not_le] at hcase
+    have hτ0 : 0 ≤ singularValues A i ^ 2 - γ * singularValues A k ^ 2 := by nlinarith
+    set τ := Real.sqrt (singularValues A i ^ 2 - γ * singularValues A k ^ 2)
+    have hτ2 : τ ^ 2 = singularValues A i ^ 2 - γ * singularValues A k ^ 2 := Real.sq_sqrt hτ0
+    have hτ : 0 ≤ τ := Real.sqrt_nonneg _
+    have hτi : τ ≤ singularValues A i := by
+      rw [← Real.sqrt_sq (singularValues_nonneg A i)]
+      exact Real.sqrt_le_sqrt (by linarith)
+    obtain ⟨f, hf, c, a, hc, hhead, htail, hac⟩ :=
+      Polynomial.Chebyshev.exists_degree_lt_div_sq_le_exp_of_le hτ hτi hσ (q - 1)
+    have h1 := hZ.sq_sub_le_singularValues_rsvd_cfc_sq_of_le_singularValues (fun x => f.eval x) hΩ
+      (truncatedSVD_mul_mul_conjTranspose_of_le hAZ (show i + 1 ≤ k by omega)) hc hτ hτi
+      (fun j hj => hhead _ (pow_le_pow_left₀ (singularValues_nonneg A i)
+        (singularValues_antitone A hj) 2)) htail
+    rw [hAZ, hτ2] at h1
+    have hrate : γ * (singularValues A i + τ) ^ 2 ≤ 8 * (singularValues A i ^ 2 - τ ^ 2) := by
+      have hs : (singularValues A i + τ) ^ 2 ≤ 4 * singularValues A i ^ 2 := by nlinarith
+      rw [hτ2]
+      nlinarith [mul_le_mul_of_nonneg_left hs hγ.le]
+    have hexp := four_mul_exp_le_four_mul_exp hσ hτ hd0 hrate
+    rw [hd] at hac hexp
+    have := mul_le_mul_of_nonneg_right (hac.trans hexp) (sq_nonneg ρ)
+    nlinarith [hcomp f hf]
+
+omit [DecidableEq m] in
+/-- **Singular values of block Krylov iteration with a gap, per index**: let $r = h + 1 \le t$,
+let $\mathbf{Z}$ be a frame (orthonormal columns) with
+$\mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}} = \llbracket\mathbf{A}\rrbracket_t$ and
+$\operatorname{rank}(\mathbf{\Omega}^{\mathsf{H}}\mathbf{Z}) = \operatorname{rank}\mathbf{Z}$,
+$q \ge 1$, and $\gamma = (\sigma_h - \sigma_t)/(\sigma_h + \sigma_t)$
+(`NLAlib.singularGapRatio`). Then for every $i < r$,
+$$\sigma_i(\mathbf{A})^2 - 4e^{-8(q-1)\sqrt{\gamma}}\,
+\|(\mathbf{A} - \llbracket\mathbf{A}\rrbracket_t)\mathbf{\Omega}
+(\mathbf{Z}^{\mathsf{H}}\mathbf{\Omega})^{+}\|_2^2 \le
+\sigma_i\bigl(\mathsf{rbki}(\mathbf{A}, \mathbf{\Omega}, q)\bigr)^2\,.$$
+[BakshiClarksonWoodruff2022, Lemma 3.2]; [MuscoMusco2015, Theorem 13]; there for a Gaussian block
+with probability $99/100$, depth $O(\log(n/\gamma)/\sqrt{\gamma'})$ in the gap
+$\gamma' = \min(1, \sigma_k/\sigma_{b+1} - 1)$ and unspecified constants, here deterministic,
+with a head count $r$ that may be smaller than the tail index. -/
+theorem HasOrthonormalCols.singularValues_sq_sub_le_singularValues_rbki_sq_singularGapRatio
+    {A : Matrix m n 𝕜} {Ω : Matrix n l 𝕜} {Z : Matrix n s 𝕜} (hZ : HasOrthonormalCols Z)
+    (hΩ : (Ωᴴ * Z).rank = Z.rank) {h r t : ℕ} (hr : h + 1 = r) (hrt : r ≤ t)
+    (hAZ : A * Z * Zᴴ = truncatedSVD A t) {q : ℕ} (hq : 1 ≤ q) {i : ℕ} (hi : i < r) :
+    singularValues A i ^ 2 -
+        4 * Real.exp (-8 * ((q : ℝ) - 1) * Real.sqrt (singularGapRatio A h t)) *
+          specNorm ((A - truncatedSVD A t) * Ω * pinv (Zᴴ * Ω)) ^ 2 ≤
+      singularValues (rbki A Ω q) i ^ 2 := by
+  classical
+  obtain ⟨f, hf, c, a, hc, hhead, htail, hac⟩ :=
+    exists_degree_lt_div_sq_le_exp_singularGapRatio A hr hrt (q - 1)
+  have h1 := hZ.singularValues_sq_sub_le_singularValues_rsvd_cfc_sq (fun x => f.eval x) hΩ hAZ
+    (show i < t by omega) hc (fun j hj => hhead j (by omega)) htail
+  have h2 := pow_le_pow_left₀ (singularValues_nonneg _ _)
+    (singularValues_rsvd_cfc_le_singularValues_rbki A Ω (q := q)
+      (by rwa [Nat.sub_add_cancel hq] at hf) i) 2
+  rw [Nat.cast_sub hq, Nat.cast_one] at hac
+  have := mul_le_mul_of_nonneg_right hac
+    (sq_nonneg (specNorm ((A - truncatedSVD A t) * Ω * pinv (Zᴴ * Ω))))
+  linarith
+
+omit [DecidableEq m] in
+/-- **Singular values of block Krylov iteration with a gap, summed**: let $r = h + 1 \le t$,
+let $\mathbf{Z}$ be a frame (orthonormal columns) with
+$\mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}} = \llbracket\mathbf{A}\rrbracket_t$ and
+$\operatorname{rank}(\mathbf{\Omega}^{\mathsf{H}}\mathbf{Z}) = \operatorname{rank}\mathbf{Z}$,
+$q \ge 1$, and $\gamma = (\sigma_h - \sigma_t)/(\sigma_h + \sigma_t)$
+(`NLAlib.singularGapRatio`). Then
+$$\sum_{i<r} \Bigl(\sigma_i(\mathbf{A})^2 -
+\sigma_i\bigl(\mathsf{rbki}(\mathbf{A}, \mathbf{\Omega}, q)\bigr)^2\Bigr) \le
+4e^{-8(q-1)\sqrt{\gamma}}\,
+\|(\mathbf{A} - \llbracket\mathbf{A}\rrbracket_t)\mathbf{\Omega}
+(\mathbf{Z}^{\mathsf{H}}\mathbf{\Omega})^{+}\|_{\mathsf{F}}^2\,.$$
+The sum of the $r$ deficits is bounded by the Frobenius norm of the residual, with no factor
+$r$: the per-index bound
+`NLAlib.HasOrthonormalCols.singularValues_sq_sub_le_singularValues_rbki_sq_singularGapRatio`
+summed over $i < r$ would give $r$ times the spectral norm.
+[MuscoMusco2015, Lemma 9]; property 1 there, with probability $99/100$ and unspecified
+constants. -/
+theorem HasOrthonormalCols.sum_singularValues_sq_sub_singularValues_rbki_sq_le
+    {A : Matrix m n 𝕜} {Ω : Matrix n l 𝕜} {Z : Matrix n s 𝕜} (hZ : HasOrthonormalCols Z)
+    (hΩ : (Ωᴴ * Z).rank = Z.rank) {h r t : ℕ} (hr : h + 1 = r) (hrt : r ≤ t)
+    (hAZ : A * Z * Zᴴ = truncatedSVD A t) {q : ℕ} (hq : 1 ≤ q) :
+    ∑ i ∈ Finset.range r, (singularValues A i ^ 2 - singularValues (rbki A Ω q) i ^ 2) ≤
+      4 * Real.exp (-8 * ((q : ℝ) - 1) * Real.sqrt (singularGapRatio A h t)) *
+        frobNorm ((A - truncatedSVD A t) * Ω * pinv (Zᴴ * Ω)) ^ 2 := by
+  classical
+  obtain ⟨f, hf, c, a, hc, hhead, htail, hac⟩ :=
+    exists_degree_lt_div_sq_le_exp_singularGapRatio A hr hrt (q - 1)
+  have h1 := hZ.sum_singularValues_sq_sub_singularValues_rsvd_cfc_sq_le (fun x => f.eval x) hΩ
+    hrt hAZ hc hhead htail
+  have h2 : ∑ i ∈ Finset.range r, (singularValues A i ^ 2 - singularValues (rbki A Ω q) i ^ 2) ≤
+      ∑ i ∈ Finset.range r, (singularValues A i ^ 2 -
+        singularValues (rsvd A (cfc (fun x => f.eval x) (Aᴴ * A) * Ω)) i ^ 2) :=
+    Finset.sum_le_sum fun i _ => sub_le_sub_left (pow_le_pow_left₀ (singularValues_nonneg _ _)
+      (singularValues_rsvd_cfc_le_singularValues_rbki A Ω (q := q)
+        (by rwa [Nat.sub_add_cancel hq] at hf) i) 2) _
+  rw [Nat.cast_sub hq, Nat.cast_one] at hac
+  have := mul_le_mul_of_nonneg_right hac
+    (sq_nonneg (frobNorm ((A - truncatedSVD A t) * Ω * pinv (Zᴴ * Ω))))
+  linarith
+
+omit [DecidableEq m] in
+/-- **The Frobenius error of one truncated run of block Krylov iteration, no gap**: let
+$\mathbf{Z}$ be a frame (orthonormal columns) with
+$\mathbf{A}\mathbf{Z}\mathbf{Z}^{\mathsf{H}} = \llbracket\mathbf{A}\rrbracket_k$ and
+$\operatorname{rank}(\mathbf{\Omega}^{\mathsf{H}}\mathbf{Z}) = \operatorname{rank}\mathbf{Z}$,
+$q \ge 1$ and $0 < \gamma \le 1$. Then
+$$\|\mathbf{A} - \llbracket\mathsf{rbki}(\mathbf{A}, \mathbf{\Omega}, q)\rrbracket_k
+\|_{\mathsf{F}}^2 \le
+\|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_k\|_{\mathsf{F}}^2 +
+k\gamma\,\sigma_k(\mathbf{A})^2 + 4k\,e^{-2\sqrt{2}(q-1)\sqrt{\gamma}}\,
+\|(\mathbf{A} - \llbracket\mathbf{A}\rrbracket_k)\mathbf{\Omega}
+(\mathbf{Z}^{\mathsf{H}}\mathbf{\Omega})^{+}\|_2^2\,.$$
+The sum over $i < k$ of
+`NLAlib.HasOrthonormalCols.singularValues_sq_sub_le_singularValues_rbki_sq` in
+`IsStarProjection.frobNorm_sub_truncatedSVD_mul_sq`. The term $k\gamma\,\sigma_k^2$ is compared
+with the optimal error only through $\sigma_k^2 \le
+\|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_k\|_{\mathsf{F}}^2$, so this is not the
+$(1 + \varepsilon)$ Frobenius bound of [MuscoMusco2015, Theorem 1] at depth
+$O(\log d/\sqrt{\varepsilon})$. -/
+theorem HasOrthonormalCols.frobNorm_sub_truncatedSVD_rbki_sq_le_add_mul
+    {A : Matrix m n 𝕜} {Ω : Matrix n l 𝕜} {Z : Matrix n s 𝕜} (hZ : HasOrthonormalCols Z)
+    (hΩ : (Ωᴴ * Z).rank = Z.rank) {k : ℕ} (hAZ : A * Z * Zᴴ = truncatedSVD A k) {q : ℕ}
+    (hq : 1 ≤ q) {γ : ℝ} (hγ : 0 < γ) (hγ1 : γ ≤ 1) :
+    frobNorm (A - truncatedSVD (rbki A Ω q) k) ^ 2 ≤
+      frobNorm (A - truncatedSVD A k) ^ 2 + k * γ * singularValues A k ^ 2 +
+        4 * k * Real.exp (-2 * Real.sqrt 2 * ((q : ℝ) - 1) * Real.sqrt γ) *
+          specNorm ((A - truncatedSVD A k) * Ω * pinv (Zᴴ * Ω)) ^ 2 := by
+  classical
+  set E := 4 * Real.exp (-2 * Real.sqrt 2 * ((q : ℝ) - 1) * Real.sqrt γ) *
+    specNorm ((A - truncatedSVD A k) * Ω * pinv (Zᴴ * Ω)) ^ 2
+  have hST := (isStarProjection_rangeProjector
+    (A * blockKrylovMatrix (Aᴴ * A) Ω q)).frobNorm_sub_truncatedSVD_mul_sq A k
+  rw [← rsvd, ← rbki_def] at hST
+  have h := Finset.sum_le_sum fun i (hi : i ∈ Finset.range k) =>
+    (show singularValues A i ^ 2 - singularValues (rbki A Ω q) i ^ 2 ≤
+        γ * singularValues A k ^ 2 + E by
+      linarith [hZ.singularValues_sq_sub_le_singularValues_rbki_sq hΩ hAZ hq hγ hγ1
+        (Finset.mem_range.mp hi)])
+  rw [Finset.sum_const, Finset.card_range, nsmul_eq_mul] at h
+  rw [hST]
+  linarith
+
+end NLAlib

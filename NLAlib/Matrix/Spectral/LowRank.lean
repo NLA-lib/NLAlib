@@ -268,6 +268,22 @@ theorem frobNorm_sub_truncatedSVD_sq (A : Matrix m n 𝕜) (k : ℕ) :
       zero_pow two_ne_zero]
   · rw [if_neg (not_lt.mpr (Finset.mem_Ico.mp hi).1)]
 
+/-- The squared Frobenius error of the truncated SVD is at most $\min(\lvert m \rvert,
+\lvert n \rvert)$ times the squared $k$-th singular value:
+$\|\mathbf{A} - \llbracket\mathbf{A}\rrbracket_k\|_{\mathsf{F}}^2 \le
+\min(\lvert m \rvert, \lvert n \rvert)\,\sigma_k(\mathbf{A})^2$. -/
+theorem frobNorm_sub_truncatedSVD_sq_le_min_card_mul_sq (A : Matrix m n 𝕜) (k : ℕ) :
+    frobNorm (A - truncatedSVD A k) ^ 2 ≤
+      (min (Fintype.card m) (Fintype.card n) : ℕ) * singularValues A k ^ 2 := by
+  rw [frobNorm_sub_truncatedSVD_sq]
+  calc ∑ i ∈ Finset.Ico k (min (Fintype.card m) (Fintype.card n)), singularValues A i ^ 2
+      ≤ ∑ _i ∈ Finset.Ico k (min (Fintype.card m) (Fintype.card n)), singularValues A k ^ 2 :=
+        Finset.sum_le_sum fun i hi => pow_le_pow_left₀ (singularValues_nonneg A i)
+          (singularValues_antitone A (Finset.mem_Ico.mp hi).1) 2
+    _ = ((min (Fintype.card m) (Fintype.card n) - k : ℕ) : ℝ) * singularValues A k ^ 2 := by
+        rw [Finset.sum_const, Nat.card_Ico, nsmul_eq_mul]
+    _ ≤ _ := mul_le_mul_of_nonneg_right (by exact_mod_cast Nat.sub_le _ _) (sq_nonneg _)
+
 /-- The truncated SVD keeps the leading singular values in the Frobenius norm:
 $$\|\llbracket \mathbf{A} \rrbracket_k\|_{\mathsf{F}}^2 = \sum_{i < k} \sigma_i(\mathbf{A})^2\,,$$
 for every choice of the truncation; indices at or above $\min(\lvert m \rvert, \lvert n \rvert)$

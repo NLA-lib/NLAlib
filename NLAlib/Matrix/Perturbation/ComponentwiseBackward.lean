@@ -31,6 +31,8 @@ backward error.
 * `NLAlib.isComponentwiseBackwardSolution_of_norm_sub_le`: a small residual in each row gives a
   backward solution (Oettli–Prager).
 * `NLAlib.IsComponentwiseBackwardSolution.mono`: larger perturbations are weaker.
+* `NLAlib.IsComponentwiseBackwardSolution.reindex`: relabeling preserves both allowances.
+* `NLAlib.IsComponentwiseBackwardSolution.norm_sub_mulVec_le`: entrywise residual bounds.
 -/
 
 @[expose] public section
@@ -48,7 +50,7 @@ def IsComponentwiseBackwardSolution (ε σ : ℝ) (M : Matrix n n 𝕜) (b x : n
   ∃ Δ : Matrix n n 𝕜, (∀ i k, ‖Δ i k‖ ≤ ε * ‖M i k‖ + if i = k then σ else 0) ∧
     (M + Δ) *ᵥ x = b
 
-/-- **Larger perturbations are weaker**: a backward solution with $(\varepsilon, \sigma)$ is one
+/-- A backward solution with $(\varepsilon, \sigma)$ is one
 with any $\varepsilon' \ge \varepsilon$ and $\sigma' \ge \sigma$. -/
 theorem IsComponentwiseBackwardSolution.mono {ε σ ε' σ' : ℝ} {M : Matrix n n 𝕜} {b x : n → 𝕜}
     (h : IsComponentwiseBackwardSolution ε σ M b x) (hε : ε ≤ ε') (hσ : σ ≤ σ') :
@@ -58,36 +60,80 @@ theorem IsComponentwiseBackwardSolution.mono {ε σ ε' σ' : ℝ} {M : Matrix n
   have hM := norm_nonneg (M i k)
   exact add_le_add (mul_le_mul_of_nonneg_right hε hM) (by split_ifs <;> linarith)
 
+/-- Relabeling a nearby system by the same finite equivalence in rows, columns and vectors
+preserves both the relative allowance and the diagonal floor. -/
+theorem IsComponentwiseBackwardSolution.reindex {ε σ : ℝ} {M : Matrix n n 𝕜}
+    {b x : n → 𝕜} {m : Type*} [Fintype m] [DecidableEq m]
+    (h : IsComponentwiseBackwardSolution ε σ M b x) (e : m ≃ n) :
+    IsComponentwiseBackwardSolution ε σ (M.submatrix e e) (b ∘ e) (x ∘ e) := by
+  obtain ⟨Δ, hΔ, heq⟩ := h
+  refine ⟨Δ.submatrix e e, fun i j => ?_, ?_⟩
+  · simpa only [Matrix.submatrix_apply, EmbeddingLike.apply_eq_iff_eq] using hΔ (e i) (e j)
+  · have he : (x ∘ e) ∘ e.symm = x := by
+      ext i
+      simp only [Function.comp_apply, Equiv.apply_symm_apply]
+    change (M + Δ).submatrix e e *ᵥ (x ∘ e) = b ∘ e
+    rw [Matrix.submatrix_mulVec_equiv, he, heq]
+
+/-- An exact solution satisfies every nonnegative relative allowance and diagonal floor. -/
+theorem IsComponentwiseBackwardSolution.of_mulVec_eq {ε σ : ℝ} {M : Matrix n n 𝕜}
+    {b x : n → 𝕜} (hε : 0 ≤ ε) (hσ : 0 ≤ σ) (h : M *ᵥ x = b) :
+    IsComponentwiseBackwardSolution ε σ M b x := by
+  refine ⟨0, fun i j => ?_, ?_⟩
+  · simp only [Matrix.zero_apply, norm_zero]
+    split_ifs <;> positivity
+  · simpa using h
+
+/-- Zero relative allowance and zero floor recover an exact solution of the original system. -/
+theorem IsComponentwiseBackwardSolution.mulVec_eq {M : Matrix n n 𝕜} {b x : n → 𝕜}
+    (h : IsComponentwiseBackwardSolution 0 0 M b x) : M *ᵥ x = b := by
+  obtain ⟨Δ, hΔ, heq⟩ := h
+  have hzero : Δ = 0 := by
+    ext i j
+    exact norm_eq_zero.mp (le_antisymm (by simpa using hΔ i j) (norm_nonneg _))
+  simpa [hzero] using heq
+
+/-- Each entry of the original-system residual is bounded by the coefficient magnitudes
+weighted by the solution magnitudes, with the diagonal floor contributing only at that row.
+No invertibility or triangular shape is required. -/
+theorem IsComponentwiseBackwardSolution.norm_sub_mulVec_le {ε σ : ℝ}
+    {M : Matrix n n 𝕜} {b x : n → 𝕜}
+    (h : IsComponentwiseBackwardSolution ε σ M b x) (i : n) :
+    ‖(b - M *ᵥ x) i‖ ≤ ε * ∑ j, ‖M i j‖ * ‖x j‖ + σ * ‖x i‖ := by
+  obtain ⟨Δ, hΔ, heq⟩ := h
+  have hres : b - M *ᵥ x = Δ *ᵥ x := by
+    rw [← heq, Matrix.add_mulVec]
+    abel
+  rw [hres]
+  calc
+    ‖(Δ *ᵥ x) i‖ ≤ ∑ j, ‖Δ i j * x j‖ := norm_sum_le _ _
+    _ ≤ ∑ j, (ε * ‖M i j‖ + if i = j then σ else 0) * ‖x j‖ := by
+      simp_rw [norm_mul]
+      exact Finset.sum_le_sum fun j _ =>
+        mul_le_mul_of_nonneg_right (hΔ i j) (norm_nonneg _)
+    _ = ε * ∑ j, ‖M i j‖ * ‖x j‖ + σ * ‖x i‖ := by
+      simp only [add_mul, Finset.sum_add_distrib, ite_mul, zero_mul, Finset.sum_ite_eq,
+        Finset.mem_univ, if_true, Finset.mul_sum, mul_assoc]
+
 /-- **The residual of a componentwise backward solution**: for $\varepsilon, \sigma \ge 0$,
 $\|\mathbf{M}\mathbf{x} - \mathbf{b}\| \le (\varepsilon\|\mathbf{M}\|_{\mathsf F} + \sigma)
 \|\mathbf{x}\|$ in the Euclidean norm. [Higham2002, Theorem 7.3] -/
 theorem IsComponentwiseBackwardSolution.norm_mulVec_sub_le {ε σ : ℝ} {M : Matrix n n 𝕜}
     {b x : n → 𝕜} (h : IsComponentwiseBackwardSolution ε σ M b x) (hε : 0 ≤ ε) (hσ : 0 ≤ σ) :
     ‖WithLp.toLp 2 (M *ᵥ x - b)‖ ≤ (ε * frobNorm M + σ) * ‖WithLp.toLp 2 x‖ := by
-  obtain ⟨Δ, hΔ, hx⟩ := h
   obtain ⟨Mn, hMn⟩ : ∃ Mn : Matrix n n ℝ, Mn = Matrix.of fun i k => ‖M i k‖ := ⟨_, rfl⟩
   obtain ⟨xn, hxn⟩ : ∃ xn : n → ℝ, xn = fun k => ‖x k‖ := ⟨_, rfl⟩
   have hrow (i : n) : ‖(M *ᵥ x - b) i‖ ≤ ‖(ε • (Mn *ᵥ xn) + σ • xn) i‖ := by
-    have hr : (M *ᵥ x - b) i = -(Δ *ᵥ x) i := by
-      rw [← hx, Matrix.add_mulVec, Pi.sub_apply, Pi.add_apply]; abel
-    have h1 : ‖(Δ *ᵥ x) i‖ ≤ ∑ k, ‖Δ i k‖ * ‖x k‖ := by
-      simp only [Matrix.mulVec, dotProduct]
-      exact (norm_sum_le _ _).trans_eq (by simp only [norm_mul])
-    have h2 : ∑ k, ‖Δ i k‖ * ‖x k‖ ≤ ε * (Mn *ᵥ xn) i + σ * xn i := by
-      calc ∑ k, ‖Δ i k‖ * ‖x k‖
-          ≤ ∑ k, (ε * ‖M i k‖ + if i = k then σ else 0) * ‖x k‖ :=
-            Finset.sum_le_sum fun k _ => mul_le_mul_of_nonneg_right (hΔ i k) (norm_nonneg _)
-        _ = ε * (Mn *ᵥ xn) i + σ * xn i := by
-            simp only [add_mul, Finset.sum_add_distrib, ite_mul, zero_mul,
-              Finset.sum_ite_eq, Finset.mem_univ, if_true, Matrix.mulVec, dotProduct,
-              Finset.mul_sum, hMn, hxn, mul_assoc, Matrix.of_apply]
+    have hres : ‖(b - M *ᵥ x) i‖ ≤ ε * (Mn *ᵥ xn) i + σ * xn i := by
+      simpa only [hMn, hxn, Matrix.of_apply, Matrix.mulVec, dotProduct] using
+        h.norm_sub_mulVec_le i
     have h0 : 0 ≤ ε * (Mn *ᵥ xn) i + σ * xn i := by
       have : 0 ≤ (Mn *ᵥ xn) i :=
         Finset.sum_nonneg fun k _ => mul_nonneg (by simp [hMn]) (by simp [hxn])
       exact add_nonneg (mul_nonneg hε this) (mul_nonneg hσ (by simp [hxn]))
-    rw [hr, norm_neg, Pi.add_apply, Pi.smul_apply, Pi.smul_apply, smul_eq_mul, smul_eq_mul,
+    rw [Pi.add_apply, Pi.smul_apply, Pi.smul_apply, smul_eq_mul, smul_eq_mul,
       Real.norm_of_nonneg h0]
-    exact h1.trans h2
+    simpa only [Pi.sub_apply, norm_sub_rev] using hres
   calc ‖WithLp.toLp 2 (M *ᵥ x - b)‖ ≤ ‖WithLp.toLp 2 (ε • (Mn *ᵥ xn) + σ • xn)‖ :=
         (EuclideanSpace.norm_toLp_norm (M *ᵥ x - b)).symm.trans_le
           (EuclideanSpace.norm_toLp_le_norm_toLp fun i => by rw [norm_norm]; exact hrow i)

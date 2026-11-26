@@ -550,8 +550,12 @@ private theorem IsCholTrace.frobNorm_bounds {n : ℕ} {u v : ℝ} {A : Matrix (F
 
 /-! ### The solve with the computed factor -/
 
-/-- Forward substitution as an exact solve with a perturbed lower factor. -/
-private theorem exists_lower_mulVec_eq {n : ℕ} {u : ℝ} {L : ℕ → ℕ → ℝ} {rh y : ℕ → ℝ}
+/-- A forward-substitution trace with nonzero diagonal and unit roundoff between zero and one
+solves a nearby lower triangular system. The perturbation of each lower-factor entry has
+absolute value at most <!-- value NLAlib.Computation.roundingFactor n u -->
+$((1-u)^{-n}-1)\lvert\mathbf{L}_{i,j}\rvert$, where the factor is `lowerOf L n`.
+No assumption on a program run is made. -/
+theorem IsSubstTrace.exists_lower_mulVec_eq {n : ℕ} {u : ℝ} {L : ℕ → ℕ → ℝ} {rh y : ℕ → ℝ}
     (hy : IsSubstTrace (fun _ => RelErr u) L rh n y) (hd : ∀ i < n, L i i ≠ 0) (hu : 0 ≤ u)
     (hu1 : u < 1) :
     ∃ D : Matrix (Fin n) (Fin n) ℝ, (∀ i k, |D i k| ≤ roundingFactor n u * |lowerOf L n i k|) ∧
@@ -572,8 +576,12 @@ private theorem exists_lower_mulVec_eq {n : ℕ} {u : ℝ} {L : ℕ → ℕ → 
     · have : ¬ (k : ℕ) < (i : ℕ) + 1 := fun hc => hki (Nat.le_of_lt_succ hc)
       simp [hki, this]
 
-/-- Back substitution as an exact solve with a perturbed transposed factor. -/
-private theorem exists_upper_mulVec_eq {n : ℕ} {u : ℝ} {L : ℕ → ℕ → ℝ} {y d : ℕ → ℝ}
+/-- A back-substitution trace with nonzero diagonal and unit roundoff between zero and one
+solves a nearby transposed lower-factor system. The perturbation of each transposed-factor
+entry has absolute value at most <!-- value NLAlib.Computation.roundingFactor n u -->
+$((1-u)^{-n}-1)\lvert\mathbf{L}^{\mathsf{T}}_{i,j}\rvert$, where the lower factor is
+`lowerOf L n`. No assumption on a program run is made. -/
+theorem IsBackSubstTrace.exists_upper_mulVec_eq {n : ℕ} {u : ℝ} {L : ℕ → ℕ → ℝ} {y d : ℕ → ℝ}
     (hd : IsBackSubstTrace u L y n d) (hdiag : ∀ i < n, L i i ≠ 0) (hu : 0 ≤ u) (hu1 : u < 1) :
     ∃ D : Matrix (Fin n) (Fin n) ℝ,
       (∀ k l, |D k l| ≤ roundingFactor n u * |(lowerOf L n)ᵀ k l|) ∧
@@ -696,8 +704,8 @@ private theorem exists_add_mulVec_eq_of_isCholTrace {n : ℕ} {A : Matrix (Fin n
   obtain ⟨hu1, hγN, hγ7, -, hv16, -, -⟩ := chol_constants hn hA hu hv hsmall4
   have hgood := h.forall_isGoodPivot hA hu hv ha hsmall4
   have hdiag : ∀ i < n, L i i ≠ 0 := fun i hi => (hgood i hi).1.ne'
-  obtain ⟨D₁, hD₁, hP⟩ := exists_lower_mulVec_eq hy hdiag hu hu1
-  obtain ⟨D₂, hD₂, hQ⟩ := exists_upper_mulVec_eq hd hdiag hu hu1
+  obtain ⟨D₁, hD₁, hP⟩ := hy.exists_lower_mulVec_eq hdiag hu hu1
+  obtain ⟨D₂, hD₂, hQ⟩ := hd.exists_upper_mulVec_eq hdiag hu hu1
   obtain ⟨w, hw, hwr⟩ := exists_scaling hv hv16 hr
   set T := lowerOf L n with hT
   set PQ := (T + D₁) * (Tᵀ + D₂) with hPQ

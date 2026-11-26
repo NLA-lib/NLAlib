@@ -6,6 +6,27 @@ Authors: NLAlib contributors
 module
 
 public meta import NLAlib.Ops.Tools.Lint
+public import NLAlib.Ops.Blas.Absolute
+public import NLAlib.Ops.Blas.MaxAbs
+public import NLAlib.Ops.Blas.MatrixMultiplyExact
+public import NLAlib.Ops.Blas.MatrixCopy
+public import NLAlib.Ops.Blas.MatrixSubtract
+public import NLAlib.Ops.Blas.Guarded
+public import NLAlib.Ops.Blas.CopyAlias
+public import NLAlib.Ops.Blas.MatrixUpdate
+public import NLAlib.Ops.Blas.DiagonalCopy
+public import NLAlib.Ops.Blas.ScalarProductRoutine
+public import NLAlib.Ops.Blas.StridedCopy
+public import NLAlib.Ops.Logic.ColumnSuffix
+public import NLAlib.Ops.Logic.EntryRow
+public import NLAlib.Ops.Logic.MatrixView
+public import NLAlib.Ops.Logic.MatrixViewUpdate
+public import NLAlib.Ops.Logic.EntryDiagonal
+public import NLAlib.Ops.Logic.IndexLog
+public import NLAlib.Ops.Logic.ViewBlock
+public import NLAlib.Ops.Profiles.ScalarIndex
+public import NLAlib.Ops.RoutineFramed
+public import NLAlib.Ops.Catalog.GuardedScalar
 public import NLAlib.Ops.Blas.BlockCopy
 public import NLAlib.Ops.Blas.Broadcast
 public import NLAlib.Ops.Blas.Clamp

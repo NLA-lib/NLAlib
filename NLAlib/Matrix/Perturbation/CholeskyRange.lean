@@ -1,0 +1,120 @@
+/-
+Copyright (c) 2026 NLAlib contributors. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: NLAlib contributors
+-/
+module
+
+public import NLAlib.Matrix.Perturbation.CholeskyMargin
+public import NLAlib.Matrix.Perturbation.CholeskyMixedSchurError
+public import NLAlib.Matrix.Perturbation.CholeskyMixedColumnError
+public import NLAlib.Matrix.Perturbation.CholeskyRangeConditions
+
+/-!
+# Cholesky column error from an input spectral band
+
+A perturbed residual and its rounded root and quotients determine one factor column.
+The original matrix's spectral scale and lower margin control the column error through the
+same mixed-error budgets used by the finite-range numerical conditions. This mathematical
+statement has no store, interpreter, successful execution, or computed-safety assumption.
+
+## Main results
+
+* `NLAlib.Computation.CholeskyRange.abs_column_sub_choleskyLower_le`: the terminal column budget.
+-/
+
+@[expose] public section
+
+open scoped Matrix ComplexOrder MatrixOrder
+
+namespace NLAlib.Computation.CholeskyRange
+
+/-- A positive input margin and the propagated full-entry residual budget bound every entry of
+the actual completed column relative to the exact Cholesky factor. -/
+theorem abs_column_sub_choleskyLower_le {N : ℕ} {u τ μ B : ℝ}
+    {A M : Matrix (Fin N) (Fin N) ℝ} (hμ : 0 < μ) (hμB : μ ≤ B)
+    (hlo : μ • (1 : Matrix (Fin N) (Fin N) ℝ) ≤ A) (hscale : specNorm A ≤ B)
+    (hu : 0 ≤ u) (hτ : 0 ≤ τ)
+    (hD : 0 < (1 - u) * Real.sqrt (μ / 2) - τ) {k : ℕ} (hk : k < N)
+    (hη : choleskyMixedSchurErrorBound u τ B μ N < μ / 2)
+    (herr : ∀ i j, |M i j - gaussState A k i j| ≤ choleskyMixedSchurErrorBound u τ B μ k)
+    (w : Fin N → ℝ) (hz : ∀ i, i.val < k → w i = 0)
+    (hrootlower : (1 - u) * Real.sqrt (μ / 2) - τ ≤ w ⟨k, hk⟩)
+    (hroot : AbsRelErr u τ (Real.sqrt (M ⟨k, hk⟩ ⟨k, hk⟩)) (w ⟨k, hk⟩))
+    (hdiv : ∀ i, k < i.val → AbsRelErr u τ (M i ⟨k, hk⟩ / w ⟨k, hk⟩) (w i)) :
+    ∀ i, |w i - choleskyLower A i ⟨k, hk⟩| ≤
+      choleskyMixedColumnErrorBound u τ B μ (choleskyMixedSchurErrorBound u τ B μ N) := by
+  have hA : A.PosDef := by
+    have h := (Matrix.PosDef.one.smul hμ).add_posSemidef (Matrix.le_iff.mp hlo)
+    simpa only [add_sub_cancel] using h
+  let r : Fin N := ⟨k, hk⟩
+  let η := choleskyMixedSchurErrorBound u τ B μ k
+  have hB : 0 ≤ B := hμ.le.trans hμB
+  have hη0 : 0 ≤ η := choleskyMixedSchurErrorBound_nonneg hu hτ hB hμ k
+  have hηN := choleskyMixedSchurErrorBound_le_choleskyMixedSchurErrorBound
+    hu hτ hB hμ (Nat.le_of_lt hk)
+  have hp : μ ≤ gaussState A k r r := le_gaussState_apply_self_of_smul_one_le hμ hlo r
+  have hE : ∀ i j, |gaussState A k i j| ≤ B := by
+    intro i j
+    simpa only [Real.norm_eq_abs] using hA.posSemidef.norm_gaussState_apply_le hscale k i j
+  have ha : μ / 2 ≤ M r r := by
+    have h := (abs_le.mp (herr r r)).1
+    dsimp [r] at h
+    linarith
+  have hm : ∀ i j, |M i j| ≤ 2 * B := by
+    intro i j
+    calc |M i j| ≤ |M i j - gaussState A k i j| + |gaussState A k i j| := by
+           simpa only [sub_add_cancel] using
+             abs_add_le (M i j - gaussState A k i j) (gaussState A k i j)
+         _ ≤ η + B := add_le_add (herr i j) (hE i j)
+         _ ≤ 2 * B := by dsimp [η]; linarith
+  intro i
+  have hbound : |w i - choleskyLower A i r| ≤
+      choleskyMixedColumnErrorBound u τ B μ η := by
+    rcases lt_trichotomy i r with hi | rfl | hi
+    · rw [hz i hi, isLowerTriangular_choleskyLower A hi, sub_self, abs_zero]
+      exact choleskyMixedColumnErrorBound_nonneg hu hτ hB hμ hη0 hD
+    · rw [hA.isHermitian.choleskyLower_apply_self]
+      exact abs_sub_sqrt_le_choleskyMixedColumnErrorBound hu hτ hμ hμB hη0 (by linarith)
+        ((le_abs_self _).trans (hm r r)) hp (herr r r) hD hroot
+    · have hf := abs_sub_div_sqrt_le_choleskyMixedColumnErrorBound hu hτ hμ hμB ha
+        ((le_abs_self _).trans (hm r r)) hp (hm i r) (hE i r) (herr i r) (herr r r)
+        hD hrootlower hroot (hdiv i hi)
+      simpa only [choleskyLower, Matrix.of_apply, if_pos hi.le, RCLike.re_to_real,
+        RCLike.ofReal_real_eq_id, id_eq] using hf
+  apply hbound.trans
+  dsimp only [choleskyMixedColumnErrorBound]
+  gcongr
+
+/-- The original spectral band and propagated residual error give the next local pivot
+and entry scale bounds, without a computed-pivot premise. -/
+theorem residual_bounds {N : ℕ} {A M : Matrix (Fin N) (Fin N) ℝ}
+    {u τ μ B Ω : ℝ} (hc : CholeskyRangeConditions N u τ B μ Ω)
+    (hlo : μ • (1 : Matrix (Fin N) (Fin N) ℝ) ≤ A) (hscale : specNorm A ≤ B)
+    {k : ℕ} (hk : k < N)
+    (herr : ∀ i j, |M i j - gaussState A k i j| ≤ choleskyMixedSchurErrorBound u τ B μ k) :
+    μ ≤ gaussState A k ⟨k, hk⟩ ⟨k, hk⟩ ∧ (∀ i j, |gaussState A k i j| ≤ B) ∧
+      μ / 2 ≤ M ⟨k, hk⟩ ⟨k, hk⟩ ∧ (∀ i j, |M i j| ≤ 2 * B) ∧
+      choleskyMixedSchurErrorBound u τ B μ k ≤ μ / 2 := by
+  have hA : A.PosDef := by
+    have h := (Matrix.PosDef.one.smul hc.margin_pos).add_posSemidef (Matrix.le_iff.mp hlo)
+    simpa only [add_sub_cancel] using h
+  have hB : 0 ≤ B := hc.margin_pos.le.trans hc.margin_le_scale
+  have hle := choleskyMixedSchurErrorBound_le_choleskyMixedSchurErrorBound
+    hc.roundoff_nonneg hc.underflow_nonneg hB hc.margin_pos (Nat.le_of_lt hk)
+  have herror : choleskyMixedSchurErrorBound u τ B μ k ≤ μ / 2 := hle.trans hc.residual_error_lt.le
+  have hp := le_gaussState_apply_self_of_smul_one_le hc.margin_pos hlo ⟨k, hk⟩
+  have hE : ∀ i j, |gaussState A k i j| ≤ B := by
+    intro i j
+    simpa only [Real.norm_eq_abs] using hA.posSemidef.norm_gaussState_apply_le hscale k i j
+  refine ⟨hp, hE, ?_, ?_, herror⟩
+  · have he := (abs_le.mp (herr ⟨k, hk⟩ ⟨k, hk⟩)).1
+    linarith
+  · intro i j
+    calc |M i j| ≤ |M i j - gaussState A k i j| + |gaussState A k i j| := by
+           simpa only [sub_add_cancel] using
+             abs_add_le (M i j - gaussState A k i j) (gaussState A k i j)
+         _ ≤ choleskyMixedSchurErrorBound u τ B μ k + B := add_le_add (herr i j) (hE i j)
+         _ ≤ 2 * B := by have hh := hc.margin_le_scale; linarith
+
+end NLAlib.Computation.CholeskyRange

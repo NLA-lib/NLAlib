@@ -6,12 +6,13 @@ Authors: NLAlib contributors
 module
 
 public import Mathlib.Analysis.Real.Sqrt
+public import NLAlib.ForMathlib.Algebra.Order.Field.Basic
 public import Mathlib.Tactic.FieldSimp
 public import Mathlib.Tactic.Linarith
 public import Mathlib.Tactic.Positivity
 
 /-!
-# Optimising $a / u + b u$ over $u > 0$
+# Square-root optimisation and perturbation estimates
 
 If $x \le a / u + b u$ for every $u > 0$, with $a, b \ge 0$, then $x \le \sqrt{4ab}$, the minimum
 of the right-hand side (at $u = \sqrt{a / b}$). This is the step that turns a family of bounds
@@ -22,6 +23,7 @@ for `Mathlib.Analysis.Real.Sqrt`.
 
 * `Real.le_sqrt_of_forall_le_div_add_mul`.
 * `Real.le_add_sqrt_of_forall_le_div_one_sub`.
+* `Real.abs_sqrt_sub_sqrt_le_div`, `Real.abs_div_sqrt_sub_div_sqrt_le`: positive-margin bounds.
 -/
 
 @[expose] public section
@@ -92,6 +94,41 @@ theorem sqrt_three_mul_le {y : ℝ} (hy : 1 ≤ y) :
       _ = 2 * y := Real.sqrt_sq (by linarith)
   · calc Real.sqrt (3 * y) ≤ Real.sqrt ((5 / 4 * y) ^ 2) := Real.sqrt_le_sqrt (by nlinarith)
       _ = 5 / 4 * y := Real.sqrt_sq (by linarith)
+
+
+/-- A reference square root with lower squared margin $\mu>0$ controls perturbations of
+the square root by the input perturbation divided by $\sqrt{\mu}$. -/
+theorem abs_sqrt_sub_sqrt_le_div {a d μ η : ℝ} (ha : 0 ≤ a) (hμ : 0 < μ)
+    (hd : μ ≤ d) (had : |a - d| ≤ η) :
+    |Real.sqrt a - Real.sqrt d| ≤ η / Real.sqrt μ := by
+  have hd0 : 0 ≤ d := hμ.le.trans hd
+  have hs : 0 < Real.sqrt μ := Real.sqrt_pos.mpr hμ
+  have hsd : Real.sqrt μ ≤ Real.sqrt d := Real.sqrt_le_sqrt hd
+  have hden : 0 < Real.sqrt a + Real.sqrt d := by linarith [Real.sqrt_nonneg a]
+  have he : (Real.sqrt a - Real.sqrt d) * (Real.sqrt a + Real.sqrt d) = a - d := by
+    nlinarith [Real.sq_sqrt ha, Real.sq_sqrt hd0]
+  have he' : |Real.sqrt a - Real.sqrt d| = |a - d| / (Real.sqrt a + Real.sqrt d) := by
+    apply (eq_div_iff hden.ne').mpr
+    simpa only [abs_mul, abs_of_pos hden] using congrArg abs he
+  rw [he']
+  apply div_le_div₀ ((abs_nonneg _).trans had) had hs
+  linarith [Real.sqrt_nonneg a]
+
+
+/-- The exact normalized column is Lipschitz when the two pivots remain above half the
+positive lower margin. -/
+theorem abs_div_sqrt_sub_div_sqrt_le {r e a d μ B η : ℝ}
+    (hμ : 0 < μ) (ha : μ / 2 ≤ a) (hd : μ ≤ d)
+    (hre : |r - e| ≤ η) (he : |e| ≤ B) (had : |a - d| ≤ η) :
+    |r / Real.sqrt a - e / Real.sqrt d| ≤
+      2 * (1 + B / μ) * η / Real.sqrt μ := by
+  have ha0 : 0 ≤ a := by linarith
+  have hs : 0 < Real.sqrt μ := Real.sqrt_pos.mpr hμ
+  have hsa : Real.sqrt μ / 2 ≤ Real.sqrt a := by
+    nlinarith [Real.sq_sqrt ha0, Real.sq_sqrt hμ.le, Real.sqrt_nonneg a]
+  have h := abs_div_sub_div_le hs hsa (Real.sqrt_le_sqrt hd) hre he
+    (abs_sqrt_sub_sqrt_le_div ha0 hμ hd had)
+  simpa only [Real.sq_sqrt hμ.le] using h
 
 
 end Real

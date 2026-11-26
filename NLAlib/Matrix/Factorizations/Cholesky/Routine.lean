@@ -131,7 +131,7 @@ theorem BelowPrefix.succ {M : Machine K} {u : ℝ} {dec : K → ℝ} (hM : StdMo
         (j + 1 + l) j = dec (belowWord M n j l W) := by
       simp only [entryOf, Function.update_self]
     rw [e]
-    exact relErr_of_abs_sub_le (unitRoundoff_nonneg hM) (hM.div _ _ hD)
+    exact Computation.relErr_of_abs_sub_le (unitRoundoff_nonneg hM) (hM.div _ _ hD)
 
 /-- After the diagonal and the entries below it are written, the columns up to `j` are columns of a
 trace, on the final words `Wf`. -/
@@ -161,7 +161,7 @@ theorem cholColumn_succ {M : Machine K} {u : ℝ} {dec : K → ℝ} (hM : StdMod
       (fun k hk => (hold hj hk).symm) (fun k hk => (hold hj hk).symm), fun hs => ?_⟩,
       fun i hji hin => hbelow i hji (by omega)⟩
     rw [e]
-    refine relErr_of_abs_sub_le (unitRoundoff_nonneg hM) ?_
+    refine Computation.relErr_of_abs_sub_le (unitRoundoff_nonneg hM) ?_
     rw [abs_of_nonneg (Real.sqrt_nonneg _)]
     exact hM.sqrt _ hs
   · have hcl : c < j := by omega

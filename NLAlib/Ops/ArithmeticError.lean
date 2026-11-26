@@ -175,6 +175,13 @@ theorem pos (h : AbsRelErr u η a z) (ha : 0 ≤ a) (hmargin : η < (1 - u) * a)
 
 end AbsRelErr
 
+/-- An absolute-error inequality with no additive allowance gives a relative error witness,
+including an exact value of zero. -/
+theorem relErr_of_abs_sub_le {u a z : ℝ} (hu : 0 ≤ u)
+    (h : |z - a| ≤ u * |a|) : RelErr u a z := by
+  apply AbsRelErr.relErr (u := u) _ hu
+  simpa only [AbsRelErr, add_zero, abs_sub_comm] using h
+
 /-- Relative error is a mixed-error certificate for every nonnegative absolute allowance. -/
 theorem RelErr.absRelErr {u η a z : ℝ} (h : RelErr u a z) (hη : 0 ≤ η) :
     AbsRelErr u η a z := by
